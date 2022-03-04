@@ -23,10 +23,8 @@ export const post: RequestHandler = async (event) => {
 
 		const config = {
 			image: `${image}:${version}`,
-			volume: `${id}-ngrams:/ngrams`,
 			environmentVariables: {}
 		};
-
 		if (serviceSecret.length > 0) {
 			serviceSecret.forEach((secret) => {
 				config.environmentVariables[secret.name] = secret.value;
@@ -41,28 +39,17 @@ export const post: RequestHandler = async (event) => {
 					networks: [network],
 					environment: config.environmentVariables,
 					restart: 'always',
-					volumes: [`${id}-ngrams:/ngrams`],
-					labels: makeLabelForServices('languagetool')
+					labels: makeLabelForServices('nocodb')
 				}
 			},
 			networks: {
 				[network]: {
 					external: true
 				}
-			},
-			volumes: {
-				[`${id}-ngrams`]: {
-					external: true
-				}
 			}
 		};
 		const composeFileDestination = `${workdir}/docker-compose.yaml`;
 		await fs.writeFile(composeFileDestination, yaml.dump(composeFile));
-		try {
-			await asyncExecShell(`DOCKER_HOST=${host} docker volume create ${id}-ngrams`);
-		} catch (error) {
-			console.log(error);
-		}
 
 		try {
 			await asyncExecShell(`DOCKER_HOST=${host} docker compose -f ${composeFileDestination} up -d`);

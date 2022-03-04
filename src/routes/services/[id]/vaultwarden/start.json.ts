@@ -3,7 +3,7 @@ import * as db from '$lib/database';
 import { promises as fs } from 'fs';
 import yaml from 'js-yaml';
 import type { RequestHandler } from '@sveltejs/kit';
-import { ErrorHandler, getServiceImage } from '$lib/database';
+import { getServiceImage, ErrorHandler } from '$lib/database';
 import { makeLabelForServices } from '$lib/buildPacks/common';
 
 export const post: RequestHandler = async (event) => {
@@ -15,6 +15,7 @@ export const post: RequestHandler = async (event) => {
 	try {
 		const service = await db.getService({ id, teamId });
 		const { type, version, destinationDockerId, destinationDocker, serviceSecret } = service;
+
 		const network = destinationDockerId && destinationDocker.network;
 		const host = getEngine(destinationDocker.engine);
 
@@ -23,10 +24,9 @@ export const post: RequestHandler = async (event) => {
 
 		const config = {
 			image: `${image}:${version}`,
-			volume: `${id}-ngrams:/ngrams`,
+			volume: `${id}-vaultwarden-data:/data/`,
 			environmentVariables: {}
 		};
-
 		if (serviceSecret.length > 0) {
 			serviceSecret.forEach((secret) => {
 				config.environmentVariables[secret.name] = secret.value;
@@ -38,11 +38,11 @@ export const post: RequestHandler = async (event) => {
 				[id]: {
 					container_name: id,
 					image: config.image,
-					networks: [network],
 					environment: config.environmentVariables,
+					networks: [network],
+					volumes: [config.volume],
 					restart: 'always',
-					volumes: [`${id}-ngrams:/ngrams`],
-					labels: makeLabelForServices('languagetool')
+					labels: makeLabelForServices('vaultWarden')
 				}
 			},
 			networks: {
@@ -51,7 +51,7 @@ export const post: RequestHandler = async (event) => {
 				}
 			},
 			volumes: {
-				[`${id}-ngrams`]: {
+				[config.volume.split(':')[0]]: {
 					external: true
 				}
 			}
@@ -59,11 +59,12 @@ export const post: RequestHandler = async (event) => {
 		const composeFileDestination = `${workdir}/docker-compose.yaml`;
 		await fs.writeFile(composeFileDestination, yaml.dump(composeFile));
 		try {
-			await asyncExecShell(`DOCKER_HOST=${host} docker volume create ${id}-ngrams`);
+			await asyncExecShell(
+				`DOCKER_HOST=${host} docker volume create ${config.volume.split(':')[0]}`
+			);
 		} catch (error) {
 			console.log(error);
 		}
-
 		try {
 			await asyncExecShell(`DOCKER_HOST=${host} docker compose -f ${composeFileDestination} up -d`);
 			return {
