@@ -14,7 +14,15 @@ export const post: RequestHandler = async (event) => {
 
 	try {
 		const service = await db.getService({ id, teamId });
-		const { type, version, destinationDockerId, destinationDocker, serviceSecret } = service;
+		const {
+			type,
+			version,
+			destinationDockerId,
+			destinationDocker,
+			serviceSecret,
+			vscodeserver: { password }
+		} = service;
+
 		const network = destinationDockerId && destinationDocker.network;
 		const host = getEngine(destinationDocker.engine);
 
@@ -23,10 +31,11 @@ export const post: RequestHandler = async (event) => {
 
 		const config = {
 			image: `${image}:${version}`,
-			volume: `${id}-ngrams:/ngrams`,
-			environmentVariables: {}
+			volume: `${id}-vscodeserver-data:/home/coder`,
+			environmentVariables: {
+				PASSWORD: password
+			}
 		};
-
 		if (serviceSecret.length > 0) {
 			serviceSecret.forEach((secret) => {
 				config.environmentVariables[secret.name] = secret.value;
@@ -38,11 +47,11 @@ export const post: RequestHandler = async (event) => {
 				[id]: {
 					container_name: id,
 					image: config.image,
-					networks: [network],
 					environment: config.environmentVariables,
+					networks: [network],
+					volumes: [config.volume],
 					restart: 'always',
-					volumes: [`${id}-ngrams:/ngrams`],
-					labels: makeLabelForServices('languagetool')
+					labels: makeLabelForServices('vscodeServer')
 				}
 			},
 			networks: {
@@ -51,15 +60,18 @@ export const post: RequestHandler = async (event) => {
 				}
 			},
 			volumes: {
-				[`${id}-ngrams`]: {
+				[config.volume.split(':')[0]]: {
 					external: true
 				}
 			}
 		};
 		const composeFileDestination = `${workdir}/docker-compose.yaml`;
 		await fs.writeFile(composeFileDestination, yaml.dump(composeFile));
+
 		try {
-			await asyncExecShell(`DOCKER_HOST=${host} docker volume create ${id}-ngrams`);
+			await asyncExecShell(
+				`DOCKER_HOST=${host} docker volume create ${config.volume.split(':')[0]}`
+			);
 		} catch (error) {
 			console.log(error);
 		}
