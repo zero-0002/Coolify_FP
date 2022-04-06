@@ -6,7 +6,6 @@ import type { RequestHandler } from '@sveltejs/kit';
 export const post: RequestHandler = async (event) => {
 	const { status, body } = await getUserDetails(event);
 	if (status === 401) return { status, body };
-
 	const { id } = event.params;
 
 	let { name, fqdn } = await event.request.json();
