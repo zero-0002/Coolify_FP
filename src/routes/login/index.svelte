@@ -1,16 +1,13 @@
 <script lang="ts">
-	export let userCount: number;
-
 	import { browser } from '$app/env';
 	import { goto } from '$app/navigation';
 	import { session } from '$app/stores';
 	import { post } from '$lib/api';
 	import { errorNotification } from '$lib/form';
 	import { onMount } from 'svelte';
-
 	let loading = false;
 	let emailEl;
-	let email, password, passwordCheck;
+	let email, password;
 
 	if (browser && $session.userId) {
 		goto('/');
@@ -19,20 +16,19 @@
 		emailEl.focus();
 	});
 	async function handleSubmit() {
-		// Prevent double submission
-		if (loading) return;
-
-		if (password !== passwordCheck) {
-			return errorNotification('Passwords do not match.');
-		}
 		loading = true;
 		try {
-			await post(`/login.json`, {
+			const { teamId } = await post(`/login.json`, {
 				email: email.toLowerCase(),
 				password,
-				isLogin: false
+				isLogin: true
 			});
-			return window.location.replace('/');
+			if (teamId === '0') {
+				window.location.replace('/settings');
+			} else {
+				window.location.replace('/');
+			}
+			return;
 		} catch ({ error }) {
 			return errorNotification(error);
 		} finally {
@@ -41,23 +37,6 @@
 	}
 </script>
 
-<div class="icons fixed top-0 left-0 m-3 cursor-pointer" on:click={() => goto('/')}>
-	<svg
-		xmlns="http://www.w3.org/2000/svg"
-		class="h-6 w-6"
-		viewBox="0 0 24 24"
-		stroke-width="1.5"
-		stroke="currentColor"
-		fill="none"
-		stroke-linecap="round"
-		stroke-linejoin="round"
-	>
-		<path stroke="none" d="M0 0h24v24H0z" fill="none" />
-		<line x1="5" y1="12" x2="19" y2="12" />
-		<line x1="5" y1="12" x2="11" y2="18" />
-		<line x1="5" y1="12" x2="11" y2="6" />
-	</svg>
-</div>
 <div class="flex h-screen flex-col items-center justify-center">
 	{#if $session.userId}
 		<div class="flex justify-center px-4 text-xl font-bold">Already logged in...</div>
@@ -82,32 +61,32 @@
 					bind:value={password}
 					required
 				/>
-				<input
-					type="password"
-					name="passwordCheck"
-					placeholder="Password again"
-					bind:value={passwordCheck}
-					required
-				/>
 
 				<div class="flex space-x-2 h-8 items-center justify-center pt-8">
 					<button
 						type="submit"
-						class="hover:bg-coollabs-100 text-white"
 						disabled={loading}
+						class="hover:opacity-90 text-white"
 						class:bg-transparent={loading}
 						class:text-stone-600={loading}
-						class:bg-coollabs={!loading}>{loading ? 'Registering...' : 'Register'}</button
+						class:bg-coollabs={!loading}>{loading ? 'Authenticating...' : 'Login'}</button
+					>
+
+					<button
+						on:click|preventDefault={() => goto('/register')}
+						class="bg-transparent hover:bg-coolgray-300	text-white ">Register</button
 					>
 				</div>
 			</form>
 		</div>
-		{#if userCount === 0}
-			<div class="pt-5">
-				You are registering the first user. It will be the administrator of your Coolify instance.
-				<br />
-				It will take a while, because Coolify will configure itself, the proxy and other docker related
-				stuff.
+		{#if browser && window.location.host === 'demo.coolify.io'}
+			<div class="pt-5 font-bold">
+				Registration is <span class="text-pink-500">open</span>, just fill in an email (does not
+				need to be live email address for the demo instance) and a password.
+			</div>
+			<div class="pt-5 font-bold">
+				All users gets an <span class="text-pink-500">own namespace</span>, so you won't be able to
+				access other users data.
 			</div>
 		{/if}
 	{/if}
