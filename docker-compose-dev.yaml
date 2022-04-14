@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  redis:
+    image: 'redis:6.2'
+    container_name: coolify-redis
+    networks:
+      - coolify-infra
+    ports:
+      - target: 6379
+        published: 6379
+        protocol: tcp
+        mode: host
+
+networks:
+  coolify-infra:
+    attachable: true
+    name: coolify-infra
