@@ -6,17 +6,21 @@ import type { RequestHandler } from '@sveltejs/kit';
 export const post: RequestHandler = async (event) => {
 	const { status, body } = await getUserDetails(event);
 	if (status === 401) return { status, body };
-	const { id } = event.params;
 
+	const { id } = event.params;
 	let {
 		name,
 		fqdn,
 		exposePort,
-		ghost: { mariadbDatabase }
+		plausibleAnalytics: { email, username }
 	} = await event.request.json();
+
 	if (fqdn) fqdn = fqdn.toLowerCase();
+	if (email) email = email.toLowerCase();
+	if (exposePort) exposePort = Number(exposePort);
+
 	try {
-		await db.updateGhostService({ id, fqdn, name, exposePort, mariadbDatabase });
+		await db.updatePlausibleAnalyticsService({ id, fqdn, name, email, username, exposePort });
 		return { status: 201 };
 	} catch (error) {
 		return ErrorHandler(error);
