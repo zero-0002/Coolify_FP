@@ -12,11 +12,13 @@ export const post: RequestHandler = async (event) => {
 		name,
 		fqdn,
 		exposePort,
-		ghost: { mariadbDatabase }
+		wordpress: { extraConfig, mysqlDatabase }
 	} = await event.request.json();
 	if (fqdn) fqdn = fqdn.toLowerCase();
+	if (exposePort) exposePort = Number(exposePort);
+
 	try {
-		await db.updateGhostService({ id, fqdn, name, exposePort, mariadbDatabase });
+		await db.updateWordpress({ id, fqdn, name, extraConfig, mysqlDatabase, exposePort });
 		return { status: 201 };
 	} catch (error) {
 		return ErrorHandler(error);
