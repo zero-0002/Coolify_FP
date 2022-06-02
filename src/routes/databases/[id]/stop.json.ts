@@ -4,19 +4,24 @@ import { ErrorHandler, stopDatabase } from '$lib/database';
 import { stopTcpHttpProxy } from '$lib/haproxy';
 import type { RequestHandler } from '@sveltejs/kit';
 
-export const del: RequestHandler = async (event) => {
+export const post: RequestHandler = async (event) => {
 	const { teamId, status, body } = await getUserDetails(event);
 	if (status === 401) return { status, body };
+
 	const { id } = event.params;
+
 	try {
 		const database = await db.getDatabase({ id, teamId });
-		if (database.destinationDockerId) {
-			const everStarted = await stopDatabase(database);
-			if (everStarted) await stopTcpHttpProxy(id, database.destinationDocker, database.publicPort);
-		}
-		await db.removeDatabase({ id });
-		return { status: 200 };
+		const everStarted = await stopDatabase(database);
+		if (everStarted) await stopTcpHttpProxy(id, database.destinationDocker, database.publicPort);
+		await db.setDatabase({ id, isPublic: false });
+		await db.prisma.database.update({ where: { id }, data: { publicPort: null } });
+
+		return {
+			status: 200
+		};
 	} catch (error) {
+		console.log(error);
 		return ErrorHandler(error);
 	}
 };
