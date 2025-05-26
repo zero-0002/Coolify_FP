@@ -34,7 +34,7 @@
         @if ($resource?->additional_networks?->count() > 0 && data_get($resource, 'build_pack') !== 'dockercompose')
             <h3>Additional Server(s)</h3>
             @foreach ($resource->additional_networks as $destination)
-                <div class="flex flex-col gap-2">
+                <div class="flex flex-col gap-2" wire:key="destination-{{ $destination->id }}">
                     <div class="relative flex flex-col w-full box">
                         @if (str(data_get($destination, 'pivot.status'))->startsWith('running'))
                             <div title="{{ data_get($destination, 'pivot.status') }}"

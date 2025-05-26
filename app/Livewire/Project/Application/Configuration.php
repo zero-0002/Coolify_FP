@@ -24,6 +24,7 @@ class Configuration extends Component
         return [
             "echo-private:team.{$teamId},ServiceChecked" => '$refresh',
             'buildPackUpdated' => '$refresh',
+            'refresh' => '$refresh',
         ];
     }
 

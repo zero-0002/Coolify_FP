@@ -26,6 +26,7 @@ class Destination extends Component
 
         return [
             "echo-private:team.{$teamId},ApplicationStatusChanged" => 'loadData',
+            'refresh' => 'mount',
         ];
     }
 
@@ -114,6 +115,7 @@ class Destination extends Component
         $this->resource->additional_networks()->detach($network_id, ['server_id' => $server_id]);
         $this->resource->additional_networks()->attach($main_destination->id, ['server_id' => $main_destination->server->id]);
         $this->refreshServers();
+        $this->resource->refresh();
     }
 
     public function refreshServers()
@@ -126,7 +128,7 @@ class Destination extends Component
     public function addServer(int $network_id, int $server_id)
     {
         $this->resource->additional_networks()->attach($network_id, ['server_id' => $server_id]);
-        $this->loadData();
+        $this->dispatch('refresh');
     }
 
     public function removeServer(int $network_id, int $server_id, $password)
@@ -141,7 +143,7 @@ class Destination extends Component
             }
 
             if ($this->resource->destination->server->id == $server_id && $this->resource->destination->id == $network_id) {
-                $this->dispatch('error', 'You cannot remove this destination server.', 'You are trying to remove the main server.');
+                $this->dispatch('error', 'You are trying to remove the main server.');
 
                 return;
             }
@@ -149,6 +151,7 @@ class Destination extends Component
             StopApplicationOneServer::run($this->resource, $server);
             $this->resource->additional_networks()->detach($network_id, ['server_id' => $server_id]);
             $this->loadData();
+            $this->dispatch('refresh');
             ApplicationStatusChanged::dispatch(data_get($this->resource, 'environment.project.team.id'));
         } catch (\Exception $e) {
             return handleError($e, $this);
