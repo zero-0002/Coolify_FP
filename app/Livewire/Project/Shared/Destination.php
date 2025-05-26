@@ -26,6 +26,7 @@ class Destination extends Component
 
         return [
             "echo-private:team.{$teamId},ApplicationStatusChanged" => 'loadData',
+            "echo-private:team.{$teamId},ServiceStatusChanged" => 'mount',
             'refresh' => 'mount',
         ];
     }
