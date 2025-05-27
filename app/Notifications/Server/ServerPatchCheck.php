@@ -30,6 +30,21 @@ class ServerPatchCheck extends CustomEmailNotification
     public function toMail($notifiable = null): MailMessage
     {
         $mail = new MailMessage;
+
+        // Handle error case
+        if (isset($this->patchData['error'])) {
+            $mail->subject("Coolify: [ERROR] Failed to check patches on {$this->server->name}");
+            $mail->view('emails.server-patches-error', [
+                'name' => $this->server->name,
+                'error' => $this->patchData['error'],
+                'osId' => $this->patchData['osId'] ?? 'unknown',
+                'package_manager' => $this->patchData['package_manager'] ?? 'unknown',
+                'server_url' => $this->serverUrl,
+            ]);
+
+            return $mail;
+        }
+
         $totalUpdates = $this->patchData['total_updates'] ?? 0;
         $mail->subject("Coolify: [ACTION REQUIRED] {$totalUpdates} server patches available on {$this->server->name}");
         $mail->view('emails.server-patches', [
@@ -46,6 +61,26 @@ class ServerPatchCheck extends CustomEmailNotification
 
     public function toDiscord(): DiscordMessage
     {
+        // Handle error case
+        if (isset($this->patchData['error'])) {
+            $osId = $this->patchData['osId'] ?? 'unknown';
+            $packageManager = $this->patchData['package_manager'] ?? 'unknown';
+            $error = $this->patchData['error'];
+
+            $description = "**Failed to check for updates** on server {$this->server->name}\n\n";
+            $description .= "**Error Details:**\n";
+            $description .= '• OS: '.ucfirst($osId)."\n";
+            $description .= "• Package Manager: {$packageManager}\n";
+            $description .= "• Error: {$error}\n\n";
+            $description .= "[Manage Server]($this->serverUrl)";
+
+            return new DiscordMessage(
+                title: ':x: Coolify: [ERROR] Failed to check patches on '.$this->server->name,
+                description: $description,
+                color: DiscordMessage::errorColor(),
+            );
+        }
+
         $totalUpdates = $this->patchData['total_updates'] ?? 0;
         $updates = $this->patchData['updates'] ?? [];
         $osId = $this->patchData['osId'] ?? 'unknown';
@@ -92,6 +127,29 @@ class ServerPatchCheck extends CustomEmailNotification
 
     public function toTelegram(): array
     {
+        // Handle error case
+        if (isset($this->patchData['error'])) {
+            $osId = $this->patchData['osId'] ?? 'unknown';
+            $packageManager = $this->patchData['package_manager'] ?? 'unknown';
+            $error = $this->patchData['error'];
+
+            $message = "❌ Coolify: [ERROR] Failed to check patches on {$this->server->name}!\n\n";
+            $message .= "📊 Error Details:\n";
+            $message .= '• OS: '.ucfirst($osId)."\n";
+            $message .= "• Package Manager: {$packageManager}\n";
+            $message .= "• Error: {$error}\n\n";
+
+            return [
+                'message' => $message,
+                'buttons' => [
+                    [
+                        'text' => 'Manage Server',
+                        'url' => $this->serverUrl,
+                    ],
+                ],
+            ];
+        }
+
         $totalUpdates = $this->patchData['total_updates'] ?? 0;
         $updates = $this->patchData['updates'] ?? [];
         $osId = $this->patchData['osId'] ?? 'unknown';
@@ -145,6 +203,31 @@ class ServerPatchCheck extends CustomEmailNotification
 
     public function toPushover(): PushoverMessage
     {
+        // Handle error case
+        if (isset($this->patchData['error'])) {
+            $osId = $this->patchData['osId'] ?? 'unknown';
+            $packageManager = $this->patchData['package_manager'] ?? 'unknown';
+            $error = $this->patchData['error'];
+
+            $message = "[ERROR] Failed to check patches on {$this->server->name}!\n\n";
+            $message .= "Error Details:\n";
+            $message .= '• OS: '.ucfirst($osId)."\n";
+            $message .= "• Package Manager: {$packageManager}\n";
+            $message .= "• Error: {$error}\n\n";
+
+            return new PushoverMessage(
+                title: 'Server patch check failed',
+                level: 'error',
+                message: $message,
+                buttons: [
+                    [
+                        'text' => 'Manage Server',
+                        'url' => $this->serverUrl,
+                    ],
+                ],
+            );
+        }
+
         $totalUpdates = $this->patchData['total_updates'] ?? 0;
         $updates = $this->patchData['updates'] ?? [];
         $osId = $this->patchData['osId'] ?? 'unknown';
@@ -194,6 +277,26 @@ class ServerPatchCheck extends CustomEmailNotification
 
     public function toSlack(): SlackMessage
     {
+        // Handle error case
+        if (isset($this->patchData['error'])) {
+            $osId = $this->patchData['osId'] ?? 'unknown';
+            $packageManager = $this->patchData['package_manager'] ?? 'unknown';
+            $error = $this->patchData['error'];
+
+            $description = "Failed to check patches on '{$this->server->name}'!\n\n";
+            $description .= "*Error Details:*\n";
+            $description .= '• OS: '.ucfirst($osId)."\n";
+            $description .= "• Package Manager: {$packageManager}\n";
+            $description .= "• Error: `{$error}`\n\n";
+            $description .= "\n:link: <{$this->serverUrl}|Manage Server>";
+
+            return new SlackMessage(
+                title: 'Coolify: [ERROR] Server patch check failed',
+                description: $description,
+                color: SlackMessage::errorColor()
+            );
+        }
+
         $totalUpdates = $this->patchData['total_updates'] ?? 0;
         $updates = $this->patchData['updates'] ?? [];
         $osId = $this->patchData['osId'] ?? 'unknown';

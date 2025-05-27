@@ -31,7 +31,7 @@ class ServerPatchCheckJob implements ShouldBeEncrypted, ShouldQueue
     public function handle(): void
     {
         try {
-            if ($this->server->isFunctional() === false) {
+            if ($this->server->serverStatus() === false) {
                 return;
             }
 
@@ -44,6 +44,8 @@ class ServerPatchCheckJob implements ShouldBeEncrypted, ShouldQueue
             $patchData = CheckUpdates::run($this->server);
 
             if (isset($patchData['error'])) {
+                $team->notify(new ServerPatchCheck($this->server, $patchData));
+
                 return; // Skip if there's an error checking for updates
             }
 
