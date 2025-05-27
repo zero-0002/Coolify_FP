@@ -1432,7 +1432,6 @@ class ServicesController extends Controller
                 name: 'latest',
                 in: 'query',
                 description: 'Pull latest images.',
-                required: false,
                 schema: new OA\Schema(
                     type: 'boolean',
                     default: false,
