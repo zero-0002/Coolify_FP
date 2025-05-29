@@ -317,13 +317,16 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
         }
         if ($subType === 'application') {
             $application = $service->applications()->where('id', $subId)->first();
-            $application->status = $containerStatus;
-            $application->save();
+            if ($application) {
+                $application->status = $containerStatus;
+                $application->save();
+            }
         } elseif ($subType === 'database') {
             $database = $service->databases()->where('id', $subId)->first();
-            $database->status = $containerStatus;
-            $database->save();
-        } else {
+            if ($database) {
+                $database->status = $containerStatus;
+                $database->save();
+            }
         }
     }
 
