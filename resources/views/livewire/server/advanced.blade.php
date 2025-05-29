@@ -36,6 +36,7 @@
                     @if (auth()->user()->isAdmin())
                         <div wire:key="terminal-access-change-{{ $isTerminalEnabled }}" class="pb-4">
                             <x-modal-confirmation title="Confirm Terminal Access Change?"
+                                temporaryDisableTwoStepConfirmation
                                 buttonTitle="{{ $isTerminalEnabled ? 'Disable Terminal' : 'Enable Terminal' }}"
                                 submitAction="toggleTerminal" :actions="[
                                     $isTerminalEnabled
