@@ -55,7 +55,7 @@ class ExecuteContainerCommand extends Component
         $this->servers = collect();
         if (data_get($this->parameters, 'application_uuid')) {
             $this->type = 'application';
-            $this->resource = Application::where('uuid', $this->parameters['application_uuid'])->firstOrFail();
+            $this->resource = Application::whereUuid($this->parameters['application_uuid'])->firstOrFail();
             if ($this->resource->destination->server->isFunctional() && $this->resource->destination->server->isTerminalEnabled()) {
                 $this->servers = $this->servers->push($this->resource->destination->server);
             }
@@ -78,14 +78,14 @@ class ExecuteContainerCommand extends Component
             $this->loadContainers();
         } elseif (data_get($this->parameters, 'service_uuid')) {
             $this->type = 'service';
-            $this->resource = Service::where('uuid', $this->parameters['service_uuid'])->firstOrFail();
+            $this->resource = Service::whereUuid($this->parameters['service_uuid'])->firstOrFail();
             if ($this->resource->server->isFunctional() && $this->resource->server->isTerminalEnabled()) {
                 $this->servers = $this->servers->push($this->resource->server);
             }
             $this->loadContainers();
         } elseif (data_get($this->parameters, 'server_uuid')) {
             $this->type = 'server';
-            $this->resource = Server::where('uuid', $this->parameters['server_uuid'])->firstOrFail();
+            $this->resource = Server::ownedByCurrentTeam()->whereUuid($this->parameters['server_uuid'])->firstOrFail();
             $this->server = $this->resource;
         }
     }
@@ -174,6 +174,9 @@ class ExecuteContainerCommand extends Component
         try {
             if ($this->server->isForceDisabled()) {
                 throw new \RuntimeException('Server is disabled.');
+            }
+            if (! $this->server->isTerminalEnabled()) {
+                throw new \RuntimeException('Terminal access is disabled on this server.');
             }
             $this->hasShell = true;
             $this->dispatch(

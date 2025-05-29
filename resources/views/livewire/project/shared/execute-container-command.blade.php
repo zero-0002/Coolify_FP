@@ -35,13 +35,17 @@
         </div>
     @else
         @if ($type === 'server')
-            <form class="w-full" wire:submit="$dispatchSelf('connectToServer')"
-                wire:init="$dispatchSelf('connectToServer')">
-                <x-forms.button class="w-full" type="submit">Reconnect</x-forms.button>
-            </form>
-            <div class="mx-auto w-full">
-                <livewire:project.shared.terminal />
-            </div>
+            @if ($server->isTerminalEnabled())
+                <form class="w-full" wire:submit="$dispatchSelf('connectToServer')"
+                    wire:init="$dispatchSelf('connectToServer')">
+                    <x-forms.button class="w-full" type="submit">Reconnect</x-forms.button>
+                </form>
+                <div class="mx-auto w-full">
+                    <livewire:project.shared.terminal />
+                </div>
+            @else
+                <div>Terminal access is disabled on this server.</div>
+            @endif
         @else
             @if (count($containers) === 0)
                 <div class="pt-4">No containers are running on this server or terminal access is disabled.</div>
