@@ -43,7 +43,7 @@ class Terminal extends Component
     #[On('send-terminal-command')]
     public function sendTerminalCommand($isContainer, $identifier, $serverUuid)
     {
-        $server = Server::ownedByCurrentTeam()->whereUuid($serverUuid)->firstOrFail();
+        $server = Server::ownedByCurrentTeam()->whereUuid($serverUuid)->where('settings.is_terminal_enabled', true)->firstOrFail();
 
         if ($isContainer) {
             // Validate container identifier format (alphanumeric, dashes, and underscores only)
