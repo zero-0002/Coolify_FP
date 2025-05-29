@@ -49,17 +49,18 @@ class ExecuteContainerCommand extends Component
         if (! auth()->user()->isAdmin()) {
             abort(403);
         }
+
         $this->parameters = get_route_parameters();
         $this->containers = collect();
         $this->servers = collect();
         if (data_get($this->parameters, 'application_uuid')) {
             $this->type = 'application';
             $this->resource = Application::where('uuid', $this->parameters['application_uuid'])->firstOrFail();
-            if ($this->resource->destination->server->isFunctional()) {
+            if ($this->resource->destination->server->isFunctional() && $this->resource->destination->server->isTerminalEnabled()) {
                 $this->servers = $this->servers->push($this->resource->destination->server);
             }
             foreach ($this->resource->additional_servers as $server) {
-                if ($server->isFunctional()) {
+                if ($server->isFunctional() && $server->isTerminalEnabled()) {
                     $this->servers = $this->servers->push($server);
                 }
             }
@@ -71,14 +72,14 @@ class ExecuteContainerCommand extends Component
                 abort(404);
             }
             $this->resource = $resource;
-            if ($this->resource->destination->server->isFunctional()) {
+            if ($this->resource->destination->server->isFunctional() && $this->resource->destination->server->isTerminalEnabled()) {
                 $this->servers = $this->servers->push($this->resource->destination->server);
             }
             $this->loadContainers();
         } elseif (data_get($this->parameters, 'service_uuid')) {
             $this->type = 'service';
             $this->resource = Service::where('uuid', $this->parameters['service_uuid'])->firstOrFail();
-            if ($this->resource->server->isFunctional()) {
+            if ($this->resource->server->isFunctional() && $this->resource->server->isTerminalEnabled()) {
                 $this->servers = $this->servers->push($this->resource->server);
             }
             $this->loadContainers();

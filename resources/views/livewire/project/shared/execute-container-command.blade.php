@@ -44,7 +44,7 @@
             </div>
         @else
             @if (count($containers) === 0)
-                <div class="pt-4">No containers are running.</div>
+                <div class="pt-4">No containers are running on this server or terminal access is disabled.</div>
             @else
                 @if (count($containers) === 1)
                     <form class="w-full pt-4" wire:submit="$dispatchSelf('connectToContainer')"
