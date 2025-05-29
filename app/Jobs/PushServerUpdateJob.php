@@ -71,7 +71,7 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
 
     public function middleware(): array
     {
-        return [(new WithoutOverlapping($this->server->uuid))->dontRelease()];
+        return [(new WithoutOverlapping('push-server-update-'.$this->server->uuid))->dontRelease()];
     }
 
     public function backoff(): int
