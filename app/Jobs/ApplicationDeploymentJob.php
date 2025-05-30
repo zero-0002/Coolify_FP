@@ -361,9 +361,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private function post_deployment()
     {
-        if ($this->server->isProxyShouldRun()) {
-            GetContainersStatus::dispatch($this->server);
-        }
+        GetContainersStatus::dispatch($this->server);
         $this->next(ApplicationDeploymentStatus::FINISHED->value);
         if ($this->pull_request_id !== 0) {
             if ($this->application->is_github_based()) {
