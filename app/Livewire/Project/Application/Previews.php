@@ -239,12 +239,24 @@ class Previews extends Component
 
     private function stopContainers(array $containers, $server, int $timeout = 30)
     {
-        foreach ($containers as $container) {
-            $containerName = str_replace('/', '', $container['Names']);
-            instant_remote_process(command: [
-                "docker stop --time=$timeout $containerName",
-                "docker rm -f $containerName",
-            ], server: $server, throwError: false);
+        if (empty($containers)) {
+            return;
         }
+        $containerNames = [];
+        foreach ($containers as $container) {
+            $containerNames[] = str_replace('/', '', $container['Names']);
+        }
+
+        $containerList = implode(' ', $containerNames);
+        $commands = [
+            "docker stop --time=$timeout $containerList",
+            "docker rm -f $containerList",
+        ];
+
+        instant_remote_process(
+            command: $commands,
+            server: $server,
+            throwError: false
+        );
     }
 }
