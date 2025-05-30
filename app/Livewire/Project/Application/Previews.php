@@ -138,13 +138,18 @@ class Previews extends Component
         }
     }
 
+    public function force_deploy_without_cache(int $pull_request_id, ?string $pull_request_html_url = null)
+    {
+        $this->deploy($pull_request_id, $pull_request_html_url, force_rebuild: true);
+    }
+
     public function add_and_deploy(int $pull_request_id, ?string $pull_request_html_url = null)
     {
         $this->add($pull_request_id, $pull_request_html_url);
         $this->deploy($pull_request_id, $pull_request_html_url);
     }
 
-    public function deploy(int $pull_request_id, ?string $pull_request_html_url = null)
+    public function deploy(int $pull_request_id, ?string $pull_request_html_url = null, bool $force_rebuild = false)
     {
         try {
             $this->setDeploymentUuid();
@@ -159,7 +164,7 @@ class Previews extends Component
             $result = queue_application_deployment(
                 application: $this->application,
                 deployment_uuid: $this->deployment_uuid,
-                force_rebuild: false,
+                force_rebuild: $force_rebuild,
                 pull_request_id: $pull_request_id,
                 git_type: $found->git_type ?? null,
             );
