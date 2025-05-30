@@ -38,9 +38,9 @@ class StopService
 
             if ($isDeleteOperation) {
                 $service->deleteConnectedNetworks();
-                if ($dockerCleanup) {
-                    CleanupDocker::dispatch($server, true);
-                }
+            }
+            if ($dockerCleanup) {
+                CleanupDocker::dispatch($server, true);
             }
         } catch (\Exception $e) {
             return $e->getMessage();
