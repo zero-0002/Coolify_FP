@@ -20,7 +20,7 @@ class ActivityMonitor extends Component
 
     public bool $showWaiting = false;
 
-    protected $activity;
+    public $activity;
 
     public static $eventDispatched = false;
 
