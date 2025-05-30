@@ -4,6 +4,7 @@ namespace App\Actions\Service;
 
 use App\Actions\Server\CleanupDocker;
 use App\Events\ServiceStatusChanged;
+use App\Models\Server;
 use App\Models\Service;
 use Lorisleiva\Actions\Concerns\AsAction;
 
@@ -48,7 +49,7 @@ class StopService
         }
     }
 
-    private function stopContainersInParallel(array $containersToStop, $server): void
+    private function stopContainersInParallel(array $containersToStop, Server $server): void
     {
         $timeout = count($containersToStop) > 5 ? 10 : 30;
         $commands = [];
