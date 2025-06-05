@@ -44,10 +44,12 @@
     @elseif ($type === 'service')
         <livewire:project.service.heading :service="$resource" :parameters="$parameters" :query="$query" title="Logs" />
         <div class="pt-4">
-            <div class="subtitle">Here you can see the logs of the service.</div>
+            <h1>Logs</h1>
+            <div class="pt-1">Here you can see the logs of the containers.</div>
             @forelse ($containers as $container)
                 @if (data_get($servers, '0'))
-                    <livewire:project.shared.get-logs :server="data_get($servers, '0')" :resource="$resource" :container="$container" />
+                    <livewire:project.shared.get-logs wire:key='{{ $container }}' :server="data_get($servers, '0')"
+                        :resource="$resource" :container="$container" />
                 @else
                     <div> No functional server found for the service.</div>
                 @endif
