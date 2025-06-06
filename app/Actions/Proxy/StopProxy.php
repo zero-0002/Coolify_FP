@@ -2,6 +2,7 @@
 
 namespace App\Actions\Proxy;
 
+use App\Events\ProxyStatusChanged;
 use App\Models\Server;
 use Lorisleiva\Actions\Concerns\AsAction;
 
@@ -24,6 +25,8 @@ class StopProxy
             $server->save();
         } catch (\Throwable $e) {
             return handleError($e);
+        } finally {
+            ProxyStatusChanged::dispatch($server->id);
         }
     }
 }

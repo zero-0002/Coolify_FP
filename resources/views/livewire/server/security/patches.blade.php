@@ -2,7 +2,7 @@
     <x-slot:title>
         {{ data_get_str($server, 'name')->limit(10) }} > Security | Coolify
     </x-slot>
-    <x-server.navbar :server="$server" />
+    <livewire:server.navbar :server="$server" />
     <x-slide-over closeWithX fullScreen @startupdate.window="slideOverOpen = true">
         <x-slot:title>Updating Packages</x-slot:title>
         <x-slot:content>

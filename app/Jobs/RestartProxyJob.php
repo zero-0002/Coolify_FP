@@ -36,9 +36,10 @@ class RestartProxyJob implements ShouldBeEncrypted, ShouldQueue
 
             $this->server->proxy->force_stop = false;
             $this->server->save();
+
             StartProxy::run($this->server, force: true);
 
-            CheckProxy::run($this->server, true);
+            // CheckProxy::run($this->server, true);
         } catch (\Throwable $e) {
             return handleError($e);
         }

@@ -19,7 +19,7 @@ class Proxy extends Component
 
     public ?string $redirect_url = null;
 
-    protected $listeners = ['proxyStatusUpdated', 'saveConfiguration' => 'submit'];
+    protected $listeners = ['saveConfiguration' => 'submit'];
 
     protected $rules = [
         'server.settings.generate_exact_labels' => 'required|boolean',
@@ -32,10 +32,10 @@ class Proxy extends Component
         $this->redirect_url = data_get($this->server, 'proxy.redirect_url');
     }
 
-    public function proxyStatusUpdated()
-    {
-        $this->dispatch('refresh')->self();
-    }
+    // public function proxyStatusUpdated()
+    // {
+    //     $this->dispatch('refresh')->self();
+    // }
 
     public function changeProxy()
     {

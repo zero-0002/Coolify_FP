@@ -19,7 +19,7 @@ class DynamicConfigurations extends Component
         $teamId = auth()->user()->currentTeam()->id;
 
         return [
-            "echo-private:team.{$teamId},ProxyStatusChanged" => 'loadDynamicConfigurations',
+            "echo-private:team.{$teamId},ProxyStatusChangedUI" => 'loadDynamicConfigurations',
             'loadDynamicConfigurations',
         ];
     }
