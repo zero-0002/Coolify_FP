@@ -6,6 +6,7 @@ use App\Actions\Proxy\CheckProxy;
 use App\Actions\Proxy\StartProxy;
 use App\Actions\Proxy\StopProxy;
 use App\Models\Server;
+use App\Services\ProxyDashboardCacheService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -38,6 +39,9 @@ class RestartProxyJob implements ShouldBeEncrypted, ShouldQueue
             $this->server->save();
 
             StartProxy::run($this->server, force: true);
+
+            // Clear Traefik dashboard cache after proxy restart
+            ProxyDashboardCacheService::clearCache($this->server);
 
             // CheckProxy::run($this->server, true);
         } catch (\Throwable $e) {

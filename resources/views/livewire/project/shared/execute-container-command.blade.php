@@ -17,7 +17,7 @@
         <livewire:server.navbar :server="$server" :parameters="$parameters" />
     @endif
 
-    <h2 class="pt-4">Terminal</h2>
+    <h2 class="pb-4">Terminal</h2>
     @if (!$hasShell)
         <div class="flex items-center justify-center w-full py-4 mx-auto">
             <div class="p-4 w-full rounded-sm border dark:bg-coolgray-100 dark:border-coolgray-300">

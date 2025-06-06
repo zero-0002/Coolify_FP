@@ -2,12 +2,12 @@
 
 namespace App\Livewire\Server;
 
-use App\Actions\Proxy\CheckConfiguration;
 use App\Actions\Proxy\CheckProxy;
 use App\Actions\Proxy\StartProxy;
 use App\Actions\Proxy\StopProxy;
 use App\Jobs\RestartProxyJob;
 use App\Models\Server;
+use App\Services\ProxyDashboardCacheService;
 use Livewire\Component;
 
 class Navbar extends Component
@@ -36,17 +36,13 @@ class Navbar extends Component
         $this->server = $server;
         $this->currentRoute = request()->route()->getName();
         $this->serverIp = $this->server->id === 0 ? base_ip() : $this->server->ip;
+        $this->loadProxyConfiguration();
     }
 
     public function loadProxyConfiguration()
     {
         try {
-            $proxy_settings = CheckConfiguration::run($this->server);
-            if (str($proxy_settings)->contains('--api.dashboard=true') && str($proxy_settings)->contains('--api.insecure=true')) {
-                $this->traefikDashboardAvailable = true;
-            } else {
-                $this->traefikDashboardAvailable = false;
-            }
+            $this->traefikDashboardAvailable = ProxyDashboardCacheService::isTraefikDashboardAvailable($this->server);
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
@@ -55,6 +51,8 @@ class Navbar extends Component
     public function restart()
     {
         try {
+            // Clear cache before restarting proxy
+            ProxyDashboardCacheService::clearCache($this->server);
             RestartProxyJob::dispatch($this->server);
         } catch (\Throwable $e) {
             return handleError($e, $this);
@@ -123,7 +121,7 @@ class Navbar extends Component
                 if ($forceStop) {
                     $this->dispatch('info', 'Proxy is stopped manually.');
                 } else {
-                    $this->dispatch('info', 'Proxy is stopped manually. Starting in a moment.');
+                    $this->dispatch('info', 'Proxy is stopped manually.<br>Starting in a moment.');
                 }
                 break;
             default:

@@ -5,6 +5,7 @@ namespace App\Actions\Proxy;
 use App\Enums\ProxyTypes;
 use App\Events\ProxyStatusChanged;
 use App\Models\Server;
+use App\Services\ProxyDashboardCacheService;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Spatie\Activitylog\Models\Activity;
 
@@ -28,6 +29,10 @@ class StartProxy
         $docker_compose_yml_base64 = base64_encode($configuration);
         $server->proxy->last_applied_settings = str($docker_compose_yml_base64)->pipe('md5')->value();
         $server->save();
+
+        // Clear Traefik dashboard cache when proxy configuration changes
+        ProxyDashboardCacheService::clearCache($server);
+
         if ($server->isSwarmManager()) {
             $commands = $commands->merge([
                 "mkdir -p $proxy_path/dynamic",

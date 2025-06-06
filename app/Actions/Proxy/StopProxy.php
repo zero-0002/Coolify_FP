@@ -4,6 +4,7 @@ namespace App\Actions\Proxy;
 
 use App\Events\ProxyStatusChanged;
 use App\Models\Server;
+use App\Services\ProxyDashboardCacheService;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 class StopProxy
@@ -23,6 +24,9 @@ class StopProxy
             $server->proxy->force_stop = $forceStop;
             $server->proxy->status = 'exited';
             $server->save();
+
+            // Clear Traefik dashboard cache when proxy stops
+            ProxyDashboardCacheService::clearCache($server);
         } catch (\Throwable $e) {
             return handleError($e);
         } finally {
