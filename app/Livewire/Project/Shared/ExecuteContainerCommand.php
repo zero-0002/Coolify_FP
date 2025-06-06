@@ -170,23 +170,41 @@ class ExecuteContainerCommand extends Component
 
     public function initializeTerminalConnection()
     {
-        // Only auto-connect if containers are loaded and we haven't attempted before
-        if (! $this->containersLoaded || $this->autoConnectAttempted || $this->isConnecting) {
-            return;
-        }
+        try {
+            // Only auto-connect if containers are loaded and we haven't attempted before
+            if (! $this->containersLoaded || $this->autoConnectAttempted || $this->isConnecting) {
+                return;
+            }
 
-        $this->autoConnectAttempted = true;
-        $this->isConnecting = true;
+            $this->autoConnectAttempted = true;
 
-        if ($this->type === 'server') {
-            $this->connectionStatus = 'Establishing connection to server terminal...';
-            $this->connectToServer();
-        } elseif ($this->containers->count() === 1) {
-            $this->connectionStatus = 'Establishing connection to container terminal...';
-            $this->connectToContainer();
-        } else {
+            // Ensure component is in a stable state before proceeding
+            $this->skipRender();
+
+            $this->isConnecting = true;
+
+            if ($this->type === 'server') {
+                $this->connectionStatus = 'Establishing connection to server terminal...';
+                $this->connectToServer();
+            } elseif ($this->containers->count() === 1) {
+                $this->connectionStatus = 'Establishing connection to container terminal...';
+                $this->connectToContainer();
+            } else {
+                $this->isConnecting = false;
+                $this->connectionStatus = '';
+            }
+        } catch (\Throwable $e) {
+            // Log the error but don't let it bubble up to cause snapshot issues
+            logger()->error('Terminal auto-connection failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'component_id' => $this->getId(),
+            ]);
+
+            // Reset state to allow manual connection
+            $this->autoConnectAttempted = false;
             $this->isConnecting = false;
-            $this->connectionStatus = '';
+            $this->connectionStatus = 'Auto-connection failed. Please use the reconnect button.';
         }
     }
 

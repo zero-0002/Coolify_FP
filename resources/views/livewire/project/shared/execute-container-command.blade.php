@@ -105,28 +105,111 @@
     @script
         <script>
             let autoConnectionAttempted = false;
+            let maxRetries = 5;
+            let currentRetry = 0;
 
-            // Simple auto-connection that waits for component stability
-            function initializeConnection() {
-                if (autoConnectionAttempted) return;
-                autoConnectionAttempted = true;
+            // Robust component readiness check
+            function isComponentReady() {
+                // Check if Livewire component exists and is properly initialized
+                if (!$wire || typeof $wire.call !== 'function') {
+                    return false;
+                }
 
-                // Add delay to ensure all components are fully rendered
-                setTimeout(() => {
-                    $wire.call('initializeTerminalConnection');
-                }, 1000);
+                // Check if terminal container exists
+                const terminalContainer = document.getElementById('terminal-container');
+                if (!terminalContainer) {
+                    return false;
+                }
+
+                // Check if Alpine component is initialized
+                if (!terminalContainer._x_dataStack || !terminalContainer._x_dataStack[0]) {
+                    return false;
+                }
+
+                return true;
             }
 
-            // Wait for everything to be ready before auto-connecting
-            document.addEventListener('DOMContentLoaded', () => {
-                setTimeout(initializeConnection, 500);
+            // Safe connection with retries
+            function attemptConnection() {
+                if (autoConnectionAttempted) return;
+
+                if (!isComponentReady()) {
+                    currentRetry++;
+                    if (currentRetry < maxRetries) {
+                        console.log(`[Terminal] Component not ready, retry ${currentRetry}/${maxRetries}`);
+                        setTimeout(attemptConnection, 1000);
+                        return;
+                    } else {
+                        console.error('[Terminal] Max retries reached, giving up auto-connection');
+                        return;
+                    }
+                }
+
+                autoConnectionAttempted = true;
+                console.log('[Terminal] Attempting auto-connection');
+
+                try {
+                    // Use a safer method that doesn't trigger re-renders
+                    $wire.call('initializeTerminalConnection').catch(error => {
+                        console.error('[Terminal] Auto-connection failed:', error);
+                        // Reset for manual retry
+                        autoConnectionAttempted = false;
+                    });
+                } catch (error) {
+                    console.error('[Terminal] Auto-connection failed immediately:', error);
+                    // Reset for manual retry
+                    autoConnectionAttempted = false;
+                }
+            }
+
+            // Wait for Livewire to be fully initialized
+            function waitForLivewire() {
+                if (window.Livewire && window.Livewire.all().length > 0) {
+                    // Extra delay in production to ensure stability
+                    const isProduction = @js(app()->environment('production'));
+                    const delay = isProduction ? 2000 : 1000;
+                    setTimeout(attemptConnection, delay);
+                } else {
+                    setTimeout(waitForLivewire, 200);
+                }
+            }
+
+            // Multiple initialization triggers for robustness
+            document.addEventListener('DOMContentLoaded', waitForLivewire);
+
+            // Livewire-specific events
+            document.addEventListener('livewire:init', () => {
+                setTimeout(waitForLivewire, 500);
             });
 
-            // Fallback for SPA navigation
             document.addEventListener('livewire:navigated', () => {
                 autoConnectionAttempted = false;
-                setTimeout(initializeConnection, 500);
+                currentRetry = 0;
+                setTimeout(waitForLivewire, 500);
             });
+
+            // Additional safety net for production
+            const isProduction = @js(app()->environment('production'));
+            if (isProduction) {
+                window.addEventListener('load', () => {
+                    if (!autoConnectionAttempted) {
+                        setTimeout(waitForLivewire, 1000);
+                    }
+                });
+
+                // Emergency fallback - disable auto-connection if too many errors
+                let errorCount = 0;
+                window.addEventListener('error', (event) => {
+                    if (event.message && event.message.includes('Snapshot missing')) {
+                        errorCount++;
+                        console.warn(`[Terminal] Snapshot error detected (${errorCount})`);
+                        if (errorCount >= 3) {
+                            console.error('[Terminal] Too many snapshot errors, disabling auto-connection');
+                            autoConnectionAttempted = true; // Prevent further attempts
+                        }
+                    }
+                });
+            }
         </script>
     @endscript
 </div>
