@@ -28,7 +28,7 @@
                     <div class="flex flex-col gap-6 pt-4">
                         <div class="flex flex-col">
                             <div>
-                                <div wire:target="checkForUpdates" wire:loading>
+                                <div class="pb-2" wire:target="checkForUpdates" wire:loading>
                                     Checking for updates. It may take a few minutes. <x-loading />
                                 </div>
                                 @if ($error)
