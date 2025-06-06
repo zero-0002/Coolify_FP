@@ -78,10 +78,11 @@
                     </div>
                 @endif
                 @if (!$isCloudflareTunnelsEnabled && $server->isFunctional())
-                    <h3>Automated <a href="https://coolify.io/docs/knowledge-base/cloudflare/tunnels/server-ssh"
-                            target="_blank"
-                            class="text-xs underline hover:text-yellow-600 dark:hover:text-yellow-200">Docs</a></h3>
-
+                    <div class="flex  flex-col pb-2">
+                        <h3>Automated </h3>
+                        <a href="https://coolify.io/docs/knowledge-base/cloudflare/tunnels/server-ssh" target="_blank"
+                            class="text-xs underline hover:text-yellow-600 dark:hover:text-yellow-200">Docs<x-external-link /></a>
+                    </div>
                     <div class="flex gap-2">
                         <x-slide-over @automated.window="slideOverOpen = true" fullScreen>
                             <x-slot:title>Cloudflare Tunnel Configuration</x-slot:title>
@@ -107,14 +108,16 @@
                     @endscript
             </div>
             <h3 class="pt-6 pb-2">Manual</h3>
-            <x-modal-confirmation buttonFullWidth title="I manually configured Cloudflare Tunnel?"
-                buttonTitle="I manually configured Cloudflare Tunnel" submitAction="manualCloudflareConfig"
-                :actions="[
-                    'You set everything up manually, including in Cloudflare and on the server (cloudflared is running).',
-                    'If you missed something, the connection will not work.',
-                ]" confirmationText="I manually configured Cloudflare Tunnel"
-                confirmationLabel="Please type the confirmation text to confirm that you manually configured Cloudflare Tunnel."
-                shortConfirmationLabel="Confirmation text" step3ButtonText="Confirm" />
+            <div class="pl-2">
+                <x-modal-confirmation buttonFullWidth title="I manually configured Cloudflare Tunnel?"
+                    buttonTitle="I manually configured Cloudflare Tunnel" submitAction="manualCloudflareConfig"
+                    :actions="[
+                        'You set everything up manually, including in Cloudflare and on the server (cloudflared is running).',
+                        'If you missed something, the connection will not work.',
+                    ]" confirmationText="I manually configured Cloudflare Tunnel"
+                    confirmationLabel="Please type the confirmation text to confirm that you manually configured Cloudflare Tunnel."
+                    shortConfirmationLabel="Confirmation text" step3ButtonText="Confirm" />
+            </div>
             @endif
         </div>
     </div>
