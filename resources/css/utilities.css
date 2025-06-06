@@ -1,13 +1,13 @@
 @utility apexcharts-tooltip {
-    @apply dark:text-white! dark:border-coolgray-300! dark:bg-coolgray-200! shadow-none!;
+    @apply dark:text-white ! dark:border-coolgray-300 ! dark:bg-coolgray-200 ! shadow-none !;
 }
 
 @utility apexcharts-tooltip-title {
-    @apply hidden!;
+    @apply hidden !;
 }
 
 @utility apexcharts-xaxistooltip {
-    @apply hidden!;
+    @apply hidden !;
 }
 
 @utility input-sticky {
