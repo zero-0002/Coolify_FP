@@ -50,7 +50,7 @@
                 @endif
 
                 <div class="mx-auto w-full">
-                    <livewire:project.shared.terminal />
+                    <livewire:project.shared.terminal wire:key="terminal-{{ $this->getId() }}-server" />
                 </div>
             @else
                 <div>Terminal access is disabled on this server.</div>
