@@ -87,11 +87,11 @@
                         </x-slot:content>
                     </x-slide-over>
                     @if (data_get($server, 'proxy.status') === 'running')
-                        <div class="flex gap-2">
-                            @if (
-                                $currentRoute === 'server.proxy' &&
-                                    $traefikDashboardAvailable &&
-                                    $server->proxyType() === ProxyTypes::TRAEFIK->value)
+                        <div class="flex gap-2" x-init="$wire.loadProxyConfiguration">
+                            <div class="mt-1" wire:loading wire:target="loadProxyConfiguration">
+                                <x-loading text="Checking Traefik dashboard" />
+                            </div>
+                            @if ($traefikDashboardAvailable)
                                 <button>
                                     <a target="_blank" href="http://{{ $serverIp }}:8080">
                                         Traefik Dashboard

@@ -107,11 +107,6 @@ class Proxy extends Component
     {
         try {
             $this->proxy_settings = CheckConfiguration::run($this->server);
-            if (str($this->proxy_settings)->contains('--api.dashboard=true') && str($this->proxy_settings)->contains('--api.insecure=true')) {
-                $this->dispatch('traefikDashboardAvailable', true);
-            } else {
-                $this->dispatch('traefikDashboardAvailable', false);
-            }
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }

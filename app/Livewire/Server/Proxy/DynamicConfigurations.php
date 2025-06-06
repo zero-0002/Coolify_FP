@@ -28,6 +28,11 @@ class DynamicConfigurations extends Component
         'contents.*' => 'nullable|string',
     ];
 
+    public function initLoadDynamicConfigurations()
+    {
+        $this->loadDynamicConfigurations();
+    }
+
     public function loadDynamicConfigurations()
     {
         $proxy_path = $this->server->proxyPath();
@@ -43,6 +48,7 @@ class DynamicConfigurations extends Component
         }
         $this->contents = $contents;
         $this->dispatch('$refresh');
+        $this->dispatch('success', 'Dynamic configurations loaded.');
     }
 
     public function mount()

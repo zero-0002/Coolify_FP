@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Server;
 
+use App\Actions\Proxy\CheckConfiguration;
 use App\Actions\Proxy\CheckProxy;
 use App\Actions\Proxy\StartProxy;
 use App\Actions\Proxy\StopProxy;
@@ -17,6 +18,10 @@ class Navbar extends Component
 
     public ?string $currentRoute = null;
 
+    public bool $traefikDashboardAvailable = false;
+
+    public ?string $serverIp = null;
+
     public function getListeners()
     {
         $teamId = auth()->user()->currentTeam()->id;
@@ -30,6 +35,21 @@ class Navbar extends Component
     {
         $this->server = $server;
         $this->currentRoute = request()->route()->getName();
+        $this->serverIp = $this->server->id === 0 ? base_ip() : $this->server->ip;
+    }
+
+    public function loadProxyConfiguration()
+    {
+        try {
+            $proxy_settings = CheckConfiguration::run($this->server);
+            if (str($proxy_settings)->contains('--api.dashboard=true') && str($proxy_settings)->contains('--api.insecure=true')) {
+                $this->traefikDashboardAvailable = true;
+            } else {
+                $this->traefikDashboardAvailable = false;
+            }
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function restart()
