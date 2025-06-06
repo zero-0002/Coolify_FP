@@ -17,7 +17,6 @@
         <livewire:server.navbar :server="$server" :parameters="$parameters" />
     @endif
 
-    <h2 class="pb-4">Terminal</h2>
     @if (!$hasShell)
         <div class="flex items-center justify-center w-full py-4 mx-auto">
             <div class="p-4 w-full rounded-sm border dark:bg-coolgray-100 dark:border-coolgray-300">
@@ -37,10 +36,19 @@
     @else
         @if ($type === 'server')
             @if ($server->isTerminalEnabled())
-                <form class="w-full" wire:submit="$dispatchSelf('connectToServer')"
-                    wire:init="$dispatchSelf('connectToServer')">
-                    <x-forms.button class="w-full" type="submit">Reconnect</x-forms.button>
+                <form class="w-full flex gap-2 items-start justify-start"
+                    wire:submit="$dispatchSelf('connectToServer')">
+                    <h2 class="pb-4">Terminal</h2>
+                    <x-forms.button type="submit" :disabled="$isConnecting">
+                        Reconnect
+                    </x-forms.button>
                 </form>
+
+                {{-- Loading indicator for all connection states --}}
+                @if (!$containersLoaded || $isConnecting || $connectionStatus)
+                    <span class="text-sm">{{ $connectionStatus }}</span>
+                @endif
+
                 <div class="mx-auto w-full">
                     <livewire:project.shared.terminal />
                 </div>
@@ -52,10 +60,18 @@
                 <div class="pt-4">No containers are running on this server or terminal access is disabled.</div>
             @else
                 @if (count($containers) === 1)
-                    <form class="w-full pt-4" wire:submit="$dispatchSelf('connectToContainer')"
-                        wire:init="$dispatchSelf('connectToContainer')">
-                        <x-forms.button class="w-full" type="submit">Reconnect</x-forms.button>
+                    <form class="w-full flex gap-2 items-start justify-start pt-4"
+                        wire:submit="$dispatchSelf('connectToContainer')">
+                        <h2 class="pb-4">Terminal</h2>
+                        <x-forms.button type="submit" :disabled="$isConnecting">
+                            Reconnect
+                        </x-forms.button>
                     </form>
+
+                    {{-- Loading indicator for all connection states --}}
+                    @if (!$containersLoaded || $isConnecting || $connectionStatus)
+                        <span class="text-sm">{{ $connectionStatus }}</span>
+                    @endif
                 @else
                     <form class="w-full pt-4 flex gap-2 flex-col" wire:submit="$dispatchSelf('connectToContainer')">
                         <x-forms.select label="Container" id="container" required wire:model="selected_container">
@@ -69,8 +85,15 @@
                                 </option>
                             @endforeach
                         </x-forms.select>
-                        <x-forms.button class="w-full" type="submit">Connect</x-forms.button>
+                        <x-forms.button class="w-full" type="submit" :disabled="$isConnecting">
+                            {{ $isConnecting ? 'Connecting...' : 'Connect' }}
+                        </x-forms.button>
                     </form>
+
+                    {{-- Loading indicator for manual connection --}}
+                    @if ($isConnecting || $connectionStatus)
+                        <span class="text-sm">{{ $connectionStatus }}</span>
+                    @endif
                 @endif
                 <div class="mx-auto w-full">
                     <livewire:project.shared.terminal />
@@ -78,4 +101,41 @@
             @endif
         @endif
     @endif
+
+    @script
+        <script>
+            let autoConnectionAttempted = false;
+
+            // Wait for terminal WebSocket to be ready before attempting auto-connection
+            function tryAutoConnection() {
+                if (autoConnectionAttempted) return;
+
+                const terminalContainer = document.getElementById('terminal-container');
+                if (!terminalContainer) return;
+
+                // Check if Alpine component is initialized and WebSocket is ready
+                if (terminalContainer._x_dataStack &&
+                    terminalContainer._x_dataStack[0] &&
+                    terminalContainer._x_dataStack[0].isWebSocketReady()) {
+
+                    autoConnectionAttempted = true;
+                    $wire.dispatchSelf('initializeTerminalConnection');
+                }
+            }
+
+            // Listen for terminal WebSocket ready event
+            document.addEventListener('terminal-websocket-ready', tryAutoConnection);
+
+            // Fallback polling in case event is missed
+            function pollForTerminalReady() {
+                if (!autoConnectionAttempted) {
+                    tryAutoConnection();
+                    setTimeout(pollForTerminalReady, 300);
+                }
+            }
+
+            // Start polling after a short delay to allow Alpine to initialize
+            setTimeout(pollForTerminalReady, 200);
+        </script>
+    @endscript
 </div>

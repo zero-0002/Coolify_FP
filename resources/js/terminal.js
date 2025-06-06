@@ -42,7 +42,7 @@ export function initializeTerminalComponent() {
                 this.setupTerminalEventListeners();
 
                 this.$wire.on('send-back-command', (command) => {
-                    this.sendMessage({ command: command });
+                    this.sendCommandWhenReady({ command: command });
                 });
 
                 this.keepAliveInterval = setInterval(this.keepAlive.bind(this), 30000);
@@ -98,6 +98,9 @@ export function initializeTerminalComponent() {
                     this.pendingWrites = 0;
                     this.paused = false;
                     this.commandBuffer = '';
+
+                    // Notify parent component that terminal disconnected
+                    this.$wire.dispatch('terminalDisconnected');
 
                     // Force a refresh
                     this.$nextTick(() => {
@@ -205,6 +208,9 @@ export function initializeTerminalComponent() {
 
                 // Start ping timeout monitoring
                 this.resetPingTimeout();
+
+                // Notify that WebSocket is ready for auto-connection
+                this.dispatchEvent('terminal-websocket-ready');
             },
 
             handleSocketError(error) {
@@ -277,6 +283,12 @@ export function initializeTerminalComponent() {
                 }
             },
 
+            sendCommandWhenReady(message) {
+                if (this.isWebSocketReady()) {
+                    this.sendMessage(message);
+                }
+            },
+
             handleSocketMessage(event) {
                 // Handle pong responses
                 if (event.data === 'pong') {
@@ -297,14 +309,23 @@ export function initializeTerminalComponent() {
                     this.term.focus();
                     document.querySelector('.xterm-viewport').classList.add('scrollbar', 'rounded-sm');
                     this.resizeTerminal();
+
+                    // Notify parent component that terminal is connected
+                    this.$wire.dispatch('terminalConnected');
                 } else if (event.data === 'unprocessable') {
                     if (this.term) this.term.reset();
                     this.terminalActive = false;
                     this.message = '(sorry, something went wrong, please try again)';
+
+                    // Notify parent component that terminal connection failed
+                    this.$wire.dispatch('terminalDisconnected');
                 } else if (event.data === 'pty-exited') {
                     this.terminalActive = false;
                     this.term.reset();
                     this.commandBuffer = '';
+
+                    // Notify parent component that terminal disconnected
+                    this.$wire.dispatch('terminalDisconnected');
                 } else {
                     try {
                         this.pendingWrites++;
@@ -441,6 +462,22 @@ export function initializeTerminalComponent() {
                     lastPingTime: this.lastPingTime,
                     heartbeatMissed: this.heartbeatMissed
                 };
+            },
+
+            // Helper method to dispatch custom events
+            dispatchEvent(eventName, detail = null) {
+                const event = new CustomEvent(eventName, {
+                    detail: detail,
+                    bubbles: true
+                });
+                this.$el.dispatchEvent(event);
+            },
+
+            // Check if WebSocket is ready for commands
+            isWebSocketReady() {
+                return this.connectionState === 'connected' &&
+                    this.socket &&
+                    this.socket.readyState === WebSocket.OPEN;
             }
         };
     }
