@@ -106,36 +106,27 @@
         <script>
             let autoConnectionAttempted = false;
 
-            // Wait for terminal WebSocket to be ready before attempting auto-connection
-            function tryAutoConnection() {
+            // Simple auto-connection that waits for component stability
+            function initializeConnection() {
                 if (autoConnectionAttempted) return;
+                autoConnectionAttempted = true;
 
-                const terminalContainer = document.getElementById('terminal-container');
-                if (!terminalContainer) return;
-
-                // Check if Alpine component is initialized and WebSocket is ready
-                if (terminalContainer._x_dataStack &&
-                    terminalContainer._x_dataStack[0] &&
-                    terminalContainer._x_dataStack[0].isWebSocketReady()) {
-
-                    autoConnectionAttempted = true;
-                    $wire.dispatchSelf('initializeTerminalConnection');
-                }
+                // Add delay to ensure all components are fully rendered
+                setTimeout(() => {
+                    $wire.call('initializeTerminalConnection');
+                }, 1000);
             }
 
-            // Listen for terminal WebSocket ready event
-            document.addEventListener('terminal-websocket-ready', tryAutoConnection);
+            // Wait for everything to be ready before auto-connecting
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(initializeConnection, 500);
+            });
 
-            // Fallback polling in case event is missed
-            function pollForTerminalReady() {
-                if (!autoConnectionAttempted) {
-                    tryAutoConnection();
-                    setTimeout(pollForTerminalReady, 300);
-                }
-            }
-
-            // Start polling after a short delay to allow Alpine to initialize
-            setTimeout(pollForTerminalReady, 200);
+            // Fallback for SPA navigation
+            document.addEventListener('livewire:navigated', () => {
+                autoConnectionAttempted = false;
+                setTimeout(initializeConnection, 500);
+            });
         </script>
     @endscript
 </div>

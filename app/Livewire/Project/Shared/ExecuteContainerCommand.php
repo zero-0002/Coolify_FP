@@ -168,11 +168,10 @@ class ExecuteContainerCommand extends Component
         $this->connectionStatus = 'Waiting for terminal to be ready...';
     }
 
-    #[On('initializeTerminalConnection')]
     public function initializeTerminalConnection()
     {
         // Only auto-connect if containers are loaded and we haven't attempted before
-        if (! $this->containersLoaded || $this->autoConnectAttempted) {
+        if (! $this->containersLoaded || $this->autoConnectAttempted || $this->isConnecting) {
             return;
         }
 
