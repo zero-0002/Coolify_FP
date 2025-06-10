@@ -77,7 +77,6 @@
             </a>
         </nav>
         <div class="order-first sm:order-last">
-            @php use App\Enums\ProxyTypes; @endphp
             <div>
                 @if ($server->proxySet())
                     <x-slide-over fullScreen @startproxy.window="slideOverOpen = true">
