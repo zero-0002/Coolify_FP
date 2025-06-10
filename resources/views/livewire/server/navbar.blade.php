@@ -154,8 +154,13 @@
                 @script
                     <script>
                         $wire.$on('checkProxyEvent', () => {
-                            $wire.$dispatch('info', 'Checking if the required ports are not used by other services.');
-                            $wire.$call('checkProxy');
+                            try {
+                                $wire.$dispatch('info', 'Checking if the required ports are not used by other services.');
+                                $wire.$call('checkProxy');
+                            } catch (error) {
+                                console.error(error);
+                                $wire.$dispatch('error', 'Failed to check proxy status. Please try again.');
+                            }
                         });
                         $wire.$on('restartEvent', () => {
                             $wire.$dispatch('info', 'Initiating proxy restart.');
