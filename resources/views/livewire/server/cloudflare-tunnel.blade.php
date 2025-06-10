@@ -101,8 +101,12 @@
                     @script
                         <script>
                             $wire.$on('automatedCloudflareConfig', () => {
-                                window.dispatchEvent(new CustomEvent('automated'));
-                                $wire.$call('automatedCloudflareConfig');
+                                try {
+                                    window.dispatchEvent(new CustomEvent('automated'));
+                                    $wire.$call('automatedCloudflareConfig');
+                                } catch (error) {
+                                    console.error(error);
+                                }
                             });
                         </script>
                     @endscript
@@ -121,5 +125,4 @@
             @endif
         </div>
     </div>
-</div>
 </div>
