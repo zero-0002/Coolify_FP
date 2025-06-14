@@ -33,11 +33,32 @@
                 </div>
             </div>
         </div>
+    @endif
+    @if ($type === 'server')
+        @if ($server->isTerminalEnabled())
+            <form class="w-full flex gap-2 items-start justify-start" wire:submit="$dispatchSelf('connectToServer')">
+                <h2 class="pb-4">Terminal</h2>
+                <x-forms.button type="submit" :disabled="$isConnecting">
+                    Reconnect
+                </x-forms.button>
+                {{-- Loading indicator for all connection states --}}
+                @if (!$containersLoaded || $isConnecting || $connectionStatus)
+                    <span class="text-sm">{{ $connectionStatus }}</span>
+                @endif
+            </form>
+            <div class="mx-auto w-full">
+                <livewire:project.shared.terminal wire:key="terminal-{{ $this->getId() }}-server" />
+            </div>
+        @else
+            <div>Terminal access is disabled on this server.</div>
+        @endif
     @else
-        @if ($type === 'server')
-            @if ($server->isTerminalEnabled())
-                <form class="w-full flex gap-2 items-start justify-start"
-                    wire:submit="$dispatchSelf('connectToServer')">
+        @if (count($containers) === 0)
+            <div class="pt-4">No containers are running on this server or terminal access is disabled.</div>
+        @else
+            @if (count($containers) === 1)
+                <form class="w-full flex gap-2 items-start justify-start pt-4"
+                    wire:submit="$dispatchSelf('connectToContainer')">
                     <h2 class="pb-4">Terminal</h2>
                     <x-forms.button type="submit" :disabled="$isConnecting">
                         Reconnect
@@ -48,57 +69,32 @@
                 @if (!$containersLoaded || $isConnecting || $connectionStatus)
                     <span class="text-sm">{{ $connectionStatus }}</span>
                 @endif
-
-                <div class="mx-auto w-full">
-                    <livewire:project.shared.terminal wire:key="terminal-{{ $this->getId() }}-server" />
-                </div>
             @else
-                <div>Terminal access is disabled on this server.</div>
-            @endif
-        @else
-            @if (count($containers) === 0)
-                <div class="pt-4">No containers are running on this server or terminal access is disabled.</div>
-            @else
-                @if (count($containers) === 1)
-                    <form class="w-full flex gap-2 items-start justify-start pt-4"
-                        wire:submit="$dispatchSelf('connectToContainer')">
-                        <h2 class="pb-4">Terminal</h2>
-                        <x-forms.button type="submit" :disabled="$isConnecting">
-                            Reconnect
-                        </x-forms.button>
-                    </form>
+                <form class="w-full pt-4 flex gap-2 flex-col" wire:submit="$dispatchSelf('connectToContainer')">
+                    <x-forms.select label="Container" id="container" required wire:model="selected_container">
+                        @foreach ($containers as $container)
+                            @if ($loop->first)
+                                <option disabled value="default">Select a container</option>
+                            @endif
+                            <option value="{{ data_get($container, 'container.Names') }}">
+                                {{ data_get($container, 'container.Names') }}
+                                ({{ data_get($container, 'server.name') }})
+                            </option>
+                        @endforeach
+                    </x-forms.select>
+                    <x-forms.button class="w-full" type="submit" :disabled="$isConnecting">
+                        {{ $isConnecting ? 'Connecting...' : 'Connect' }}
+                    </x-forms.button>
+                </form>
 
-                    {{-- Loading indicator for all connection states --}}
-                    @if (!$containersLoaded || $isConnecting || $connectionStatus)
-                        <span class="text-sm">{{ $connectionStatus }}</span>
-                    @endif
-                @else
-                    <form class="w-full pt-4 flex gap-2 flex-col" wire:submit="$dispatchSelf('connectToContainer')">
-                        <x-forms.select label="Container" id="container" required wire:model="selected_container">
-                            @foreach ($containers as $container)
-                                @if ($loop->first)
-                                    <option disabled value="default">Select a container</option>
-                                @endif
-                                <option value="{{ data_get($container, 'container.Names') }}">
-                                    {{ data_get($container, 'container.Names') }}
-                                    ({{ data_get($container, 'server.name') }})
-                                </option>
-                            @endforeach
-                        </x-forms.select>
-                        <x-forms.button class="w-full" type="submit" :disabled="$isConnecting">
-                            {{ $isConnecting ? 'Connecting...' : 'Connect' }}
-                        </x-forms.button>
-                    </form>
-
-                    {{-- Loading indicator for manual connection --}}
-                    @if ($isConnecting || $connectionStatus)
-                        <span class="text-sm">{{ $connectionStatus }}</span>
-                    @endif
+                {{-- Loading indicator for manual connection --}}
+                @if ($isConnecting || $connectionStatus)
+                    <span class="text-sm">{{ $connectionStatus }}</span>
                 @endif
-                <div class="mx-auto w-full">
-                    <livewire:project.shared.terminal />
-                </div>
             @endif
+            <div class="mx-auto w-full">
+                <livewire:project.shared.terminal />
+            </div>
         @endif
     @endif
 
