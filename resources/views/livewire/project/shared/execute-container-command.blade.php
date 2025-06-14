@@ -17,25 +17,8 @@
         <livewire:server.navbar :server="$server" />
     @endif
 
-    @if (!$hasShell)
-        <div class="flex items-center justify-center w-full py-4 mx-auto">
-            <div class="p-4 w-full rounded-sm border dark:bg-coolgray-100 dark:border-coolgray-300">
-                <div class="flex flex-col items-center justify-center space-y-4">
-                    <svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <div class="text-center">
-                        <h3 class="text-lg font-medium">Terminal Not Available</h3>
-                        <p class="mt-2 text-sm text-gray-500">No shell (bash/sh) is available in this container. Please
-                            ensure either bash or sh is installed to use the terminal.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
     @if ($type === 'server')
-        @if ($server->isTerminalEnabled())
+        @if (!$server->isForceDisabled() && $server->isTerminalEnabled())
             <form class="w-full flex gap-2 items-start justify-start" wire:submit="$dispatchSelf('connectToServer')">
                 <h2 class="pb-4">Terminal</h2>
                 <x-forms.button type="submit" :disabled="$isConnecting">
@@ -93,7 +76,7 @@
                 @endif
             @endif
             <div class="mx-auto w-full">
-                <livewire:project.shared.terminal />
+                <livewire:project.shared.terminal wire:key="terminal-{{ $this->getId() }}-container" />
             </div>
         @endif
     @endif

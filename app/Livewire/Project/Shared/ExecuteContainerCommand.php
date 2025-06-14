@@ -27,8 +27,6 @@ class ExecuteContainerCommand extends Component
 
     public Collection $servers;
 
-    public bool $hasShell = true;
-
     public bool $containersLoaded = false;
 
     public bool $autoConnectAttempted = false;
@@ -250,7 +248,6 @@ class ExecuteContainerCommand extends Component
             if (! $this->server->isTerminalEnabled()) {
                 throw new \RuntimeException('Terminal access is disabled on this server.');
             }
-            $this->hasShell = true;
             $this->isConnecting = true;
             $this->connectionStatus = 'Establishing connection to server terminal...';
             $this->dispatch(
@@ -307,14 +304,6 @@ class ExecuteContainerCommand extends Component
 
             if ($server->id !== $resourceServer->id && ! $this->resource->additional_servers->contains('id', $server->id)) {
                 throw new \RuntimeException('Server ownership verification failed.');
-            }
-
-            $this->hasShell = $this->checkShellAvailability($server, data_get($container, 'container.Names'));
-            if (! $this->hasShell) {
-                $this->isConnecting = false;
-                $this->connectionStatus = 'Shell not available in container.';
-
-                return;
             }
 
             $this->isConnecting = true;
