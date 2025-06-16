@@ -203,6 +203,7 @@ All notable changes to this project will be documented in this file.
 
 - Update changelog
 - *(service)* Add new docs link for zipline (#5912)
+- Update changelog
 
 ### 🎨 Styling
 
