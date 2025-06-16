@@ -29,6 +29,8 @@ class ExecuteContainerCommand extends Component
 
     public bool $hasShell = true;
 
+    public bool $isConnecting = true;
+
     protected $rules = [
         'server' => 'required',
         'container' => 'required',
@@ -165,7 +167,6 @@ class ExecuteContainerCommand extends Component
             if ($this->server->isForceDisabled()) {
                 throw new \RuntimeException('Server is disabled.');
             }
-            $this->hasShell = true;
             $this->dispatch(
                 'send-terminal-command',
                 false,
@@ -174,6 +175,8 @@ class ExecuteContainerCommand extends Component
             );
         } catch (\Throwable $e) {
             return handleError($e, $this);
+        } finally {
+            $this->isConnecting = false;
         }
     }
 
@@ -232,6 +235,8 @@ class ExecuteContainerCommand extends Component
             );
         } catch (\Throwable $e) {
             return handleError($e, $this);
+        } finally {
+            $this->isConnecting = false;
         }
     }
 
