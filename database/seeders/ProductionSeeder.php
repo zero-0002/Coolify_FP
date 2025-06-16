@@ -2,9 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Actions\Proxy\StartProxy;
 use App\Data\ServerMetadata;
 use App\Enums\ProxyStatus;
 use App\Enums\ProxyTypes;
+use App\Jobs\CheckAndStartSentinelJob;
 use App\Models\GithubApp;
 use App\Models\GitlabApp;
 use App\Models\InstanceSettings;
@@ -115,11 +117,15 @@ class ProductionSeeder extends Seeder
                 $server->settings->is_reachable = true;
                 $server->settings->is_usable = true;
                 $server->settings->save();
+                StartProxy::dispatch($server);
+                CheckAndStartSentinelJob::dispatch($server);
             } else {
                 $server = Server::find(0);
                 $server->settings->is_reachable = true;
                 $server->settings->is_usable = true;
                 $server->settings->save();
+                StartProxy::dispatch($server);
+                CheckAndStartSentinelJob::dispatch($server);
             }
 
             if (StandaloneDocker::find(0) == null) {
