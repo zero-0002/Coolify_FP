@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('server_settings', function (Blueprint $table) {
-            $table->boolean('is_sentinel_enabled')->default(true);
+            $table->boolean('is_sentinel_enabled')->default(true)->change();
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('server_settings', function (Blueprint $table) {
-            $table->boolean('is_sentinel_enabled')->default(false);
+            $table->boolean('is_sentinel_enabled')->default(false)->change();
         });
     }
 };
