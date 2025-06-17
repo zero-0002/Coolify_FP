@@ -1,6 +1,6 @@
 <div x-data="{ activeTab: window.location.hash ? window.location.hash.substring(1) : 'general' }">
     <livewire:project.service.heading :service="$service" :parameters="$parameters" :query="$query" />
-    <div class="flex flex-col h-full gap-8 pt-6 sm:flex-row">
+    <div class="flex flex-col h-full gap-8 sm:flex-row">
         <div class="flex flex-col items-start gap-2 min-w-fit">
             <a class="menu-item"
                 class="{{ request()->routeIs('project.service.configuration') ? 'menu-item-active' : '' }}"
