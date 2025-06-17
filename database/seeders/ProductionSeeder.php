@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Actions\Proxy\CheckProxy;
 use App\Actions\Proxy\StartProxy;
 use App\Data\ServerMetadata;
 use App\Enums\ProxyStatus;
@@ -124,7 +125,10 @@ class ProductionSeeder extends Seeder
                 $server->settings->is_reachable = true;
                 $server->settings->is_usable = true;
                 $server->settings->save();
-                StartProxy::dispatch($server);
+                $shouldStart = CheckProxy::run($server);
+                if ($shouldStart) {
+                    StartProxy::dispatch($server);
+                }
                 if ($server->isSentinelEnabled()) {
                     CheckAndStartSentinelJob::dispatch($server);
                 }
