@@ -45,7 +45,6 @@
 
     @if ($type === 'server')
         <livewire:server.navbar :server="$servers->first()" />
-        <h2 class="pb-4">Terminal</h2>
         @if ($servers->first()->isTerminalEnabled())
             <form class="w-full flex gap-2 items-start" wire:submit="$dispatchSelf('connectToServer')"
                 wire:init="$dispatchSelf('connectToServer')">
