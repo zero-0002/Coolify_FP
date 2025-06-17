@@ -125,7 +125,9 @@ class ProductionSeeder extends Seeder
                 $server->settings->is_usable = true;
                 $server->settings->save();
                 StartProxy::dispatch($server);
-                CheckAndStartSentinelJob::dispatch($server);
+                if ($server->isSentinelEnabled()) {
+                    CheckAndStartSentinelJob::dispatch($server);
+                }
             }
 
             if (StandaloneDocker::find(0) == null) {
