@@ -6,6 +6,7 @@
     'buttonFullWidth' => false,
     'customButton' => null,
     'disabled' => false,
+    'dispatchAction' => false,
     'submitAction' => 'delete',
     'content' => null,
     'checkboxes' => [],
@@ -22,11 +23,15 @@
     'dispatchEventType' => 'success',
     'dispatchEventMessage' => '',
     'ignoreWire' => true,
+    'temporaryDisableTwoStepConfirmation' => false,
 ])
 
 @php
     use App\Models\InstanceSettings;
     $disableTwoStepConfirmation = data_get(InstanceSettings::get(), 'disable_two_step_confirmation');
+    if ($temporaryDisableTwoStepConfirmation) {
+        $disableTwoStepConfirmation = false;
+    }
 @endphp
 
 <div {{ $ignoreWire ? 'wire:ignore' : '' }} x-data="{
@@ -37,11 +42,12 @@
     deleteText: '',
     password: '',
     actions: @js($actions),
-    confirmationText: @js($confirmationText),
+    confirmationText: @js(html_entity_decode($confirmationText, ENT_QUOTES, 'UTF-8')),
     userConfirmationText: '',
     confirmWithText: @js($confirmWithText && !$disableTwoStepConfirmation),
     confirmWithPassword: @js($confirmWithPassword && !$disableTwoStepConfirmation),
     submitAction: @js($submitAction),
+    dispatchAction: @js($dispatchAction),
     passwordError: '',
     selectedActions: @js(collect($checkboxes)->pluck('id')->filter(fn($id) => $this->$id)->values()->all()),
     dispatchEvent: @js($dispatchEvent),
@@ -72,6 +78,10 @@
                 return Promise.resolve(this.passwordError);
             }
         }
+        if (this.dispatchAction) {
+            $wire.dispatch(this.submitAction);
+            return true;
+        }
 
         const methodName = this.submitAction.split('(')[0];
         const paramsMatch = this.submitAction.match(/\((.*?)\)/);
@@ -81,7 +91,6 @@
             params.push(this.password);
         }
         params.push(this.selectedActions);
-
         return $wire[methodName](...params)
             .then(result => {
                 if (result === true) {
@@ -249,7 +258,7 @@
                                     <h4 class="mb-2 text-lg font-semibold">Confirm Actions</h4>
                                     <p class="mb-2 text-sm">{{ $confirmationLabel }}</p>
                                     <div class="relative mb-2">
-                                        <x-forms.copy-button text="{{ $confirmationText }}" />
+                                        <x-forms.copy-button :text="html_entity_decode($confirmationText, ENT_QUOTES, 'UTF-8')" />
                                     </div>
 
                                     <label for="userConfirmationText"
@@ -257,7 +266,7 @@
                                         {{ $shortConfirmationLabel }}
                                     </label>
                                     <input type="text" x-model="userConfirmationText"
-                                        class="p-2 mt-1 w-full text-black rounded-sm input">
+                                        class="p-2 mt-1 px-3 w-full  rounded-sm input">
                                 </div>
                             @endif
                         @endif
