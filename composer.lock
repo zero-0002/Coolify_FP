@@ -7483,6 +7483,17 @@
             "time": "2023-11-07T22:21:16+00:00"
         },
         {
+            "name": "socialiteproviders/clerk",
+            "version": "5.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/SocialiteProviders/Clerk.git",
+                "reference": "41e123036001ff37851b9622a910010c0e487d6a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/SocialiteProviders/Clerk/zipball/41e123036001ff37851b9622a910010c0e487d6a",
+                "reference": "41e123036001ff37851b9622a910010c0e487d6a",
             "name": "socialiteproviders/discord",
             "version": "4.2.0",
             "source": {
@@ -7498,12 +7509,13 @@
             },
             "require": {
                 "ext-json": "*",
-                "php": "^7.4 || ^8.0",
-                "socialiteproviders/manager": "~4.0"
+                "php": "^8.0",
+                "socialiteproviders/manager": "^4.4"
             },
             "type": "library",
             "autoload": {
                 "psr-4": {
+                    "SocialiteProviders\\Clerk\\": ""
                     "SocialiteProviders\\Discord\\": ""
                 }
             },
@@ -7513,6 +7525,13 @@
             ],
             "authors": [
                 {
+                    "name": "Ignacio Cano",
+                    "email": "dev@nacho.sh"
+                }
+            ],
+            "description": "Clerk OAuth2 Provider for Laravel Socialite",
+            "keywords": [
+                "clerk",
                     "name": "Christopher Eklund",
                     "email": "eklundchristopher@gmail.com"
                 }
@@ -7526,6 +7545,11 @@
                 "socialite"
             ],
             "support": {
+                "docs": "https://socialiteproviders.com/clerk",
+                "issues": "https://github.com/socialiteproviders/providers/issues",
+                "source": "https://github.com/socialiteproviders/providers"
+            },
+            "time": "2024-02-19T12:17:59+00:00"
                 "docs": "https://socialiteproviders.com/discord",
                 "issues": "https://github.com/socialiteproviders/providers/issues",
                 "source": "https://github.com/socialiteproviders/providers"

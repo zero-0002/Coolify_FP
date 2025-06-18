@@ -22,15 +22,15 @@ function get_socialite_provider(string $provider)
         return Socialite::driver('azure')->setConfig($azure_config);
     }
 
-    if ($provider == 'authentik') {
-        $authentik_config = new \SocialiteProviders\Manager\Config(
+    if ($provider == 'authentik' || $provider == 'clerk') {
+        $authentik_clerk_config = new \SocialiteProviders\Manager\Config(
             $oauth_setting->client_id,
             $oauth_setting->client_secret,
             $oauth_setting->redirect_uri,
             ['base_url' => $oauth_setting->base_url],
         );
 
-        return Socialite::driver('authentik')->setConfig($authentik_config);
+        return Socialite::driver($provider)->setConfig($authentik_clerk_config);
     }
 
     if ($provider == 'google') {
