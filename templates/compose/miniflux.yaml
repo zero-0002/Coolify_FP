@@ -9,26 +9,30 @@ services:
     image: ghcr.io/miniflux/miniflux:latest
     environment:
       - SERVICE_FQDN_MINIFLUX
-      - PORT=8080
+      - BASE_URL=${SERVICE_FQDN_MINIFLUX}
+      - PORT=${PORT:-8080}
       - RUN_MIGRATIONS=${RUN_MIGRATIONS:-1}
       - CREATE_ADMIN=${CREATE_ADMIN:-1}
-      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_USERNAME=${SERVICE_USER_ADMIN}
       - ADMIN_PASSWORD=${SERVICE_PASSWORD_64_ADMIN}
-      - BASE_URL=$SERVICE_FQDN_MINIFLUX
-      - DATABASE_URL=host=postgresql user=$SERVICE_USER_POSTGRES dbname=miniflux password=$SERVICE_PASSWORD_POSTGRES sslmode=disable
+      - DATABASE_URL=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-miniflux-db}?sslmode=disable
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/"]
       interval: 5s
       timeout: 20s
       retries: 10
-  postgresql:
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
     image: postgres:16-alpine
     volumes:
-      - postgresql-data:/var/lib/postgresql/data
+      - miniflux-postgres-data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_USER=$SERVICE_USER_POSTGRES
-      - POSTGRES_PASSWORD=$SERVICE_PASSWORD_POSTGRES
-      - POSTGRES_DB=${POSTGRES_DB:-miniflux}
+      - POSTGRES_USER=${SERVICE_USER_POSTGRES}
+      - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+      - POSTGRES_DB=${POSTGRES_DB:-miniflux-db}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
