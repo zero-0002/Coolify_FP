@@ -3060,12 +3060,18 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                     $port = null;
                 }
                 if ($isApplication) {
-                    $fqdn = generateFqdn($server, "$uuid");
+                    $fqdn = $resource->fqdn;
+                    if (blank($resource->fqdn)) {
+                        $fqdn = generateFqdn($server, "$uuid");
+                    }
                 } elseif ($isService) {
-                    if ($fqdnFor) {
-                        $fqdn = generateFqdn($server, "$fqdnFor-$uuid");
-                    } else {
-                        $fqdn = generateFqdn($server, "{$savedService->name}-$uuid");
+                    $fqdn = $savedService->fqdn;
+                    if (blank($savedService->fqdn)) {
+                        if ($fqdnFor) {
+                            $fqdn = generateFqdn($server, "$fqdnFor-$uuid");
+                        } else {
+                            $fqdn = generateFqdn($server, "{$savedService->name}-$uuid");
+                        }
                     }
                 }
 
@@ -3090,7 +3096,7 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                 }
 
                 if (substr_count(str($key)->value(), '_') === 2) {
-                    $resource->environment_variables()->firstOrCreate([
+                    $resource->environment_variables()->updateOrCreate([
                         'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
@@ -3102,7 +3108,7 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                 }
                 if (substr_count(str($key)->value(), '_') === 3) {
                     $newKey = str($key)->beforeLast('_');
-                    $resource->environment_variables()->firstOrCreate([
+                    $resource->environment_variables()->updateOrCreate([
                         'key' => $newKey->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
