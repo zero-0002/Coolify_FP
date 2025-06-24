@@ -124,7 +124,7 @@
 
     @if ($servers->count() > 0 && $projects->count() > 0)
         <section>
-            <div class="flex items-center gap-2">
+            <div class="flex items-start gap-2">
                 <h3 class="pb-2">Deployments</h3>
                 @if (count($deploymentsPerServer) > 0)
                     <x-loading />
