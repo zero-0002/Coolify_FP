@@ -22,7 +22,7 @@
             @endif
         </div>
         <div class="pb-4">Instance wide email settings for password resets, invitations, etc.</div>
-        <div class="flex gap-4">
+        <div class="flex gap-2">
             <x-forms.input required id="smtpFromName" helper="Name used in emails." label="From Name" />
             <x-forms.input required id="smtpFromAddress" helper="Email address used in emails." label="From Address" />
         </div>
