@@ -87,38 +87,42 @@
             @endif
         </span>
     @endauth
-    <span x-show="popups.sponsorship">
-        <x-popup>
-            <x-slot:title>
-                Would you like to help us to make more cool things?
-            </x-slot:title>
-            <x-slot:icon>
-                <img src="{{ asset('heart.png') }}" class="w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16">
-            </x-slot:icon>
-            <x-slot:description>
-                <div class="text-md dark:text-white">
-                    <span>We are already profitable, but we would like to scale even further.</span>
-                    <br><span>Please
-                        consider donating on one (or both) of the following platforms.<br /><br /> <a
-                            href="https://github.com/sponsors/coollabsio"
-                            class="underline text-lg font-bold dark:text-white">GitHub
-                            Sponsors</a> (registration required) <br /><br />
-                        <a href="https://opencollective.com/coollabsio/donate?interval=month&amount=10&name=&legalName=&email="
-                            class="underline text-lg font-bold dark:text-white">OpenCollective</a> (no registration
-                        required).</span>
-                </div>
-            </x-slot:description>
-            <x-slot:button-text @click="disableSponsorship()">
-                Disable This Popup
-            </x-slot:button-text>
-        </x-popup>
-    </span>
+    @if (instanceSettings()->is_sponsorship_popup_enabled)
+        <span x-show="popups.sponsorship">
+            <x-popup>
+                <x-slot:title>
+                    Would you like to help us to make more cool things?
+                </x-slot:title>
+                <x-slot:icon>
+                    <img src="{{ asset('heart.png') }}" class="w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16">
+                </x-slot:icon>
+                <x-slot:description>
+                    <div class="text-md dark:text-white">
+                        <span>We are already profitable, but we would like to scale even further.</span>
+                        <br><span>Please
+                            consider donating on one (or both) of the following platforms.<br /><br /> <a
+                                href="https://github.com/sponsors/coollabsio"
+                                class="underline text-lg font-bold dark:text-white">GitHub
+                                Sponsors</a> (registration required) <br /><br />
+                            <a href="https://opencollective.com/coollabsio/donate?interval=month&amount=10&name=&legalName=&email="
+                                class="underline text-lg font-bold dark:text-white">OpenCollective</a> (no registration
+                            required).</span>
+                    </div>
+                </x-slot:description>
+                <x-slot:button-text @click="disableSponsorship()">
+                    Disable This Popup
+                </x-slot:button-text>
+            </x-popup>
+        </span>
+    @endif
     @if (currentTeam()->subscriptionPastOverDue())
         <x-banner :closable=false>
-            <div><span class="font-bold text-red-500">WARNING:</span> Your subscription is in over-due. If your latest
+            <div><span class="font-bold text-red-500">WARNING:</span> Your subscription is in over-due. If your
+                latest
                 payment is not paid within a week, all automations <span class="font-bold text-red-500">will
                     be deactivated</span>. Visit <a href="{{ route('subscription.show') }}"
-                    class="underline dark:text-white">/subscription</a> to check your subscription status or pay your
+                    class="underline dark:text-white">/subscription</a> to check your subscription status or pay
+                your
                 invoice (or check your email for the invoice).
             </div>
         </x-banner>
