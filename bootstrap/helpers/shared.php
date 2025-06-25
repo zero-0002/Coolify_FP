@@ -2991,12 +2991,6 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                 $applicationFound = ServiceApplication::where('name', $serviceName)->where('service_id', $resource->id)->first();
                 if ($applicationFound) {
                     $savedService = $applicationFound;
-                    // $savedService = ServiceDatabase::firstOrCreate([
-                    //     'name' => $applicationFound->name,
-                    //     'image' => $applicationFound->image,
-                    //     'service_id' => $applicationFound->service_id,
-                    // ]);
-                    // $applicationFound->delete();
                 } else {
                     $savedService = ServiceDatabase::firstOrCreate([
                         'name' => $serviceName,
@@ -3007,15 +3001,23 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                 $savedService = ServiceApplication::firstOrCreate([
                     'name' => $serviceName,
                     'service_id' => $resource->id,
+                ], [
+                    'is_gzip_enabled' => true,
                 ]);
             }
-
             // Check if image changed
             if ($savedService->image !== $image) {
                 $savedService->image = $image;
                 $savedService->save();
             }
         }
+
+        // Pocketbase does not need gzip for SSE.
+        if (str($savedService->image)->contains('pocketbase') && $savedService->is_gzip_enabled) {
+            $savedService->is_gzip_enabled = false;
+            $savedService->save();
+        }
+
         $environment = collect(data_get($service, 'environment', []));
         $buildArgs = collect(data_get($service, 'build.args', []));
         $environment = $environment->merge($buildArgs);
