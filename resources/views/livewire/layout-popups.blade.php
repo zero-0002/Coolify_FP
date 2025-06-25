@@ -113,16 +113,16 @@
                             </div>
                         </div>
                         <div class="flex flex-col gap-2 text-center md:mx-auto lg:py-0 pt-2">
-                            <x-forms.button isHighlighted class="md:w-36 w-full"><a
+                            <x-forms.button isHighlighted class="md:w-36 w-full"><a target="_blank"
                                     href="https://github.com/sponsors/coollabsio"
                                     class="font-bold dark:text-white">GitHub
                                     Sponsors</a></x-forms.button>
-                            <x-forms.button isHighlighted class="md:w-36 w-full"><a
+                            <x-forms.button isHighlighted class="md:w-36 w-full"><a target="_blank"
                                     href="https://opencollective.com/coollabsio/donate?interval=month&amount=10&name=&legalName=&email="
                                     class="font-bold dark:text-white">Open
                                     Collective</a></x-forms.button>
                             <x-forms.button isHighlighted class="md:w-36 w-full"><a
-                                    href="https://donate.stripe.com/8x2bJ104ifmB9kB45u38402"
+                                    href="https://donate.stripe.com/8x2bJ104ifmB9kB45u38402" target="_blank"
                                     class="font-bold dark:text-white">Stripe</a></x-forms.button>
                             <div class="pt-4 dark:text-white hover:underline cursor-pointer lg:text-base text-xs"
                                 @click="bannerVisible=false;disableSponsorship()">
