@@ -47,7 +47,7 @@
             @endif
         </div>
         @if (in_array('root', $permissions))
-            <div class="font-bold text-warning">Root access, be careful!</div>
+            <div class="font-bold dark:text-warning">Root access, be careful!</div>
         @endif
     </form>
     @if (session()->has('token'))
