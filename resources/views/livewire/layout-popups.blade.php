@@ -106,7 +106,7 @@
                                 Sponsors</a> (registration required) <br /><br />
                             <a href="https://opencollective.com/coollabsio/donate?interval=month&amount=10&name=&legalName=&email="
                                 class="underline text-lg font-bold dark:text-white">OpenCollective</a> (no registration
-                            required).</span>
+                            required)</span>
                     </div>
                 </x-slot:description>
                 <x-slot:button-text @click="disableSponsorship()">
