@@ -3,6 +3,7 @@
 namespace App\Livewire\Team;
 
 use App\Models\TeamInvitation;
+use App\Models\User;
 use Livewire\Component;
 
 class Invitations extends Component
@@ -14,8 +15,15 @@ class Invitations extends Component
     public function deleteInvitation(int $invitation_id)
     {
         try {
-            $initiation_found = TeamInvitation::ownedByCurrentTeam()->findOrFail($invitation_id);
-            $initiation_found->delete();
+            $invitation = TeamInvitation::ownedByCurrentTeam()->findOrFail($invitation_id);
+            $user = User::whereEmail($invitation->email)->firstOrFail();
+            $emailVerified = $user->hasVerifiedEmail();
+            $forcePasswordReset = $user->force_password_reset;
+            if ($emailVerified === false && $forcePasswordReset === true) {
+                $user->delete();
+            }
+
+            $invitation->delete();
             $this->refreshInvitations();
             $this->dispatch('success', 'Invitation revoked.');
         } catch (\Exception) {
