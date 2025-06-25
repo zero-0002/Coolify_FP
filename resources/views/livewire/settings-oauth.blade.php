@@ -5,7 +5,7 @@
     <x-settings.navbar />
     <form wire:submit='submit' class="flex flex-col">
         <div class="flex flex-col">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 pb-2">
                 <h2>Authentication</h2>
                 <x-forms.button type="submit">
                     Save
