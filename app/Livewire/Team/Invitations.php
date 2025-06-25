@@ -16,11 +16,9 @@ class Invitations extends Component
     {
         try {
             $invitation = TeamInvitation::ownedByCurrentTeam()->findOrFail($invitation_id);
-            $user = User::whereEmail($invitation->email)->firstOrFail();
-            $emailVerified = $user->hasVerifiedEmail();
-            $forcePasswordReset = $user->force_password_reset;
-            if ($emailVerified === false && $forcePasswordReset === true) {
-                $user->delete();
+            $user = User::whereEmail($invitation->email)->first();
+            if (filled($user)) {
+                $user->deleteIfNotVerifiedAndForcePasswordReset();
             }
 
             $invitation->delete();
