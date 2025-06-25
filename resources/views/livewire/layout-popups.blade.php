@@ -100,7 +100,7 @@
                     <div class="text-md dark:text-white">
                         <span>We are already profitable, but we would like to scale even further.</span>
                         <br><span>Please
-                            consider donating on one (or both) of the following platforms.<br /><br /> <a
+                            consider donating on one of the following platforms.<br /><br /> <a
                                 href="https://github.com/sponsors/coollabsio"
                                 class="underline text-lg font-bold dark:text-white">GitHub
                                 Sponsors</a> (registration required) <br /><br />
