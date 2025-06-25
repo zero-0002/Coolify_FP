@@ -4,9 +4,11 @@
         notification: true,
         realtime: false,
     },
+    isDevelopment: {{ isDev() ? 'true' : 'false' }},
     init() {
-        this.popups.sponsorship = localStorage.getItem('popupSponsorship') !== 'false';
-        this.popups.notification = localStorage.getItem('popupNotification') !== 'false';
+        console.log(this.isDevelopment);
+        this.popups.sponsorship = this.shouldShowMonthlyPopup('popupSponsorship');
+        this.popups.notification = this.shouldShowMonthlyPopup('popupNotification');
         this.popups.realtime = localStorage.getItem('popupRealtime');
 
         let checkNumber = 1;
@@ -31,6 +33,35 @@
                 }
             }, 2000);
         }
+    },
+    shouldShowMonthlyPopup(storageKey) {
+        const disabledTimestamp = localStorage.getItem(storageKey);
+
+        // If never disabled, show the popup
+        if (!disabledTimestamp || disabledTimestamp === 'false') {
+            return true;
+        }
+
+        // If disabled timestamp is not a valid number, show the popup
+        const disabledTime = parseInt(disabledTimestamp);
+        if (isNaN(disabledTime)) {
+            return true;
+        }
+
+        const now = new Date();
+        const disabledDate = new Date(disabledTime);
+
+        {{-- if (this.isDevelopment) {
+            // In development: check if 10 seconds have passed
+            const timeDifference = now.getTime() - disabledDate.getTime();
+            const tenSecondsInMs = 10 * 1000;
+            return timeDifference >= tenSecondsInMs;
+        } else { --}}
+        // In production: check if we're in a different month or year
+        const isDifferentMonth = now.getMonth() !== disabledDate.getMonth() ||
+            now.getFullYear() !== disabledDate.getFullYear();
+        return isDifferentMonth;
+        {{-- } --}}
     }
 }">
     @auth
@@ -59,20 +90,23 @@
     <span x-show="popups.sponsorship">
         <x-popup>
             <x-slot:title>
-                Love Coolify as we do?
+                Would you like to help us to make more cool things?
             </x-slot:title>
             <x-slot:icon>
-                <img src="https://cdn-icons-png.flaticon.com/512/8236/8236748.png"
-                    class="w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16">
+                <img src="{{ asset('heart.png') }}" class="w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16">
             </x-slot:icon>
             <x-slot:description>
-                <span>Please
-                    consider donating on <a href="https://github.com/sponsors/coollabsio"
-                        class="text-xs underline dark:text-white">GitHub</a> or <a
-                        href="https://opencollective.com/coollabsio"
-                        class="text-xs underline dark:text-white">OpenCollective</a>.<br><br></span>
-                <span>It enables us to keep creating features without paywalls, ensuring our work remains free and
-                    open.</span>
+                <div class="text-md dark:text-white">
+                    <span>We are already profitable, but we would like to scale even further.</span>
+                    <br><span>Please
+                        consider donating on one (or both) of the following platforms.<br /><br /> <a
+                            href="https://github.com/sponsors/coollabsio"
+                            class="underline text-lg font-bold dark:text-white">GitHub
+                            Sponsors</a> (registration required) <br /><br />
+                        <a href="https://opencollective.com/coollabsio/donate?interval=month&amount=10&name=&legalName=&email="
+                            class="underline text-lg font-bold dark:text-white">OpenCollective</a> (no registration
+                        required).</span>
+                </div>
             </x-slot:description>
             <x-slot:button-text @click="disableSponsorship()">
                 Disable This Popup
@@ -128,11 +162,13 @@
     @endif
     <script>
         function disableSponsorship() {
-            localStorage.setItem('popupSponsorship', false);
+            // Store current timestamp instead of just 'false'
+            localStorage.setItem('popupSponsorship', Date.now().toString());
         }
 
         function disableNotification() {
-            localStorage.setItem('popupNotification', false);
+            // Store current timestamp instead of just 'false'
+            localStorage.setItem('popupNotification', Date.now().toString());
         }
 
         function disableRealtime() {
