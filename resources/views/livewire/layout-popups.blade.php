@@ -96,17 +96,15 @@
                             <img src="{{ asset('heart.png') }}" class="w-20 h-20">
                         </div>
                         <div class="flex flex-col gap-2 lg:px-10 px-1">
-                            <div class="lg:text-xl text-md dark:text-white font-bold">Would you like to help us to
-                                make more cool
-                                things?
+                            <div class="lg:text-xl text-md dark:text-white font-bold">Love Coolify? Support our work.
                             </div>
                             <div class="lg:text-sm text-xs dark:text-white">
                                 We are already profitable thanks to <span class="font-bold text-pink-500">YOU</span>
-                                but...<br />we
+                                but...<br />We
                                 would
                                 like to
                                 make
-                                more cool features for you.
+                                more cool features.
                             </div>
                             <div class="lg:text-sm text-xs dark:text-white pt-2 ">
                                 For this we need your help to support our work financially.
