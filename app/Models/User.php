@@ -74,55 +74,56 @@ class User extends Authenticatable implements SendsEmail
         });
 
         static::deleting(function (User $user) {
+            \DB::transaction(function () use ($user) {
+                $teams = $user->teams;
+                foreach ($teams as $team) {
+                    $user_alone_in_team = $team->members->count() === 1;
 
-            $teams = $user->teams;
-            foreach ($teams as $team) {
-                $user_alone_in_team = $team->members->count() === 1;
+                    // Prevent deletion if user is alone in root team
+                    if ($team->id === 0 && $user_alone_in_team) {
+                        throw new \Exception('User is alone in the root team, cannot delete');
+                    }
 
-                // Prevent deletion if user is alone in root team
-                if ($team->id === 0 && $user_alone_in_team) {
-                    throw new \Exception('User is alone in the root team, cannot delete');
-                }
-
-                if ($user_alone_in_team) {
-                    static::finalizeTeamDeletion($user, $team);
-                    // Delete any pending team invitations for this user
-                    TeamInvitation::whereEmail($user->email)->delete();
-
-                    continue;
-                }
-
-                // Load the user's role for this team
-                $userRole = $team->members->where('id', $user->id)->first()?->pivot?->role;
-
-                if ($userRole === 'owner') {
-                    $found_other_owner_or_admin = $team->members->filter(function ($member) use ($user) {
-                        return ($member->pivot->role === 'owner' || $member->pivot->role === 'admin') && $member->id !== $user->id;
-                    })->first();
-
-                    if ($found_other_owner_or_admin) {
-                        $team->members()->detach($user->id);
-
-                        continue;
-                    } else {
-                        $found_other_member_who_is_not_owner = $team->members->filter(function ($member) {
-                            return $member->pivot->role === 'member';
-                        })->first();
-
-                        if ($found_other_member_who_is_not_owner) {
-                            $found_other_member_who_is_not_owner->pivot->role = 'owner';
-                            $found_other_member_who_is_not_owner->pivot->save();
-                            $team->members()->detach($user->id);
-                        } else {
-                            static::finalizeTeamDeletion($user, $team);
-                        }
+                    if ($user_alone_in_team) {
+                        static::finalizeTeamDeletion($user, $team);
+                        // Delete any pending team invitations for this user
+                        TeamInvitation::whereEmail($user->email)->delete();
 
                         continue;
                     }
-                } else {
-                    $team->members()->detach($user->id);
+
+                    // Load the user's role for this team
+                    $userRole = $team->members->where('id', $user->id)->first()?->pivot?->role;
+
+                    if ($userRole === 'owner') {
+                        $found_other_owner_or_admin = $team->members->filter(function ($member) use ($user) {
+                            return ($member->pivot->role === 'owner' || $member->pivot->role === 'admin') && $member->id !== $user->id;
+                        })->first();
+
+                        if ($found_other_owner_or_admin) {
+                            $team->members()->detach($user->id);
+
+                            continue;
+                        } else {
+                            $found_other_member_who_is_not_owner = $team->members->filter(function ($member) {
+                                return $member->pivot->role === 'member';
+                            })->first();
+
+                            if ($found_other_member_who_is_not_owner) {
+                                $found_other_member_who_is_not_owner->pivot->role = 'owner';
+                                $found_other_member_who_is_not_owner->pivot->save();
+                                $team->members()->detach($user->id);
+                            } else {
+                                static::finalizeTeamDeletion($user, $team);
+                            }
+
+                            continue;
+                        }
+                    } else {
+                        $team->members()->detach($user->id);
+                    }
                 }
-            }
+            });
         });
     }
 
