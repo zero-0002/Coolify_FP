@@ -3010,12 +3010,11 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                 $savedService->image = $image;
                 $savedService->save();
             }
-        }
-
-        // Pocketbase does not need gzip for SSE.
-        if (str($savedService->image)->contains('pocketbase') && $savedService->is_gzip_enabled) {
-            $savedService->is_gzip_enabled = false;
-            $savedService->save();
+            // Pocketbase does not need gzip for SSE.
+            if (str($savedService->image)->contains('pocketbase') && $savedService->is_gzip_enabled) {
+                $savedService->is_gzip_enabled = false;
+                $savedService->save();
+            }
         }
 
         $environment = collect(data_get($service, 'environment', []));
