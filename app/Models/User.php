@@ -151,7 +151,7 @@ class User extends Authenticatable implements SendsEmail
 
     /**
      * Delete the user if they are not verified and have a force password reset.
-     * This is used to clean up users that have been invited, does not accepted the invitation (and did not verify their email and have a force password reset).
+     * This is used to clean up users that have been invited, did not accept the invitation (and did not verify their email and have a force password reset).
      */
     public function deleteIfNotVerifiedAndForcePasswordReset()
     {
