@@ -26,7 +26,7 @@
             <x-forms.input id="resource.health_check_response_text" placeholder="OK" label="Response Text" />
         </div>
         <div class="flex gap-2">
-            <x-forms.input min=1 type="number" id="resource.health_check_interval" placeholder="30"
+            <x-forms.input min="1" type="number" id="resource.health_check_interval" placeholder="30"
                 label="Interval (s)" required />
             <x-forms.input type="number" id="resource.health_check_timeout" placeholder="30" label="Timeout (s)"
                 required />
