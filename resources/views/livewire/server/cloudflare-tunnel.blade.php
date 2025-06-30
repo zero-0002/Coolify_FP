@@ -42,7 +42,7 @@
                                     ]"
                                     confirmationText="DISABLE CLOUDFLARE TUNNEL"
                                     confirmationLabel="Please type the confirmation text to disable Cloudflare Tunnel."
-                                    shortConfirmationLabel="Confirmation text" step3ButtonText="Confirm" />
+                                    shortConfirmationLabel="Confirmation text" />
                             @else
                                 <x-modal-confirmation title="Disable Cloudflare Tunnel?"
                                     buttonTitle="Disable Cloudflare Tunnel" isErrorButton
@@ -54,7 +54,7 @@
                                     ]"
                                     confirmationText="DISABLE CLOUDFLARE TUNNEL"
                                     confirmationLabel="Please type the confirmation text to disable Cloudflare Tunnel."
-                                    shortConfirmationLabel="Confirmation text" step3ButtonText="Confirm" />
+                                    shortConfirmationLabel="Confirmation text" />
                             @endif
 
                         </div>
@@ -118,7 +118,7 @@
                         'If you missed something, the connection will not work.',
                     ]" confirmationText="I manually configured Cloudflare Tunnel"
                     confirmationLabel="Please type the confirmation text to confirm that you manually configured Cloudflare Tunnel."
-                    shortConfirmationLabel="Confirmation text" step3ButtonText="Confirm" />
+                    shortConfirmationLabel="Confirmation text" />
             </div>
             @endif
         </div>

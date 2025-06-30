@@ -27,7 +27,7 @@
                         ]"
                         confirmationText="{{ $user->name }}"
                         confirmationLabel="Please confirm the execution of the actions by entering the User Name below"
-                        shortConfirmationLabel="User Name" step3ButtonText="Confirm" />
+                        shortConfirmationLabel="User Name" />
                 </div>
             </div>
         @empty
