@@ -16,6 +16,6 @@ services:
         - '--spider'
         - '--quiet'
         - 'http://localhost'
-      interval: 30s
+      interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 10
