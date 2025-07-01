@@ -845,6 +845,21 @@
         "minversion": "0.0.0",
         "port": "8080"
     },
+    "excalidraw": {
+        "documentation": "https://docs.excalidraw.com/docs?utm_source=coolify.io",
+        "slogan": "Virtual whiteboard for sketching hand-drawn like diagrams",
+        "compose": "c2VydmljZXM6CiAgZXhjYWxpZHJhdzoKICAgIGltYWdlOiAnZXhjYWxpZHJhdy9leGNhbGlkcmF3OmxhdGVzdCcKICAgIGVudmlyb25tZW50OgogICAgICAtIFNFUlZJQ0VfRlFETl9FWENBTElEUkFXXzgwCiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gd2dldAogICAgICAgIC0gJy0tc3BpZGVyJwogICAgICAgIC0gJy0tcXVpZXQnCiAgICAgICAgLSAnaHR0cDovL2xvY2FsaG9zdCcKICAgICAgaW50ZXJ2YWw6IDEwcwogICAgICB0aW1lb3V0OiA1cwogICAgICByZXRyaWVzOiAxMAo=",
+        "tags": [
+            "canvas",
+            "diagrams",
+            "drawing",
+            "productivity",
+            "whiteboard"
+        ],
+        "logo": "svgs/excalidraw.svg",
+        "minversion": "0.0.0",
+        "port": "80"
+    },
     "faraday": {
         "documentation": "https://faradaysec.com/?utm_source=coolify.io",
         "slogan": "Faraday is a powerful, open-source, web-based vulnerability management tool.",
