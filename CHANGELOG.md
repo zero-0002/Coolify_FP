@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### 🚜 Refactor
+
+- *(popup)* Improve styling and structure of the small popup component
+- *(shared)* Enhance FQDN generation logic for services in newParser function
+
+### ⚙️ Miscellaneous Tasks
+
+- *(versions)* Bump coolify and nightly versions to 4.0.0-beta.420.3 and 4.0.0-beta.420.4 respectively
+
+## [4.0.0-beta.420.2] - 2025-07-03
+
 ### 🚀 Features
 
 - *(template)* Added excalidraw (#6095)
@@ -25,6 +36,10 @@ All notable changes to this project will be documented in this file.
 - *(terminal)* Simplify command construction for SSH execution
 - *(settings)* Streamline instance admin checks and initialization of settings in Livewire components
 - *(policy)* Optimize team membership checks in S3StoragePolicy
+
+### 📚 Documentation
+
+- Update changelog
 
 ## [4.0.0-beta.420.1] - 2025-06-26
 
