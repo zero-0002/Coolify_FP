@@ -3066,13 +3066,14 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                         $fqdn = generateFqdn($server, "$uuid");
                     }
                 } elseif ($isService) {
-                    $fqdn = $savedService->fqdn;
                     if (blank($savedService->fqdn)) {
                         if ($fqdnFor) {
                             $fqdn = generateFqdn($server, "$fqdnFor-$uuid");
                         } else {
                             $fqdn = generateFqdn($server, "{$savedService->name}-$uuid");
                         }
+                    } else {
+                        $fqdn = str($savedService->fqdn)->after('://')->before(':')->prepend(str($savedService->fqdn)->before('://')->append('://'))->value();
                     }
                 }
 
