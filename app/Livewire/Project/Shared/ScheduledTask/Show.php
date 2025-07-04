@@ -46,6 +46,15 @@ class Show extends Component
     #[Locked]
     public string $task_uuid;
 
+    public function getListeners()
+    {
+        $teamId = auth()->user()->currentTeam()->id;
+
+        return [
+            "echo-private:team.{$teamId},ServiceChecked" => '$refresh',
+        ];
+    }
+
     public function mount(string $task_uuid, string $project_uuid, string $environment_uuid, ?string $application_uuid = null, ?string $service_uuid = null)
     {
         try {
@@ -133,9 +142,9 @@ class Show extends Component
             $this->task->delete();
 
             if ($this->type === 'application') {
-                return redirect()->route('project.application.configuration', $this->parameters, $this->task->name);
+                return redirect()->route('project.application.scheduled-tasks.show', $this->parameters);
             } else {
-                return redirect()->route('project.service.configuration', $this->parameters, $this->task->name);
+                return redirect()->route('project.service.scheduled-tasks.show', $this->parameters);
             }
         } catch (\Exception $e) {
             return handleError($e);

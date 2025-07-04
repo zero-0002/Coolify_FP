@@ -54,7 +54,7 @@ class Controller extends BaseController
                 'email' => Str::lower($arrayOfRequest['email']),
             ]);
             $type = set_transanctional_email_settings();
-            if (! $type) {
+            if (blank($type)) {
                 return response()->json(['message' => 'Transactional emails are not active'], 400);
             }
             $request->validate([Fortify::email() => 'required|email']);
@@ -144,7 +144,7 @@ class Controller extends BaseController
         }
     }
 
-    public function revoke_invitation()
+    public function revokeInvitation()
     {
         $invitation = TeamInvitation::whereUuid(request()->route('uuid'))->firstOrFail();
         $user = User::whereEmail($invitation->email)->firstOrFail();
