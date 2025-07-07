@@ -3147,6 +3147,9 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                     continue;
                 }
                 if ($command->value() === 'FQDN') {
+                    if ($isApplication && $resource->build_pack === 'dockercompose') {
+                        continue;
+                    }
                     $fqdnFor = $key->after('SERVICE_FQDN_')->lower()->value();
                     if (str($fqdnFor)->contains('_')) {
                         $fqdnFor = str($fqdnFor)->before('_');
@@ -3162,6 +3165,9 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                         'is_preview' => false,
                     ]);
                 } elseif ($command->value() === 'URL') {
+                    if ($isApplication && $resource->build_pack === 'dockercompose') {
+                        continue;
+                    }
                     $fqdnFor = $key->after('SERVICE_URL_')->lower()->value();
                     if (str($fqdnFor)->contains('_')) {
                         $fqdnFor = str($fqdnFor)->before('_');
@@ -3651,9 +3657,28 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
         }
 
         if ($isApplication) {
-            $domains = collect(json_decode($resource->docker_compose_domains)) ?? collect([]);
+            if ($isPullRequest) {
+                $preview = $resource->previews()->find($preview_id);
+                $domains = collect(json_decode(data_get($preview, 'docker_compose_domains'))) ?? collect([]);
+            } else {
+                $domains = collect(json_decode($resource->docker_compose_domains)) ?? collect([]);
+            }
             $fqdns = data_get($domains, "$serviceName.domain");
-            if ($fqdns) {
+            // Generate SERVICE_FQDN & SERVICE_URL for dockercompose
+            if ($resource->build_pack === 'dockercompose') {
+                foreach ($domains as $forServiceName => $domain) {
+                    $parsedDomain = data_get($domain, 'domain');
+                    if (filled($parsedDomain)) {
+                        $parsedDomain = str($parsedDomain)->explode(',')->first();
+                        $coolifyUrl = str($parsedDomain)->after('://')->before(':')->prepend(str($parsedDomain)->before('://')->append('://'));
+                        $coolifyFqdn = str($parsedDomain)->replace('http://', '')->replace('https://', '')->before(':');
+                        $coolifyEnvironments->put('SERVICE_URL_'.str($forServiceName)->upper(), $coolifyUrl->value());
+                        $coolifyEnvironments->put('SERVICE_FQDN_'.str($forServiceName)->upper(), $coolifyFqdn->value());
+                    }
+                }
+            }
+            // If the domain is set, we need to generate the FQDNs for the preview
+            if (filled($fqdns)) {
                 $fqdns = str($fqdns)->explode(',');
                 if ($isPullRequest) {
                     $preview = $resource->previews()->find($preview_id);
@@ -3685,7 +3710,6 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                     }
                 }
             }
-
             $defaultLabels = defaultLabels(
                 id: $resource->id,
                 name: $containerName,
@@ -3695,6 +3719,7 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                 type: 'application',
                 environment: $resource->environment->name,
             );
+
         } elseif ($isService) {
             if ($savedService->serviceType()) {
                 $fqdns = generateServiceSpecificFqdns($savedService);

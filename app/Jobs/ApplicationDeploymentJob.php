@@ -471,7 +471,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         } else {
             $composeFile = $this->application->parse(pull_request_id: $this->pull_request_id, preview_id: data_get($this->preview, 'id'));
             $this->save_environment_variables();
-            if (! is_null($this->env_filename)) {
+            if (filled($this->env_filename)) {
                 $services = collect(data_get($composeFile, 'services', []));
                 $services = $services->map(function ($service, $name) {
                     $service['env_file'] = [$this->env_filename];
@@ -480,7 +480,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 });
                 $composeFile['services'] = $services->toArray();
             }
-            if (is_null($composeFile)) {
+            if (empty($composeFile)) {
                 $this->application_deployment_queue->addLogEntry('Failed to parse docker-compose file.');
                 $this->fail('Failed to parse docker-compose file.');
 
@@ -887,10 +887,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     private function save_environment_variables()
     {
         $envs = collect([]);
-        $local_branch = $this->branch;
-        if ($this->pull_request_id !== 0) {
-            $local_branch = "pull/{$this->pull_request_id}/head";
-        }
         $sort = $this->application->settings->is_env_sorting_enabled;
         if ($sort) {
             $sorted_environment_variables = $this->application->environment_variables->sortBy('key');
@@ -898,6 +894,14 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         } else {
             $sorted_environment_variables = $this->application->environment_variables->sortBy('id');
             $sorted_environment_variables_preview = $this->application->environment_variables_preview->sortBy('id');
+        }
+        if ($this->build_pack === 'dockercompose') {
+            $sorted_environment_variables = $sorted_environment_variables->filter(function ($env) {
+                return ! str($env->key)->startsWith('SERVICE_FQDN_') && ! str($env->key)->startsWith('SERVICE_URL_');
+            });
+            $sorted_environment_variables_preview = $sorted_environment_variables_preview->filter(function ($env) {
+                return ! str($env->key)->startsWith('SERVICE_FQDN_') && ! str($env->key)->startsWith('SERVICE_URL_');
+            });
         }
         $ports = $this->application->main_port();
         $coolify_envs = $this->generate_coolify_env_variables();
@@ -920,6 +924,22 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             if ($this->application->environment_variables->where('key', 'HOST')->isEmpty()) {
                 $envs->push('HOST=0.0.0.0');
             }
+
+            if ($this->build_pack === 'dockercompose') {
+                $domains = collect(json_decode($this->application->docker_compose_domains)) ?? collect([]);
+
+                // Generate SERVICE_FQDN & SERVICE_URL for dockercompose
+                foreach ($domains as $forServiceName => $domain) {
+                    $parsedDomain = data_get($domain, 'domain');
+                    if (filled($parsedDomain)) {
+                        $parsedDomain = str($parsedDomain)->explode(',')->first();
+                        $coolifyUrl = str($parsedDomain)->after('://')->before(':')->prepend(str($parsedDomain)->before('://')->append('://'));
+                        $coolifyFqdn = str($parsedDomain)->replace('http://', '')->replace('https://', '')->before(':');
+                        $envs->push('SERVICE_URL_'.str($forServiceName)->upper().'='.$coolifyUrl->value());
+                        $envs->push('SERVICE_FQDN_'.str($forServiceName)->upper().'='.$coolifyFqdn->value());
+                    }
+                }
+            }
         } else {
             $this->env_filename = ".env-pr-$this->pull_request_id";
             foreach ($sorted_environment_variables_preview as $env) {
@@ -936,6 +956,21 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $envs->push('HOST=0.0.0.0');
             }
 
+            if ($this->build_pack === 'dockercompose') {
+                $domains = collect(json_decode(data_get($this->preview, 'docker_compose_domains'))) ?? collect([]);
+
+                // Generate SERVICE_FQDN & SERVICE_URL for dockercompose
+                foreach ($domains as $forServiceName => $domain) {
+                    $parsedDomain = data_get($domain, 'domain');
+                    if (filled($parsedDomain)) {
+                        $parsedDomain = str($parsedDomain)->explode(',')->first();
+                        $coolifyUrl = str($parsedDomain)->after('://')->before(':')->prepend(str($parsedDomain)->before('://')->append('://'));
+                        $coolifyFqdn = str($parsedDomain)->replace('http://', '')->replace('https://', '')->before(':');
+                        $envs->push('SERVICE_URL_'.str($forServiceName)->upper().'='.$coolifyUrl->value());
+                        $envs->push('SERVICE_FQDN_'.str($forServiceName)->upper().'='.$coolifyFqdn->value());
+                    }
+                }
+            }
         }
         if ($envs->isEmpty()) {
             $this->env_filename = null;
@@ -1702,10 +1737,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     {
         $this->create_workdir();
         $ports = $this->application->main_port();
-        $onlyPort = null;
-        if (count($ports) > 0) {
-            $onlyPort = $ports[0];
-        }
         $persistent_storages = $this->generate_local_persistent_volumes();
         $persistent_file_volumes = $this->application->fileStorages()->get();
         $volume_names = $this->generate_local_persistent_volumes_only_volume_names();
@@ -2240,9 +2271,10 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         $this->application_deployment_queue->addLogEntry('Building docker image completed.');
     }
 
-    private function graceful_shutdown_container(string $containerName, int $timeout = 30)
+    private function graceful_shutdown_container(string $containerName)
     {
         try {
+            $timeout = isDev() ? 1 : 30;
             $this->execute_remote_command(
                 ["docker stop --time=$timeout $containerName", 'hidden' => true, 'ignore_errors' => true],
                 ["docker rm -f $containerName", 'hidden' => true, 'ignore_errors' => true]
