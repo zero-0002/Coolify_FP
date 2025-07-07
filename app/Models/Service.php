@@ -1264,7 +1264,6 @@ class Service extends BaseModel
         foreach ($sorted as $env) {
             $envs->push("{$env->key}={$env->real_value}");
         }
-        ray($envs);
         if ($envs->count() === 0) {
             $commands[] = 'touch .env';
         } else {

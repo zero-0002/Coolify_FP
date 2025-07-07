@@ -3716,10 +3716,13 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
         }
         // Add COOLIFY_FQDN & COOLIFY_URL to environment
         if (! $isDatabase && $fqdns instanceof Collection && $fqdns->count() > 0) {
-            $coolifyEnvironments->put('COOLIFY_URL', $fqdns->implode(','));
+            $fqdnsWithoutPort = $fqdns->map(function ($fqdn) {
+                return str($fqdn)->after('://')->before(':')->prepend(str($fqdn)->before('://')->append('://'));
+            });
+            $coolifyEnvironments->put('COOLIFY_URL', $fqdnsWithoutPort->implode(','));
 
             $urls = $fqdns->map(function ($fqdn) {
-                return str($fqdn)->replace('http://', '')->replace('https://', '');
+                return str($fqdn)->replace('http://', '')->replace('https://', '')->before(':');
             });
             $coolifyEnvironments->put('COOLIFY_FQDN', $urls->implode(','));
         }
