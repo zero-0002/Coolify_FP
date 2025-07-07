@@ -2946,7 +2946,6 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
     } catch (\Exception) {
         return collect([]);
     }
-
     $services = data_get($yaml, 'services', collect([]));
     $topLevel = collect([
         'volumes' => collect(data_get($yaml, 'volumes', [])),
@@ -3064,7 +3063,6 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                     }
                 }
             }
-
             // Get magic environments where we need to preset the FQDN
             if ($key->startsWith('SERVICE_FQDN_')) {
                 // SERVICE_FQDN_APP or SERVICE_FQDN_APP_3000
@@ -3614,7 +3612,8 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                             'is_required' => $isRequired,
                         ]);
                         // Add the variable to the environment so it will be shown in the deployable compose file
-                        $environment[$parsedKeyValue->value()] = $resource->environment_variables()->where('key', $parsedKeyValue)->where('resourceable_type', get_class($resource))->where('resourceable_id', $resource->id)->first()->value;
+                        // $environment[$parsedKeyValue->value()] = $resource->environment_variables()->where('key', $parsedKeyValue)->where('resourceable_type', get_class($resource))->where('resourceable_id', $resource->id)->first()->real_value;
+                        $environment[$parsedKeyValue->value()] = $value;
 
                         continue;
                     }

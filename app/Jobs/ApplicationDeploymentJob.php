@@ -908,17 +908,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->env_filename = '.env';
 
             foreach ($sorted_environment_variables as $env) {
-                $real_value = $env->real_value;
-                if ($env->version === '4.0.0-beta.239') {
-                    $real_value = $env->real_value;
-                } else {
-                    if ($env->is_literal || $env->is_multiline) {
-                        $real_value = '\''.$real_value.'\'';
-                    } else {
-                        $real_value = escapeEnvVariables($env->real_value);
-                    }
-                }
-                $envs->push($env->key.'='.$real_value);
+                $envs->push($env->key.'='.$env->real_value);
             }
             // Add PORT if not exists, use the first port as default
             if ($this->build_pack !== 'dockercompose') {
@@ -933,17 +923,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         } else {
             $this->env_filename = ".env-pr-$this->pull_request_id";
             foreach ($sorted_environment_variables_preview as $env) {
-                $real_value = $env->real_value;
-                if ($env->version === '4.0.0-beta.239') {
-                    $real_value = $env->real_value;
-                } else {
-                    if ($env->is_literal || $env->is_multiline) {
-                        $real_value = '\''.$real_value.'\'';
-                    } else {
-                        $real_value = escapeEnvVariables($env->real_value);
-                    }
-                }
-                $envs->push($env->key.'='.$real_value);
+                $envs->push($env->key.'='.$env->real_value);
             }
             // Add PORT if not exists, use the first port as default
             if ($this->build_pack !== 'dockercompose') {
