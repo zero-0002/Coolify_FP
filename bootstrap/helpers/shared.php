@@ -599,7 +599,15 @@ function getTopLevelNetworks(Service|Application $resource)
             try {
                 $yaml = Yaml::parse($resource->docker_compose_raw);
             } catch (\Exception $e) {
-                throw new \RuntimeException($e->getMessage());
+                // If the docker-compose.yml file is not valid, we will return the network name as the key
+                $topLevelNetworks = collect([
+                    $resource->uuid => [
+                        'name' => $resource->uuid,
+                        'external' => true,
+                    ],
+                ]);
+
+                return $topLevelNetworks->keys();
             }
             $services = data_get($yaml, 'services');
             $topLevelNetworks = collect(data_get($yaml, 'networks', []));
@@ -653,9 +661,16 @@ function getTopLevelNetworks(Service|Application $resource)
         try {
             $yaml = Yaml::parse($resource->docker_compose_raw);
         } catch (\Exception $e) {
-            throw new \RuntimeException($e->getMessage());
+            // If the docker-compose.yml file is not valid, we will return the network name as the key
+            $topLevelNetworks = collect([
+                $resource->uuid => [
+                    'name' => $resource->uuid,
+                    'external' => true,
+                ],
+            ]);
+
+            return $topLevelNetworks->keys();
         }
-        $server = $resource->destination->server;
         $topLevelNetworks = collect(data_get($yaml, 'networks', []));
         $services = data_get($yaml, 'services');
         $definedNetwork = collect([$resource->uuid]);
