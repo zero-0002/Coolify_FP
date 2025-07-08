@@ -30,6 +30,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Spatie\Url\Url;
 use Symfony\Component\Yaml\Yaml;
 use Throwable;
 use Visus\Cuid2\Cuid2;
@@ -933,10 +934,12 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     $parsedDomain = data_get($domain, 'domain');
                     if (filled($parsedDomain)) {
                         $parsedDomain = str($parsedDomain)->explode(',')->first();
-                        $coolifyUrl = str($parsedDomain)->after('://')->before(':')->prepend(str($parsedDomain)->before('://')->append('://'));
-                        $coolifyFqdn = str($parsedDomain)->replace('http://', '')->replace('https://', '')->before(':');
-                        $envs->push('SERVICE_URL_'.str($forServiceName)->upper().'='.$coolifyUrl->value());
-                        $envs->push('SERVICE_FQDN_'.str($forServiceName)->upper().'='.$coolifyFqdn->value());
+                        $coolifyUrl = Url::fromString($parsedDomain);
+                        $coolifyScheme = $coolifyUrl->getScheme();
+                        $coolifyFqdn = $coolifyUrl->getHost();
+                        $coolifyUrl = $coolifyUrl->withScheme($coolifyScheme)->withHost($coolifyFqdn)->withPort(null);
+                        $envs->push('SERVICE_URL_'.str($forServiceName)->upper().'='.$coolifyUrl->__toString());
+                        $envs->push('SERVICE_FQDN_'.str($forServiceName)->upper().'='.$coolifyFqdn);
                     }
                 }
             }
@@ -964,10 +967,12 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     $parsedDomain = data_get($domain, 'domain');
                     if (filled($parsedDomain)) {
                         $parsedDomain = str($parsedDomain)->explode(',')->first();
-                        $coolifyUrl = str($parsedDomain)->after('://')->before(':')->prepend(str($parsedDomain)->before('://')->append('://'));
-                        $coolifyFqdn = str($parsedDomain)->replace('http://', '')->replace('https://', '')->before(':');
-                        $envs->push('SERVICE_URL_'.str($forServiceName)->upper().'='.$coolifyUrl->value());
-                        $envs->push('SERVICE_FQDN_'.str($forServiceName)->upper().'='.$coolifyFqdn->value());
+                        $coolifyUrl = Url::fromString($parsedDomain);
+                        $coolifyScheme = $coolifyUrl->getScheme();
+                        $coolifyFqdn = $coolifyUrl->getHost();
+                        $coolifyUrl = $coolifyUrl->withScheme($coolifyScheme)->withHost($coolifyFqdn)->withPort(null);
+                        $envs->push('SERVICE_URL_'.str($forServiceName)->upper().'='.$coolifyUrl->__toString());
+                        $envs->push('SERVICE_FQDN_'.str($forServiceName)->upper().'='.$coolifyFqdn);
                     }
                 }
             }

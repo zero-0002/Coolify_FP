@@ -3670,10 +3670,12 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                     $parsedDomain = data_get($domain, 'domain');
                     if (filled($parsedDomain)) {
                         $parsedDomain = str($parsedDomain)->explode(',')->first();
-                        $coolifyUrl = str($parsedDomain)->after('://')->before(':')->prepend(str($parsedDomain)->before('://')->append('://'));
-                        $coolifyFqdn = str($parsedDomain)->replace('http://', '')->replace('https://', '')->before(':');
-                        $coolifyEnvironments->put('SERVICE_URL_'.str($forServiceName)->upper(), $coolifyUrl->value());
-                        $coolifyEnvironments->put('SERVICE_FQDN_'.str($forServiceName)->upper(), $coolifyFqdn->value());
+                        $coolifyUrl = Url::fromString($parsedDomain);
+                        $coolifyScheme = $coolifyUrl->getScheme();
+                        $coolifyFqdn = $coolifyUrl->getHost();
+                        $coolifyUrl = $coolifyUrl->withScheme($coolifyScheme)->withHost($coolifyFqdn)->withPort(null);
+                        $coolifyEnvironments->put('SERVICE_URL_'.str($forServiceName)->upper(), $coolifyUrl->__toString());
+                        $coolifyEnvironments->put('SERVICE_FQDN_'.str($forServiceName)->upper(), $coolifyFqdn);
                     }
                 }
             }
