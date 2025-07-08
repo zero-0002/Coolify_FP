@@ -4,9 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### 🚀 Features
+
+- *(scheduling)* Add command to manually run scheduled database backups and tasks with options for chunking, delays, and dry runs
+
 ### 🐛 Bug Fixes
 
-- *(scheduling)* Change redis cleanup command frequency from hourly to weekly for better resource management
+- *(versions)* Update coolify version numbers in versions.json and constants.php to 4.0.0-beta.420.5 and 4.0.0-beta.420.6
+- *(database)* Ensure internal port defaults correctly for unsupported database types in StartDatabaseProxy
+
+### 🚜 Refactor
+
+- *(postgresql)* Improve layout and spacing in SSL and Proxy configuration sections for better UI consistency
 
 ## [4.0.0-beta.420.4] - 2025-07-08
 
@@ -20,6 +29,7 @@ All notable changes to this project will be documented in this file.
 - *(deployment)* Improve docker-compose domain handling and environment variable generation
 - *(deployment)* Refactor domain parsing and environment variable generation using Spatie URL library
 - *(deployment)* Update COOLIFY_URL and COOLIFY_FQDN generation to use Spatie URL library for improved accuracy
+- *(scheduling)* Change redis cleanup command frequency from hourly to weekly for better resource management
 
 ### 🚜 Refactor
 
@@ -28,6 +38,7 @@ All notable changes to this project will be documented in this file.
 
 ### 📚 Documentation
 
+- Update changelog
 - Update changelog
 
 ## [4.0.0-beta.420.3] - 2025-07-03
