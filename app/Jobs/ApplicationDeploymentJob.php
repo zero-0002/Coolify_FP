@@ -1387,16 +1387,16 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $fqdn = $this->preview->fqdn;
         }
         if (isset($fqdn)) {
-            $fqdnWithoutPort = str($fqdn)->after('://')->before(':')->prepend(str($fqdn)->before('://')->append('://'));
-            $url = str($fqdn)->replace('http://', '')->replace('https://', '')->before(':');
+            $url = Url::fromString($fqdn);
+            $fqdn = $url->getHost();
+            $url = $url->withHost($fqdn)->withPort(null)->__toString();
             if ((int) $this->application->compose_parsing_version >= 3) {
-                $this->coolify_variables .= "COOLIFY_URL={$fqdnWithoutPort} ";
-                $this->coolify_variables .= "COOLIFY_FQDN={$url} ";
+                $this->coolify_variables .= "COOLIFY_URL={$url} ";
+                $this->coolify_variables .= "COOLIFY_FQDN={$fqdn} ";
             } else {
-                $this->coolify_variables .= "COOLIFY_URL={$fqdnWithoutPort} ";
+                $this->coolify_variables .= "COOLIFY_URL={$fqdn} ";
                 $this->coolify_variables .= "COOLIFY_FQDN={$url} ";
             }
-
         }
         if (isset($this->application->git_branch)) {
             $this->coolify_variables .= "COOLIFY_BRANCH={$this->application->git_branch} ";
