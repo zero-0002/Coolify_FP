@@ -6,6 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### 🐛 Bug Fixes
 
+- *(scheduling)* Change redis cleanup command frequency from hourly to weekly for better resource management
+
+## [4.0.0-beta.420.4] - 2025-07-08
+
+### 🐛 Bug Fixes
+
 - *(service)* Update Postiz compose configuration for improved server availability
 - *(install.sh)* Use IPV4_PUBLIC_IP variable in output instead of repeated curl
 - *(env)* Generate literal env variables better
@@ -19,6 +25,10 @@ All notable changes to this project will be documented in this file.
 
 - *(previews)* Streamline preview URL generation by utilizing application method
 - *(application)* Adjust layout and spacing in general application view for improved UI
+
+### 📚 Documentation
+
+- Update changelog
 
 ## [4.0.0-beta.420.3] - 2025-07-03
 
