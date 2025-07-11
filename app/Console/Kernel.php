@@ -20,6 +20,7 @@ use App\Models\ScheduledDatabaseBackup;
 use App\Models\ScheduledTask;
 use App\Models\Server;
 use App\Models\Team;
+use Cron\CronExpression;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use Illuminate\Support\Carbon;
@@ -197,6 +198,7 @@ class Kernel extends ConsoleKernel
     private function checkScheduledBackups(): void
     {
         $scheduled_backups = ScheduledDatabaseBackup::where('enabled', true)->get();
+
         if ($scheduled_backups->isEmpty()) {
             return;
         }
@@ -238,10 +240,33 @@ class Kernel extends ConsoleKernel
                     $scheduled_backup->frequency = VALID_CRON_STRINGS[$scheduled_backup->frequency];
                 }
                 $serverTimezone = data_get($server->settings, 'server_timezone', $this->instanceTimezone);
+
+                // Check if the backup should run now
+                $cron = new CronExpression($scheduled_backup->frequency);
+                $now = Carbon::now($serverTimezone);
+
+                if ($cron->isDue($now)) {
+                    Log::channel('scheduled')->info('Backup job running now', [
+                        'backup_id' => $scheduled_backup->id,
+                        'backup_name' => $scheduled_backup->name ?? 'unnamed',
+                        'server_name' => $server->name,
+                        'frequency' => $scheduled_backup->frequency,
+                        'timezone' => $serverTimezone,
+                        'current_time' => $now->format('Y-m-d H:i:s T'),
+                    ]);
+                }
+
                 $this->scheduleInstance->job(new DatabaseBackupJob(
                     backup: $scheduled_backup
                 ))->cron($scheduled_backup->frequency)->timezone($serverTimezone)->onOneServer();
+
             } catch (\Exception $e) {
+                Log::channel('scheduled-errors')->error('Error scheduling backup', [
+                    'backup_id' => $scheduled_backup->id,
+                    'backup_name' => $scheduled_backup->name ?? 'unnamed',
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
                 Log::error('Error scheduling backup: '.$e->getMessage());
                 Log::error($e->getTraceAsString());
             }
@@ -251,6 +276,7 @@ class Kernel extends ConsoleKernel
     private function checkScheduledTasks(): void
     {
         $scheduled_tasks = ScheduledTask::where('enabled', true)->get();
+
         if ($scheduled_tasks->isEmpty()) {
             return;
         }
@@ -301,10 +327,34 @@ class Kernel extends ConsoleKernel
                 if (validate_timezone($serverTimezone) === false) {
                     $serverTimezone = config('app.timezone');
                 }
+
+                // Check if the task should run now
+                $cron = new CronExpression($scheduled_task->frequency);
+                $now = Carbon::now($serverTimezone);
+
+                if ($cron->isDue($now)) {
+                    Log::channel('scheduled')->info('Task job running now', [
+                        'task_id' => $scheduled_task->id,
+                        'task_name' => $scheduled_task->name ?? 'unnamed',
+                        'server_name' => $server->name,
+                        'frequency' => $scheduled_task->frequency,
+                        'timezone' => $serverTimezone,
+                        'type' => $scheduled_task->service ? 'service' : 'application',
+                        'current_time' => $now->format('Y-m-d H:i:s T'),
+                    ]);
+                }
+
                 $this->scheduleInstance->job(new ScheduledTaskJob(
                     task: $scheduled_task
                 ))->cron($scheduled_task->frequency)->timezone($serverTimezone)->onOneServer();
+
             } catch (\Exception $e) {
+                Log::channel('scheduled-errors')->error('Error scheduling task', [
+                    'task_id' => $scheduled_task->id,
+                    'task_name' => $scheduled_task->name ?? 'unnamed',
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
                 Log::error('Error scheduling task: '.$e->getMessage());
                 Log::error($e->getTraceAsString());
             }
