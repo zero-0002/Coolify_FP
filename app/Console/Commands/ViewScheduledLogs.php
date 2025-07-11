@@ -16,7 +16,12 @@ class ViewScheduledLogs extends Command
                             {--backup-name= : Filter by backup name (partial match)}
                             {--backup-id= : Filter by backup ID}
                             {--errors : View error logs only}
-                            {--all : View both normal and error logs}';
+                            {--all : View both normal and error logs}
+                            {--hourly : Filter hourly jobs}
+                            {--daily : Filter daily jobs}
+                            {--weekly : Filter weekly jobs}
+                            {--monthly : Filter monthly jobs}
+                            {--frequency= : Filter by specific cron expression}';
 
     protected $description = 'View scheduled backups and tasks logs with optional filtering';
 
@@ -175,7 +180,56 @@ class ViewScheduledLogs extends Command
             $filters[] = '"backup_id":'.preg_quote($backupId, '/');
         }
 
+        // Frequency filters
+        if ($this->option('hourly')) {
+            $filters[] = $this->getFrequencyPattern('hourly');
+        }
+
+        if ($this->option('daily')) {
+            $filters[] = $this->getFrequencyPattern('daily');
+        }
+
+        if ($this->option('weekly')) {
+            $filters[] = $this->getFrequencyPattern('weekly');
+        }
+
+        if ($this->option('monthly')) {
+            $filters[] = $this->getFrequencyPattern('monthly');
+        }
+
+        if ($frequency = $this->option('frequency')) {
+            $filters[] = '"frequency":"'.preg_quote($frequency, '/').'"';
+        }
+
         return empty($filters) ? null : implode('|', $filters);
+    }
+
+    private function getFrequencyPattern(string $type): string
+    {
+        $patterns = [
+            'hourly' => [
+                '0 \* \* \* \*',     // 0 * * * *
+                '@hourly',           // @hourly
+            ],
+            'daily' => [
+                '0 0 \* \* \*',      // 0 0 * * *
+                '@daily',            // @daily
+                '@midnight',         // @midnight
+            ],
+            'weekly' => [
+                '0 0 \* \* [0-6]',   // 0 0 * * 0-6 (any day of week)
+                '@weekly',           // @weekly
+            ],
+            'monthly' => [
+                '0 0 1 \* \*',       // 0 0 1 * * (first of month)
+                '@monthly',          // @monthly
+            ],
+        ];
+
+        $typePatterns = $patterns[$type] ?? [];
+
+        // For grep, we need to match the frequency field in JSON
+        return '"frequency":"('.implode('|', $typePatterns).')"';
     }
 
     private function getFilterDescription(): string
@@ -196,6 +250,27 @@ class ViewScheduledLogs extends Command
 
         if ($backupId = $this->option('backup-id')) {
             $descriptions[] = "backup ID: {$backupId}";
+        }
+
+        // Frequency filters
+        if ($this->option('hourly')) {
+            $descriptions[] = 'hourly jobs';
+        }
+
+        if ($this->option('daily')) {
+            $descriptions[] = 'daily jobs';
+        }
+
+        if ($this->option('weekly')) {
+            $descriptions[] = 'weekly jobs';
+        }
+
+        if ($this->option('monthly')) {
+            $descriptions[] = 'monthly jobs';
+        }
+
+        if ($frequency = $this->option('frequency')) {
+            $descriptions[] = "frequency: {$frequency}";
         }
 
         return empty($descriptions) ? '' : ' (filtered by '.implode(', ', $descriptions).')';
