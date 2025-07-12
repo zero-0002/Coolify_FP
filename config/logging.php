@@ -122,15 +122,15 @@ return [
         'scheduled' => [
             'driver' => 'daily',
             'path' => storage_path('logs/scheduled.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => 1, // Keep logs for 1 day only (truncated daily)
+            'level' => 'debug',
+            'days' => 1,
         ],
 
         'scheduled-errors' => [
             'driver' => 'daily',
             'path' => storage_path('logs/scheduled-errors.log'),
-            'level' => 'error',
-            'days' => 7, // Keep error logs for 7 days
+            'level' => 'debug',
+            'days' => 7,
         ],
     ],
 
