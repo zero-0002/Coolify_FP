@@ -836,9 +836,14 @@ class Application extends BaseModel
         return ApplicationDeploymentQueue::where('application_id', $this->id)->where('created_at', '>=', now()->subDays(7))->orderBy('created_at', 'desc')->get();
     }
 
-    public function deployments(int $skip = 0, int $take = 10)
+    public function deployments(int $skip = 0, int $take = 10, ?string $pullRequestId = null)
     {
         $deployments = ApplicationDeploymentQueue::where('application_id', $this->id)->orderBy('created_at', 'desc');
+
+        if ($pullRequestId) {
+            $deployments = $deployments->where('pull_request_id', $pullRequestId);
+        }
+
         $count = $deployments->count();
         $deployments = $deployments->skip($skip)->take($take)->get();
 
