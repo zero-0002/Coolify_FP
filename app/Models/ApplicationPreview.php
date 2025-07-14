@@ -56,8 +56,34 @@ class ApplicationPreview extends BaseModel
         $docker_compose_domains = data_get($this, 'docker_compose_domains');
         $docker_compose_domains = json_decode($docker_compose_domains, true) ?? [];
 
+        // Get all services from the parsed compose file to ensure all services have entries
+        $parsedServices = $this->application->parse(pull_request_id: $this->pull_request_id);
+        if (isset($parsedServices['services'])) {
+            foreach ($parsedServices['services'] as $serviceName => $service) {
+                if (! isDatabaseImage(data_get($service, 'image'))) {
+                    // Remove PR suffix from service name to get original service name
+                    $originalServiceName = str($serviceName)->replaceLast('-pr-'.$this->pull_request_id, '')->toString();
+
+                    // Ensure all services have an entry, even if empty
+                    if (! $services->has($originalServiceName)) {
+                        $services->put($originalServiceName, ['domain' => '']);
+                    }
+                }
+            }
+        }
+
         foreach ($services as $service_name => $service_config) {
             $domain_string = data_get($service_config, 'domain');
+
+            // If domain string is empty or null, don't auto-generate domain
+            // Only generate domains when main app already has domains set
+            if (empty($domain_string)) {
+                // Ensure service has an empty domain entry for form binding
+                $docker_compose_domains[$service_name]['domain'] = '';
+
+                continue;
+            }
+
             $service_domains = str($domain_string)->explode(',')->map(fn ($d) => trim($d));
 
             $preview_domains = [];
@@ -80,6 +106,9 @@ class ApplicationPreview extends BaseModel
 
             if (! empty($preview_domains)) {
                 $docker_compose_domains[$service_name]['domain'] = implode(',', $preview_domains);
+            } else {
+                // Ensure service has an empty domain entry for form binding
+                $docker_compose_domains[$service_name]['domain'] = '';
             }
         }
 
