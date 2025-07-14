@@ -798,7 +798,7 @@ class Application extends BaseModel
 
     public function previews()
     {
-        return $this->hasMany(ApplicationPreview::class);
+        return $this->hasMany(ApplicationPreview::class)->orderBy('pull_request_id', 'desc');
     }
 
     public function deployment_queue()
