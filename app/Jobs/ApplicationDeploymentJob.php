@@ -236,8 +236,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     $this->preview->generate_preview_fqdn_compose();
                 }
             } else {
-                // For non-Docker Compose apps, use the application model's method
-                $this->preview = $this->application->generate_preview_fqdn($this->pull_request_id);
+                // For non-Docker Compose apps, use the preview model's method
+                $this->preview = ApplicationPreview::findPreviewByApplicationAndPullId($this->application->id, $this->pull_request_id);
+                if ($this->preview) {
+                    $this->preview->generate_preview_fqdn();
+                }
             }
             if ($this->application->is_github_based()) {
                 ApplicationPullRequestUpdateJob::dispatch(application: $this->application, preview: $this->preview, deployment_uuid: $this->deployment_uuid, status: ProcessStatus::IN_PROGRESS);

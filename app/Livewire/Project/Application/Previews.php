@@ -86,7 +86,7 @@ class Previews extends Component
             return;
         }
 
-        $this->application->generate_preview_fqdn($preview->pull_request_id);
+        $preview->generate_preview_fqdn();
         $this->application->refresh();
         $this->dispatch('update_links');
         $this->dispatch('success', 'Domain generated.');
@@ -118,7 +118,7 @@ class Previews extends Component
                         'pull_request_html_url' => $pull_request_html_url,
                     ]);
                 }
-                $this->application->generate_preview_fqdn($pull_request_id);
+                $found->generate_preview_fqdn();
                 $this->application->refresh();
                 $this->dispatch('update_links');
                 $this->dispatch('success', 'Preview added.');
