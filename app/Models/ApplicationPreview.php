@@ -2,19 +2,25 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Url\Url;
 use Visus\Cuid2\Cuid2;
 
 class ApplicationPreview extends BaseModel
 {
+    use SoftDeletes;
+
     protected $guarded = [];
 
     protected static function booted()
     {
-        static::deleting(function ($preview) {
+        static::forceDeleting(function ($preview) {
+            $server = $preview->application->destination->server;
+            $application = $preview->application;
+
             if (data_get($preview, 'application.build_pack') === 'dockercompose') {
-                $server = $preview->application->destination->server;
-                $composeFile = $preview->application->parse(pull_request_id: $preview->pull_request_id);
+                // Docker Compose volume and network cleanup
+                $composeFile = $application->parse(pull_request_id: $preview->pull_request_id);
                 $volumes = data_get($composeFile, 'volumes');
                 $networks = data_get($composeFile, 'networks');
                 $networkKeys = collect($networks)->keys();
@@ -26,7 +32,18 @@ class ApplicationPreview extends BaseModel
                     instant_remote_process(["docker network disconnect $key coolify-proxy"], $server, false);
                     instant_remote_process(["docker network rm $key"], $server, false);
                 });
+            } else {
+                // Regular application volume cleanup
+                $persistentStorages = $preview->persistentStorages()->get() ?? collect();
+                if ($persistentStorages->count() > 0) {
+                    foreach ($persistentStorages as $storage) {
+                        instant_remote_process(["docker volume rm -f $storage->name"], $server, false);
+                    }
+                }
             }
+
+            // Clean up persistent storage records
+            $preview->persistentStorages()->delete();
         });
         static::saving(function ($preview) {
             if ($preview->isDirty('status')) {
@@ -48,6 +65,11 @@ class ApplicationPreview extends BaseModel
     public function application()
     {
         return $this->belongsTo(Application::class);
+    }
+
+    public function persistentStorages()
+    {
+        return $this->morphMany(\App\Models\LocalPersistentVolume::class, 'resource');
     }
 
     public function generate_preview_fqdn()
