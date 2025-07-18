@@ -6,20 +6,16 @@
 
 services:
   gowa:
-    image: aldinokemal2104/go-whatsapp-web-multidevice
-    container_name: gowa
-    restart: always
-    volumes:
-      - 'gowa:/app/storages'
+    image: aldinokemal2104/go-whatsapp-web-multidevice:latest
     environment:
       - SERVICE_FQDN_GOWA_3000
       - SERVICE_USER_GOWA
       - SERVICE_PASSWORD_GOWA
-      - 'APP_BASIC_AUTH=${SERVICE_USER_GOWA}:${SERVICE_PASSWORD_GOWA}'
-      - APP_PORT=${APP_PORT:-3000}
+      - APP_BASIC_AUTH=${SERVICE_USER_GOWA}:${SERVICE_PASSWORD_GOWA}
+      - APP_PORT=3000
       - APP_DEBUG=${APP_DEBUG:-false}
       - APP_ACCOUNT_VALIDATION=${APP_ACCOUNT_VALIDATION:-false}
-      - 'WHATSAPP_WEBHOOK=${WHATSAPP_WEBHOOK}'
-      - 'WHATSAPP_WEBHOOK_SECRET=${WHATSAPP_WEBHOOK_SECRET}'
-volumes:
-  gowa: null
+      - WHATSAPP_WEBHOOK=${WHATSAPP_WEBHOOK}
+      - WHATSAPP_WEBHOOK_SECRET=${WHATSAPP_WEBHOOK_SECRET}
+    volumes:
+      - gowa_data:/app/storages
