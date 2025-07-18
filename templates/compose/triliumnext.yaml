@@ -1,4 +1,4 @@
-# documentation: https://github.com/TriliumNext/Notes
+# documentation: https://github.com/TriliumNext/Trilium
 # slogan: Build your personal knowledge base with TriliumNext Notes.
 # tags: self-hosted, notes, todo, organize, markdown, wiki
 # logo: svgs/triliumnext.svg
@@ -6,7 +6,8 @@
 
 services:
   triliumnext:
-    image: triliumnext/notes:latest
+    image: ghcr.io/triliumnext/trilium:stable
+    platform: linux/amd64 # https://github.com/TriliumNext/Trilium/issues/6390
     environment:
       - SERVICE_FQDN_TRILIUMNEXT_8080
       - TZ=${TZ:-Europe/Berlin}
