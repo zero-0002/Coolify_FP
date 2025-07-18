@@ -274,6 +274,7 @@ class General extends Component
         $this->application->save();
         $this->dispatch('success', 'Domain generated.');
         if ($this->application->build_pack === 'dockercompose') {
+            $this->updateServiceEnvironmentVariables();
             $this->loadComposeFile();
         }
 
