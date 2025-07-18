@@ -3080,11 +3080,8 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                     }
                 } elseif ($isService) {
                     if (blank($savedService->fqdn)) {
-                        if ($fqdnFor) {
-                            $fqdn = generateFqdn($server, "$fqdnFor-$uuid");
-                        } else {
-                            $fqdn = generateFqdn($server, "{$savedService->name}-$uuid");
-                        }
+                        // For services, if no explicit FQDN is set, leave SERVICE_FQDN_ variables empty
+                        $fqdn = '';
                     } else {
                         $fqdn = str($savedService->fqdn)->after('://')->before(':')->prepend(str($savedService->fqdn)->before('://')->append('://'))->value();
                     }
@@ -3150,6 +3147,10 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                     if ($isApplication && $resource->build_pack === 'dockercompose') {
                         continue;
                     }
+                    // For services, only generate FQDN if explicit FQDN is set
+                    if ($isService && blank($savedService->fqdn)) {
+                        continue;
+                    }
                     $fqdnFor = $key->after('SERVICE_FQDN_')->lower()->value();
                     if (str($fqdnFor)->contains('_')) {
                         $fqdnFor = str($fqdnFor)->before('_');
@@ -3166,6 +3167,10 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                     ]);
                 } elseif ($command->value() === 'URL') {
                     if ($isApplication && $resource->build_pack === 'dockercompose') {
+                        continue;
+                    }
+                    // For services, only generate URL if explicit FQDN is set
+                    if ($isService && blank($savedService->fqdn)) {
                         continue;
                     }
                     $fqdnFor = $key->after('SERVICE_URL_')->lower()->value();
@@ -3674,8 +3679,8 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                         $coolifyScheme = $coolifyUrl->getScheme();
                         $coolifyFqdn = $coolifyUrl->getHost();
                         $coolifyUrl = $coolifyUrl->withScheme($coolifyScheme)->withHost($coolifyFqdn)->withPort(null);
-                        $coolifyEnvironments->put('SERVICE_URL_'.str($forServiceName)->upper(), $coolifyUrl->__toString());
-                        $coolifyEnvironments->put('SERVICE_FQDN_'.str($forServiceName)->upper(), $coolifyFqdn);
+                        $coolifyEnvironments->put('SERVICE_URL_'.str($forServiceName)->upper()->replace('-', '_'), $coolifyUrl->__toString());
+                        $coolifyEnvironments->put('SERVICE_FQDN_'.str($forServiceName)->upper()->replace('-', '_'), $coolifyFqdn);
                     }
                 }
             }

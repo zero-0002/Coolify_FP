@@ -119,7 +119,7 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
             $resourceFqdns = str($resource->fqdn)->explode(',');
             if ($resourceFqdns->count() === 1) {
                 $resourceFqdns = $resourceFqdns->first();
-                $variableName = 'SERVICE_FQDN_'.str($resource->name)->upper()->replace('-', '');
+                $variableName = 'SERVICE_FQDN_'.str($resource->name)->upper()->replace('-', '_');
                 $generatedEnv = EnvironmentVariable::where('resourceable_type', Service::class)
                     ->where('resourceable_id', $resource->service_id)
                     ->where('key', $variableName)
@@ -151,7 +151,7 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                         $generatedEnv->save();
                     }
                 }
-                $variableName = 'SERVICE_URL_'.str($resource->name)->upper()->replace('-', '');
+                $variableName = 'SERVICE_URL_'.str($resource->name)->upper()->replace('-', '_');
                 $generatedEnv = EnvironmentVariable::where('resourceable_type', Service::class)
                     ->where('resourceable_id', $resource->service_id)
                     ->where('key', $variableName)
@@ -243,7 +243,7 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                             $port_env_url->save();
                         }
                     } else {
-                        $variableName = 'SERVICE_FQDN_'.str($resource->name)->upper()->replace('-', '');
+                        $variableName = 'SERVICE_FQDN_'.str($resource->name)->upper()->replace('-', '_');
                         $generatedEnv = EnvironmentVariable::where('resourceable_type', Service::class)
                             ->where('resourceable_id', $resource->service_id)
                             ->where('key', $variableName)
@@ -254,7 +254,7 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                             $generatedEnv->value = $fqdn;
                             $generatedEnv->save();
                         }
-                        $variableName = 'SERVICE_URL_'.str($resource->name)->upper()->replace('-', '');
+                        $variableName = 'SERVICE_URL_'.str($resource->name)->upper()->replace('-', '_');
                         $generatedEnv = EnvironmentVariable::where('resourceable_type', Service::class)
                             ->where('resourceable_id', $resource->service_id)
                             ->where('key', $variableName)
