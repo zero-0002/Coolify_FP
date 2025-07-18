@@ -215,25 +215,21 @@ class General extends Component
 
     }
 
-    public function loadComposeFile($isInit = false)
+    public function loadComposeFile($isInit = false, $showToast = true)
     {
         try {
             if ($isInit && $this->application->docker_compose_raw) {
                 return;
             }
 
-            // Must reload the application to get the latest database changes
-            // Why? Not sure, but it works.
-            // $this->application->refresh();
-
             ['parsedServices' => $this->parsedServices, 'initialDockerComposeLocation' => $this->initialDockerComposeLocation] = $this->application->loadComposeFile($isInit);
             if (is_null($this->parsedServices)) {
-                $this->dispatch('error', 'Failed to parse your docker-compose file. Please check the syntax and try again.');
+                $showToast && $this->dispatch('error', 'Failed to parse your docker-compose file. Please check the syntax and try again.');
 
                 return;
             }
             $this->application->parse();
-            $this->dispatch('success', 'Docker compose file loaded.');
+            $showToast && $this->dispatch('success', 'Docker compose file loaded.');
             $this->dispatch('compose_loaded');
             $this->dispatch('refreshStorages');
             $this->dispatch('refreshEnvs');
@@ -275,7 +271,7 @@ class General extends Component
         $this->dispatch('success', 'Domain generated.');
         if ($this->application->build_pack === 'dockercompose') {
             $this->updateServiceEnvironmentVariables();
-            $this->loadComposeFile();
+            $this->loadComposeFile(showToast: false);
         }
 
         return $domain;
