@@ -3049,7 +3049,6 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
             // Get all SERVICE_ variables from keys and values
             $key = str($key);
             $value = str($value);
-
             $regex = '/\$(\{?([a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*)\}?)/';
             preg_match_all($regex, $value, $valueMatches);
             if (count($valueMatches[1]) > 0) {
@@ -3080,8 +3079,11 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                     }
                 } elseif ($isService) {
                     if (blank($savedService->fqdn)) {
-                        // For services, if no explicit FQDN is set, leave SERVICE_FQDN_ variables empty
-                        $fqdn = '';
+                        if ($fqdnFor) {
+                            $fqdn = generateFqdn($server, "$fqdnFor-$uuid");
+                        } else {
+                            $fqdn = generateFqdn($server, "{$savedService->name}-$uuid");
+                        }
                     } else {
                         $fqdn = str($savedService->fqdn)->after('://')->before(':')->prepend(str($savedService->fqdn)->before('://')->append('://'))->value();
                     }
@@ -3145,10 +3147,6 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                 }
                 if ($command->value() === 'FQDN') {
                     if ($isApplication && $resource->build_pack === 'dockercompose') {
-                        continue;
-                    }
-                    // For services, only generate FQDN if explicit FQDN is set
-                    if ($isService && blank($savedService->fqdn)) {
                         continue;
                     }
                     $fqdnFor = $key->after('SERVICE_FQDN_')->lower()->value();
