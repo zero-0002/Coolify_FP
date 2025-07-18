@@ -2,22 +2,23 @@
 # slogan: Chat securely with your family, friends, community, or build great apps with Matrix!
 # tags: chat,slack,discord,voip,video,call
 # logo: svgs/matrix.svg
+# port: 8008
 
 services:
   matrix:
     image: matrixdotorg/synapse:latest
-    volumes:
-      - ./data:/data
     environment:
       - SERVICE_FQDN_MATRIX_8008
       - SYNAPSE_SERVER_NAME=${SERVICE_URL_MATRIX}
-      - SYNAPSE_REPORT_STATS=no
-      - ENABLE_REGISTRATION=${ENABLE_REGISTRATION}
+      - SYNAPSE_REPORT_STATS=${SYNAPSE_REPORT_STATS:-no}
+      - ENABLE_REGISTRATION=${ENABLE_REGISTRATION:-false}
       - RECAPTCHA_PUBLIC_KEY=${RECAPTCHA_PUBLIC_KEY}
       - RECAPTCHA_PRIVATE_KEY=${RECAPTCHA_PRIVATE_KEY}
       - _SERVER_NAME=${SERVICE_URL_MATRIX}
       - _ADMIN_NAME=${SERVICE_USER_ADMIN}
       - _ADMIN_PASS=${SERVICE_PASSWORD_ADMIN}
+    volumes:
+      - matrix-data:/data
     entrypoint:
       - /bin/bash
       - -c
