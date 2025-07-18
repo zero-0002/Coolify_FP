@@ -137,6 +137,13 @@ class ExecuteContainerCommand extends Component
         }
     }
 
+    public function updatedSelectedContainer()
+    {
+        if ($this->selected_container !== 'default') {
+            $this->connectToContainer();
+        }
+    }
+
     #[On('connectToServer')]
     public function connectToServer()
     {

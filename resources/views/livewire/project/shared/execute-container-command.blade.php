@@ -21,7 +21,7 @@
             <div>No containers are running or terminal access is disabled on this server.</div>
         @else
             <form class="w-full flex gap-2 items-end" wire:submit="$dispatchSelf('connectToContainer')">
-                <x-forms.select label="Container" id="container" required wire:model="selected_container">
+                <x-forms.select label="Container" id="container" required wire:model.live="selected_container">
                     @foreach ($containers as $container)
                         @if ($loop->first)
                             <option disabled value="default">Select a container</option>
