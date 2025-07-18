@@ -591,7 +591,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
         if ($log) {
             $log->update([
                 'status' => 'failed',
-                'message' => 'Job failed: '.$exception->getMessage(),
+                'message' => 'Job failed: '.($exception?->getMessage() ?? 'Unknown error'),
                 'size' => 0,
                 'filename' => null,
             ]);
