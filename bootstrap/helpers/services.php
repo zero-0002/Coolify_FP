@@ -120,69 +120,53 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
             if ($resourceFqdns->count() === 1) {
                 $resourceFqdns = $resourceFqdns->first();
                 $variableName = 'SERVICE_FQDN_'.str($resource->name)->upper()->replace('-', '_');
-                $generatedEnv = EnvironmentVariable::where('resourceable_type', Service::class)
-                    ->where('resourceable_id', $resource->service_id)
-                    ->where('key', $variableName)
-                    ->first();
                 $fqdn = Url::fromString($resourceFqdns);
                 $port = $fqdn->getPort();
                 $path = $fqdn->getPath();
                 $fqdn = $fqdn->getScheme().'://'.$fqdn->getHost();
-                if ($generatedEnv) {
-                    if ($path === '/') {
-                        $generatedEnv->value = $fqdn;
-                    } else {
-                        $generatedEnv->value = $fqdn.$path;
-                    }
-                    $generatedEnv->save();
-                }
+                $fqdnValue = ($path === '/') ? $fqdn : $fqdn.$path;
+                EnvironmentVariable::updateOrCreate([
+                    'resourceable_type' => Service::class,
+                    'resourceable_id' => $resource->service_id,
+                    'key' => $variableName,
+                ], [
+                    'value' => $fqdnValue,
+                ]);
                 if ($port) {
                     $variableName = $variableName."_$port";
-                    $generatedEnv = EnvironmentVariable::where('resourceable_type', Service::class)
-                        ->where('resourceable_id', $resource->service_id)
-                        ->where('key', $variableName)
-                        ->first();
-                    if ($generatedEnv) {
-                        if ($path === '/') {
-                            $generatedEnv->value = $fqdn;
-                        } else {
-                            $generatedEnv->value = $fqdn.$path;
-                        }
-                        $generatedEnv->save();
-                    }
+                    EnvironmentVariable::updateOrCreate([
+                        'resourceable_type' => Service::class,
+                        'resourceable_id' => $resource->service_id,
+                        'key' => $variableName,
+                    ], [
+                        'value' => $fqdnValue,
+                    ]);
                 }
                 $variableName = 'SERVICE_URL_'.str($resource->name)->upper()->replace('-', '_');
-                $generatedEnv = EnvironmentVariable::where('resourceable_type', Service::class)
-                    ->where('resourceable_id', $resource->service_id)
-                    ->where('key', $variableName)
-                    ->first();
                 $url = Url::fromString($fqdn);
                 $port = $url->getPort();
                 $path = $url->getPath();
                 $url = $url->getHost();
-                if ($generatedEnv) {
-                    $url = str($fqdn)->after('://');
-                    if ($path === '/') {
-                        $generatedEnv->value = $url;
-                    } else {
-                        $generatedEnv->value = $url.$path;
-                    }
-                    $generatedEnv->save();
+                $urlValue = str($fqdn)->after('://');
+                if ($path !== '/') {
+                    $urlValue = $urlValue.$path;
                 }
+                EnvironmentVariable::updateOrCreate([
+                    'resourceable_type' => Service::class,
+                    'resourceable_id' => $resource->service_id,
+                    'key' => $variableName,
+                ], [
+                    'value' => $urlValue,
+                ]);
                 if ($port) {
                     $variableName = $variableName."_$port";
-                    $generatedEnv = EnvironmentVariable::where('resourceable_type', Service::class)
-                        ->where('resourceable_id', $resource->service_id)
-                        ->where('key', $variableName)
-                        ->first();
-                    if ($generatedEnv) {
-                        if ($path === '/') {
-                            $generatedEnv->value = $url;
-                        } else {
-                            $generatedEnv->value = $url.$path;
-                        }
-                        $generatedEnv->save();
-                    }
+                    EnvironmentVariable::updateOrCreate([
+                        'resourceable_type' => Service::class,
+                        'resourceable_id' => $resource->service_id,
+                        'key' => $variableName,
+                    ], [
+                        'value' => $urlValue,
+                    ]);
                 }
             } elseif ($resourceFqdns->count() > 1) {
                 foreach ($resourceFqdns as $fqdn) {
@@ -269,6 +253,17 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                     }
                 }
             }
+        } else {
+            // If FQDN is removed, delete the corresponding environment variables
+            $serviceName = str($resource->name)->upper()->replace('-', '_');
+            EnvironmentVariable::where('resourceable_type', Service::class)
+                ->where('resourceable_id', $resource->service_id)
+                ->where('key', 'LIKE', "SERVICE_FQDN_{$serviceName}%")
+                ->delete();
+            EnvironmentVariable::where('resourceable_type', Service::class)
+                ->where('resourceable_id', $resource->service_id)
+                ->where('key', 'LIKE', "SERVICE_URL_{$serviceName}%")
+                ->delete();
         }
     } catch (\Throwable $e) {
         return handleError($e);
