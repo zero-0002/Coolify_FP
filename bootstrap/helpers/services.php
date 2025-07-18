@@ -131,6 +131,8 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                     'key' => $variableName,
                 ], [
                     'value' => $fqdnValue,
+                    'is_build_time' => false,
+                    'is_preview' => false,
                 ]);
                 if ($port) {
                     $variableName = $variableName."_$port";
@@ -140,6 +142,8 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                         'key' => $variableName,
                     ], [
                         'value' => $fqdnValue,
+                        'is_build_time' => false,
+                        'is_preview' => false,
                     ]);
                 }
                 $variableName = 'SERVICE_URL_'.str($resource->name)->upper()->replace('-', '_');
@@ -157,6 +161,8 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                     'key' => $variableName,
                 ], [
                     'value' => $urlValue,
+                    'is_build_time' => false,
+                    'is_preview' => false,
                 ]);
                 if ($port) {
                     $variableName = $variableName."_$port";
@@ -166,6 +172,8 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                         'key' => $variableName,
                     ], [
                         'value' => $urlValue,
+                        'is_build_time' => false,
+                        'is_preview' => false,
                     ]);
                 }
             } elseif ($resourceFqdns->count() > 1) {
