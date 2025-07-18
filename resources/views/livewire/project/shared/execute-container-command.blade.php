@@ -45,7 +45,8 @@
         <livewire:server.navbar :server="$servers->first()" />
         @if ($servers->first()->isTerminalEnabled() && $servers->first()->isFunctional())
             <form class="w-full flex gap-2 items-start" wire:submit="$dispatchSelf('connectToServer')"
-                wire:init="$dispatchSelf('connectToServer')">
+                x-data="{ autoConnected: false }"
+                x-on:terminal-websocket-ready.window="if (!autoConnected) { autoConnected = true; $wire.dispatchSelf('connectToServer'); }">
                 <h2 class="pb-4">Terminal</h2>
                 <x-forms.button :disabled="$isConnecting"
                     type="submit">{{ $isConnecting ? 'Connecting...' : 'Connect' }}</x-forms.button>

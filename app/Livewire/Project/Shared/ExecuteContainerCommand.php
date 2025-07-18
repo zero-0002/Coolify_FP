@@ -158,6 +158,9 @@ class ExecuteContainerCommand extends Component
                 data_get($server, 'name'),
                 data_get($server, 'uuid')
             );
+
+            // Dispatch a frontend event to ensure terminal gets focus after connection
+            $this->dispatch('terminal-should-focus');
         } catch (\Throwable $e) {
             return handleError($e, $this);
         } finally {
@@ -213,6 +216,9 @@ class ExecuteContainerCommand extends Component
                 data_get($container, 'container.Names'),
                 data_get($container, 'server.uuid')
             );
+
+            // Dispatch a frontend event to ensure terminal gets focus after connection
+            $this->dispatch('terminal-should-focus');
         } catch (\Throwable $e) {
             return handleError($e, $this);
         } finally {
