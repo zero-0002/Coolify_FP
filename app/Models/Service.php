@@ -1274,10 +1274,10 @@ class Service extends BaseModel
         instant_remote_process($commands, $this->server);
     }
 
-    public function parse(bool $isNew = false): Collection
+    public function parse(bool $isNew = false, bool $isOneClick = false): Collection
     {
         if ((int) $this->compose_parsing_version >= 3) {
-            return newParser($this);
+            return serviceParser($this, isOneClick: $isOneClick);
         } elseif ($this->docker_compose_raw) {
             return parseDockerComposeFile($this, $isNew);
         } else {

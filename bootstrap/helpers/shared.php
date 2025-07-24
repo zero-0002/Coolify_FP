@@ -2918,10 +2918,18 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
     }
 }
 
-function newParser(Application|Service $resource, int $pull_request_id = 0, ?int $preview_id = null): Collection
+function newParser(Application|Service $resource, int $pull_request_id = 0, ?int $preview_id = null, bool $isOneClick = false): Collection
 {
     $isApplication = $resource instanceof Application;
     $isService = $resource instanceof Service;
+    if ($isApplication) {
+        return applicationParser($resource, $pull_request_id, $preview_id);
+    }
+    if ($isService) {
+        return serviceParser($resource, $isOneClick);
+    }
+
+    return collect([]);
 
     $uuid = data_get($resource, 'uuid');
     $compose = data_get($resource, 'docker_compose_raw');
@@ -3078,14 +3086,25 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                         $fqdn = generateFqdn($server, "$uuid");
                     }
                 } elseif ($isService) {
-                    if (blank($savedService->fqdn)) {
-                        if ($fqdnFor) {
-                            $fqdn = generateFqdn($server, "$fqdnFor-$uuid");
+                    if ($isOneClick) {
+                        if (blank($savedService->fqdn)) {
+                            if ($fqdnFor) {
+                                $fqdn = generateFqdn($server, "$fqdnFor-$uuid");
+                            } else {
+                                $fqdn = generateFqdn($server, "{$savedService->name}-$uuid");
+                            }
                         } else {
-                            $fqdn = generateFqdn($server, "{$savedService->name}-$uuid");
+                            $fqdn = str($savedService->fqdn)->after('://')->before(':')->prepend(str($savedService->fqdn)->before('://')->append('://'))->value();
                         }
+
                     } else {
-                        $fqdn = str($savedService->fqdn)->after('://')->before(':')->prepend(str($savedService->fqdn)->before('://')->append('://'))->value();
+                        // For services which are not one-click, if no explicit FQDN is set, leave SERVICE_FQDN_ variables empty
+                        if (blank($savedService->fqdn)) {
+                            $fqdn = '';
+                        } else {
+                            $fqdn = str($savedService->fqdn)->after('://')->before(':')->prepend(str($savedService->fqdn)->before('://')->append('://'))->value();
+                        }
+                        ray($fqdn);
                     }
                 }
 
@@ -3141,51 +3160,41 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                 $key = str($key);
                 $value = replaceVariables($value);
                 $command = parseCommandFromMagicEnvVariable($key);
-                $found = $resource->environment_variables()->where('key', $key->value())->where('resourceable_type', get_class($resource))->where('resourceable_id', $resource->id)->first();
-                if ($found) {
-                    continue;
-                }
                 if ($command->value() === 'FQDN') {
-                    if ($isApplication && $resource->build_pack === 'dockercompose') {
-                        continue;
+                    if ($isOneClick) {
+                        $fqdnFor = $key->after('SERVICE_FQDN_')->lower()->value();
+                        if (str($fqdnFor)->contains('_')) {
+                            $fqdnFor = str($fqdnFor)->before('_');
+                        }
+                        $fqdn = generateFqdn($server, "$fqdnFor-$uuid");
+                        $resource->environment_variables()->firstOrCreate([
+                            'key' => $key->value(),
+                            'resourceable_type' => get_class($resource),
+                            'resourceable_id' => $resource->id,
+                        ], [
+                            'value' => $fqdn,
+                            'is_build_time' => false,
+                            'is_preview' => false,
+                        ]);
                     }
-                    $fqdnFor = $key->after('SERVICE_FQDN_')->lower()->value();
-                    if (str($fqdnFor)->contains('_')) {
-                        $fqdnFor = str($fqdnFor)->before('_');
-                    }
-                    $fqdn = generateFqdn($server, "$fqdnFor-$uuid");
-                    $resource->environment_variables()->firstOrCreate([
-                        'key' => $key->value(),
-                        'resourceable_type' => get_class($resource),
-                        'resourceable_id' => $resource->id,
-                    ], [
-                        'value' => $fqdn,
-                        'is_build_time' => false,
-                        'is_preview' => false,
-                    ]);
                 } elseif ($command->value() === 'URL') {
-                    if ($isApplication && $resource->build_pack === 'dockercompose') {
-                        continue;
+                    if ($isOneClick) {
+                        $fqdnFor = $key->after('SERVICE_URL_')->lower()->value();
+                        if (str($fqdnFor)->contains('_')) {
+                            $fqdnFor = str($fqdnFor)->before('_');
+                        }
+                        $fqdn = generateFqdn($server, "$fqdnFor-$uuid");
+                        $fqdn = str($fqdn)->replace('http://', '')->replace('https://', '');
+                        $resource->environment_variables()->firstOrCreate([
+                            'key' => $key->value(),
+                            'resourceable_type' => get_class($resource),
+                            'resourceable_id' => $resource->id,
+                        ], [
+                            'value' => $fqdn,
+                            'is_build_time' => false,
+                            'is_preview' => false,
+                        ]);
                     }
-                    // For services, only generate URL if explicit FQDN is set
-                    if ($isService && blank($savedService->fqdn)) {
-                        continue;
-                    }
-                    $fqdnFor = $key->after('SERVICE_URL_')->lower()->value();
-                    if (str($fqdnFor)->contains('_')) {
-                        $fqdnFor = str($fqdnFor)->before('_');
-                    }
-                    $fqdn = generateFqdn($server, "$fqdnFor-$uuid");
-                    $fqdn = str($fqdn)->replace('http://', '')->replace('https://', '');
-                    $resource->environment_variables()->firstOrCreate([
-                        'key' => $key->value(),
-                        'resourceable_type' => get_class($resource),
-                        'resourceable_id' => $resource->id,
-                    ], [
-                        'value' => $fqdn,
-                        'is_build_time' => false,
-                        'is_preview' => false,
-                    ]);
                 } else {
                     $value = generateEnvValue($command, $resource);
                     $resource->environment_variables()->firstOrCreate([
@@ -3279,12 +3288,6 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                 $applicationFound = ServiceApplication::where('name', $serviceName)->where('image', $image)->where('service_id', $resource->id)->first();
                 if ($applicationFound) {
                     $savedService = $applicationFound;
-                    // $savedService = ServiceDatabase::firstOrCreate([
-                    //     'name' => $applicationFound->name,
-                    //     'image' => $applicationFound->image,
-                    //     'service_id' => $applicationFound->service_id,
-                    // ]);
-                    // $applicationFound->delete();
                 } else {
                     $savedService = ServiceDatabase::firstOrCreate([
                         'name' => $serviceName,
@@ -3550,7 +3553,6 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
         $normalEnvironments = $normalEnvironments->filter(function ($value, $key) {
             return ! str($value)->startsWith('SERVICE_');
         });
-
         foreach ($normalEnvironments as $key => $value) {
             $key = str($key);
             $value = str($value);
@@ -3669,6 +3671,7 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
             $fqdns = data_get($domains, "$serviceName.domain");
             // Generate SERVICE_FQDN & SERVICE_URL for dockercompose
             if ($resource->build_pack === 'dockercompose') {
+
                 foreach ($domains as $forServiceName => $domain) {
                     $parsedDomain = data_get($domain, 'domain');
                     if (filled($parsedDomain)) {
@@ -3731,7 +3734,6 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
             } else {
                 $fqdns = collect(data_get($savedService, 'fqdns'))->filter();
             }
-
             $defaultLabels = defaultLabels(
                 id: $resource->id,
                 name: $containerName,
@@ -3757,7 +3759,6 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
             $coolifyEnvironments->put('COOLIFY_FQDN', $urls->implode(','));
         }
         add_coolify_default_environment_variables($resource, $coolifyEnvironments, $resource->environment_variables);
-
         if ($environment->count() > 0) {
             $environment = $environment->filter(function ($value, $key) {
                 return ! str($key)->startsWith('SERVICE_FQDN_');
