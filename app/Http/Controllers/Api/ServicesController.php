@@ -536,14 +536,8 @@ class ServicesController extends Controller
             return response()->json(['message' => 'Service not found.'], 404);
         }
 
-        $containers = getCurrentServiceSubContainerStatus($service->destination->server, $service->id, $subServiceName);
-
-        if ($containers->count() == 0) {
-            return response()->json([
-                'message' => 'Service is not running.',
-            ], 400);
-        }
-
+        $name = "{$subServiceName}-{$service->uuid}";
+        $containers = getCurrentServiceSubContainerStatus($service->destination->server, $service->id, $name);
         $container = $containers->first();
 
         if (! $container) {

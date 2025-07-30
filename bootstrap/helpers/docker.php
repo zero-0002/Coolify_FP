@@ -66,11 +66,11 @@ function getCurrentDatabaseContainerStatus(Server $server, int $id): Collection
     return $containers;
 }
 
-function getCurrentServiceSubContainerStatus(Server $server, int $id, string $subName): Collection
+function getCurrentServiceSubContainerStatus(Server $server, int $id, string $name): Collection
 {
     $containers = collect([]);
     if (! $server->isSwarm()) {
-        $containers = instant_remote_process(["docker ps -a --filter='label=coolify.serviceId={$id}' --filter='label=coolify.service.subName={$subName}' --format '{{json .}}' "], $server);
+        $containers = instant_remote_process(["docker ps -a --filter='label=coolify.serviceId={$id}' --filter='label=coolify.name={$name}' --format '{{json .}}' "], $server);
         $containers = format_docker_command_output_to_json($containers);
 
         return $containers->filter();
