@@ -448,6 +448,121 @@ class ServicesController extends Controller
         return response()->json($this->removeSensitiveData($service));
     }
 
+    #[OA\Get(
+        summary: 'Get service logs.',
+        description: 'Get service logs by UUID.',
+        path: '/services/{uuid}/containers/{container_id}/logs',
+        operationId: 'get-service-logs-by-uuid',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Services'],
+        parameters: [
+            new OA\Parameter(
+                name: 'uuid',
+                in: 'path',
+                description: 'UUID of the service.',
+                required: true,
+                schema: new OA\Schema(
+                    type: 'string',
+                    format: 'uuid',
+                )
+            ),
+            new OA\Parameter(
+                name: 'container_id',
+                in: 'path',
+                description: 'Container ID.',
+                required: true,
+                schema: new OA\Schema(type: 'string'),
+            ),
+            new OA\Parameter(
+                name: 'lines',
+                in: 'query',
+                description: 'Number of lines to show from the end of the logs.',
+                required: false,
+                schema: new OA\Schema(
+                    type: 'integer',
+                    format: 'int32',
+                    default: 100,
+                )
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Get service logs by UUID.',
+                content: [
+                    new OA\MediaType(
+                        mediaType: 'application/json',
+                        schema: new OA\Schema(
+                            type: 'object',
+                            properties: [
+                                'logs' => ['type' => 'string'],
+                            ]
+                        )
+                    ),
+                ]
+            ),
+            new OA\Response(
+                response: 401,
+                ref: '#/components/responses/401',
+            ),
+            new OA\Response(
+                response: 400,
+                ref: '#/components/responses/400',
+            ),
+            new OA\Response(
+                response: 404,
+                ref: '#/components/responses/404',
+            ),
+        ]
+    )]
+    public function logs_by_uuid(Request $request)
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+        $uuid = $request->route('uuid');
+        if (! $uuid) {
+            return response()->json(['message' => 'UUID is required.'], 400);
+        }
+        $service = Service::whereRelation('environment.project.team', 'id', $teamId)->whereUuid($request->uuid)->first();
+        if (! $service) {
+            return response()->json(['message' => 'Service not found.'], 404);
+        }
+
+        $containers = getCurrentServiceContainerStatus($service->destination->server, $service->id);
+
+        if ($containers->count() == 0) {
+            return response()->json([
+                'message' => 'Service is not running.',
+            ], 400);
+        }
+
+        $container = $containers->first(function ($container) use ($request) {
+            return $container['ID'] === $request->container_id;
+        });
+
+        if (! $container) {
+            return response()->json(['message' => 'Container not found.'], 404);
+        }
+
+        $status = getContainerStatus($service->destination->server, $container['Names']);
+        if ($status !== 'running') {
+            return response()->json([
+                'message' => 'Container is not running.',
+            ], 400);
+        }
+
+        $lines = $request->query->get('lines', 100) ?: 100;
+        $logs = getContainerLogs($service->destination->server, $container['ID'], $lines);
+
+        return response()->json([
+            'logs' => $logs,
+        ]);
+    }
+
     #[OA\Delete(
         summary: 'Delete',
         description: 'Delete service by UUID.',
