@@ -451,7 +451,7 @@ class ServicesController extends Controller
     #[OA\Get(
         summary: 'Get service logs.',
         description: 'Get service logs by UUID.',
-        path: '/services/{uuid}/containers/{container_id}/logs',
+        path: '/services/{uuid}/logs',
         operationId: 'get-service-logs-by-uuid',
         security: [
             ['bearerAuth' => []],
@@ -469,9 +469,9 @@ class ServicesController extends Controller
                 )
             ),
             new OA\Parameter(
-                name: 'container_id',
-                in: 'path',
-                description: 'Container ID.',
+                name: 'sub_service_name',
+                in: 'query',
+                description: 'Sub service name.',
                 required: true,
                 schema: new OA\Schema(type: 'string'),
             ),
@@ -527,12 +527,16 @@ class ServicesController extends Controller
         if (! $uuid) {
             return response()->json(['message' => 'UUID is required.'], 400);
         }
+        $subServiceName = $request->query->get('sub_service_name');
+        if (! $subServiceName) {
+            return response()->json(['message' => 'Sub service name is required.'], 400);
+        }
         $service = Service::whereRelation('environment.project.team', 'id', $teamId)->whereUuid($request->uuid)->first();
         if (! $service) {
             return response()->json(['message' => 'Service not found.'], 404);
         }
 
-        $containers = getCurrentServiceContainerStatus($service->destination->server, $service->id);
+        $containers = getCurrentServiceSubContainerStatus($service->destination->server, $service->id, $subServiceName);
 
         if ($containers->count() == 0) {
             return response()->json([
@@ -540,9 +544,7 @@ class ServicesController extends Controller
             ], 400);
         }
 
-        $container = $containers->first(function ($container) use ($request) {
-            return $container['ID'] === $request->container_id;
-        });
+        $container = $containers->first();
 
         if (! $container) {
             return response()->json(['message' => 'Container not found.'], 404);
