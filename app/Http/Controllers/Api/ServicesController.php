@@ -7,6 +7,7 @@ use App\Actions\Service\StartService;
 use App\Actions\Service\StopService;
 use App\Http\Controllers\Controller;
 use App\Jobs\DeleteResourceJob;
+use App\Models\Environment;
 use App\Models\EnvironmentVariable;
 use App\Models\Project;
 use App\Models\Server;
@@ -550,7 +551,6 @@ class ServicesController extends Controller
                     mediaType: 'application/json',
                     schema: new OA\Schema(
                         type: 'object',
-                        required: ['server_uuid', 'project_uuid', 'environment_name', 'environment_uuid', 'docker_compose_raw'],
                         properties: [
                             'name' => ['type' => 'string', 'description' => 'The service name.'],
                             'description' => ['type' => 'string', 'description' => 'The service description.'],
@@ -627,16 +627,16 @@ class ServicesController extends Controller
     {
         $allowedFields = ['name', 'description', 'project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'instant_deploy', 'docker_compose_raw', 'connect_to_docker_network'];
         $validator = customApiValidator($request->all(), [
-            'project_uuid' => 'string|required',
+            'project_uuid' => 'string|nullable',
             'environment_name' => 'string|nullable',
             'environment_uuid' => 'string|nullable',
-            'server_uuid' => 'string|required',
+            'server_uuid' => 'string|nullable',
             'destination_uuid' => 'string',
             'name' => 'string|max:255',
             'description' => 'string|nullable',
             'instant_deploy' => 'boolean',
             'connect_to_docker_network' => 'boolean',
-            'docker_compose_raw' => 'string|required',
+            'docker_compose_raw' => 'string|nullable',
         ]);
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
@@ -654,14 +654,19 @@ class ServicesController extends Controller
             ], 422);
         }
 
-        $environmentUuid = $request->environment_uuid;
-        $environmentName = $request->environment_name;
-        if (blank($environmentUuid) && blank($environmentName)) {
-            return response()->json(['message' => 'You need to provide at least one of environment_name or environment_uuid.'], 422);
+        $environmentUuid = null;
+        $environmentName = null;
+
+        if ($request->environment_uuid) {
+            $environmentUuid = $request->environment_uuid;
+        } elseif ($request->environment_name) {
+            $environmentName = $request->environment_name;
+        } else {
+            $environmentUuid = $service->environment->uuid;
         }
-        $serverUuid = $request->server_uuid;
-        $instantDeploy = $request->instant_deploy ?? false;
-        $project = Project::whereTeamId($teamId)->whereUuid($request->project_uuid)->first();
+        $serverUuid = $request->server_uuid ?? $service->server->uuid;
+        $projectUuid = $request->project_uuid ?? $service->environment->project->uuid;
+        $project = Project::whereTeamId($teamId)->whereUuid($projectUuid)->first();
         if (! $project) {
             return response()->json(['message' => 'Project not found.'], 404);
         }
@@ -684,39 +689,41 @@ class ServicesController extends Controller
             return response()->json(['message' => 'Server has multiple destinations and you do not set destination_uuid.'], 400);
         }
         $destination = $destinations->first();
-        if (! isBase64Encoded($request->docker_compose_raw)) {
-            return response()->json([
-                'message' => 'Validation failed.',
-                'errors' => [
-                    'docker_compose_raw' => 'The docker_compose_raw should be base64 encoded.',
-                ],
-            ], 422);
+        if ($request->has('docker_compose_raw')) {
+            if (! isBase64Encoded($request->docker_compose_raw)) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => [
+                        'docker_compose_raw' => 'The docker_compose_raw should be base64 encoded.',
+                    ],
+                ], 422);
+            }
+            $dockerComposeRaw = base64_decode($request->docker_compose_raw);
+            if (mb_detect_encoding($dockerComposeRaw, 'ASCII', true) === false) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => [
+                        'docker_compose_raw' => 'The docker_compose_raw should be base64 encoded.',
+                    ],
+                ], 422);
+            }
+            $dockerCompose = base64_decode($request->docker_compose_raw);
+            $dockerComposeRaw = Yaml::dump(Yaml::parse($dockerCompose), 10, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);
+            $service->docker_compose_raw = $dockerComposeRaw;
         }
-        $dockerComposeRaw = base64_decode($request->docker_compose_raw);
-        if (mb_detect_encoding($dockerComposeRaw, 'ASCII', true) === false) {
-            return response()->json([
-                'message' => 'Validation failed.',
-                'errors' => [
-                    'docker_compose_raw' => 'The docker_compose_raw should be base64 encoded.',
-                ],
-            ], 422);
-        }
-        $dockerCompose = base64_decode($request->docker_compose_raw);
-        $dockerComposeRaw = Yaml::dump(Yaml::parse($dockerCompose), 10, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);
         $connectToDockerNetwork = $request->connect_to_docker_network ?? false;
 
         $service->name = $request->name ?? null;
         $service->description = $request->description ?? null;
-        $service->docker_compose_raw = $dockerComposeRaw;
         $service->environment_id = $environment->id;
         $service->server_id = $server->id;
         $service->destination_id = $destination->id;
         $service->destination_type = $destination->getMorphClass();
         $service->connect_to_docker_network = $connectToDockerNetwork;
         $service->save();
-
+        
         $service->parse();
-        if ($instantDeploy) {
+        if ($request->instant_deploy) {
             StartService::dispatch($service);
         }
 
