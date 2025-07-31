@@ -1115,18 +1115,18 @@ function validateComposeFile(string $compose, int $server_id): string|Throwable
     }
 }
 
-function getContainerLogs(Server $server, string $container_id, int $lines = 100): string
+function getContainerLogs(Server $server, string $container_id, int $lines = 100, bool $showTimestamps = false): string
 {
+    $command = "docker logs -n {$lines} {$container_id}";
     if ($server->isSwarm()) {
-        $output = instant_remote_process([
-            "docker service logs -n {$lines} {$container_id}",
-        ], $server);
-    } else {
-        $output = instant_remote_process([
-            "docker logs -n {$lines} {$container_id}",
-        ], $server);
+        $command = "docker service logs -n {$lines} {$container_id}";
     }
 
+    if ($showTimestamps) {
+        $command .= ' --timestamps';
+    }
+
+    $output = instant_remote_process([$command], $server);
     $output .= removeAnsiColors($output);
 
     return $output;

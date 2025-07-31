@@ -1553,6 +1553,13 @@ class ApplicationsController extends Controller
                     default: 100,
                 )
             ),
+            new OA\Parameter(
+                name: 'show_timestamps',
+                in: 'query',
+                description: 'Show timestamps in the logs.',
+                required: false,
+                schema: new OA\Schema(type: 'boolean', default: false),
+            ),
         ],
         responses: [
             new OA\Response(
@@ -1616,8 +1623,9 @@ class ApplicationsController extends Controller
             ], 400);
         }
 
-        $lines = $request->query->get('lines', 100) ?: 100;
-        $logs = getContainerLogs($application->destination->server, $container['ID'], $lines);
+        $lines = $request->query->get('lines', 100);
+        $showTimestamps = $request->query->get('show_timestamps', false);
+        $logs = getContainerLogs($application->destination->server, $container['ID'], $lines, $showTimestamps);
 
         return response()->json([
             'logs' => $logs,
