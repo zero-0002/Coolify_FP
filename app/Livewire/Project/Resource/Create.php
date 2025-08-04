@@ -102,7 +102,7 @@ class Create extends Component
                             }
                         });
                     }
-                    $service->parse(isNew: true, isOneClick: true);
+                    $service->parse(isNew: true);
 
                     return redirect()->route('project.service.configuration', [
                         'service_uuid' => $service->uuid,

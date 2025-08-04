@@ -227,7 +227,19 @@ class General extends Component
 
                 return;
             }
-            $this->application->parse();
+
+            // Refresh parsedServiceDomains to reflect any changes in docker_compose_domains
+            $this->application->refresh();
+            $this->parsedServiceDomains = $this->application->docker_compose_domains ? json_decode($this->application->docker_compose_domains, true) : [];
+            ray($this->parsedServiceDomains);
+            // Convert service names with dots to use underscores for HTML form binding
+            $sanitizedDomains = [];
+            foreach ($this->parsedServiceDomains as $serviceName => $domain) {
+                $sanitizedKey = str($serviceName)->slug('_')->toString();
+                $sanitizedDomains[$sanitizedKey] = $domain;
+            }
+            $this->parsedServiceDomains = $sanitizedDomains;
+
             $showToast && $this->dispatch('success', 'Docker compose file loaded.');
             $this->dispatch('compose_loaded');
             $this->dispatch('refreshStorages');
@@ -245,7 +257,7 @@ class General extends Component
     public function generateDomain(string $serviceName)
     {
         $uuid = new Cuid2;
-        $domain = generateFqdn($this->application->destination->server, $uuid);
+        $domain = generateUrl(server: $this->application->destination->server, random: $uuid);
         $sanitizedKey = str($serviceName)->slug('_')->toString();
         $this->parsedServiceDomains[$sanitizedKey]['domain'] = $domain;
 
@@ -315,7 +327,7 @@ class General extends Component
     {
         $server = data_get($this->application, 'destination.server');
         if ($server) {
-            $fqdn = generateFqdn($server, $this->application->uuid);
+            $fqdn = generateFqdn(server: $server, random: $this->application->uuid, parserVersion: $this->application->compose_parsing_version);
             $this->application->fqdn = $fqdn;
             $this->application->save();
             $this->resetDefaultLabels();

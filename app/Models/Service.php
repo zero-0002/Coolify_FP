@@ -42,7 +42,7 @@ class Service extends BaseModel
 {
     use HasFactory, SoftDeletes;
 
-    private static $parserVersion = '4';
+    private static $parserVersion = '5';
 
     protected $guarded = [];
 
@@ -1274,10 +1274,10 @@ class Service extends BaseModel
         instant_remote_process($commands, $this->server);
     }
 
-    public function parse(bool $isNew = false, bool $isOneClick = false): Collection
+    public function parse(bool $isNew = false): Collection
     {
         if ((int) $this->compose_parsing_version >= 3) {
-            return serviceParser($this, isOneClick: $isOneClick);
+            return serviceParser($this);
         } elseif ($this->docker_compose_raw) {
             return parseDockerComposeFile($this, $isNew);
         } else {
