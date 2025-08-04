@@ -76,15 +76,6 @@
                             helper="If your application is a static site or the final build assets should be served as a static site, enable this." />
                     </div>
                 @endif
-                {{-- <div class="w-64">
-                    <x-forms.checkbox helper="If your repository contains a coolify.json file, it will be used to configure your application." instantSave id="checkCoolifyConfig" label="Use coolify.json if exists?" />
-                </div> --}}
-                {{-- @if ($build_pack === 'dockercompose' && isDev())
-                    <div class="dark:text-warning">If you choose Docker Compose based deployments, you cannot
-                        change it afterwards.</div>
-                    <x-forms.checkbox instantSave label="New Compose Services (only in dev mode)"
-                        id="new_compose_services"></x-forms.checkbox>
-                @endif --}}
             </div>
             <x-forms.button type="submit">
                 Continue
