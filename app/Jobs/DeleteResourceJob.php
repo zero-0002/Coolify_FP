@@ -52,7 +52,7 @@ class DeleteResourceJob implements ShouldBeEncrypted, ShouldQueue
 
             switch ($this->resource->type()) {
                 case 'application':
-                    StopApplication::run($this->resource, previewDeployments: true);
+                    StopApplication::run($this->resource, previewDeployments: true, dockerCleanup: $this->dockerCleanup);
                     break;
                 case 'standalone-postgresql':
                 case 'standalone-redis':
@@ -62,10 +62,10 @@ class DeleteResourceJob implements ShouldBeEncrypted, ShouldQueue
                 case 'standalone-keydb':
                 case 'standalone-dragonfly':
                 case 'standalone-clickhouse':
-                    StopDatabase::run($this->resource, true);
+                    StopDatabase::run($this->resource, dockerCleanup: $this->dockerCleanup);
                     break;
                 case 'service':
-                    StopService::run($this->resource, true);
+                    StopService::run($this->resource, $this->deleteConnectedNetworks, $this->dockerCleanup);
                     DeleteService::run($this->resource, $this->deleteVolumes, $this->deleteConnectedNetworks, $this->deleteConfigurations, $this->dockerCleanup);
 
                     return;
@@ -78,7 +78,7 @@ class DeleteResourceJob implements ShouldBeEncrypted, ShouldQueue
                 $this->resource->deleteVolumes();
                 $this->resource->persistentStorages()->delete();
             }
-            $this->resource->fileStorages()->delete();
+            $this->resource->fileStorages()->delete(); // these are file mounts which should probably have their own flag
 
             $isDatabase = $this->resource instanceof StandalonePostgresql
             || $this->resource instanceof StandaloneRedis
