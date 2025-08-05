@@ -3420,7 +3420,7 @@ function newParser(Application|Service $resource, int $pull_request_id = 0, ?int
                     }
                     if (is_string($volume)) {
                         $source = str($volume)->before(':');
-                        $target = str($volume)->after(':')->beforeLast(':');
+                        $target = str($volume)->afterLast(':');
                         $source = $name;
                         $volume = "$source:$target";
                     } elseif (is_array($volume)) {
