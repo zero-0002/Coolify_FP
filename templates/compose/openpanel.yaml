@@ -5,11 +5,104 @@
 # port: 3000
 
 services:
-  opdb:
+  openpanel-dashboard:
+    image: lindesvard/openpanel-dashboard:latest
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_SELF_HOSTED=true
+      - SERVICE_FQDN_OPDASHBOARD_3000
+      - NEXT_PUBLIC_API_URL=${SERVICE_FQDN_OPAPI}
+      - NEXT_PUBLIC_DASHBOARD_URL=${SERVICE_FQDN_OPDASHBOARD}
+      - DATABASE_URL=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${OPENPANEL_POSTGRES_DB:-openpanel-db}?schema=public
+      - REDIS_URL=redis://default:${SERVICE_PASSWORD_REDIS}@redis:6379
+      - CLICKHOUSE_URL=http://clickhouse:8123/openpanel
+    depends_on:
+      openpanel-api:
+        condition: service_healthy
+      openpanel-worker:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:3000/api/healthcheck || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  openpanel-api:
+    image: lindesvard/openpanel-api:latest
+    command: >
+      sh -c "
+        echo 'Running migrations...'
+        CI=true pnpm -r run migrate:deploy
+
+        pnpm start
+      "
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_SELF_HOSTED=true
+      - SERVICE_FQDN_OPAPI
+      - NEXT_PUBLIC_API_URL=${SERVICE_FQDN_OPAPI}
+      - NEXT_PUBLIC_DASHBOARD_URL=${SERVICE_FQDN_OPDASHBOARD}
+      - DATABASE_URL=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${OPENPANEL_POSTGRES_DB:-openpanel-db}?schema=public
+      - DATABASE_URL_DIRECT=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${OPENPANEL_POSTGRES_DB:-openpanel-db}?schema=public
+      - REDIS_URL=redis://default:${SERVICE_PASSWORD_REDIS}@redis:6379
+      - CLICKHOUSE_URL=http://clickhouse:8123/openpanel
+      - COOKIE_SECRET=${SERVICE_BASE64_COOKIESECRET}
+      - ALLOW_REGISTRATION=${OPENPANEL_ALLOW_REGISTRATION:-false}
+      - ALLOW_INVITATION=${OPENPANEL_ALLOW_INVITATION:-false}
+      - EMAIL_SENDER=${OPENPANEL_EMAIL_SENDER}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/healthcheck || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  openpanel-worker:
+    image: lindesvard/openpanel-worker:latest
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_SELF_HOSTED=true
+      - SERVICE_FQDN_OPBULLBOARD
+      - NEXT_PUBLIC_API_URL=${SERVICE_FQDN_OPAPI}
+      - DATABASE_URL=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${OPENPANEL_POSTGRES_DB:-openpanel-db}?schema=public
+      - DATABASE_URL_DIRECT=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${OPENPANEL_POSTGRES_DB:-openpanel-db}?schema=public
+      - REDIS_URL=redis://default:${SERVICE_PASSWORD_REDIS}@redis:6379
+      - CLICKHOUSE_URL=http://clickhouse:8123/openpanel
+    depends_on:
+      openpanel-api:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/healthcheck || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  postgres:
     image: postgres:16-alpine
-    restart: always
     volumes:
-      - opdb-data:/var/lib/postgresql/data
+      - openpanel_postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=${OPENPANEL_POSTGRES_DB:-openpanel-db}
       - POSTGRES_USER=${SERVICE_USER_POSTGRES}
@@ -20,11 +113,12 @@ services:
       timeout: 5s
       retries: 5
 
-  opkv:
+  redis:
     image: redis:7.4-alpine
-    restart: always
     volumes:
-      - opkv-data:/data
+      - openpanel_redis_data:/data
+    environment:
+      - REDIS_PASSWORD=${SERVICE_PASSWORD_REDIS}
     command: redis-server --requirepass ${SERVICE_PASSWORD_REDIS} --maxmemory-policy noeviction
     healthcheck:
       test: [CMD, redis-cli, -a, "${SERVICE_PASSWORD_REDIS}", ping]
@@ -32,12 +126,11 @@ services:
       timeout: 5s
       retries: 5
 
-  opch:
+  clickhouse:
     image: clickhouse/clickhouse-server:24.3.2-alpine
-    restart: always
     volumes:
-      - opch-data:/var/lib/clickhouse
-      - opch-logs:/var/log/clickhouse-server
+      - openpanel_clickhouse_data:/var/lib/clickhouse
+      - openpanel_clickhouse_logs:/var/log/clickhouse-server
       - type: bind
         source: ./clickhouse-config.xml
         target: /etc/clickhouse-server/config.d/op-config.xml
@@ -93,104 +186,12 @@ services:
           clickhouse client -n <<-EOSQL
             CREATE DATABASE IF NOT EXISTS openpanel;
           EOSQL
-    healthcheck:
-      test: [CMD-SHELL, 'clickhouse-client --query "SELECT 1"']
-      interval: 10s
-      timeout: 5s
-      retries: 5
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
-
-  opapi:
-    image: lindesvard/openpanel-api:latest
-    restart: always
-    command: >
-      sh -c "
-        echo 'Running migrations...'
-        CI=true pnpm -r run migrate:deploy
-
-        pnpm start
-      "
-    depends_on:
-      opdb:
-        condition: service_healthy
-      opch:
-        condition: service_healthy
-      opkv:
-        condition: service_healthy
-    environment:
-      # Common
-      - NODE_ENV=production
-      - NEXT_PUBLIC_SELF_HOSTED=true
-      # URLs
-      - DATABASE_URL=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@opdb:5432/${OPENPANEL_POSTGRES_DB:-openpanel-db}?schema=public
-      - DATABASE_URL_DIRECT=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@opdb:5432/${OPENPANEL_POSTGRES_DB:-openpanel-db}?schema=public
-      - REDIS_URL=redis://default:${SERVICE_PASSWORD_REDIS}@opkv:6379
-      - CLICKHOUSE_URL=${OPENPANEL_CLICKHOUSE_URL:-http://opch:8123/openpanel}
-      - SERVICE_FQDN_OPAPI
-      # Set coolify FQDN domain
-      - NEXT_PUBLIC_API_URL=$SERVICE_FQDN_OPAPI
-      - NEXT_PUBLIC_DASHBOARD_URL=$SERVICE_FQDN_OPDASHBOARD
-      # Others
-      - COOKIE_SECRET=${SERVICE_BASE64_COOKIESECRET}
-      - ALLOW_REGISTRATION=${OPENPANEL_ALLOW_REGISTRATION:-false}
-      - ALLOW_INVITATION=${OPENPANEL_ALLOW_INVITATION:-true}
-      - EMAIL_SENDER=${OPENPANEL_EMAIL_SENDER}
-      - RESEND_API_KEY=${RESEND_API_KEY}
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/healthcheck || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  opdashboard:
-    image: lindesvard/openpanel-dashboard:latest
-    restart: always
-    depends_on:
-      opapi:
-        condition: service_healthy
-    environment:
-      # Common
-      - NODE_ENV=production
-      - NEXT_PUBLIC_SELF_HOSTED=true
-      # URLs
-      - DATABASE_URL=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@opdb:5432/${OPENPANEL_POSTGRES_DB:-openpanel-db}?schema=public
-      - REDIS_URL=redis://default:${SERVICE_PASSWORD_REDIS}@opkv:6379
-      - CLICKHOUSE_URL=${OPENPANEL_CLICKHOUSE_URL:-http://opch:8123/openpanel}
-      - SERVICE_FQDN_OPDASHBOARD
-      # Set coolify FQDN domain
-      - NEXT_PUBLIC_API_URL=$SERVICE_FQDN_OPAPI
-      - NEXT_PUBLIC_DASHBOARD_URL=$SERVICE_FQDN_OPDASHBOARD
-    healthcheck:
-      test:
-        ["CMD-SHELL", "curl -f http://localhost:3000/api/healthcheck || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  opworker:
-    image: lindesvard/openpanel-worker:latest
-    restart: always
-    depends_on:
-      opapi:
-        condition: service_healthy
-    environment:
-      # FQDN
-      - SERVICE_FQDN_OPBULLBOARD
-      # Common
-      - NODE_ENV=production
-      - NEXT_PUBLIC_SELF_HOSTED=true
-      # URLs
-      - DATABASE_URL=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@opdb:5432/${OPENPANEL_POSTGRES_DB:-openpanel-db}?schema=public
-      - DATABASE_URL_DIRECT=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@opdb:5432/${OPENPANEL_POSTGRES_DB:-openpanel-db}?schema=public
-      - REDIS_URL=redis://default:${SERVICE_PASSWORD_REDIS}@opkv:6379
-      - CLICKHOUSE_URL=${OPENPANEL_CLICKHOUSE_URL:-http://opch:8123/openpanel}
-      # Set coolify FQDN domain
-      - NEXT_PUBLIC_API_URL=$SERVICE_FQDN_OPAPI
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/healthcheck || exit 1"]
+      test: [CMD-SHELL, 'clickhouse-client --query "SELECT 1"']
       interval: 10s
       timeout: 5s
       retries: 5
