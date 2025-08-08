@@ -122,7 +122,12 @@
                     @if ($unreadCount > 0)
                         <button wire:click="openWhatsNewModal" @click="dropdownOpen = false"
                             class="px-1 dropdown-item-no-padding flex items-center justify-between">
-                            <span>What's New</span>
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>What's New</span>
+                            </div>
                             <span
                                 class="bg-error text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                                 {{ $unreadCount > 9 ? '9+' : $unreadCount }}
@@ -130,8 +135,11 @@
                         </button>
                     @else
                         <button wire:click="openWhatsNewModal" @click="dropdownOpen = false"
-                            class="px-1 dropdown-item-no-padding">
-                            Changelog
+                            class="px-1 dropdown-item-no-padding flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span>Changelog</span>
                         </button>
                     @endif
 
@@ -142,29 +150,64 @@
                     <div class="font-bold border-b dark:border-coolgray-500 border-neutral-300 dark:text-white pb-1">
                         Appearance</div>
                     <button @click="setTheme('dark'); dropdownOpen = false"
-                        class="px-1 dropdown-item-no-padding">Dark</button>
+                        class="px-1 dropdown-item-no-padding flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                        <span>Dark</span>
+                    </button>
                     <button @click="setTheme('light'); dropdownOpen = false"
-                        class="px-1 dropdown-item-no-padding">Light</button>
+                        class="px-1 dropdown-item-no-padding flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <span>Light</span>
+                    </button>
                     <button @click="setTheme('system'); dropdownOpen = false"
-                        class="px-1 dropdown-item-no-padding">System</button>
+                        class="px-1 dropdown-item-no-padding flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <span>System</span>
+                    </button>
 
                     <!-- Width Section -->
                     <div
                         class="my-1 font-bold border-b dark:border-coolgray-500 border-neutral-300 dark:text-white text-md">
                         Width</div>
-                    <button @click="switchWidth(); dropdownOpen = false" class="px-1 dropdown-item-no-padding"
-                        x-show="full === 'full'">Center</button>
-                    <button @click="switchWidth(); dropdownOpen = false" class="px-1 dropdown-item-no-padding"
-                        x-show="full === 'center'">Full</button>
+                    <button @click="switchWidth(); dropdownOpen = false" class="px-1 dropdown-item-no-padding flex items-center gap-2"
+                        x-show="full === 'full'">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+                        </svg>
+                        <span>Center</span>
+                    </button>
+                    <button @click="switchWidth(); dropdownOpen = false" class="px-1 dropdown-item-no-padding flex items-center gap-2"
+                        x-show="full === 'center'">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <span>Full</span>
+                    </button>
 
                     <!-- Zoom Section -->
                     <div
                         class="my-1 font-bold border-b dark:border-coolgray-500 border-neutral-300 dark:text-white text-md">
                         Zoom</div>
                     <button @click="setZoom(100); dropdownOpen = false"
-                        class="px-1 dropdown-item-no-padding">100%</button>
+                        class="px-1 dropdown-item-no-padding flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <span>100%</span>
+                    </button>
                     <button @click="setZoom(90); dropdownOpen = false"
-                        class="px-1 dropdown-item-no-padding">90%</button>
+                        class="px-1 dropdown-item-no-padding flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 10h4v4h-4v-4z" />
+                        </svg>
+                        <span>90%</span>
+                    </button>
                 </div>
             </div>
         </div>
