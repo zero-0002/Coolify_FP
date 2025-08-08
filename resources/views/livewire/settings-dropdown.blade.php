@@ -131,7 +131,7 @@
                     @else
                         <button wire:click="openWhatsNewModal" @click="dropdownOpen = false"
                             class="px-1 dropdown-item-no-padding">
-                            Change Log
+                            Changelog
                         </button>
                     @endif
 
@@ -184,7 +184,7 @@
                 <div class="flex items-center justify-between  pb-3">
                     <div>
                         <h3 class="text-2xl font-bold dark:text-white">
-                            Change Log
+                            Changelog
                         </h3>
                         <p class="mt-1 text-sm dark:text-neutral-400">
                             Stay up to date with the latest features and improvements.
