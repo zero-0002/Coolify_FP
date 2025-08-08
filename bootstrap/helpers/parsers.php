@@ -990,7 +990,7 @@ function serviceParser(Service $resource): Collection
                     }
                 }
             }
-            // Get magic environments where we need to preset the FQDN
+            // Get magic environments where we need to preset the FQDN / URL
             if ($key->startsWith('SERVICE_FQDN_') || $key->startsWith('SERVICE_URL_')) {
                 // SERVICE_FQDN_APP or SERVICE_FQDN_APP_3000
                 if (substr_count(str($key)->value(), '_') === 3) {
@@ -1457,7 +1457,7 @@ function serviceParser(Service $resource): Collection
             $value = str($value);
             $originalValue = $value;
             $parsedValue = replaceVariables($value);
-            if ($value->startsWith('$SERVICE_')) {
+            if ($parsedValue->startsWith('SERVICE_')) {
                 $resource->environment_variables()->firstOrCreate([
                     'key' => $key,
                     'resourceable_type' => get_class($resource),
