@@ -471,12 +471,12 @@ function get_service_templates(bool $force = false): Collection
 
             return collect($services);
         } catch (\Throwable) {
-            $services = File::get(base_path('templates/service-templates.json'));
+            $services = File::get(base_path('templates/'.config('constants.services.file_name')));
 
             return collect(json_decode($services))->sortKeys();
         }
     } else {
-        $services = File::get(base_path('templates/service-templates.json'));
+        $services = File::get(base_path('templates/'.config('constants.services.file_name')));
 
         return collect(json_decode($services))->sortKeys();
     }

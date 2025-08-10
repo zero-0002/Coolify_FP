@@ -16,7 +16,7 @@ class Services extends Command
     /**
      * {@inheritdoc}
      */
-    protected $description = 'Generate service-templates.yaml based on /templates/compose directory';
+    protected $description = 'Generates service-templates json file based on /templates/compose directory';
 
     public function handle(): int
     {
@@ -33,7 +33,7 @@ class Services extends Command
                 ];
             })->toJson(JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
-        file_put_contents(base_path('templates/service-templates.json'), $serviceTemplatesJson.PHP_EOL);
+        file_put_contents(base_path('templates/'.config('constants.services.file_name')), $serviceTemplatesJson.PHP_EOL);
 
         return self::SUCCESS;
     }
