@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Jobs\PullChangelogFromGitHub;
 use App\Services\ChangelogService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -40,6 +41,20 @@ class SettingsDropdown extends Component
     public function markAllAsRead()
     {
         app(ChangelogService::class)->markAllAsReadForUser(Auth::user());
+    }
+
+    public function manualFetchChangelog()
+    {
+        if (! isDev()) {
+            return;
+        }
+
+        try {
+            PullChangelogFromGitHub::dispatch();
+            $this->dispatch('success', 'Changelog fetch initiated! Check back in a few moments.');
+        } catch (\Throwable $e) {
+            $this->dispatch('error', 'Failed to fetch changelog: '.$e->getMessage());
+        }
     }
 
     public function render()

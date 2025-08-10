@@ -9,7 +9,7 @@ class UserChangelogRead extends Model
 {
     protected $fillable = [
         'user_id',
-        'changelog_identifier',
+        'release_tag',
         'read_at',
     ];
 
@@ -26,7 +26,7 @@ class UserChangelogRead extends Model
     {
         self::firstOrCreate([
             'user_id' => $userId,
-            'changelog_identifier' => $identifier,
+            'release_tag' => $identifier,
         ], [
             'read_at' => now(),
         ]);
@@ -35,14 +35,14 @@ class UserChangelogRead extends Model
     public static function isReadByUser(int $userId, string $identifier): bool
     {
         return self::where('user_id', $userId)
-            ->where('changelog_identifier', $identifier)
+            ->where('release_tag', $identifier)
             ->exists();
     }
 
     public static function getReadIdentifiersForUser(int $userId): array
     {
         return self::where('user_id', $userId)
-            ->pluck('changelog_identifier')
+            ->pluck('release_tag')
             ->toArray();
     }
 }

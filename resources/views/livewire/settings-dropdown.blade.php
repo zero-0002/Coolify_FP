@@ -7,14 +7,14 @@
         // Load all entries when component initializes
         this.allEntries = @js($entries->toArray());
     },
-    markEntryAsRead(version) {
+    markEntryAsRead(tagName) {
         // Update the entry in our local Alpine data
-        const entry = this.allEntries.find(e => e.version === version);
+        const entry = this.allEntries.find(e => e.tag_name === tagName);
         if (entry) {
             entry.is_read = true;
         }
         // Call Livewire to update server-side
-        $wire.markAsRead(version);
+        $wire.markAsRead(tagName);
     },
     markAllEntriesAsRead() {
         // Update all entries in our local Alpine data
@@ -73,7 +73,7 @@
             entries = entries.filter(entry => {
                 return (entry.title?.toLowerCase().includes(searchLower) ||
                     entry.content?.toLowerCase().includes(searchLower) ||
-                    entry.version?.toLowerCase().includes(searchLower));
+                    entry.tag_name?.toLowerCase().includes(searchLower));
             });
         }
 
@@ -124,7 +124,8 @@
                             class="px-1 dropdown-item-no-padding flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 <span>What's New</span>
                             </div>
@@ -137,7 +138,8 @@
                         <button wire:click="openWhatsNewModal" @click="dropdownOpen = false"
                             class="px-1 dropdown-item-no-padding flex items-center gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                             <span>Changelog</span>
                         </button>
@@ -152,21 +154,24 @@
                     <button @click="setTheme('dark'); dropdownOpen = false"
                         class="px-1 dropdown-item-no-padding flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                         </svg>
                         <span>Dark</span>
                     </button>
                     <button @click="setTheme('light'); dropdownOpen = false"
                         class="px-1 dropdown-item-no-padding flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
                         <span>Light</span>
                     </button>
                     <button @click="setTheme('system'); dropdownOpen = false"
                         class="px-1 dropdown-item-no-padding flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                         <span>System</span>
                     </button>
@@ -175,17 +180,19 @@
                     <div
                         class="my-1 font-bold border-b dark:border-coolgray-500 border-neutral-300 dark:text-white text-md">
                         Width</div>
-                    <button @click="switchWidth(); dropdownOpen = false" class="px-1 dropdown-item-no-padding flex items-center gap-2"
-                        x-show="full === 'full'">
+                    <button @click="switchWidth(); dropdownOpen = false"
+                        class="px-1 dropdown-item-no-padding flex items-center gap-2" x-show="full === 'full'">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h7" />
                         </svg>
                         <span>Center</span>
                     </button>
-                    <button @click="switchWidth(); dropdownOpen = false" class="px-1 dropdown-item-no-padding flex items-center gap-2"
-                        x-show="full === 'center'">
+                    <button @click="switchWidth(); dropdownOpen = false"
+                        class="px-1 dropdown-item-no-padding flex items-center gap-2" x-show="full === 'center'">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                         <span>Full</span>
                     </button>
@@ -197,14 +204,16 @@
                     <button @click="setZoom(100); dropdownOpen = false"
                         class="px-1 dropdown-item-no-padding flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                         <span>100%</span>
                     </button>
                     <button @click="setZoom(90); dropdownOpen = false"
                         class="px-1 dropdown-item-no-padding flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 10h4v4h-4v-4z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 10h4v4h-4v-4z" />
                         </svg>
                         <span>90%</span>
                     </button>
@@ -215,14 +224,14 @@
 
     <!-- What's New Modal -->
     @if ($showWhatsNewModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-6 sm:p-8">
+        <div class="fixed inset-0 z-50 flex items-center justify-center py-6 px-4" @keydown.escape.window="$wire.closeWhatsNewModal()">
             <!-- Background overlay -->
             <div class="absolute inset-0 w-full h-full bg-black/20 backdrop-blur-xs" wire:click="closeWhatsNewModal">
             </div>
 
             <!-- Modal panel -->
             <div
-                class="relative w-full max-w-4xl py-6 border rounded-sm drop-shadow-sm bg-white border-neutral-200 dark:bg-base px-6 dark:border-coolgray-300">
+                class="relative w-full h-full max-w-7xl py-6 border rounded-sm drop-shadow-sm bg-white border-neutral-200 dark:bg-base px-6 dark:border-coolgray-300 flex flex-col">
                 <!-- Header -->
                 <div class="flex items-center justify-between  pb-3">
                     <div>
@@ -234,6 +243,16 @@
                         </p>
                     </div>
                     <div class="flex items-center gap-2">
+                        @if (isDev())
+                            <x-forms.button wire:click="manualFetchChangelog"
+                                class="bg-coolgray-200 hover:bg-coolgray-300">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Fetch Latest
+                            </x-forms.button>
+                        @endif
                         @if ($unreadCount > 0)
                             <x-forms.button @click="markAllEntriesAsRead">
                                 Mark all as read
@@ -250,7 +269,7 @@
                 </div>
 
                 <!-- Search -->
-                <div class="pb-4 border-b dark:border-coolgray-200">
+                <div class="pb-4 border-b dark:border-coolgray-200 flex-shrink-0">
                     <div class="relative">
                         <input x-model="search" placeholder="Search updates..." class="input pl-10" />
                         <svg class="absolute left-3 top-2 w-4 h-4 dark:text-neutral-400" fill="none"
@@ -262,20 +281,28 @@
                 </div>
 
                 <!-- Content -->
-                <div class="py-4 max-h-96 overflow-y-auto scrollbar">
+                <div class="py-4 flex-1 overflow-y-auto scrollbar">
                     <div x-show="filteredEntries.length > 0">
                         <div class="space-y-4">
-                            <template x-for="entry in filteredEntries" :key="entry.version">
+                            <template x-for="entry in filteredEntries" :key="entry.tag_name">
                                 <div class="relative p-4 border dark:border-coolgray-300 rounded-sm"
                                     :class="!entry.is_read ? 'dark:bg-coolgray-200 border-warning' : 'dark:bg-coolgray-100'">
                                     <div class="flex items-start justify-between">
                                         <div class="flex-1">
                                             <div class="flex items-center gap-2 mb-2">
-                                                <span x-show="entry.version"
-                                                    class="px-2 py-1 text-xs font-semibold dark:bg-coolgray-300 dark:text-neutral-200 rounded-sm"
-                                                    x-text="entry.version"></span>
-                                                <span class="text-xs dark:text-neutral-400 font-bold"
-                                                    x-text="entry.title"></span>
+                                                <span x-show="entry.title"
+                                                    class="px-2 py-1 text-xs font-semibold dark:bg-coolgray-300 dark:text-neutral-200 rounded-sm"><a
+                                                        :href="`https://github.com/coollabsio/coolify/releases/tag/${entry.tag_name}`"
+                                                        target="_blank"
+                                                        class="inline-flex items-center gap-1 hover:text-coolgray-500">
+                                                        <span x-text="entry.title"></span>
+                                                        <svg class="w-3 h-3 text-neutral-400" fill="none"
+                                                            stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                        </svg>
+                                                    </a></span>
                                                 <span class="text-xs dark:text-neutral-400"
                                                     x-text="new Date(entry.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })"></span>
                                             </div>
@@ -284,7 +311,7 @@
                                             </div>
                                         </div>
 
-                                        <button x-show="!entry.is_read" @click="markEntryAsRead(entry.version)"
+                                        <button x-show="!entry.is_read" @click="markEntryAsRead(entry.tag_name)"
                                             class="ml-4 px-3 py-1 text-xs dark:text-neutral-400 hover:dark:text-white border dark:border-neutral-600 rounded hover:dark:bg-neutral-700 transition-colors cursor-pointer"
                                             title="Mark as read">
                                             mark as read

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Enums\ActivityTypes;
 use App\Enums\ApplicationDeploymentStatus;
 use App\Jobs\CheckHelperImageJob;
+use App\Jobs\PullChangelogFromGitHub;
 use App\Models\ApplicationDeploymentQueue;
 use App\Models\Environment;
 use App\Models\ScheduledDatabaseBackup;
@@ -64,6 +65,7 @@ class Init extends Command
             try {
                 $this->cleanupUnnecessaryDynamicProxyConfiguration();
                 $this->pullTemplatesFromCDN();
+                $this->pullChangelogFromGitHub();
             } catch (\Throwable $e) {
                 echo "Could not pull templates from CDN: {$e->getMessage()}\n";
             }
@@ -74,6 +76,7 @@ class Init extends Command
         try {
             $this->cleanupInProgressApplicationDeployments();
             $this->pullTemplatesFromCDN();
+            $this->pullChangelogFromGitHub();
         } catch (\Throwable $e) {
             echo "Could not pull templates from CDN: {$e->getMessage()}\n";
         }
@@ -106,6 +109,16 @@ class Init extends Command
         if ($response->successful()) {
             $services = $response->json();
             File::put(base_path('templates/'.config('constants.services.file_name')), json_encode($services));
+        }
+    }
+
+    private function pullChangelogFromGitHub()
+    {
+        try {
+            PullChangelogFromGitHub::dispatch();
+            echo "Changelog fetch initiated\n";
+        } catch (\Throwable $e) {
+            echo "Could not fetch changelog from GitHub: {$e->getMessage()}\n";
         }
     }
 

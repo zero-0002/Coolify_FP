@@ -14,13 +14,13 @@ return new class extends Migration
         Schema::create('user_changelog_reads', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('changelog_identifier');
+            $table->string('release_tag'); // GitHub tag_name (e.g., "v4.0.0-beta.420.6")
             $table->timestamp('read_at');
             $table->timestamps();
 
-            $table->unique(['user_id', 'changelog_identifier']);
+            $table->unique(['user_id', 'release_tag']);
             $table->index('user_id');
-            $table->index('changelog_identifier');
+            $table->index('release_tag');
         });
     }
 

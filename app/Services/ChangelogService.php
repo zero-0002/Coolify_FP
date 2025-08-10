@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Spatie\LaravelMarkdown\MarkdownRenderer;
 
 class ChangelogService
 {
@@ -63,7 +64,7 @@ class ChangelogService
         $readIdentifiers = UserChangelogRead::getReadIdentifiersForUser($user->id);
 
         return $entries->map(function ($entry) use ($readIdentifiers) {
-            $entry->is_read = in_array($entry->version, $readIdentifiers);
+            $entry->is_read = in_array($entry->tag_name, $readIdentifiers);
 
             return $entry;
         })->sortBy([
@@ -78,7 +79,7 @@ class ChangelogService
             $entries = $this->getEntries();
             $readIdentifiers = UserChangelogRead::getReadIdentifiersForUser($user->id);
 
-            return $entries->reject(fn ($entry) => in_array($entry->version, $readIdentifiers))->count();
+            return $entries->reject(fn ($entry) => in_array($entry->tag_name, $readIdentifiers))->count();
         } else {
             return Cache::remember(
                 'user_unread_changelog_count_'.$user->id,
@@ -87,7 +88,7 @@ class ChangelogService
                     $entries = $this->getEntries();
                     $readIdentifiers = UserChangelogRead::getReadIdentifiersForUser($user->id);
 
-                    return $entries->reject(fn ($entry) => in_array($entry->version, $readIdentifiers))->count();
+                    return $entries->reject(fn ($entry) => in_array($entry->tag_name, $readIdentifiers))->count();
                 }
             );
         }
@@ -200,7 +201,7 @@ class ChangelogService
         $entries = $this->getEntries();
 
         foreach ($entries as $entry) {
-            UserChangelogRead::markAsRead($user->id, $entry->version);
+            UserChangelogRead::markAsRead($user->id, $entry->tag_name);
         }
 
         Cache::forget('user_unread_changelog_count_'.$user->id);
@@ -208,7 +209,7 @@ class ChangelogService
 
     private function validateEntryData(array $data): bool
     {
-        $required = ['version', 'title', 'content', 'published_at'];
+        $required = ['tag_name', 'title', 'content', 'published_at'];
 
         foreach ($required as $field) {
             if (! isset($data[$field]) || empty($data[$field])) {
@@ -253,41 +254,46 @@ class ChangelogService
 
     private function parseMarkdown(string $content): string
     {
-        // Convert markdown to HTML using simple regex patterns
-        $html = $content;
+        $renderer = app(MarkdownRenderer::class);
 
+        $html = $renderer->toHtml($content);
+
+        // Apply custom Tailwind CSS classes for dark mode compatibility
+        $html = $this->applyCustomStyling($html);
+
+        return $html;
+    }
+
+    private function applyCustomStyling(string $html): string
+    {
         // Headers
-        $html = preg_replace('/^### (.*?)$/m', '<h3 class="text-md font-semibold dark:text-white mb-1">$1</h3>', $html);
-        $html = preg_replace('/^## (.*?)$/m', '<h2 class="text-lg font-semibold dark:text-white mb-2">$1</h2>', $html);
-        $html = preg_replace('/^# (.*?)$/m', '<h1 class="text-xl font-bold dark:text-white mb-2">$1</h1>', $html);
+        $html = preg_replace('/<h1[^>]*>/', '<h1 class="text-xl font-bold dark:text-white mb-2">', $html);
+        $html = preg_replace('/<h2[^>]*>/', '<h2 class="text-lg font-semibold dark:text-white mb-2">', $html);
+        $html = preg_replace('/<h3[^>]*>/', '<h3 class="text-md font-semibold dark:text-white mb-1">', $html);
 
-        // Bold text
-        $html = preg_replace('/\*\*(.*?)\*\*/', '<strong class="font-semibold">$1</strong>', $html);
-        $html = preg_replace('/__(.*?)__/', '<strong class="font-semibold">$1</strong>', $html);
+        // Paragraphs
+        $html = preg_replace('/<p[^>]*>/', '<p class="mb-2 dark:text-neutral-300">', $html);
 
-        // Italic text
-        $html = preg_replace('/\*(.*?)\*/', '<em class="italic">$1</em>', $html);
-        $html = preg_replace('/_(.*?)_/', '<em class="italic">$1</em>', $html);
+        // Lists
+        $html = preg_replace('/<ul[^>]*>/', '<ul class="mb-2 ml-4 list-disc">', $html);
+        $html = preg_replace('/<ol[^>]*>/', '<ol class="mb-2 ml-4 list-decimal">', $html);
+        $html = preg_replace('/<li[^>]*>/', '<li class="dark:text-neutral-300">', $html);
 
-        // Code blocks
-        $html = preg_replace('/```(.*?)```/s', '<pre class="bg-gray-100 dark:bg-coolgray-300 p-2 rounded text-sm overflow-x-auto my-2"><code>$1</code></pre>', $html);
+        // Code blocks and inline code
+        $html = preg_replace('/<pre[^>]*>/', '<pre class="bg-gray-100 dark:bg-coolgray-300 p-2 rounded text-sm overflow-x-auto my-2">', $html);
+        $html = preg_replace('/<code[^>]*>/', '<code class="bg-gray-100 dark:bg-coolgray-300 px-1 py-0.5 rounded text-sm">', $html);
 
-        // Inline code
-        $html = preg_replace('/`([^`]+)`/', '<code class="bg-gray-100 dark:bg-coolgray-300 px-1 py-0.5 rounded text-sm">$1</code>', $html);
+        // Links - Apply styling to existing markdown links
+        $html = preg_replace('/<a([^>]*)>/', '<a$1 class="text-blue-500 hover:text-blue-600 underline" target="_blank" rel="noopener">', $html);
 
-        // Links
-        $html = preg_replace('/\[([^\]]+)\]\(([^)]+)\)/', '<a href="$2" class="text-blue-500 hover:text-blue-600 underline" target="_blank" rel="noopener">$1</a>', $html);
+        // Convert plain URLs to clickable links (that aren't already in <a> tags)
+        $html = preg_replace('/(?<!href="|href=\')(?<!>)(?<!\/)(https?:\/\/[^\s<>"]+)(?![^<]*<\/a>)/', '<a href="$1" class="text-blue-500 hover:text-blue-600 underline" target="_blank" rel="noopener">$1</a>', $html);
 
-        // Line breaks (convert double newlines to paragraphs)
-        $paragraphs = preg_split('/\n\s*\n/', trim($html));
-        $html = '<p class="mb-2">'.implode('</p><p class="mb-2">', $paragraphs).'</p>';
+        // Strong/bold text
+        $html = preg_replace('/<strong[^>]*>/', '<strong class="font-semibold dark:text-white">', $html);
 
-        // Single line breaks
-        $html = preg_replace('/\n/', '<br>', $html);
-
-        // Unordered lists
-        $html = preg_replace('/^\- (.*)$/m', '<li class="ml-4">• $1</li>', $html);
-        $html = preg_replace('/(<li class="ml-4">.*<\/li>)/s', '<ul class="mb-2">$1</ul>', $html);
+        // Emphasis/italic text
+        $html = preg_replace('/<em[^>]*>/', '<em class="italic dark:text-neutral-300">', $html);
 
         return $html;
     }
