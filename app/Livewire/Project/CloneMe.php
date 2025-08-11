@@ -56,7 +56,6 @@ class CloneMe extends Component
         $this->project_id = $this->project->id;
         $this->servers = currentTeam()
             ->servers()
-            ->with('destinations')
             ->get()
             ->reject(fn ($server) => $server->isBuildServer());
         $this->newName = str($this->project->name.'-clone-'.(string) new Cuid2)->slug();
@@ -455,7 +454,7 @@ class CloneMe extends Component
 
                         if ($this->cloneVolumeData) {
                             try {
-                                StopService::dispatch($application, false, false);
+                                StopService::dispatch($application);
                                 $sourceVolume = $volume->name;
                                 $targetVolume = $newPersistentVolume->name;
                                 $sourceServer = $application->service->destination->server;
@@ -509,7 +508,7 @@ class CloneMe extends Component
 
                         if ($this->cloneVolumeData) {
                             try {
-                                StopService::dispatch($database->service, false, false);
+                                StopService::dispatch($database->service);
                                 $sourceVolume = $volume->name;
                                 $targetVolume = $newPersistentVolume->name;
                                 $sourceServer = $database->service->destination->server;
