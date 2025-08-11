@@ -255,6 +255,19 @@ class Service extends BaseModel
                 continue;
             }
             switch ($image) {
+                case $image->contains('drizzle-team/gateway'):
+                    $data = collect([]);
+                    $masterpass = $this->environment_variables()->where('key', 'SERVICE_PASSWORD_DRIZZLE')->first();
+                    $data = $data->merge([
+                        'Master Password' => [
+                            'key' => data_get($masterpass, 'key'),
+                            'value' => data_get($masterpass, 'value'),
+                            'rules' => 'required',
+                            'isPassword' => true,
+                        ],
+                    ]);
+                    $fields->put('Drizzle', $data->toArray());
+                    break;
                 case $image->contains('castopod'):
                     $data = collect([]);
                     $disable_https = $this->environment_variables()->where('key', 'CP_DISABLE_HTTPS')->first();
