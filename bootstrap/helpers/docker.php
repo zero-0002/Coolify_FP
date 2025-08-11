@@ -1127,7 +1127,7 @@ function getContainerLogs(Server $server, string $container_id, int $lines = 100
     }
 
     $output = instant_remote_process([$command], $server);
-    $output .= removeAnsiColors($output);
+    $output = removeAnsiColors($output);
 
     return $output;
 }
