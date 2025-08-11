@@ -13,8 +13,3 @@ services:
       - MASTERPASS=$SERVICE_PASSWORD_DRIZZLE
     volumes:
       - drizzle-gateway-data:/app
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4983/"]
-      interval: 5s
-      timeout: 20s
-      retries: 10
