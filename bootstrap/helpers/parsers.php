@@ -168,11 +168,13 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                 $command = parseCommandFromMagicEnvVariable($key);
                 if ($command->value() === 'FQDN') {
                     $fqdnFor = $key->after('SERVICE_FQDN_')->lower()->value();
+                    $originalFqdnFor = str($fqdnFor)->replace('_', '-');
                     if (str($fqdnFor)->contains('-')) {
                         $fqdnFor = str($fqdnFor)->replace('-', '_');
                     }
-                    $fqdn = generateFqdn(server: $server, random: "$fqdnFor-$uuid", parserVersion: $resource->compose_parsing_version);
-                    $url = generateUrl(server: $server, random: "$fqdnFor-$uuid");
+                    // Generated FQDN & URL
+                    $fqdn = generateFqdn(server: $server, random: "$originalFqdnFor-$uuid", parserVersion: $resource->compose_parsing_version);
+                    $url = generateUrl(server: $server, random: "$originalFqdnFor-$uuid");
                     $resource->environment_variables()->firstOrCreate([
                         'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
@@ -184,19 +186,29 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     ]);
                     if ($resource->build_pack === 'dockercompose') {
                         $domains = collect(json_decode(data_get($resource, 'docker_compose_domains'))) ?? collect([]);
-                        // Put URL in the domains array instead of FQDN
-                        $domains->put((string) $fqdnFor, [
-                            'domain' => $url,
-                        ]);
-                        $resource->docker_compose_domains = $domains->toJson();
-                        $resource->save();
+                        $domainExists = data_get($domains->get($fqdnFor), 'domain');
+                        $envExists = $resource->environment_variables()->where('key', $key->value())->first();
+                        if (str($domainExists)->replace('http://', '')->replace('https://', '')->value() !== $envExists->value) {
+                            $envExists->update([
+                                'value' => $url,
+                            ]);
+                        }
+                        if (is_null($domainExists)) {
+                            // Put URL in the domains array instead of FQDN
+                            $domains->put((string) $fqdnFor, [
+                                'domain' => $url,
+                            ]);
+                            $resource->docker_compose_domains = $domains->toJson();
+                            $resource->save();
+                        }
                     }
                 } elseif ($command->value() === 'URL') {
                     $urlFor = $key->after('SERVICE_URL_')->lower()->value();
+                    $originalUrlFor = str($urlFor)->replace('_', '-');
                     if (str($urlFor)->contains('-')) {
                         $urlFor = str($urlFor)->replace('-', '_');
                     }
-                    $url = generateUrl(server: $server, random: "$urlFor-$uuid");
+                    $url = generateUrl(server: $server, random: "$originalUrlFor-$uuid");
                     $resource->environment_variables()->firstOrCreate([
                         'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
@@ -208,11 +220,20 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     ]);
                     if ($resource->build_pack === 'dockercompose') {
                         $domains = collect(json_decode(data_get($resource, 'docker_compose_domains'))) ?? collect([]);
-                        $domains->put((string) $urlFor, [
-                            'domain' => $url,
-                        ]);
-                        $resource->docker_compose_domains = $domains->toJson();
-                        $resource->save();
+                        $domainExists = data_get($domains->get($urlFor), 'domain');
+                        $envExists = $resource->environment_variables()->where('key', $key->value())->first();
+                        if ($domainExists !== $envExists->value) {
+                            $envExists->update([
+                                'value' => $url,
+                            ]);
+                        }
+                        if (is_null($domainExists)) {
+                            $domains->put((string) $urlFor, [
+                                'domain' => $url,
+                            ]);
+                            $resource->docker_compose_domains = $domains->toJson();
+                            $resource->save();
+                        }
                     }
                 } else {
                     $value = generateEnvValue($command, $resource);
@@ -612,7 +633,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
             $preview = $resource->previews()->find($preview_id);
             $domains = collect(json_decode(data_get($preview, 'docker_compose_domains'))) ?? collect([]);
         } else {
-            $domains = collect(json_decode($resource->docker_compose_domains)) ?? collect([]);
+            $domains = collect(json_decode(data_get($resource, 'docker_compose_domains'))) ?? collect([]);
         }
         $fqdns = data_get($domains, "$serviceName.domain");
         // Generate SERVICE_FQDN & SERVICE_URL for dockercompose
@@ -651,11 +672,15 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     $resource->environment_variables()->where('resourceable_type', Application::class)
                         ->where('resourceable_id', $resource->id)
                         ->where('key', 'LIKE', "SERVICE_FQDN_{$serviceNameFormatted}%")
-                        ->delete();
+                        ->update([
+                            'value' => null,
+                        ]);
                     $resource->environment_variables()->where('resourceable_type', Application::class)
                         ->where('resourceable_id', $resource->id)
                         ->where('key', 'LIKE', "SERVICE_URL_{$serviceNameFormatted}%")
-                        ->delete();
+                        ->update([
+                            'value' => null,
+                        ]);
                 }
             }
         }
@@ -903,6 +928,29 @@ function serviceParser(Service $resource): Collection
     $parsedServices = collect([]);
 
     $allMagicEnvironments = collect([]);
+    // Presave services
+    foreach ($services as $serviceName => $service) {
+        $image = data_get_str($service, 'image');
+        $isDatabase = isDatabaseImage($image, $service);
+        if ($isDatabase) {
+            $applicationFound = ServiceApplication::where('name', $serviceName)->where('image', $image)->where('service_id', $resource->id)->first();
+            if ($applicationFound) {
+                $savedService = $applicationFound;
+            } else {
+                $savedService = ServiceDatabase::firstOrCreate([
+                    'name' => $serviceName,
+                    'image' => $image,
+                    'service_id' => $resource->id,
+                ]);
+            }
+        } else {
+            $savedService = ServiceApplication::firstOrCreate([
+                'name' => $serviceName,
+                'image' => $image,
+                'service_id' => $resource->id,
+            ]);
+        }
+    }
     foreach ($services as $serviceName => $service) {
         $predefinedPort = null;
         $magicEnvironments = collect([]);
@@ -1014,7 +1062,6 @@ function serviceParser(Service $resource): Collection
                     }
                     $port = null;
                 }
-                // if ($isOneClick) {
                 if (blank($savedService->fqdn)) {
                     if ($fqdnFor) {
                         $fqdn = generateFqdn(server: $server, random: "$fqdnFor-$uuid", parserVersion: $resource->compose_parsing_version);
@@ -1031,14 +1078,6 @@ function serviceParser(Service $resource): Collection
                     $url = str($savedService->fqdn)->after('://')->before(':')->prepend(str($savedService->fqdn)->before('://')->append('://'))->value();
                 }
 
-                // } else {
-                //     // For services which are not one-click, if no explicit FQDN is set, leave SERVICE_FQDN_ variables empty
-                //     if (blank($savedService->fqdn)) {
-                //         $fqdn = '';
-                //     } else {
-                //         $fqdn = str($savedService->fqdn)->after('://')->before(':')->prepend(str($savedService->fqdn)->before('://')->append('://'))->value();
-                //     }
-                // }
                 if ($value && get_class($value) === \Illuminate\Support\Stringable::class && $value->startsWith('/')) {
                     $path = $value->value();
                     if ($path !== '/') {
@@ -1054,19 +1093,15 @@ function serviceParser(Service $resource): Collection
                 if ($url && $port) {
                     $urlWithPort = "$url:$port";
                 }
-                ray("urlWithPort: $urlWithPort, fqdnWithPort: $fqdnWithPort", "parserVersion: $resource->compose_parsing_version", 'isVersionGreaterThan4207: '.version_compare('4.0.0-beta.420.7', config('constants.coolify.version'), '>='));
                 if (is_null($savedService->fqdn)) {
                     if ((int) $resource->compose_parsing_version >= 5 && version_compare(config('constants.coolify.version'), '4.0.0-beta.420.7', '>=')) {
                         if ($fqdnFor) {
-                            ray("setting fqdn(fqdnWithPort) to $fqdnWithPort");
                             $savedService->fqdn = $fqdnWithPort;
                         }
                         if ($urlFor) {
-                            ray("setting fqdn(urlWithPort) to $urlWithPort");
                             $savedService->fqdn = $urlWithPort;
                         }
                     } else {
-                        ray("setting fqdn(fqdnWithPort) old parser version to $fqdnWithPort");
                         $savedService->fqdn = $fqdnWithPort;
                     }
                     $savedService->save();
@@ -1114,7 +1149,6 @@ function serviceParser(Service $resource): Collection
                 }
             }
         }
-
         $allMagicEnvironments = $allMagicEnvironments->merge($magicEnvironments);
         if ($magicEnvironments->count() > 0) {
             foreach ($magicEnvironments as $key => $value) {
@@ -1123,10 +1157,16 @@ function serviceParser(Service $resource): Collection
                 $command = parseCommandFromMagicEnvVariable($key);
                 if ($command->value() === 'FQDN') {
                     $fqdnFor = $key->after('SERVICE_FQDN_')->lower()->value();
-                    if (str($fqdnFor)->contains('_')) {
-                        $fqdnFor = str($fqdnFor)->before('_');
+                    $fqdn = generateFqdn(server: $server, random: str($fqdnFor)->replace('_', '-')->value()."-$uuid", parserVersion: $resource->compose_parsing_version);
+                    $url = generateUrl(server: $server, random: str($fqdnFor)->replace('_', '-')->value()."-$uuid");
+
+                    $envExists = $resource->environment_variables()->where('key', $key->value())->first();
+                    $serviceExists = ServiceApplication::where('name', str($fqdnFor)->replace('_', '-')->value())->where('service_id', $resource->id)->first();
+                    if (! $envExists && (data_get($serviceExists, 'name') === str($fqdnFor)->replace('_', '-')->value())) {
+                        // Save URL otherwise it won't work.
+                        $serviceExists->fqdn = $url;
+                        $serviceExists->save();
                     }
-                    $fqdn = generateFqdn(server: $server, random: "$fqdnFor-$uuid", parserVersion: $resource->compose_parsing_version);
                     $resource->environment_variables()->firstOrCreate([
                         'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
@@ -1136,22 +1176,27 @@ function serviceParser(Service $resource): Collection
                         'is_build_time' => false,
                         'is_preview' => false,
                     ]);
+
                 } elseif ($command->value() === 'URL') {
-                    $fqdnFor = $key->after('SERVICE_URL_')->lower()->value();
-                    if (str($fqdnFor)->contains('_')) {
-                        $fqdnFor = str($fqdnFor)->before('_');
+                    $urlFor = $key->after('SERVICE_URL_')->lower()->value();
+                    $url = generateUrl(server: $server, random: str($urlFor)->replace('_', '-')->value()."-$uuid");
+
+                    $envExists = $resource->environment_variables()->where('key', $key->value())->first();
+                    $serviceExists = ServiceApplication::where('name', str($urlFor)->replace('_', '-')->value())->where('service_id', $resource->id)->first();
+                    if (! $envExists && (data_get($serviceExists, 'name') === str($urlFor)->replace('_', '-')->value())) {
+                        $serviceExists->fqdn = $url;
+                        $serviceExists->save();
                     }
-                    $fqdn = generateFqdn(server: $server, random: "$fqdnFor-$uuid", parserVersion: $resource->compose_parsing_version);
-                    $fqdn = str($fqdn)->replace('http://', '')->replace('https://', '');
                     $resource->environment_variables()->firstOrCreate([
                         'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
                     ], [
-                        'value' => $fqdn,
+                        'value' => $url,
                         'is_build_time' => false,
                         'is_preview' => false,
                     ]);
+
                 } else {
                     $value = generateEnvValue($command, $resource);
                     $resource->environment_variables()->firstOrCreate([
@@ -1574,7 +1619,7 @@ function serviceParser(Service $resource): Collection
                 return str($fqdn)->replace('http://', '')->replace('https://', '')->before(':');
             });
             $coolifyEnvironments->put('COOLIFY_FQDN', $fqdnsWithoutPort->implode(','));
-            $urls = $fqdns->map(function ($fqdn) {
+            $urls = $fqdns->map(function ($fqdn): Stringable {
                 return str($fqdn)->after('://')->before(':')->prepend(str($fqdn)->before('://')->append('://'));
             });
             $coolifyEnvironments->put('COOLIFY_URL', $urls->implode(','));

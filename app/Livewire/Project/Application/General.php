@@ -231,7 +231,6 @@ class General extends Component
             // Refresh parsedServiceDomains to reflect any changes in docker_compose_domains
             $this->application->refresh();
             $this->parsedServiceDomains = $this->application->docker_compose_domains ? json_decode($this->application->docker_compose_domains, true) : [];
-            ray($this->parsedServiceDomains);
             // Convert service names with dots to use underscores for HTML form binding
             $sanitizedDomains = [];
             foreach ($this->parsedServiceDomains as $serviceName => $domain) {
@@ -463,33 +462,18 @@ class General extends Component
                 $this->application->publish_directory = rtrim($this->application->publish_directory, '/');
             }
             if ($this->application->build_pack === 'dockercompose') {
-                // Convert sanitized service names back to original names for storage
-                $originalDomains = [];
-                foreach ($this->parsedServiceDomains as $key => $value) {
-                    // Find the original service name by checking parsed services
-                    $originalServiceName = $key;
-                    if (isset($this->parsedServices['services'])) {
-                        foreach ($this->parsedServices['services'] as $originalName => $service) {
-                            if (str($originalName)->slug('_')->toString() === $key) {
-                                $originalServiceName = $originalName;
-                                break;
+                $this->application->docker_compose_domains = json_encode($this->parsedServiceDomains);
+                if ($this->application->isDirty('docker_compose_domains')) {
+                    foreach ($this->parsedServiceDomains as $service) {
+                        $domain = data_get($service, 'domain');
+                        if ($domain) {
+                            if (! validate_dns_entry($domain, $this->application->destination->server)) {
+                                $showToaster && $this->dispatch('error', 'Validating DNS failed.', "Make sure you have added the DNS records correctly.<br><br>$domain->{$this->application->destination->server->ip}<br><br>Check this <a target='_blank' class='underline dark:text-white' href='https://coolify.io/docs/knowledge-base/dns-configuration'>documentation</a> for further help.");
                             }
                         }
                     }
-                    $originalDomains[$originalServiceName] = $value;
-                }
-
-                $this->application->docker_compose_domains = json_encode($originalDomains);
-                foreach ($originalDomains as $serviceName => $service) {
-                    $domain = data_get($service, 'domain');
-                    if ($domain) {
-                        if (! validate_dns_entry($domain, $this->application->destination->server)) {
-                            $showToaster && $this->dispatch('error', 'Validating DNS failed.', "Make sure you have added the DNS records correctly.<br><br>$domain->{$this->application->destination->server->ip}<br><br>Check this <a target='_blank' class='underline dark:text-white' href='https://coolify.io/docs/knowledge-base/dns-configuration'>documentation</a> for further help.");
-                        }
-                        check_domain_usage(resource: $this->application);
-                    }
-                }
-                if ($this->application->isDirty('docker_compose_domains')) {
+                    check_domain_usage(resource: $this->application);
+                    $this->application->save();
                     $this->resetDefaultLabels();
                 }
             }
