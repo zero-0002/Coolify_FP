@@ -71,7 +71,7 @@ services:
       timeout: 1s
       retries: 3
     environment:
-      - SERVICE_FQDN_PTERODACTYL_80
+      - SERVICE_URL_PTERODACTYL_80
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
       - ADMIN_USERNAME=${SERVICE_USER_ADMIN}
       - ADMIN_FIRSTNAME=${ADMIN_FIRSTNAME:-Admin}
@@ -80,7 +80,7 @@ services:
       - PTERODACTYL_HTTPS=${PTERODACTYL_HTTPS:-false}
       - APP_ENV=production
       - APP_ENVIRONMENT_ONLY=false
-      - APP_URL=$SERVICE_FQDN_PTERODACTYL
+      - APP_URL=$SERVICE_URL_PTERODACTYL
       - APP_TIMEZONE=${TIMEZONE:-UTC}
       - APP_SERVICE_AUTHOR=${APP_SERVICE_AUTHOR:-author@example.com}
       - LOG_LEVEL=${LOG_LEVEL:-debug}

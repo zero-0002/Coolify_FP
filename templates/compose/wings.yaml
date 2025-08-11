@@ -8,7 +8,7 @@ services:
   wings:
     image: "ghcr.io/pterodactyl/wings:latest"
     environment:
-      - SERVICE_FQDN_WINGS_8443
+      - SERVICE_URL_WINGS_8443
       - "TZ=${TIMEZONE:-UTC}"
       - WINGS_USERNAME=$SERVICE_USER_WINGS
     volumes:

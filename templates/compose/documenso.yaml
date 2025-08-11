@@ -62,7 +62,7 @@ services:
         L            = ${CERT_INFO_LOCALITY_NAME}
         O            = ${CERT_INFO_ORGANIZATION_NAME}
         OU           = ${CERT_INFO_ORGANIZATIONAL_UNIT}
-        CN           = ${SERVICE_FQDN_DOCUMENSO}
+        CN           = ${SERVICE_URL_DOCUMENSO}
         emailAddress = ${CERT_INFO_EMAIL}
         EOF
 
