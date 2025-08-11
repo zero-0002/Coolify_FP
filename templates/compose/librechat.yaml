@@ -7,29 +7,19 @@
 services:
   librechat:
     image: ghcr.io/danny-avila/librechat-dev-api:latest
-    depends_on:
-      mongodb:
-        condition: service_healthy  
-      rag_api:
-        condition: service_healthy  
     environment:
-      - HOST=0.0.0.0
-      - PORT=3080
       - SERVICE_FQDN_LIBRECHAT_3080
-      # MongoDB settings
-      - MONGO_URI=mongodb://${SERVICE_USER_MONGO}:${SERVICE_PASSWORD_MONGO}@mongodb:27017/librechat?authSource=admin
-      # Meilisearch settings
-      - MEILI_HOST=http://meilisearch:7700
-      - MEILI_MASTER_KEY=${SERVICE_PASSWORD_MEILI}
-      # RAG settings
-      - RAG_PORT=8000
-      - RAG_API_URL=http://rag_api:8000
-      # Auth settings
       - DOMAIN_CLIENT=${SERVICE_FQDN_LIBRECHAT}
       - DOMAIN_SERVER=${SERVICE_FQDN_LIBRECHAT}
+      - HOST=0.0.0.0
+      - PORT=3080
+      - MONGO_URI=mongodb://${SERVICE_USER_MONGO}:${SERVICE_PASSWORD_MONGO}@mongodb:27017/librechat?authSource=admin
+      - MEILI_HOST=http://meilisearch:7700
+      - MEILI_MASTER_KEY=${SERVICE_PASSWORD_MEILI}
+      - RAG_PORT=8000
+      - RAG_API_URL=http://rag-api:8000
       - JWT_SECRET=${SERVICE_PASSWORD_JWT}
       - JWT_REFRESH_SECRET=${SERVICE_PASSWORD_64_JWT}
-      # App settings
       - APP_TITLE=${APP_TITLE:-LibreChat}
       - ALLOW_EMAIL_LOGIN=${ALLOW_EMAIL_LOGIN:-true}
       - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-true}
@@ -37,32 +27,16 @@ services:
       - ALLOW_SOCIAL_REGISTRATION=${ALLOW_SOCIAL_REGISTRATION:-false}
       - ALLOW_PASSWORD_RESET=${ALLOW_PASSWORD_RESET:-false}
       - ALLOW_UNVERIFIED_EMAIL_LOGIN=${ALLOW_UNVERIFIED_EMAIL_LOGIN:-true}
-      # Encryption settings
       - CREDS_KEY=${SERVICE_PASSWORD_64_CREDS}
       - CREDS_IV=${SERVICE_PASSWORD_CREDS}
-      # API Keys
       - ANTHROPIC_API_KEY=${SERVICE_ANTHROPIC_API_KEY:-user_provided}
       - GOOGLE_KEY=${SERVICE_GOOGLE_API_KEY:-user_provided}
       - OPENAI_API_KEY=${SERVICE_OPENAI_API_KEY:-user_provided}
       - ASSISTANTS_API_KEY=${SERVICE_ASSISTANTS_API_KEY:-user_provided}
-      # Debug settings
       - DEBUG_LOGGING=${DEBUG_LOGGING:-false}
       - DEBUG_OPENAI=${DEBUG_OPENAI:-false}
       - DEBUG_PLUGINS=${DEBUG_OPENAI:-false}
       - NO_INDEX=${NO_INDEX:-true}
-    healthcheck:
-      test:
-        [
-          'CMD',
-          'wget',
-          '--no-verbose',
-          '--tries=1',
-          '--spider',
-          'http://127.0.0.1:3080/api/health',
-        ]
-      interval: 5s
-      timeout: 10s
-      retries: 3
     volumes:
       - librechat-images:/app/client/public/images
       - librechat-logs:/app/api/logs
@@ -71,28 +45,46 @@ services:
         source: ./librechat.yaml
         target: /app/librechat.yaml
         content: |
-          # For more information, see the Configuration Guide:
-          # https://www.librechat.ai/docs/configuration/librechat_yaml
-
-          # Configuration version (required)
           version: 1.2.8
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      vectordb:
+        condition: service_healthy
+      rag-api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:3080/api/health",
+        ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
 
   mongodb:
+    image: mongo:8
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${SERVICE_USER_MONGO}
       - MONGO_INITDB_ROOT_PASSWORD=${SERVICE_PASSWORD_MONGO}
-    image: mongo:8
     volumes:
       - mongodb-data:/data/db
     healthcheck:
       test:
         [
-          'CMD',
-          'mongosh',
-          '--eval',
+          "CMD",
+          "mongosh",
+          "--eval",
           "db.runCommand('ping').ok",
-          '127.0.0.1:27017/test',
-          '--quiet',
+          "127.0.0.1:27017/test",
+          "--quiet",
         ]
       interval: 5s
       timeout: 10s
@@ -108,7 +100,7 @@ services:
     volumes:
       - meilisearch-data:/meili_data
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://127.0.0.1:7700/health']
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:7700/health"]
       interval: 2s
       timeout: 10s
       retries: 15
@@ -126,20 +118,17 @@ services:
       test:
         - CMD
         - pg_isready
-        - '--username=$SERVICE_USER_POSTGRES'
-        - '--host=127.0.0.1'
-        - '--port=5432'
-        - '--dbname=rag'
+        - "--username=$SERVICE_USER_POSTGRES"
+        - "--host=127.0.0.1"
+        - "--port=5432"
+        - "--dbname=rag"
       interval: 2s
       timeout: 1m
       retries: 5
       start_period: 10s
 
-  rag_api:
+  rag-api:
     image: ghcr.io/danny-avila/librechat-rag-api-dev-lite:latest
-    depends_on:
-      vectordb:
-        condition: service_healthy  
     environment:
       - POSTGRES_DB=rag
       - POSTGRES_USER=${SERVICE_USER_POSTGRES}
@@ -150,8 +139,17 @@ services:
       - DB_NAME=rag
       - RAG_PORT=8000
       - RAG_OPENAI_API_KEY=${SERVICE_OPENAI_API_KEY:-user_provided}
+    depends_on:
+      vectordb:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
       interval: 5s
       timeout: 10s
       retries: 10
