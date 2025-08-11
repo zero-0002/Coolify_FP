@@ -776,6 +776,21 @@
         "minversion": "0.0.0",
         "port": "8080"
     },
+    "drizzle-gateway": {
+        "documentation": "https://gateway.drizzle.team/?utm_source=coolify.io",
+        "slogan": "Free self-hosted Drizzle Studio on steroids",
+        "compose": "c2VydmljZXM6CiAgZHJpenpsZS1nYXRld2F5OgogICAgaW1hZ2U6ICdnaGNyLmlvL2RyaXp6bGUtdGVhbS9nYXRld2F5OmxhdGVzdCcKICAgIGVudmlyb25tZW50OgogICAgICAtIFNFUlZJQ0VfVVJMX0RSSVpaTEVfNDk4MwogICAgICAtIFNUT1JFX1BBVEg9Li9hcHAKICAgICAgLSBNQVNURVJQQVNTPSRTRVJWSUNFX1BBU1NXT1JEX0RSSVpaTEUKICAgIHZvbHVtZXM6CiAgICAgIC0gJ2RyaXp6bGUtZ2F0ZXdheS1kYXRhOi9hcHAnCiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRC1TSEVMTAogICAgICAgIC0gJ3dnZXQgLXFPLSBodHRwOi8vMTI3LjAuMC4xOjQ5ODMvJwogICAgICBpbnRlcnZhbDogNXMKICAgICAgdGltZW91dDogMjBzCiAgICAgIHJldHJpZXM6IDEwCg==",
+        "tags": [
+            "drizzle",
+            "gateway",
+            "self-hosted",
+            "open-source",
+            "low-code"
+        ],
+        "logo": "svgs/drizzle.jpeg",
+        "minversion": "0.0.0",
+        "port": "4983"
+    },
     "drupal-with-postgresql": {
         "documentation": "https://www.drupal.org/about?utm_source=coolify.io",
         "slogan": "Drupal is a free and open-source web content management system written in PHP and distributed under the GNU General Public License.",
