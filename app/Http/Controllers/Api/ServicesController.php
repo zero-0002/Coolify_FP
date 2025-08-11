@@ -713,8 +713,8 @@ class ServicesController extends Controller
         }
         $connectToDockerNetwork = $request->connect_to_docker_network ?? false;
 
-        $service->name = $request->name ?? null;
-        $service->description = $request->description ?? null;
+        $service->name = $request->name ?? $service->name;
+        $service->description = $request->description ?? $service->description;
         $service->environment_id = $environment->id;
         $service->server_id = $server->id;
         $service->destination_id = $destination->id;
