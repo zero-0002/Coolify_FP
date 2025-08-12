@@ -224,7 +224,8 @@
 
     <!-- What's New Modal -->
     @if ($showWhatsNewModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center py-6 px-4" @keydown.escape.window="$wire.closeWhatsNewModal()">
+        <div class="fixed inset-0 z-50 flex items-center justify-center py-6 px-4"
+            @keydown.escape.window="$wire.closeWhatsNewModal()">
             <!-- Background overlay -->
             <div class="absolute inset-0 w-full h-full bg-black/20 backdrop-blur-xs" wire:click="closeWhatsNewModal">
             </div>
@@ -296,12 +297,7 @@
                                                         target="_blank"
                                                         class="inline-flex items-center gap-1 hover:text-coolgray-500">
                                                         <span x-text="entry.title"></span>
-                                                        <svg class="w-3 h-3 text-neutral-400" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                                        </svg>
+                                                        <x-external-link />
                                                     </a></span>
                                                 <span class="text-xs dark:text-neutral-400"
                                                     x-text="new Date(entry.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })"></span>
