@@ -13,6 +13,7 @@ Coolify is an open-source, self-hostable platform for deploying applications and
 - `npm run build` - Build frontend assets for production
 
 ### Backend Development
+Only run artisan commands inside "coolify" container when in development.
 - `php artisan serve` - Start Laravel development server
 - `php artisan migrate` - Run database migrations
 - `php artisan queue:work` - Start queue worker for background jobs
