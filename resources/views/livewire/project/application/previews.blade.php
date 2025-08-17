@@ -66,7 +66,8 @@
         <h3 class="py-4">Deployments</h3>
         <div class="flex flex-wrap w-full gap-4">
             @foreach (data_get($application, 'previews') as $previewName => $preview)
-                <div class="flex flex-col w-full p-4 border dark:border-coolgray-200" wire:key="preview-container-{{ $preview->pull_request_id }}">
+                <div class="flex flex-col w-full p-4 border dark:border-coolgray-200"
+                    wire:key="preview-container-{{ $preview->pull_request_id }}">
                     <div class="flex gap-2">PR #{{ data_get($preview, 'pull_request_id') }} |
                         @if (str(data_get($preview, 'status'))->startsWith('running'))
                             <x-status.running :status="data_get($preview, 'status')" />
@@ -85,6 +86,18 @@
                             PR on Git
                             <x-external-link />
                         </a>
+                        @if (count($parameters) > 0)
+                            |
+                            <a
+                                href="{{ route('project.application.deployment.index', [...$parameters, 'pull_request_id' => data_get($preview, 'pull_request_id')]) }}">
+                                Deployment Logs
+                            </a>
+                            |
+                            <a
+                                href="{{ route('project.application.logs', [...$parameters, 'pull_request_id' => data_get($preview, 'pull_request_id')]) }}">
+                                Application Logs
+                            </a>
+                        @endif
                     </div>
 
                     @if ($application->build_pack === 'dockercompose')
@@ -100,7 +113,8 @@
                                 </form>
                             @else
                                 @foreach (collect(json_decode($preview->docker_compose_domains)) as $serviceName => $service)
-                                    <livewire:project.application.previews-compose wire:key="preview-{{ $preview->pull_request_id }}-{{ $serviceName }}"
+                                    <livewire:project.application.previews-compose
+                                        wire:key="preview-{{ $preview->pull_request_id }}-{{ $serviceName }}"
                                         :service="$service" :serviceName="$serviceName" :preview="$preview" />
                                 @endforeach
                             @endif
@@ -114,21 +128,7 @@
                                 Domain</x-forms.button>
                         </form>
                     @endif
-                    <div class="flex items-center gap-2 pt-6">
-                        @if (count($parameters) > 0)
-                            <a
-                                href="{{ route('project.application.deployment.index', [...$parameters, 'pull_request_id' => data_get($preview, 'pull_request_id')]) }}">
-                                <x-forms.button>
-                                    Deployment Logs
-                                </x-forms.button>
-                            </a>
-                            <a
-                                href="{{ route('project.application.logs', [...$parameters, 'pull_request_id' => data_get($preview, 'pull_request_id')]) }}">
-                                <x-forms.button>
-                                    Application Logs
-                                </x-forms.button>
-                            </a>
-                        @endif
+                    <div class="flex flex-col xl:flex-row xl:items-center gap-2 pt-6">
                         <div class="flex-1"></div>
                         <x-forms.button
                             wire:click="force_deploy_without_cache({{ data_get($preview, 'pull_request_id') }})">
