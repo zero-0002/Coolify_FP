@@ -351,6 +351,12 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                     $size = $this->calculate_size();
                     if ($this->backup->save_s3) {
                         $this->upload_to_s3();
+
+                        // If local backup is disabled, delete the local file immediately after S3 upload
+                        if ($this->backup->disable_local_backup) {
+                            deleteBackupsLocally($this->backup_location, $this->server);
+                            $this->add_to_backup_output('Local backup file deleted after S3 upload (disable_local_backup enabled).');
+                        }
                     }
 
                     $this->team->notify(new BackupSuccess($this->backup, $this->database, $database));
