@@ -304,8 +304,8 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                 $content = null;
                 $isDirectory = false;
                 if (is_string($volume)) {
-                    $source = str($volume)->before(':');
-                    $target = str($volume)->after(':')->beforeLast(':');
+                    $source = str($volume)->beforeLast(':');
+                    $target = str($volume)->afterLast(':');
                     $foundConfig = $fileStorages->whereMountPath($target)->first();
                     if (sourceIsLocal($source)) {
                         $type = str('bind');
@@ -399,8 +399,8 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         $name = "{$name}-pr-$pullRequestId";
                     }
                     if (is_string($volume)) {
-                        $source = str($volume)->before(':');
-                        $target = str($volume)->after(':')->beforeLast(':');
+                        $source = str($volume)->beforeLast(':');
+                        $target = str($volume)->afterLast(':');
                         $source = $name;
                         $volume = "$source:$target";
                     } elseif (is_array($volume)) {
@@ -1306,8 +1306,8 @@ function serviceParser(Service $resource): Collection
                 $content = null;
                 $isDirectory = false;
                 if (is_string($volume)) {
-                    $source = str($volume)->before(':');
-                    $target = str($volume)->after(':')->beforeLast(':');
+                    $source = str($volume)->beforeLast(':');
+                    $target = str($volume)->afterLast(':');
                     $foundConfig = $fileStorages->whereMountPath($target)->first();
                     if (sourceIsLocal($source)) {
                         $type = str('bind');
@@ -1395,8 +1395,8 @@ function serviceParser(Service $resource): Collection
                     $name = "{$uuid}_{$slugWithoutUuid}";
 
                     if (is_string($volume)) {
-                        $source = str($volume)->before(':');
-                        $target = str($volume)->after(':')->beforeLast(':');
+                        $source = str($volume)->beforeLast(':');
+                        $target = str($volume)->afterLast(':');
                         $source = $name;
                         $volume = "$source:$target";
                     } elseif (is_array($volume)) {
