@@ -1,5 +1,6 @@
 # documentation: https://www.bugsink.com/docs/
-# slogan: Self-hosted Error Tracking
+# slogan: Self-hosted Error Tracking.
+# category: monitoring
 # tags: python, error-tracking, django, mysql
 # logo: svgs/bugsink.svg
 # port: 8000
