@@ -1,5 +1,6 @@
 # documentation: https://docs.getoutline.com/s/hosting/doc/hosting-outline-nipGaCRBDu
 # slogan: Your team’s knowledge base
+# category: productivity
 # tags: knowledge base, documentation
 # logo: svgs/getoutline.jpeg
 # port: 3000
@@ -52,7 +53,7 @@ services:
       - OIDC_USERNAME_CLAIM=${OIDC_USERNAME_CLAIM}
       - OIDC_DISPLAY_NAME=${OIDC_DISPLAY_NAME}
       - OIDC_SCOPES=${OIDC_SCOPES}
-      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}    
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - GITHUB_APP_NAME=${GITHUB_APP_NAME}
       - GITHUB_APP_ID=${GITHUB_APP_ID}

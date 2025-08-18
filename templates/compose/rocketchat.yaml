@@ -1,5 +1,6 @@
 # documentation: https://github.com/RocketChat/Rocket.Chat
 # slogan: Self-hosted, secure and highly customizable open-source communication platform for organizations with sophisticated security and privacy concerns.
+# category: messaging
 # tags: rocketchat,chat,communication,privacy,mongodb,open,source
 # logo: svgs/rocketchat.svg
 # port: 3000

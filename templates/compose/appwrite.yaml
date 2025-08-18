@@ -1,6 +1,7 @@
 # documentation: https://appwrite.io
 # slogan: A backend-as-a-service platform that simplifies the web & mobile app development.
-# tags: backend-as-a-service, platform
+# category: backend
+# tags: backend, backend-as-a-service, platform
 # logo: svgs/appwrite.svg
 
 services:

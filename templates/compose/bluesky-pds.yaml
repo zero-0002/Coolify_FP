@@ -1,5 +1,6 @@
 # documentation: https://github.com/bluesky-social/pds
 # slogan: Bluesky PDS (Personal Data Server)
+# category: backend
 # tags: bluesky, pds, platform
 # logo: svgs/bluesky.svg
 # port: 3000
@@ -26,7 +27,7 @@ services:
       - PDS_REPORT_SERVICE_DID=${PDS_REPORT_SERVICE_DID:-did:plc:ar7c4by46qjdydhdevvrndac}
       - PDS_CRAWLERS=${PDS_CRAWLERS:-https://bsky.network}
       - LOG_ENABLED=${LOG_ENABLED:-true}
-  
+
     command: >
       sh -c '
         echo "Installing curl, bash, and pdsadmin..."
