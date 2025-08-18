@@ -70,6 +70,10 @@ return [
         ],
     ],
 
+    'email_change' => [
+        'verification_code_expiry_minutes' => 10,
+    ],
+
     'sentry' => [
         'sentry_dsn' => env('SENTRY_DSN'),
     ],
