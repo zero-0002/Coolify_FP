@@ -33,7 +33,10 @@ class Heading extends Component
     public function activityFinished()
     {
         try {
-            $this->database->started_at ??= now();
+            // Only set started_at if database is actually running
+            if ($this->database->isRunning()) {
+                $this->database->started_at ??= now();
+            }
             $this->database->save();
 
             if (is_null($this->database->config_hash) || $this->database->isConfigurationChanged()) {
