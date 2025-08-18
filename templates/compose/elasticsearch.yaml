@@ -1,6 +1,7 @@
 # documentation: https://www.elastic.co/products/elasticsearch
 # slogan: Elasticsearch is free and Open Source, Distributed, RESTful Search Engine.
 # tags: search,engine,fulltext,full,text,elasticsearch
+# category: search
 # logo: svgs/elasticsearch.svg
 # port: 9200
 
@@ -8,7 +9,7 @@ services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch-wolfi:8.19.0
     environment:
-      - SERVICE_FQDN_ELASTICSEARCH_9200
+      - SERVICE_URL_ELASTICSEARCH_9200
       - ELASTIC_PASSWORD=${SERVICE_PASSWORD_ELASTICSEARCH}
       - ES_JAVA_OPTS=-Xms512m -Xmx512m # memory set to 512MB
       - discovery.type=single-node
@@ -20,7 +21,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl --user elastic:${SERVICE_PASSWORD_ELASTICSEARCH} --silent --fail http://localhost:9200/_cluster/health"
+          "curl --user elastic:${SERVICE_PASSWORD_ELASTICSEARCH} --silent --fail http://localhost:9200/_cluster/health",
         ]
       interval: 10s
       timeout: 10s
