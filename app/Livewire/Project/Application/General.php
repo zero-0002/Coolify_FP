@@ -312,6 +312,18 @@ class General extends Component
         if ($this->application->build_pack === 'dockercompose') {
             $this->application->fqdn = null;
             $this->application->settings->save();
+        } else {
+            // Clear Docker Compose specific data when switching away from dockercompose
+            if ($this->application->getOriginal('build_pack') === 'dockercompose') {
+                $this->application->docker_compose_domains = null;
+                $this->application->docker_compose_raw = null;
+
+                // Remove SERVICE_FQDN_* and SERVICE_URL_* environment variables
+                $this->application->environment_variables()->where('key', 'LIKE', 'SERVICE_FQDN_%')->delete();
+                $this->application->environment_variables()->where('key', 'LIKE', 'SERVICE_URL_%')->delete();
+                $this->application->environment_variables_preview()->where('key', 'LIKE', 'SERVICE_FQDN_%')->delete();
+                $this->application->environment_variables_preview()->where('key', 'LIKE', 'SERVICE_URL_%')->delete();
+            }
         }
         if ($this->application->build_pack === 'static') {
             $this->application->ports_exposes = $this->ports_exposes = 80;

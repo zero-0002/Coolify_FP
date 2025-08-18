@@ -635,6 +635,11 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
         } else {
             $domains = collect(json_decode(data_get($resource, 'docker_compose_domains'))) ?? collect([]);
         }
+
+        // Only process domains for dockercompose applications to prevent SERVICE variable recreation
+        if ($resource->build_pack !== 'dockercompose') {
+            $domains = collect([]);
+        }
         $fqdns = data_get($domains, "$serviceName.domain");
         // Generate SERVICE_FQDN & SERVICE_URL for dockercompose
         if ($resource->build_pack === 'dockercompose') {
