@@ -68,11 +68,21 @@ class Init extends Command
 
         if (isCloud()) {
             try {
-                $this->cleanupUnnecessaryDynamicProxyConfiguration();
+                $this->cleanupInProgressApplicationDeployments();
+            } catch (\Throwable $e) {
+                echo "Could not cleanup inprogress deployments: {$e->getMessage()}\n";
+            }
+
+            try {
                 $this->pullTemplatesFromCDN();
-                $this->pullChangelogFromGitHub();
             } catch (\Throwable $e) {
                 echo "Could not pull templates from CDN: {$e->getMessage()}\n";
+            }
+
+            try {
+                $this->pullChangelogFromGitHub();
+            } catch (\Throwable $e) {
+                echo "Could not changelogs from github: {$e->getMessage()}\n";
             }
 
             return;
@@ -80,10 +90,20 @@ class Init extends Command
 
         try {
             $this->cleanupInProgressApplicationDeployments();
+        } catch (\Throwable $e) {
+            echo "Could not cleanup inprogress deployments: {$e->getMessage()}\n";
+        }
+
+        try {
             $this->pullTemplatesFromCDN();
-            $this->pullChangelogFromGitHub();
         } catch (\Throwable $e) {
             echo "Could not pull templates from CDN: {$e->getMessage()}\n";
+        }
+
+        try {
+            $this->pullChangelogFromGitHub();
+        } catch (\Throwable $e) {
+            echo "Could not changelogs from github: {$e->getMessage()}\n";
         }
         try {
             $localhost = $this->servers->where('id', 0)->first();
