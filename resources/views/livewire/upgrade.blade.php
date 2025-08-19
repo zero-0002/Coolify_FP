@@ -69,7 +69,7 @@
                             </p>
                             <div class="flex flex-col pt-4" x-show="showProgress">
                                 <h2>Progress <x-loading /></h2>
-                                <div x-html="currentStatus"></div>
+                                <div x-html="window.sanitizeHTML(currentStatus)"></div>
                             </div>
                         </div>
                         <div class="flex gap-4" x-show="!showProgress">

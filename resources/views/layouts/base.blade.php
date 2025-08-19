@@ -35,9 +35,9 @@
     @endphp
     <title>{{ $name }}{{ $title ?? 'Coolify' }}</title>
     @env('local')
-    <link rel="icon" href="{{ asset('coolify-logo-dev-transparent.png') }}" type="image/x-icon" />
-@else
-    <link rel="icon" href="{{ asset('coolify-logo.svg') }}" type="image/x-icon" />
+        <link rel="icon" href="{{ asset('coolify-logo-dev-transparent.png') }}" type="image/x-icon" />
+    @else
+        <link rel="icon" href="{{ asset('coolify-logo.svg') }}" type="image/x-icon" />
     @endenv
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @vite(['resources/js/app.js', 'resources/css/app.css'])
@@ -54,6 +54,7 @@
         <script type="text/javascript" src="{{ URL::asset('js/echo.js') }}"></script>
         <script type="text/javascript" src="{{ URL::asset('js/pusher.js') }}"></script>
         <script type="text/javascript" src="{{ URL::asset('js/apexcharts.js') }}"></script>
+        <script type="text/javascript" src="{{ URL::asset('js/purify.min.js') }}"></script>
     @endauth
 </head>
 @section('body')
@@ -61,6 +62,32 @@
     <body>
         <x-toast />
         <script data-navigate-once>
+            // Global HTML sanitization function using DOMPurify
+            window.sanitizeHTML = function(html) {
+                if (!html) return '';
+
+                // Use DOMPurify with strict configuration for toast notifications
+                const purified = DOMPurify.sanitize(html, {
+                    ALLOWED_TAGS: ['a', 'b', 'br', 'code', 'del', 'div', 'em', 'i', 'p', 'pre', 's', 'span',
+                        'strong', 'u'
+                    ],
+                    ALLOWED_ATTR: ['class', 'href', 'target', 'title'],
+                    ALLOW_DATA_ATTR: false,
+                    FORBID_TAGS: ['script', 'object', 'embed', 'applet', 'iframe', 'form', 'input', 'button',
+                        'select', 'textarea', 'details', 'summary', 'dialog', 'style'
+                    ],
+                    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'onchange',
+                        'onsubmit', 'ontoggle', 'style'
+                    ],
+                    KEEP_CONTENT: true,
+                    RETURN_DOM: false,
+                    RETURN_DOM_FRAGMENT: false,
+                    SANITIZE_DOM: true
+                });
+                console.log(purified);
+                return purified;
+            };
+
             if (!('theme' in localStorage)) {
                 localStorage.theme = 'dark';
                 document.documentElement.classList.add('dark')

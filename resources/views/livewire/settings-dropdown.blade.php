@@ -303,7 +303,7 @@
                                                     x-text="new Date(entry.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })"></span>
                                             </div>
                                             <div class="dark:text-neutral-300 leading-relaxed  max-w-none"
-                                                x-html="entry.content_html">
+                                                x-html="window.sanitizeHTML(entry.content_html)">
                                             </div>
                                         </div>
 
