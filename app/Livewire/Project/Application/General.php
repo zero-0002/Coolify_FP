@@ -4,6 +4,7 @@ namespace App\Livewire\Project\Application;
 
 use App\Actions\Application\GenerateConfig;
 use App\Models\Application;
+use App\Support\ValidationPatterns;
 use Illuminate\Support\Collection;
 use Livewire\Component;
 use Spatie\Url\Url;
@@ -52,52 +53,89 @@ class General extends Component
         'configurationChanged' => '$refresh',
     ];
 
-    protected $rules = [
-        'application.name' => 'required',
-        'application.description' => 'nullable',
-        'application.fqdn' => 'nullable',
-        'application.git_repository' => 'required',
-        'application.git_branch' => 'required',
-        'application.git_commit_sha' => 'nullable',
-        'application.install_command' => 'nullable',
-        'application.build_command' => 'nullable',
-        'application.start_command' => 'nullable',
-        'application.build_pack' => 'required',
-        'application.static_image' => 'required',
-        'application.base_directory' => 'required',
-        'application.publish_directory' => 'nullable',
-        'application.ports_exposes' => 'required',
-        'application.ports_mappings' => 'nullable',
-        'application.custom_network_aliases' => 'nullable',
-        'application.dockerfile' => 'nullable',
-        'application.docker_registry_image_name' => 'nullable',
-        'application.docker_registry_image_tag' => 'nullable',
-        'application.dockerfile_location' => 'nullable',
-        'application.docker_compose_location' => 'nullable',
-        'application.docker_compose' => 'nullable',
-        'application.docker_compose_raw' => 'nullable',
-        'application.dockerfile_target_build' => 'nullable',
-        'application.docker_compose_custom_start_command' => 'nullable',
-        'application.docker_compose_custom_build_command' => 'nullable',
-        'application.custom_labels' => 'nullable',
-        'application.custom_docker_run_options' => 'nullable',
-        'application.pre_deployment_command' => 'nullable',
-        'application.pre_deployment_command_container' => 'nullable',
-        'application.post_deployment_command' => 'nullable',
-        'application.post_deployment_command_container' => 'nullable',
-        'application.custom_nginx_configuration' => 'nullable',
-        'application.settings.is_static' => 'boolean|required',
-        'application.settings.is_spa' => 'boolean|required',
-        'application.settings.is_build_server_enabled' => 'boolean|required',
-        'application.settings.is_container_label_escape_enabled' => 'boolean|required',
-        'application.settings.is_container_label_readonly_enabled' => 'boolean|required',
-        'application.settings.is_preserve_repository_enabled' => 'boolean|required',
-        'application.is_http_basic_auth_enabled' => 'boolean|required',
-        'application.http_basic_auth_username' => 'string|nullable',
-        'application.http_basic_auth_password' => 'string|nullable',
-        'application.watch_paths' => 'nullable',
-        'application.redirect' => 'string|required',
-    ];
+    protected function rules(): array
+    {
+        return [
+            'application.name' => ValidationPatterns::nameRules(),
+            'application.description' => ValidationPatterns::descriptionRules(),
+            'application.fqdn' => 'nullable',
+            'application.git_repository' => 'required',
+            'application.git_branch' => 'required',
+            'application.git_commit_sha' => 'nullable',
+            'application.install_command' => 'nullable',
+            'application.build_command' => 'nullable',
+            'application.start_command' => 'nullable',
+            'application.build_pack' => 'required',
+            'application.static_image' => 'required',
+            'application.base_directory' => 'required',
+            'application.publish_directory' => 'nullable',
+            'application.ports_exposes' => 'required',
+            'application.ports_mappings' => 'nullable',
+            'application.custom_network_aliases' => 'nullable',
+            'application.dockerfile' => 'nullable',
+            'application.docker_registry_image_name' => 'nullable',
+            'application.docker_registry_image_tag' => 'nullable',
+            'application.dockerfile_location' => 'nullable',
+            'application.docker_compose_location' => 'nullable',
+            'application.docker_compose' => 'nullable',
+            'application.docker_compose_raw' => 'nullable',
+            'application.dockerfile_target_build' => 'nullable',
+            'application.docker_compose_custom_start_command' => 'nullable',
+            'application.docker_compose_custom_build_command' => 'nullable',
+            'application.custom_labels' => 'nullable',
+            'application.custom_docker_run_options' => 'nullable',
+            'application.pre_deployment_command' => 'nullable',
+            'application.pre_deployment_command_container' => 'nullable',
+            'application.post_deployment_command' => 'nullable',
+            'application.post_deployment_command_container' => 'nullable',
+            'application.custom_nginx_configuration' => 'nullable',
+            'application.settings.is_static' => 'boolean|required',
+            'application.settings.is_spa' => 'boolean|required',
+            'application.settings.is_build_server_enabled' => 'boolean|required',
+            'application.settings.is_container_label_escape_enabled' => 'boolean|required',
+            'application.settings.is_container_label_readonly_enabled' => 'boolean|required',
+            'application.settings.is_preserve_repository_enabled' => 'boolean|required',
+            'application.is_http_basic_auth_enabled' => 'boolean|required',
+            'application.http_basic_auth_username' => 'string|nullable',
+            'application.http_basic_auth_password' => 'string|nullable',
+            'application.watch_paths' => 'nullable',
+            'application.redirect' => 'string|required',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return array_merge(
+            ValidationPatterns::combinedMessages(),
+            [
+                'application.name.required' => 'The Name field is required.',
+                'application.name.regex' => 'The Name may only contain letters, numbers, spaces, dashes (-), underscores (_), dots (.), slashes (/), colons (:), and parentheses ().',
+                'application.description.regex' => 'The Description contains invalid characters. Only letters, numbers, spaces, and common punctuation (- _ . : / () \' " , ! ? @ # % & + = [] {} | ~ ` *) are allowed.',
+                'application.git_repository.required' => 'The Git Repository field is required.',
+                'application.git_branch.required' => 'The Git Branch field is required.',
+                'application.build_pack.required' => 'The Build Pack field is required.',
+                'application.static_image.required' => 'The Static Image field is required.',
+                'application.base_directory.required' => 'The Base Directory field is required.',
+                'application.ports_exposes.required' => 'The Exposed Ports field is required.',
+                'application.settings.is_static.required' => 'The Static setting is required.',
+                'application.settings.is_static.boolean' => 'The Static setting must be true or false.',
+                'application.settings.is_spa.required' => 'The SPA setting is required.',
+                'application.settings.is_spa.boolean' => 'The SPA setting must be true or false.',
+                'application.settings.is_build_server_enabled.required' => 'The Build Server setting is required.',
+                'application.settings.is_build_server_enabled.boolean' => 'The Build Server setting must be true or false.',
+                'application.settings.is_container_label_escape_enabled.required' => 'The Container Label Escape setting is required.',
+                'application.settings.is_container_label_escape_enabled.boolean' => 'The Container Label Escape setting must be true or false.',
+                'application.settings.is_container_label_readonly_enabled.required' => 'The Container Label Readonly setting is required.',
+                'application.settings.is_container_label_readonly_enabled.boolean' => 'The Container Label Readonly setting must be true or false.',
+                'application.settings.is_preserve_repository_enabled.required' => 'The Preserve Repository setting is required.',
+                'application.settings.is_preserve_repository_enabled.boolean' => 'The Preserve Repository setting must be true or false.',
+                'application.is_http_basic_auth_enabled.required' => 'The HTTP Basic Auth setting is required.',
+                'application.is_http_basic_auth_enabled.boolean' => 'The HTTP Basic Auth setting must be true or false.',
+                'application.redirect.required' => 'The Redirect setting is required.',
+                'application.redirect.string' => 'The Redirect setting must be a string.',
+            ]
+        );
+    }
 
     protected $validationAttributes = [
         'application.name' => 'name',

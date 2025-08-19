@@ -8,6 +8,7 @@ use App\Helpers\SslHelper;
 use App\Models\Server;
 use App\Models\SslCertificate;
 use App\Models\StandaloneMysql;
+use App\Support\ValidationPatterns;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -37,23 +38,45 @@ class General extends Component
         ];
     }
 
-    protected $rules = [
-        'database.name' => 'required',
-        'database.description' => 'nullable',
-        'database.mysql_root_password' => 'required',
-        'database.mysql_user' => 'required',
-        'database.mysql_password' => 'required',
-        'database.mysql_database' => 'required',
-        'database.mysql_conf' => 'nullable',
-        'database.image' => 'required',
-        'database.ports_mappings' => 'nullable',
-        'database.is_public' => 'nullable|boolean',
-        'database.public_port' => 'nullable|integer',
-        'database.is_log_drain_enabled' => 'nullable|boolean',
-        'database.custom_docker_run_options' => 'nullable',
-        'database.enable_ssl' => 'boolean',
-        'database.ssl_mode' => 'nullable|string|in:PREFERRED,REQUIRED,VERIFY_CA,VERIFY_IDENTITY',
-    ];
+    protected function rules(): array
+    {
+        return [
+            'database.name' => ValidationPatterns::nameRules(),
+            'database.description' => ValidationPatterns::descriptionRules(),
+            'database.mysql_root_password' => 'required',
+            'database.mysql_user' => 'required',
+            'database.mysql_password' => 'required',
+            'database.mysql_database' => 'required',
+            'database.mysql_conf' => 'nullable',
+            'database.image' => 'required',
+            'database.ports_mappings' => 'nullable',
+            'database.is_public' => 'nullable|boolean',
+            'database.public_port' => 'nullable|integer',
+            'database.is_log_drain_enabled' => 'nullable|boolean',
+            'database.custom_docker_run_options' => 'nullable',
+            'database.enable_ssl' => 'boolean',
+            'database.ssl_mode' => 'nullable|string|in:PREFERRED,REQUIRED,VERIFY_CA,VERIFY_IDENTITY',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return array_merge(
+            ValidationPatterns::combinedMessages(),
+            [
+                'database.name.required' => 'The Name field is required.',
+                'database.name.regex' => 'The Name may only contain letters, numbers, spaces, dashes (-), underscores (_), dots (.), slashes (/), colons (:), and parentheses ().',
+                'database.description.regex' => 'The Description contains invalid characters. Only letters, numbers, spaces, and common punctuation (- _ . : / () \' " , ! ? @ # % & + = [] {} | ~ ` *) are allowed.',
+                'database.mysql_root_password.required' => 'The Root Password field is required.',
+                'database.mysql_user.required' => 'The MySQL User field is required.',
+                'database.mysql_password.required' => 'The MySQL Password field is required.',
+                'database.mysql_database.required' => 'The MySQL Database field is required.',
+                'database.image.required' => 'The Docker Image field is required.',
+                'database.public_port.integer' => 'The Public Port must be an integer.',
+                'database.ssl_mode.in' => 'The SSL Mode must be one of: PREFERRED, REQUIRED, VERIFY_CA, VERIFY_IDENTITY.',
+            ]
+        );
+    }
 
     protected $validationAttributes = [
         'database.name' => 'Name',

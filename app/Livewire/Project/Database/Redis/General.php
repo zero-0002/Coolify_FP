@@ -8,6 +8,7 @@ use App\Helpers\SslHelper;
 use App\Models\Server;
 use App\Models\SslCertificate;
 use App\Models\StandaloneRedis;
+use App\Support\ValidationPatterns;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -42,20 +43,39 @@ class General extends Component
         ];
     }
 
-    protected $rules = [
-        'database.name' => 'required',
-        'database.description' => 'nullable',
-        'database.redis_conf' => 'nullable',
-        'database.image' => 'required',
-        'database.ports_mappings' => 'nullable',
-        'database.is_public' => 'nullable|boolean',
-        'database.public_port' => 'nullable|integer',
-        'database.is_log_drain_enabled' => 'nullable|boolean',
-        'database.custom_docker_run_options' => 'nullable',
-        'redis_username' => 'required',
-        'redis_password' => 'required',
-        'database.enable_ssl' => 'boolean',
-    ];
+    protected function rules(): array
+    {
+        return [
+            'database.name' => ValidationPatterns::nameRules(),
+            'database.description' => ValidationPatterns::descriptionRules(),
+            'database.redis_conf' => 'nullable',
+            'database.image' => 'required',
+            'database.ports_mappings' => 'nullable',
+            'database.is_public' => 'nullable|boolean',
+            'database.public_port' => 'nullable|integer',
+            'database.is_log_drain_enabled' => 'nullable|boolean',
+            'database.custom_docker_run_options' => 'nullable',
+            'redis_username' => 'required',
+            'redis_password' => 'required',
+            'database.enable_ssl' => 'boolean',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return array_merge(
+            ValidationPatterns::combinedMessages(),
+            [
+                'database.name.required' => 'The Name field is required.',
+                'database.name.regex' => 'The Name may only contain letters, numbers, spaces, dashes (-), underscores (_), dots (.), slashes (/), colons (:), and parentheses ().',
+                'database.description.regex' => 'The Description contains invalid characters. Only letters, numbers, spaces, and common punctuation (- _ . : / () \' " , ! ? @ # % & + = [] {} | ~ ` *) are allowed.',
+                'database.image.required' => 'The Docker Image field is required.',
+                'database.public_port.integer' => 'The Public Port must be an integer.',
+                'redis_username.required' => 'The Redis Username field is required.',
+                'redis_password.required' => 'The Redis Password field is required.',
+            ]
+        );
+    }
 
     protected $validationAttributes = [
         'database.name' => 'Name',
