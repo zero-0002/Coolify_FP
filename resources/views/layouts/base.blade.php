@@ -90,6 +90,26 @@
                 // One-time hook registration (idempotent pattern)
                 if (!window.__dpLinkHook) {
                     DOMPurify.addHook('afterSanitizeAttributes', node => {
+                        // Remove Alpine.js directives to prevent XSS
+                        if (node.hasAttributes && node.hasAttributes()) {
+                            const attrs = Array.from(node.attributes);
+                            attrs.forEach(attr => {
+                                // Remove x-* attributes (Alpine directives)
+                                if (attr.name.startsWith('x-')) {
+                                    node.removeAttribute(attr.name);
+                                }
+                                // Remove @* attributes (Alpine event shorthand)
+                                if (attr.name.startsWith('@')) {
+                                    node.removeAttribute(attr.name);
+                                }
+                                // Remove :* attributes (Alpine binding shorthand)
+                                if (attr.name.startsWith(':')) {
+                                    node.removeAttribute(attr.name);
+                                }
+                            });
+                        }
+                        
+                        // Existing link sanitization
                         if (node.nodeName === 'A' && node.hasAttribute('href')) {
                             const href = node.getAttribute('href') || '';
                             if (!URL_RE.test(href)) node.removeAttribute('href');
