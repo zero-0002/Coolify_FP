@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
-use App\Traits\HasSafeNameAttribute;
+use App\Traits\HasSafeStringAttribute;
 
 class StandaloneDocker extends BaseModel
 {
-    use HasSafeNameAttribute;
+    use HasSafeStringAttribute;
 
     protected $guarded = [];
 

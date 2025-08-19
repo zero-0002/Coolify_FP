@@ -5,7 +5,7 @@ namespace App\Models;
 use App\Enums\ApplicationDeploymentStatus;
 use App\Services\ConfigurationGenerator;
 use App\Traits\HasConfiguration;
-use App\Traits\HasSafeNameAttribute;
+use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -110,7 +110,7 @@ use Visus\Cuid2\Cuid2;
 
 class Application extends BaseModel
 {
-    use HasConfiguration, HasFactory, HasSafeNameAttribute, SoftDeletes;
+    use HasConfiguration, HasFactory, HasSafeStringAttribute, SoftDeletes;
 
     private static $parserVersion = '5';
 

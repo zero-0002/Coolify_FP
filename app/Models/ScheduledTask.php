@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use App\Traits\HasSafeNameAttribute;
+use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ScheduledTask extends BaseModel
 {
-    use HasSafeNameAttribute;
+    use HasSafeStringAttribute;
 
     protected $guarded = [];
 

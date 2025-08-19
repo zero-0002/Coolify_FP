@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Traits\HasSafeNameAttribute;
+use App\Traits\HasSafeStringAttribute;
 use DanHarrin\LivewireRateLimiting\WithRateLimiting;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -28,7 +28,7 @@ use phpseclib3\Crypt\PublicKeyLoader;
 )]
 class PrivateKey extends BaseModel
 {
-    use HasSafeNameAttribute, WithRateLimiting;
+    use HasSafeStringAttribute, WithRateLimiting;
 
     protected $fillable = [
         'name',

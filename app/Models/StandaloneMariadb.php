@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Traits\HasSafeNameAttribute;
+use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StandaloneMariadb extends BaseModel
 {
-    use HasFactory, HasSafeNameAttribute, SoftDeletes;
+    use HasFactory, HasSafeStringAttribute, SoftDeletes;
 
     protected $guarded = [];
 

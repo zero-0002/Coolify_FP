@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Support\ValidationPatterns;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use OpenApi\Attributes as OA;
@@ -229,14 +230,9 @@ class ProjectController extends Controller
             return $return;
         }
         $validator = Validator::make($request->all(), [
-            'name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s\-_.]+$/'],
-            'description' => 'string|nullable',
-        ], [
-            'name.regex' => 'The project name may only contain letters, numbers, spaces, dashes, underscores, and dots.',
-            'name.required' => 'The project name is required.',
-            'name.min' => 'The project name must be at least 3 characters.',
-            'name.max' => 'The project name may not be greater than 255 characters.',
-        ]);
+            'name' => ValidationPatterns::nameRules(),
+            'description' => ValidationPatterns::descriptionRules(),
+        ], ValidationPatterns::combinedMessages());
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
         if ($validator->fails() || ! empty($extraFields)) {
@@ -344,13 +340,9 @@ class ProjectController extends Controller
             return $return;
         }
         $validator = Validator::make($request->all(), [
-            'name' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s\-_.]+$/'],
-            'description' => 'string|nullable',
-        ], [
-            'name.regex' => 'The project name may only contain letters, numbers, spaces, dashes, underscores, and dots.',
-            'name.min' => 'The project name must be at least 3 characters.',
-            'name.max' => 'The project name may not be greater than 255 characters.',
-        ]);
+            'name' => ValidationPatterns::nameRules(required: false),
+            'description' => ValidationPatterns::descriptionRules(),
+        ], ValidationPatterns::combinedMessages());
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
         if ($validator->fails() || ! empty($extraFields)) {
@@ -590,13 +582,8 @@ class ProjectController extends Controller
             return $return;
         }
         $validator = Validator::make($request->all(), [
-            'name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s\-_.]+$/'],
-        ], [
-            'name.regex' => 'The environment name may only contain letters, numbers, spaces, dashes, underscores, and dots.',
-            'name.required' => 'The environment name is required.',
-            'name.min' => 'The environment name must be at least 3 characters.',
-            'name.max' => 'The environment name may not be greater than 255 characters.',
-        ]);
+            'name' => ValidationPatterns::nameRules(),
+        ], ValidationPatterns::nameMessages());
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
         if ($validator->fails() || ! empty($extraFields)) {

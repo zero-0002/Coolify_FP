@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Traits\HasSafeNameAttribute;
+use App\Traits\HasSafeStringAttribute;
 use OpenApi\Attributes as OA;
 use Visus\Cuid2\Cuid2;
 
@@ -24,7 +24,7 @@ use Visus\Cuid2\Cuid2;
 )]
 class Project extends BaseModel
 {
-    use HasSafeNameAttribute;
+    use HasSafeStringAttribute;
 
     protected $guarded = [];
 

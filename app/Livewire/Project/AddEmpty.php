@@ -3,23 +3,28 @@
 namespace App\Livewire\Project;
 
 use App\Models\Project;
-use Livewire\Attributes\Validate;
+use App\Support\ValidationPatterns;
 use Livewire\Component;
 use Visus\Cuid2\Cuid2;
 
 class AddEmpty extends Component
 {
-    #[Validate(['required', 'string', 'min:3', 'max:255', 'regex:/^[a-zA-Z0-9\s\-_.]+$/'])]
     public string $name;
 
-    #[Validate(['nullable', 'string'])]
     public string $description = '';
 
-    protected $messages = [
-        'name.regex' => 'The name may only contain letters, numbers, spaces, dashes, underscores, and dots.',
-        'name.min' => 'The name must be at least 3 characters.',
-        'name.max' => 'The name may not be greater than 255 characters.',
-    ];
+    protected function rules(): array
+    {
+        return [
+            'name' => ValidationPatterns::nameRules(),
+            'description' => ValidationPatterns::descriptionRules(),
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return ValidationPatterns::combinedMessages();
+    }
 
     public function submit()
     {

@@ -20,6 +20,7 @@ use App\Models\StandalonePostgresql;
 use App\Models\StandaloneRedis;
 use App\Models\Tag;
 use App\Models\Team;
+use App\Support\ValidationPatterns;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -31,7 +32,7 @@ class CleanupNames extends Command
                             {--backup : Create database backup before changes}
                             {--force : Skip confirmation prompt}';
 
-    protected $description = 'Sanitize name fields by removing invalid characters (keeping only letters, numbers, spaces, dashes, underscores, dots)';
+    protected $description = 'Sanitize name fields by removing invalid characters (keeping only letters, numbers, spaces, dashes, underscores, dots, slashes, colons, parentheses)';
 
     protected array $modelsToClean = [
         'Project' => Project::class,
@@ -148,7 +149,9 @@ class CleanupNames extends Command
     protected function sanitizeName(string $name): string
     {
         // Remove all characters that don't match the allowed pattern
-        $sanitized = preg_replace('/[^a-zA-Z0-9\s\-_.]+/', '', $name);
+        // Use the shared ValidationPatterns to ensure consistency
+        $allowedPattern = str_replace(['/', '^', '$'], '', ValidationPatterns::NAME_PATTERN);
+        $sanitized = preg_replace('/[^'.$allowedPattern.']+/', '', $name);
 
         // Clean up excessive whitespace but preserve other allowed characters
         $sanitized = preg_replace('/\s+/', ' ', $sanitized);
