@@ -131,7 +131,7 @@
                             </div>
                             <span
                                 class="bg-error text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                {{ $unreadCount > 9 ? '9+' : $unreadCount }}
+                                {{ $unreadCount > 9 ? '*' : $unreadCount }}
                             </span>
                         </button>
                     @else
@@ -302,8 +302,8 @@
                                                 <span class="text-xs dark:text-neutral-400"
                                                     x-text="new Date(entry.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })"></span>
                                             </div>
-                                            <div class="dark:text-neutral-300 leading-relaxed  max-w-none"
-                                                x-html="window.sanitizeHTML(entry.content_html)">
+                                            <div class="dark:text-neutral-300 leading-relaxed max-w-none"
+                                                x-html="entry.content_html">
                                             </div>
                                         </div>
 
