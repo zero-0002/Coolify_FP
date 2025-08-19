@@ -65,16 +65,15 @@
             // Global HTML sanitization function using DOMPurify
             window.sanitizeHTML = function(html) {
                 if (!html) return '';
-
-                // Use DOMPurify with strict configuration for toast notifications
-                const purified = DOMPurify.sanitize(html, {
-                    ALLOWED_TAGS: ['a', 'b', 'br', 'code', 'del', 'div', 'em', 'i', 'p', 'pre', 's', 'span',
-                        'strong', 'u'
+                const URL_RE = /^(https?:|mailto:)/i;
+                const config = {
+                    ALLOWED_TAGS: ['a', 'b', 'br', 'code', 'del', 'div', 'em', 'i', 'p', 'pre', 's', 'span', 'strong',
+                        'u'
                     ],
-                    ALLOWED_ATTR: ['class', 'href', 'target', 'title'],
+                    ALLOWED_ATTR: ['class', 'href', 'target', 'title', 'rel'],
                     ALLOW_DATA_ATTR: false,
-                    FORBID_TAGS: ['script', 'object', 'embed', 'applet', 'iframe', 'form', 'input', 'button',
-                        'select', 'textarea', 'details', 'summary', 'dialog', 'style'
+                    FORBID_TAGS: ['script', 'object', 'embed', 'applet', 'iframe', 'form', 'input', 'button', 'select',
+                        'textarea', 'details', 'summary', 'dialog', 'style'
                     ],
                     FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'onchange',
                         'onsubmit', 'ontoggle', 'style'
@@ -82,10 +81,26 @@
                     KEEP_CONTENT: true,
                     RETURN_DOM: false,
                     RETURN_DOM_FRAGMENT: false,
-                    SANITIZE_DOM: true
-                });
-                console.log(purified);
-                return purified;
+                    SANITIZE_DOM: true,
+                    SANITIZE_NAMED_PROPS: true,
+                    SAFE_FOR_TEMPLATES: true,
+                    ALLOWED_URI_REGEXP: URL_RE
+                };
+
+                // One-time hook registration (idempotent pattern)
+                if (!window.__dpLinkHook) {
+                    DOMPurify.addHook('afterSanitizeAttributes', node => {
+                        if (node.nodeName === 'A' && node.hasAttribute('href')) {
+                            const href = node.getAttribute('href') || '';
+                            if (!URL_RE.test(href)) node.removeAttribute('href');
+                            if (node.getAttribute('target') === '_blank') {
+                                node.setAttribute('rel', 'noopener noreferrer');
+                            }
+                        }
+                    });
+                    window.__dpLinkHook = true;
+                }
+                return DOMPurify.sanitize(html, config);
             };
 
             if (!('theme' in localStorage)) {
