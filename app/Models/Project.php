@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\HasSafeNameAttribute;
 use OpenApi\Attributes as OA;
 use Visus\Cuid2\Cuid2;
 
@@ -23,6 +24,8 @@ use Visus\Cuid2\Cuid2;
 )]
 class Project extends BaseModel
 {
+    use HasSafeNameAttribute;
+
     protected $guarded = [];
 
     public static function ownedByCurrentTeam()

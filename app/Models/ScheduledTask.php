@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\HasSafeNameAttribute;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ScheduledTask extends BaseModel
 {
+    use HasSafeNameAttribute;
+
     protected $guarded = [];
 
     public function service()

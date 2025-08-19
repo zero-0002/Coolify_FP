@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\HasSafeNameAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Tag extends BaseModel
 {
+    use HasSafeNameAttribute;
+
     protected $guarded = [];
 
     public function name(): Attribute

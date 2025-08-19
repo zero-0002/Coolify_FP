@@ -8,6 +8,7 @@ use App\Notifications\Channels\SendsEmail;
 use App\Notifications\Channels\SendsPushover;
 use App\Notifications\Channels\SendsSlack;
 use App\Traits\HasNotificationSettings;
+use App\Traits\HasSafeNameAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
@@ -36,7 +37,7 @@ use OpenApi\Attributes as OA;
 
 class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, SendsSlack
 {
-    use HasNotificationSettings, Notifiable;
+    use HasNotificationSettings, HasSafeNameAttribute, Notifiable;
 
     protected $guarded = [];
 

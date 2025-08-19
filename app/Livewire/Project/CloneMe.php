@@ -45,7 +45,10 @@ class CloneMe extends Component
     protected $messages = [
         'selectedServer' => 'Please select a server.',
         'selectedDestination' => 'Please select a server & destination.',
-        'newName' => 'Please enter a name for the new project or environment.',
+        'newName.required' => 'Please enter a name for the new project or environment.',
+        'newName.regex' => 'The name may only contain letters, numbers, spaces, dashes, underscores, and dots.',
+        'newName.min' => 'The name must be at least 3 characters.',
+        'newName.max' => 'The name may not be greater than 255 characters.',
     ];
 
     public function mount($project_uuid)
@@ -90,7 +93,7 @@ class CloneMe extends Component
         try {
             $this->validate([
                 'selectedDestination' => 'required',
-                'newName' => 'required',
+                'newName' => ['required', 'string', 'min:3', 'max:255', 'regex:/^[a-zA-Z0-9\s\-_.]+$/'],
             ]);
             if ($type === 'project') {
                 $foundProject = Project::where('name', $this->newName)->first();

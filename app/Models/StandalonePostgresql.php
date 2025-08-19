@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\HasSafeNameAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StandalonePostgresql extends BaseModel
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasSafeNameAttribute, SoftDeletes;
 
     protected $guarded = [];
 
@@ -322,7 +323,7 @@ class StandalonePostgresql extends BaseModel
         $parsedCollection = collect($metrics)->map(function ($metric) {
             return [
                 (int) $metric['time'],
-                (float) ($metric['percent'] ?? 0.0)
+                (float) ($metric['percent'] ?? 0.0),
             ];
         });
 

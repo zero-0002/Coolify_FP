@@ -17,11 +17,17 @@ class EnvironmentEdit extends Component
     #[Locked]
     public $environment;
 
-    #[Validate(['required', 'string', 'min:3', 'max:255'])]
+    #[Validate(['required', 'string', 'min:3', 'max:255', 'regex:/^[a-zA-Z0-9\s\-_.]+$/'])]
     public string $name;
 
     #[Validate(['nullable', 'string', 'max:255'])]
     public ?string $description = null;
+
+    protected $messages = [
+        'name.regex' => 'The environment name may only contain letters, numbers, spaces, dashes, underscores, and dots.',
+        'name.min' => 'The environment name must be at least 3 characters.',
+        'name.max' => 'The environment name may not be greater than 255 characters.',
+    ];
 
     public function mount(string $project_uuid, string $environment_uuid)
     {

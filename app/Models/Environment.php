@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\HasSafeNameAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use OpenApi\Attributes as OA;
 
@@ -19,6 +20,8 @@ use OpenApi\Attributes as OA;
 )]
 class Environment extends BaseModel
 {
+    use HasSafeNameAttribute;
+
     protected $guarded = [];
 
     protected static function booted()

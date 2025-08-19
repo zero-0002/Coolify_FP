@@ -2,8 +2,12 @@
 
 namespace App\Models;
 
+use App\Traits\HasSafeNameAttribute;
+
 class StandaloneDocker extends BaseModel
 {
+    use HasSafeNameAttribute;
+
     protected $guarded = [];
 
     protected static function boot()

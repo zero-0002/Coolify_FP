@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ProcessStatus;
+use App\Traits\HasSafeNameAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -40,7 +41,7 @@ use Visus\Cuid2\Cuid2;
 )]
 class Service extends BaseModel
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasSafeNameAttribute, SoftDeletes;
 
     private static $parserVersion = '5';
 

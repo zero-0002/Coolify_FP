@@ -53,6 +53,11 @@ class Init extends Command
 
         $this->call('cleanup:redis');
 
+        try {
+            $this->call('cleanup:names');
+        } catch (\Throwable $e) {
+            echo "Error in cleanup:names command: {$e->getMessage()}\n";
+        }
         $this->call('cleanup:stucked-resources');
 
         try {
