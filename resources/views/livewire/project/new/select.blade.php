@@ -66,7 +66,7 @@
                                 <x-slot:description><span x-text="database.description"></span></x-slot>
                                 <x-slot:logo>
                                     <span x-show="database.logo">
-                                        <span x-html="window.sanitizeHTML(database.logo)"></span>
+                                        <span x-html="database.logo"></span>
                                     </span>
                                 </x-slot>
                             </x-resource-view>
