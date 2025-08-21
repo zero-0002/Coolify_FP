@@ -20,6 +20,9 @@ class Advanced extends Component
     public bool $isGitLfsEnabled = false;
 
     #[Validate(['boolean'])]
+    public bool $isGitShallowCloneEnabled = false;
+
+    #[Validate(['boolean'])]
     public bool $isPreviewDeploymentsEnabled = false;
 
     #[Validate(['boolean'])]
@@ -83,6 +86,7 @@ class Advanced extends Component
             $this->application->settings->is_force_https_enabled = $this->isForceHttpsEnabled;
             $this->application->settings->is_git_submodules_enabled = $this->isGitSubmodulesEnabled;
             $this->application->settings->is_git_lfs_enabled = $this->isGitLfsEnabled;
+            $this->application->settings->is_git_shallow_clone_enabled = $this->isGitShallowCloneEnabled;
             $this->application->settings->is_preview_deployments_enabled = $this->isPreviewDeploymentsEnabled;
             $this->application->settings->is_auto_deploy_enabled = $this->isAutoDeployEnabled;
             $this->application->settings->is_log_drain_enabled = $this->isLogDrainEnabled;
@@ -108,6 +112,7 @@ class Advanced extends Component
 
             $this->isGitSubmodulesEnabled = $this->application->settings->is_git_submodules_enabled;
             $this->isGitLfsEnabled = $this->application->settings->is_git_lfs_enabled;
+            $this->isGitShallowCloneEnabled = $this->application->settings->is_git_shallow_clone_enabled ?? false;
             $this->isPreviewDeploymentsEnabled = $this->application->settings->is_preview_deployments_enabled;
             $this->isAutoDeployEnabled = $this->application->settings->is_auto_deploy_enabled;
             $this->isGpuEnabled = $this->application->settings->is_gpu_enabled;

@@ -67,6 +67,8 @@
                     helper="Allow Git Submodules during build process." />
                 <x-forms.checkbox instantSave id="isGitLfsEnabled" label="LFS"
                     helper="Allow Git LFS during build process." />
+                <x-forms.checkbox instantSave id="isGitShallowCloneEnabled" label="Shallow Clone"
+                    helper="Use shallow cloning (--depth=1) to speed up deployments by only fetching the latest commit history. This reduces clone time and resource usage, especially for large repositories." />
             @endif
         </div>
 

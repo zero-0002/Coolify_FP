@@ -980,15 +980,26 @@ class Application extends BaseModel
     public function setGitImportSettings(string $deployment_uuid, string $git_clone_command, bool $public = false)
     {
         $baseDir = $this->generateBaseDir($deployment_uuid);
+        $isShallowCloneEnabled = $this->settings?->is_git_shallow_clone_enabled ?? false;
 
         if ($this->git_commit_sha !== 'HEAD') {
-            $git_clone_command = "{$git_clone_command} && cd {$baseDir} && GIT_SSH_COMMAND=\"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" git -c advice.detachedHead=false checkout {$this->git_commit_sha} >/dev/null 2>&1";
+            // If shallow clone is enabled and we need a specific commit,
+            // we need to fetch that specific commit with depth=1
+            if ($isShallowCloneEnabled) {
+                $git_clone_command = "{$git_clone_command} && cd {$baseDir} && GIT_SSH_COMMAND=\"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" git fetch --depth=1 origin {$this->git_commit_sha} && git -c advice.detachedHead=false checkout {$this->git_commit_sha} >/dev/null 2>&1";
+            } else {
+                $git_clone_command = "{$git_clone_command} && cd {$baseDir} && GIT_SSH_COMMAND=\"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" git -c advice.detachedHead=false checkout {$this->git_commit_sha} >/dev/null 2>&1";
+            }
         }
         if ($this->settings->is_git_submodules_enabled) {
+            // Check if .gitmodules file exists before running submodule commands
+            $git_clone_command = "{$git_clone_command} && cd {$baseDir} && if [ -f .gitmodules ]; then";
             if ($public) {
-                $git_clone_command = "{$git_clone_command} && cd {$baseDir} && sed -i \"s#git@\(.*\):#https://\\1/#g\" {$baseDir}/.gitmodules || true";
+                $git_clone_command = "{$git_clone_command} sed -i \"s#git@\(.*\):#https://\\1/#g\" {$baseDir}/.gitmodules || true &&";
             }
-            $git_clone_command = "{$git_clone_command} && cd {$baseDir} && GIT_SSH_COMMAND=\"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" git submodule update --init --recursive";
+            // Add shallow submodules flag if shallow clone is enabled
+            $submoduleFlags = $isShallowCloneEnabled ? '--shallow-submodules' : '';
+            $git_clone_command = "{$git_clone_command} GIT_SSH_COMMAND=\"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" git submodule update --init --recursive {$submoduleFlags}; fi";
         }
         if ($this->settings->is_git_lfs_enabled) {
             $git_clone_command = "{$git_clone_command} && cd {$baseDir} && GIT_SSH_COMMAND=\"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" git lfs pull";
@@ -1118,9 +1129,14 @@ class Application extends BaseModel
         ['repository' => $customRepository, 'port' => $customPort] = $this->customRepository();
         $baseDir = $custom_base_dir ?? $this->generateBaseDir($deployment_uuid);
         $commands = collect([]);
-        $git_clone_command = "git clone -b \"{$this->git_branch}\"";
+
+        // Check if shallow clone is enabled
+        $isShallowCloneEnabled = $this->settings?->is_git_shallow_clone_enabled ?? false;
+        $depthFlag = $isShallowCloneEnabled ? ' --depth=1' : '';
+
+        $git_clone_command = "git clone{$depthFlag} -b \"{$this->git_branch}\"";
         if ($only_checkout) {
-            $git_clone_command = "git clone --no-checkout -b \"{$this->git_branch}\"";
+            $git_clone_command = "git clone{$depthFlag} --no-checkout -b \"{$this->git_branch}\"";
         }
         if ($pull_request_id !== 0) {
             $pr_branch_name = "pr-{$pull_request_id}-coolify";
