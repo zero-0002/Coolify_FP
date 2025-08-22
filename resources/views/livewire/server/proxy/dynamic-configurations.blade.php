@@ -7,14 +7,13 @@
         <x-server.sidebar-proxy :server="$server" :parameters="$parameters" />
         @if ($server->isFunctional())
             <div class="w-full">
-
                 <div class="flex gap-2">
                     <div>
                         <div class="flex gap-2">
                             <h2>Dynamic Configurations</h2>
                             <x-forms.button wire:click="loadDynamicConfigurations">Reload</x-forms.button>
                             <x-modal-input buttonTitle="+ Add" title="New Dynamic Configuration">
-                                <livewire:server.proxy.new-dynamic-configuration />
+                                <livewire:server.proxy.new-dynamic-configuration :server_id="$server->id" />
                             </x-modal-input>
                         </div>
                         <div class='pb-4'>You can add dynamic proxy configurations here.</div>

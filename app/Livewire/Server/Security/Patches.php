@@ -7,10 +7,13 @@ use App\Actions\Server\UpdatePackage;
 use App\Events\ServerPackageUpdated;
 use App\Models\Server;
 use App\Notifications\Server\ServerPatchCheck;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class Patches extends Component
 {
+    use AuthorizesRequests;
+
     public array $parameters;
 
     public Server $server;
@@ -36,11 +39,9 @@ class Patches extends Component
 
     public function mount()
     {
-        if (! auth()->user()->isAdmin()) {
-            abort(403);
-        }
         $this->parameters = get_route_parameters();
         $this->server = Server::ownedByCurrentTeam()->whereUuid($this->parameters['server_uuid'])->firstOrFail();
+        $this->authorize('viewSecurity', $this->server);
     }
 
     public function checkForUpdatesDispatch()

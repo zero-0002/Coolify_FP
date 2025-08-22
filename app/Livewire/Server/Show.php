@@ -152,6 +152,7 @@ class Show extends Component
         if ($toModel) {
             $this->validate();
 
+            $this->authorize('update', $this->server);
             if (Server::where('team_id', currentTeam()->id)
                 ->where('ip', $this->ip)
                 ->where('id', '!=', $this->server->id)
@@ -159,8 +160,6 @@ class Show extends Component
                 $this->ip = $this->server->ip;
                 throw new \Exception('This IP/Domain is already in use by another server in your team.');
             }
-
-            $this->authorize('update', $this->server);
 
             $this->server->name = $this->name;
             $this->server->description = $this->description;
@@ -253,38 +252,57 @@ class Show extends Component
 
     public function restartSentinel()
     {
-        $this->server->restartSentinel();
-        $this->dispatch('success', 'Sentinel restarted.');
+        try {
+            $this->authorize('manageSentinel', $this->server);
+            $this->server->restartSentinel();
+            $this->dispatch('success', 'Sentinel restarted.');
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
+
     }
 
     public function updatedIsSentinelDebugEnabled($value)
     {
-        $this->submit();
-        $this->restartSentinel();
+        try {
+            $this->submit();
+            $this->restartSentinel();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function updatedIsMetricsEnabled($value)
     {
-        $this->submit();
-        $this->restartSentinel();
+        try {
+            $this->submit();
+            $this->restartSentinel();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function updatedIsSentinelEnabled($value)
     {
-        if ($value === true) {
-            StartSentinel::run($this->server, true);
-        } else {
-            $this->isMetricsEnabled = false;
-            $this->isSentinelDebugEnabled = false;
-            StopSentinel::dispatch($this->server);
+        try {
+            $this->authorize('manageSentinel', $this->server);
+            if ($value === true) {
+                StartSentinel::run($this->server, true);
+            } else {
+                $this->isMetricsEnabled = false;
+                $this->isSentinelDebugEnabled = false;
+                StopSentinel::dispatch($this->server);
+            }
+            $this->submit();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
         }
-        $this->submit();
-
     }
 
     public function regenerateSentinelToken()
     {
         try {
+            $this->authorize('manageSentinel', $this->server);
             $this->server->settings->generateSentinelToken();
             $this->dispatch('success', 'Token regenerated & Sentinel restarted.');
         } catch (\Throwable $e) {
@@ -294,7 +312,11 @@ class Show extends Component
 
     public function instantSave()
     {
-        $this->submit();
+        try {
+            $this->submit();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function submit()

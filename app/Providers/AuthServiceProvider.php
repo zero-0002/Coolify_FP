@@ -15,6 +15,8 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         \App\Models\Server::class => \App\Policies\ServerPolicy::class,
         \App\Models\PrivateKey::class => \App\Policies\PrivateKeyPolicy::class,
+        \App\Models\StandaloneDocker::class => \App\Policies\StandaloneDockerPolicy::class,
+        \App\Models\SwarmDocker::class => \App\Policies\SwarmDockerPolicy::class,
     ];
 
     /**

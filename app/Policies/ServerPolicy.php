@@ -62,4 +62,44 @@ class ServerPolicy
     {
         return false;
     }
+
+    /**
+     * Determine whether the user can manage proxy (start/stop/restart).
+     */
+    public function manageProxy(User $user, Server $server): bool
+    {
+        return $user->isAdmin() && $user->teams()->get()->firstWhere('id', $server->team_id) !== null;
+    }
+
+    /**
+     * Determine whether the user can manage sentinel (start/stop).
+     */
+    public function manageSentinel(User $user, Server $server): bool
+    {
+        return $user->isAdmin() && $user->teams()->get()->firstWhere('id', $server->team_id) !== null;
+    }
+
+    /**
+     * Determine whether the user can manage CA certificates.
+     */
+    public function manageCaCertificate(User $user, Server $server): bool
+    {
+        return $user->isAdmin() && $user->teams()->get()->firstWhere('id', $server->team_id) !== null;
+    }
+
+    /**
+     * Determine whether the user can view terminal.
+     */
+    public function viewTerminal(User $user, Server $server): bool
+    {
+        return $user->isAdmin() && $user->teams()->get()->firstWhere('id', $server->team_id) !== null;
+    }
+
+    /**
+     * Determine whether the user can view security views.
+     */
+    public function viewSecurity(User $user, Server $server): bool
+    {
+        return $user->isAdmin() && $user->teams()->get()->firstWhere('id', $server->team_id) !== null;
+    }
 }

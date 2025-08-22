@@ -18,9 +18,7 @@ class Index extends Component
 
     public function mount()
     {
-        if (! auth()->user()->isAdmin()) {
-            abort(403);
-        }
+        $this->authorize('useTerminal', Server::class);
         $this->servers = Server::isReachable()->get()->filter(function ($server) {
             return $server->isTerminalEnabled();
         });
