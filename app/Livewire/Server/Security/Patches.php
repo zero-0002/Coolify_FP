@@ -69,8 +69,9 @@ class Patches extends Component
 
     public function updateAllPackages()
     {
+        $this->authorize('update', $this->server);
         if (! $this->packageManager || ! $this->osId) {
-            $this->dispatch('error', message: 'Run “Check for updates” first.');
+            $this->dispatch('error', message: 'Run "Check for updates" first.');
 
             return;
         }
@@ -91,6 +92,7 @@ class Patches extends Component
     public function updatePackage($package)
     {
         try {
+            $this->authorize('update', $this->server);
             $activity = UpdatePackage::run(server: $this->server, packageManager: $this->packageManager, osId: $this->osId, package: $package);
             $this->dispatch('activityMonitor', $activity->id, ServerPackageUpdated::class);
         } catch (\Exception $e) {
