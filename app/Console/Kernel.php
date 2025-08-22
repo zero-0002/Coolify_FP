@@ -10,7 +10,7 @@ use App\Jobs\PullChangelogFromGitHub;
 use App\Jobs\PullTemplatesFromCDN;
 use App\Jobs\RegenerateSslCertJob;
 use App\Jobs\ScheduledJobManager;
-use App\Jobs\ServerResourceManager;
+use App\Jobs\ServerManagerJob;
 use App\Jobs\UpdateCoolifyJob;
 use App\Models\InstanceSettings;
 use App\Models\Server;
@@ -55,7 +55,7 @@ class Kernel extends ConsoleKernel
             $this->scheduleInstance->job(new CheckHelperImageJob)->everyTenMinutes()->onOneServer();
 
             // Server Jobs
-            $this->scheduleInstance->job(new ServerResourceManager)->everyMinute()->onOneServer();
+            $this->scheduleInstance->job(new ServerManagerJob)->everyMinute()->onOneServer();
 
             // Scheduled Jobs (Backups & Tasks)
             $this->scheduleInstance->job(new ScheduledJobManager)->everyMinute()->onOneServer();
@@ -74,7 +74,7 @@ class Kernel extends ConsoleKernel
             $this->scheduleUpdates();
 
             // Server Jobs
-            $this->scheduleInstance->job(new ServerResourceManager)->everyMinute()->onOneServer();
+            $this->scheduleInstance->job(new ServerManagerJob)->everyMinute()->onOneServer();
 
             $this->pullImages();
 
