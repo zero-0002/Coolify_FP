@@ -15,6 +15,8 @@ use App\Models\PrivateKey;
 use App\Models\Project;
 use App\Models\Server;
 use App\Models\Service;
+use App\Rules\ValidGitBranch;
+use App\Rules\ValidGitRepositoryUrl;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use OpenApi\Attributes as OA;
@@ -831,8 +833,8 @@ class ApplicationsController extends Controller
         $destination = $destinations->first();
         if ($type === 'public') {
             $validationRules = [
-                'git_repository' => 'string|required',
-                'git_branch' => 'string|required',
+                'git_repository' => ['string', 'required', new ValidGitRepositoryUrl],
+                'git_branch' => ['string', 'required', new ValidGitBranch],
                 'build_pack' => ['required', Rule::enum(BuildPackTypes::class)],
                 'ports_exposes' => 'string|regex:/^(\d+)(,\d+)*$/|required',
                 'docker_compose_location' => 'string',
@@ -883,7 +885,7 @@ class ApplicationsController extends Controller
                 $application->source_type = GithubApp::class;
                 $application->source_id = GithubApp::find(0)->id;
             }
-            $application->git_repository = $repository_url_parsed->getSegment(1).'/'.$repository_url_parsed->getSegment(2);
+            $application->git_repository = str($repository_url_parsed->getSegment(1).'/'.$repository_url_parsed->getSegment(2))->trim()->toString();
             $application->fqdn = $fqdn;
             $application->destination_id = $destination->id;
             $application->destination_type = $destination->getMorphClass();
@@ -935,7 +937,7 @@ class ApplicationsController extends Controller
         } elseif ($type === 'private-gh-app') {
             $validationRules = [
                 'git_repository' => 'string|required',
-                'git_branch' => 'string|required',
+                'git_branch' => ['string', 'required', new ValidGitBranch],
                 'build_pack' => ['required', Rule::enum(BuildPackTypes::class)],
                 'ports_exposes' => 'string|regex:/^(\d+)(,\d+)*$/|required',
                 'github_app_uuid' => 'string|required',
@@ -1043,7 +1045,7 @@ class ApplicationsController extends Controller
                 $application->docker_compose_domains = $dockerComposeDomainsJson;
             }
             $application->fqdn = $fqdn;
-            $application->git_repository = $gitRepository;
+            $application->git_repository = str($gitRepository)->trim()->toString();
             $application->destination_id = $destination->id;
             $application->destination_type = $destination->getMorphClass();
             $application->environment_id = $environment->id;
@@ -1090,8 +1092,8 @@ class ApplicationsController extends Controller
         } elseif ($type === 'private-deploy-key') {
 
             $validationRules = [
-                'git_repository' => 'string|required',
-                'git_branch' => 'string|required',
+                'git_repository' => ['string', 'required', new ValidGitRepositoryUrl],
+                'git_branch' => ['string', 'required', new ValidGitBranch],
                 'build_pack' => ['required', Rule::enum(BuildPackTypes::class)],
                 'ports_exposes' => 'string|regex:/^(\d+)(,\d+)*$/|required',
                 'private_key_uuid' => 'string|required',

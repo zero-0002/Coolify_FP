@@ -1,6 +1,6 @@
 <div x-data x-init="$nextTick(() => { if ($refs.autofocusInput) $refs.autofocusInput.focus(); })">
     <h1>Create a new Application</h1>
-    <div class="pb-4">Deploy any public Git repositories.</div>
+    <div class="pb-8">Deploy any public Git repositories.</div>
 
     <!-- Repository URL Form -->
     <form class="flex flex-col gap-2" wire:submit='loadBranch'>

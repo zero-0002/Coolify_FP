@@ -1128,15 +1128,20 @@ class Application extends BaseModel
         $branch = $this->git_branch;
         ['repository' => $customRepository, 'port' => $customPort] = $this->customRepository();
         $baseDir = $custom_base_dir ?? $this->generateBaseDir($deployment_uuid);
+
+        // Escape shell arguments for safety to prevent command injection
+        $escapedBranch = escapeshellarg($branch);
+        $escapedBaseDir = escapeshellarg($baseDir);
+
         $commands = collect([]);
 
         // Check if shallow clone is enabled
         $isShallowCloneEnabled = $this->settings?->is_git_shallow_clone_enabled ?? false;
         $depthFlag = $isShallowCloneEnabled ? ' --depth=1' : '';
 
-        $git_clone_command = "git clone{$depthFlag} -b \"{$this->git_branch}\"";
+        $git_clone_command = "git clone{$depthFlag} -b {$escapedBranch}";
         if ($only_checkout) {
-            $git_clone_command = "git clone{$depthFlag} --no-checkout -b \"{$this->git_branch}\"";
+            $git_clone_command = "git clone{$depthFlag} --no-checkout -b {$escapedBranch}";
         }
         if ($pull_request_id !== 0) {
             $pr_branch_name = "pr-{$pull_request_id}-coolify";
@@ -1150,7 +1155,8 @@ class Application extends BaseModel
             if ($this->source->getMorphClass() === \App\Models\GithubApp::class) {
                 if ($this->source->is_public) {
                     $fullRepoUrl = "{$this->source->html_url}/{$customRepository}";
-                    $git_clone_command = "{$git_clone_command} {$this->source->html_url}/{$customRepository} {$baseDir}";
+                    $escapedRepoUrl = escapeshellarg("{$this->source->html_url}/{$customRepository}");
+                    $git_clone_command = "{$git_clone_command} {$escapedRepoUrl} {$escapedBaseDir}";
                     if (! $only_checkout) {
                         $git_clone_command = $this->setGitImportSettings($deployment_uuid, $git_clone_command, public: true);
                     }
@@ -1162,11 +1168,15 @@ class Application extends BaseModel
                 } else {
                     $github_access_token = generateGithubInstallationToken($this->source);
                     if ($exec_in_docker) {
-                        $git_clone_command = "{$git_clone_command} $source_html_url_scheme://x-access-token:$github_access_token@$source_html_url_host/{$customRepository}.git {$baseDir}";
-                        $fullRepoUrl = "$source_html_url_scheme://x-access-token:$github_access_token@$source_html_url_host/{$customRepository}.git";
+                        $repoUrl = "$source_html_url_scheme://x-access-token:$github_access_token@$source_html_url_host/{$customRepository}.git";
+                        $escapedRepoUrl = escapeshellarg($repoUrl);
+                        $git_clone_command = "{$git_clone_command} {$escapedRepoUrl} {$escapedBaseDir}";
+                        $fullRepoUrl = $repoUrl;
                     } else {
-                        $git_clone_command = "{$git_clone_command} $source_html_url_scheme://x-access-token:$github_access_token@$source_html_url_host/{$customRepository} {$baseDir}";
-                        $fullRepoUrl = "$source_html_url_scheme://x-access-token:$github_access_token@$source_html_url_host/{$customRepository}";
+                        $repoUrl = "$source_html_url_scheme://x-access-token:$github_access_token@$source_html_url_host/{$customRepository}";
+                        $escapedRepoUrl = escapeshellarg($repoUrl);
+                        $git_clone_command = "{$git_clone_command} {$escapedRepoUrl} {$escapedBaseDir}";
+                        $fullRepoUrl = $repoUrl;
                     }
                     if (! $only_checkout) {
                         $git_clone_command = $this->setGitImportSettings($deployment_uuid, $git_clone_command, public: false);
@@ -1181,10 +1191,11 @@ class Application extends BaseModel
                     $branch = "pull/{$pull_request_id}/head:$pr_branch_name";
 
                     $git_checkout_command = $this->buildGitCheckoutCommand($pr_branch_name);
+                    $escapedPrBranch = escapeshellarg($branch);
                     if ($exec_in_docker) {
-                        $commands->push(executeInDocker($deployment_uuid, "cd {$baseDir} && git fetch origin {$branch} && $git_checkout_command"));
+                        $commands->push(executeInDocker($deployment_uuid, "cd {$escapedBaseDir} && git fetch origin {$escapedPrBranch} && $git_checkout_command"));
                     } else {
-                        $commands->push("cd {$baseDir} && git fetch origin {$branch} && $git_checkout_command");
+                        $commands->push("cd {$escapedBaseDir} && git fetch origin {$escapedPrBranch} && $git_checkout_command");
                     }
                 }
 
@@ -1202,7 +1213,8 @@ class Application extends BaseModel
                 throw new RuntimeException('Private key not found. Please add a private key to the application and try again.');
             }
             $private_key = base64_encode($private_key);
-            $git_clone_command_base = "GIT_SSH_COMMAND=\"ssh -o ConnectTimeout=30 -p {$customPort} -o Port={$customPort} -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa\" {$git_clone_command} {$customRepository} {$baseDir}";
+            $escapedCustomRepository = escapeshellarg($customRepository);
+            $git_clone_command_base = "GIT_SSH_COMMAND=\"ssh -o ConnectTimeout=30 -p {$customPort} -o Port={$customPort} -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa\" {$git_clone_command} {$escapedCustomRepository} {$escapedBaseDir}";
             if ($only_checkout) {
                 $git_clone_command = $git_clone_command_base;
             } else {
