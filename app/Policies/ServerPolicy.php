@@ -28,7 +28,7 @@ class ServerPolicy
      */
     public function create(User $user): bool
     {
-        return true;
+        return $user->isAdmin();
     }
 
     /**
@@ -36,7 +36,7 @@ class ServerPolicy
      */
     public function update(User $user, Server $server): bool
     {
-        return $user->teams()->get()->firstWhere('id', $server->team_id) !== null;
+        return $user->isAdmin() && $user->teams()->get()->firstWhere('id', $server->team_id) !== null;
     }
 
     /**
@@ -44,7 +44,7 @@ class ServerPolicy
      */
     public function delete(User $user, Server $server): bool
     {
-        return $user->teams()->get()->firstWhere('id', $server->team_id) !== null;
+        return $user->isAdmin() && $user->teams()->get()->firstWhere('id', $server->team_id) !== null;
     }
 
     /**

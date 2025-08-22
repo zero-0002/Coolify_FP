@@ -6,12 +6,15 @@ use App\Enums\ProxyTypes;
 use App\Models\Server;
 use App\Models\Team;
 use App\Support\ValidationPatterns;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class ByIp extends Component
 {
+    use AuthorizesRequests;
+
     #[Locked]
     public $private_keys;
 
@@ -115,6 +118,7 @@ class ByIp extends Component
     {
         $this->validate();
         try {
+            $this->authorize('create', Server::class);
             if (Server::where('team_id', currentTeam()->id)
                 ->where('ip', $this->ip)
                 ->exists()) {

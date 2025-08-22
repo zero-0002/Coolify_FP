@@ -7,12 +7,15 @@ use App\Actions\Server\StopSentinel;
 use App\Events\ServerReachabilityChanged;
 use App\Models\Server;
 use App\Support\ValidationPatterns;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class Show extends Component
 {
+    use AuthorizesRequests;
+
     public Server $server;
 
     public string $name;
@@ -157,6 +160,8 @@ class Show extends Component
                 throw new \Exception('This IP/Domain is already in use by another server in your team.');
             }
 
+            $this->authorize('update', $this->server);
+
             $this->server->name = $this->name;
             $this->server->description = $this->description;
             $this->server->ip = $this->ip;
@@ -220,6 +225,7 @@ class Show extends Component
     public function validateServer($install = true)
     {
         try {
+            $this->authorize('update', $this->server);
             $this->validationLogs = $this->server->validation_logs = null;
             $this->server->save();
             $this->dispatch('init', $install);
