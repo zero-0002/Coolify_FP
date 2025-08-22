@@ -15,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
-class ServerResourceManager implements ShouldQueue
+class DEPRECATEDServerResourceManager implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
