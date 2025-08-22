@@ -4,10 +4,13 @@ namespace App\Livewire\Security\PrivateKey;
 
 use App\Models\PrivateKey;
 use App\Support\ValidationPatterns;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class Show extends Component
 {
+    use AuthorizesRequests;
+
     public PrivateKey $private_key;
 
     public $public_key = 'Loading...';
@@ -62,6 +65,7 @@ class Show extends Component
     public function delete()
     {
         try {
+            $this->authorize('delete', $this->private_key);
             $this->private_key->safeDelete();
             currentTeam()->privateKeys = PrivateKey::where('team_id', currentTeam()->id)->get();
 
@@ -76,6 +80,7 @@ class Show extends Component
     public function changePrivateKey()
     {
         try {
+            $this->authorize('update', $this->private_key);
             $this->private_key->updatePrivateKey([
                 'private_key' => formatPrivateKey($this->private_key->private_key),
             ]);

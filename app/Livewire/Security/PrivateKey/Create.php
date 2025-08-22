@@ -4,10 +4,13 @@ namespace App\Livewire\Security\PrivateKey;
 
 use App\Models\PrivateKey;
 use App\Support\ValidationPatterns;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class Create extends Component
 {
+    use AuthorizesRequests;
+
     public string $name = '';
 
     public string $value = '';
@@ -66,6 +69,7 @@ class Create extends Component
         $this->validate();
 
         try {
+            $this->authorize('create', PrivateKey::class);
             $privateKey = PrivateKey::createAndStore([
                 'name' => $this->name,
                 'description' => $this->description,
