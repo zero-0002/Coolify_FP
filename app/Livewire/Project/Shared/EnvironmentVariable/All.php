@@ -4,11 +4,12 @@ namespace App\Livewire\Project\Shared\EnvironmentVariable;
 
 use App\Models\EnvironmentVariable;
 use App\Traits\EnvironmentVariableProtection;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class All extends Component
 {
-    use EnvironmentVariableProtection;
+    use AuthorizesRequests, EnvironmentVariableProtection;
 
     public $resource;
 
@@ -44,6 +45,8 @@ class All extends Component
 
     public function instantSave()
     {
+        $this->authorize('manageEnvironment', $this->resource);
+
         $this->resource->settings->is_env_sorting_enabled = $this->is_env_sorting_enabled;
         $this->resource->settings->save();
         $this->sortEnvironmentVariables();
@@ -95,6 +98,8 @@ class All extends Component
 
     public function submit($data = null)
     {
+        $this->authorize('manageEnvironment', $this->resource);
+
         try {
             if ($data === null) {
                 $this->handleBulkSubmit();

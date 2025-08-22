@@ -17,6 +17,9 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\PrivateKey::class => \App\Policies\PrivateKeyPolicy::class,
         \App\Models\StandaloneDocker::class => \App\Policies\StandaloneDockerPolicy::class,
         \App\Models\SwarmDocker::class => \App\Policies\SwarmDockerPolicy::class,
+        \App\Models\Application::class => \App\Policies\ApplicationPolicy::class,
+        \App\Models\ApplicationPreview::class => \App\Policies\ApplicationPreviewPolicy::class,
+        \App\Models\ApplicationSetting::class => \App\Policies\ApplicationSettingPolicy::class,
     ];
 
     /**
