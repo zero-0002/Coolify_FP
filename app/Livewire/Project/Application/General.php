@@ -193,8 +193,14 @@ class General extends Component
             $this->dispatch('error', $e->getMessage());
         }
         if ($this->application->build_pack === 'dockercompose') {
-            $this->application->fqdn = null;
-            $this->application->settings->save();
+            // Only update if user has permission
+            try {
+                $this->authorize('update', $this->application);
+                $this->application->fqdn = null;
+                $this->application->settings->save();
+            } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+                // User doesn't have update permission, just continue without saving
+            }
         }
         $this->parsedServiceDomains = $this->application->docker_compose_domains ? json_decode($this->application->docker_compose_domains, true) : [];
         // Convert service names with dots to use underscores for HTML form binding
@@ -210,14 +216,27 @@ class General extends Component
         $this->is_container_label_escape_enabled = $this->application->settings->is_container_label_escape_enabled;
         $this->customLabels = $this->application->parseContainerLabels();
         if (! $this->customLabels && $this->application->destination->server->proxyType() !== 'NONE' && $this->application->settings->is_container_label_readonly_enabled === true) {
-            $this->customLabels = str(implode('|coolify|', generateLabelsApplication($this->application)))->replace('|coolify|', "\n");
-            $this->application->custom_labels = base64_encode($this->customLabels);
-            $this->application->save();
+            // Only update custom labels if user has permission
+            try {
+                $this->authorize('update', $this->application);
+                $this->customLabels = str(implode('|coolify|', generateLabelsApplication($this->application)))->replace('|coolify|', "\n");
+                $this->application->custom_labels = base64_encode($this->customLabels);
+                $this->application->save();
+            } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+                // User doesn't have update permission, just use existing labels
+                // $this->customLabels = str(implode('|coolify|', generateLabelsApplication($this->application)))->replace('|coolify|', "\n");
+            }
         }
         $this->initialDockerComposeLocation = $this->application->docker_compose_location;
         if ($this->application->build_pack === 'dockercompose' && ! $this->application->docker_compose_raw) {
-            $this->initLoadingCompose = true;
-            $this->dispatch('info', 'Loading docker compose file.');
+            // Only load compose file if user has update permission
+            try {
+                $this->authorize('update', $this->application);
+                $this->initLoadingCompose = true;
+                $this->dispatch('info', 'Loading docker compose file.');
+            } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+                // User doesn't have update permission, skip loading compose file
+            }
         }
 
         if (str($this->application->status)->startsWith('running') && is_null($this->application->config_hash)) {
@@ -356,6 +375,16 @@ class General extends Component
 
     public function updatedApplicationBuildPack()
     {
+        // Check if user has permission to update
+        try {
+            $this->authorize('update', $this->application);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            // User doesn't have permission, revert the change and return
+            $this->application->refresh();
+
+            return;
+        }
+
         if ($this->application->build_pack !== 'nixpacks') {
             $this->application->settings->is_static = false;
             $this->application->settings->save();
@@ -364,8 +393,14 @@ class General extends Component
             $this->resetDefaultLabels(false);
         }
         if ($this->application->build_pack === 'dockercompose') {
-            $this->application->fqdn = null;
-            $this->application->settings->save();
+            // Only update if user has permission
+            try {
+                $this->authorize('update', $this->application);
+                $this->application->fqdn = null;
+                $this->application->settings->save();
+            } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+                // User doesn't have update permission, just continue without saving
+            }
         } else {
             // Clear Docker Compose specific data when switching away from dockercompose
             if ($this->application->getOriginal('build_pack') === 'dockercompose') {
