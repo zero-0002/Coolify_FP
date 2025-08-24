@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 // use Illuminate\Support\Facades\Gate;
+use App\Policies\ResourceCreatePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -20,6 +22,9 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\Application::class => \App\Policies\ApplicationPolicy::class,
         \App\Models\ApplicationPreview::class => \App\Policies\ApplicationPreviewPolicy::class,
         \App\Models\ApplicationSetting::class => \App\Policies\ApplicationSettingPolicy::class,
+        \App\Models\Service::class => \App\Policies\ServicePolicy::class,
+        \App\Models\Project::class => \App\Policies\ProjectPolicy::class,
+        \App\Models\Environment::class => \App\Policies\EnvironmentPolicy::class,
         // Database policies - all use the shared DatabasePolicy
         \App\Models\StandalonePostgresql::class => \App\Policies\DatabasePolicy::class,
         \App\Models\StandaloneMysql::class => \App\Policies\DatabasePolicy::class,
@@ -29,6 +34,7 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\StandaloneKeydb::class => \App\Policies\DatabasePolicy::class,
         \App\Models\StandaloneDragonfly::class => \App\Policies\DatabasePolicy::class,
         \App\Models\StandaloneClickhouse::class => \App\Policies\DatabasePolicy::class,
+
     ];
 
     /**
@@ -36,6 +42,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Register gates for resource creation policy
+        Gate::define('createAnyResource', [ResourceCreatePolicy::class, 'createAny']);
     }
 }

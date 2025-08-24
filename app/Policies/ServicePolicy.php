@@ -28,7 +28,7 @@ class ServicePolicy
      */
     public function create(User $user): bool
     {
-        return $user->isAdmin() && $user->teams()->get()->firstWhere('id', $service->team()->first()->id) !== null;
+        return $user->isAdmin();
     }
 
     /**

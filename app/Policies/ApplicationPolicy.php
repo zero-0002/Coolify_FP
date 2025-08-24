@@ -99,4 +99,12 @@ class ApplicationPolicy
     {
         return $user->isAdmin() && $user->teams()->get()->firstWhere('id', $application->team()->first()->id) !== null;
     }
+
+    /**
+     * Determine whether the user can cleanup deployment queue.
+     */
+    public function cleanupDeploymentQueue(User $user): bool
+    {
+        return $user->isAdmin();
+    }
 }
