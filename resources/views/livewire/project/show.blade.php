@@ -7,12 +7,21 @@
         <x-modal-input buttonTitle="+ Add" title="New Environment">
             <form class="flex flex-col w-full gap-2 rounded-sm" wire:submit='submit'>
                 <x-forms.input placeholder="production" id="name" label="Name" required />
-                <x-forms.button type="submit">
-                    Save
-                </x-forms.button>
+                @can('update', $project)
+                    <x-forms.button type="submit">
+                        Save
+                    </x-forms.button>
+                @else
+                    <x-forms.button type="submit" disabled
+                        title="You don't have permission to update this project. Contact your team administrator for access.">
+                        Save
+                    </x-forms.button>
+                @endcan
             </form>
         </x-modal-input>
-        <livewire:project.delete-project :disabled="!$project->isEmpty()" :project_id="$project->id" />
+        @can('delete', $project)
+            <livewire:project.delete-project :disabled="!$project->isEmpty()" :project_id="$project->id" />
+        @endcan
     </div>
     <div class="text-xs truncate subtitle lg:text-sm">{{ $project->name }}.</div>
     <div class="grid gap-2 lg:grid-cols-2">

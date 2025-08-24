@@ -6,6 +6,11 @@
                 <x-forms.button type="submit">
                     Save
                 </x-forms.button>
+            @else
+                <x-forms.button type="submit" disabled
+                    title="You don't have permission to update this application. Contact your team administrator for access.">
+                    Save
+                </x-forms.button>
             @endcan
 
             {{-- <x-forms.button wire:click="downloadConfig">
@@ -82,8 +87,14 @@
                     placeholder="Empty means default configuration will be used." label="Custom Nginx Configuration"
                     helper="You can add custom Nginx configuration here." />
                 @can('update', $application)
-                    <x-forms.button wire:click="generateNginxConfiguration">Generate Default Nginx
-                        Configuration</x-forms.button>
+                    <x-forms.button wire:click="generateNginxConfiguration">
+                        Generate Default Nginx Configuration
+                    </x-forms.button>
+                @else
+                    <x-forms.button wire:click="generateNginxConfiguration" disabled
+                        title="You don't have permission to update this application. Contact your team administrator for access.">
+                        Generate Default Nginx Configuration
+                    </x-forms.button>
                 @endcan
             @endif
             <div class="w-96 pb-6">

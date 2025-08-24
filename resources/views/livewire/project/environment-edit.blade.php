@@ -5,8 +5,19 @@
     <form wire:submit='submit' class="flex flex-col">
         <div class="flex items-end gap-2">
             <h1>Environment: {{ data_get_str($environment, 'name')->limit(15) }}</h1>
-            <x-forms.button type="submit">Save</x-forms.button>
-            <livewire:project.delete-environment :disabled="!$environment->isEmpty()" :environment_id="$environment->id" />
+            @can('update', $environment)
+                <x-forms.button type="submit">
+                    Save
+                </x-forms.button>
+            @else
+                <x-forms.button type="submit" disabled
+                    title="You don't have permission to update this environment. Contact your team administrator for access.">
+                    Save
+                </x-forms.button>
+            @endcan
+            @can('delete', $environment)
+                <livewire:project.delete-environment :disabled="!$environment->isEmpty()" :environment_id="$environment->id" />
+            @endcan
         </div>
         <nav class="flex pt-2 pb-10">
             <ol class="flex flex-wrap items-center gap-y-1">
