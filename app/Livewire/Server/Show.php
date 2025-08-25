@@ -67,8 +67,11 @@ class Show extends Component
 
     public function getListeners()
     {
+        $teamId = $this->server->team_id ?? auth()->user()->currentTeam()->id;
+
         return [
             'refreshServerShow' => 'refresh',
+            "echo-private:team.{$teamId},SentinelRestarted" => 'handleSentinelRestarted',
         ];
     }
 
@@ -221,6 +224,16 @@ class Show extends Component
         $this->syncData();
     }
 
+    public function handleSentinelRestarted($event)
+    {
+        // Only refresh if the event is for this server
+        if (isset($event['serverUuid']) && $event['serverUuid'] === $this->server->uuid) {
+            $this->server->refresh();
+            $this->syncData();
+            $this->dispatch('success', 'Sentinel has been restarted successfully.');
+        }
+    }
+
     public function validateServer($install = true)
     {
         try {
@@ -255,7 +268,7 @@ class Show extends Component
         try {
             $this->authorize('manageSentinel', $this->server);
             $this->server->restartSentinel();
-            $this->dispatch('success', 'Sentinel restarted.');
+            $this->dispatch('success', 'Restarting Sentinel.');
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
@@ -304,7 +317,7 @@ class Show extends Component
         try {
             $this->authorize('manageSentinel', $this->server);
             $this->server->settings->generateSentinelToken();
-            $this->dispatch('success', 'Token regenerated & Sentinel restarted.');
+            $this->dispatch('success', 'Token regenerated. Restarting Sentinel.');
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
