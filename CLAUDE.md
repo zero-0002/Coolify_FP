@@ -247,3 +247,6 @@ For more detailed guidelines and patterns, refer to the `.cursor/rules/` directo
 - [Project Overview](.cursor/rules/project-overview.mdc) - High-level project structure
 - [Technology Stack](.cursor/rules/technology-stack.mdc) - Detailed tech stack information
 - [Cursor Rules Guide](.cursor/rules/cursor_rules.mdc) - How to maintain cursor rules
+
+## Backlog.md Information
+- [Backlog.md Guidelines](.cursor/rules/backlog-guildlines.md) - Backlog.md guidelines and commands
