@@ -36,7 +36,7 @@ class DatabasePolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, $database): Response
+    public function update(User $user, $database)
     {
         // if ($user->isAdmin() && $user->teams->contains('id', $database->team()->first()->id)) {
         //    return Response::allow();

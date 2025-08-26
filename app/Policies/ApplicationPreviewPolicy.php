@@ -37,7 +37,7 @@ class ApplicationPreviewPolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, ApplicationPreview $applicationPreview): Response
+    public function update(User $user, ApplicationPreview $applicationPreview)
     {
         // if ($user->isAdmin()) {
         //    return Response::allow();
