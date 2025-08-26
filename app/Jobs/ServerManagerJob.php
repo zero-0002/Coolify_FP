@@ -138,16 +138,6 @@ class ServerManagerJob implements ShouldQueue
         if (validate_timezone($serverTimezone) === false) {
             $serverTimezone = config('app.timezone');
         }
-        // Dispatch DockerCleanupJob if due
-        $dockerCleanupFrequency = data_get($server->settings, 'docker_cleanup_frequency', '0 * * * *');
-        if (isset(VALID_CRON_STRINGS[$dockerCleanupFrequency])) {
-            $dockerCleanupFrequency = VALID_CRON_STRINGS[$dockerCleanupFrequency];
-        }
-        $shouldRunDockerCleanup = $this->shouldRunNow($dockerCleanupFrequency, $serverTimezone);
-
-        if ($shouldRunDockerCleanup) {
-            DockerCleanupJob::dispatch($server, false, $server->settings->delete_unused_volumes, $server->settings->delete_unused_networks);
-        }
 
         // Dispatch ServerPatchCheckJob if due (weekly)
         $shouldRunPatchCheck = $this->shouldRunNow('0 0 * * 0', $serverTimezone);
