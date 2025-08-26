@@ -4,13 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### 🚀 Features
+
+- *(policies)* Add EnvironmentVariablePolicy for managing environment variables ( it was missing )
+
 ### 🐛 Bug Fixes
 
 - *(backups)* Rollback helper update for now
 
+### 📚 Documentation
+
+- Update changelog
+
 ### ⚙️ Miscellaneous Tasks
 
 - *(core)* Update version
+- *(versions)* Update coolify version to 4.0.0-beta.421 and nightly version to 4.0.0-beta.422
 
 ## [4.0.0-beta.420.9] - 2025-08-26
 
