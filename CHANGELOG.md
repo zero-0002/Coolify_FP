@@ -6,6 +6,21 @@ All notable changes to this project will be documented in this file.
 
 ### 🚀 Features
 
+- *(docs)* Expand Backlog.md guidelines with comprehensive usage instructions, CLI commands, and best practices for task management to enhance project organization and collaboration
+
+### 🚜 Refactor
+
+- *(policies)* Remove Response type hint from update methods in ApplicationPreviewPolicy and DatabasePolicy for improved flexibility
+
+### ⚙️ Miscellaneous Tasks
+
+- *(versions)* Update coolify version to 4.0.0-beta.420.8 and nightly version to 4.0.0-beta.420.9 in versions.json and constants.php
+- *(docker)* Update soketi image version to 1.0.10 in production and Windows configurations
+
+## [4.0.0-beta.420.7] - 2025-08-26
+
+### 🚀 Features
+
 - *(service)* Add TriliumNext service (#5970)
 - *(service)* Add Matrix service (#6029)
 - *(service)* Add GitHub Action runner service (#6209)
@@ -148,6 +163,7 @@ All notable changes to this project will be documented in this file.
 
 - *(claude)* Clarify that artisan commands should only be run inside the "coolify" container during development
 - Add AGENTS.md for project guidance and development instructions
+- Update changelog
 
 ### ⚙️ Miscellaneous Tasks
 
