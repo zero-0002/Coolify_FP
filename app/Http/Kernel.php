@@ -72,5 +72,7 @@ class Kernel extends HttpKernel
         'api.ability' => \App\Http\Middleware\ApiAbility::class,
         'api.sensitive' => \App\Http\Middleware\ApiSensitiveData::class,
         'can.create.resources' => \App\Http\Middleware\CanCreateResources::class,
+        'can.update.resource' => \App\Http\Middleware\CanUpdateResource::class,
+        'can.access.terminal' => \App\Http\Middleware\CanAccessTerminal::class,
     ];
 }

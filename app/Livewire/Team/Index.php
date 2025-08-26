@@ -5,12 +5,15 @@ namespace App\Livewire\Team;
 use App\Models\Team;
 use App\Models\TeamInvitation;
 use App\Support\ValidationPatterns;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class Index extends Component
 {
+    use AuthorizesRequests;
+
     public $invitations = [];
 
     public Team $team;
@@ -58,6 +61,7 @@ class Index extends Component
     {
         $this->validate();
         try {
+            $this->authorize('update', $this->team);
             $this->team->save();
             refreshSession();
             $this->dispatch('success', 'Team updated.');
@@ -69,6 +73,7 @@ class Index extends Component
     public function delete()
     {
         $currentTeam = currentTeam();
+        $this->authorize('delete', $currentTeam);
         $currentTeam->delete();
 
         $currentTeam->members->each(function ($user) use ($currentTeam) {

@@ -176,6 +176,7 @@ EOD;
             return;
         }
         try {
+            $this->importRunning = true;
             $this->importCommands = [];
             if (filled($this->customLocation)) {
                 $backupFileName = '/tmp/restore_'.$this->resource->uuid;

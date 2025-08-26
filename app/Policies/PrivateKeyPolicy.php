@@ -20,7 +20,8 @@ class PrivateKeyPolicy
      */
     public function view(User $user, PrivateKey $privateKey): bool
     {
-        return $user->teams()->get()->firstWhere('id', $privateKey->team_id) !== null;
+        // return $user->teams->contains('id', $privateKey->team_id);
+        return true;
     }
 
     /**
@@ -28,7 +29,8 @@ class PrivateKeyPolicy
      */
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        // return $user->isAdmin();
+        return true;
     }
 
     /**
@@ -36,7 +38,8 @@ class PrivateKeyPolicy
      */
     public function update(User $user, PrivateKey $privateKey): bool
     {
-        return $user->isAdmin() && $user->teams()->get()->firstWhere('id', $privateKey->team_id) !== null;
+        // return $user->isAdmin() && $user->teams->contains('id', $privateKey->team_id);
+        return true;
     }
 
     /**
@@ -44,7 +47,8 @@ class PrivateKeyPolicy
      */
     public function delete(User $user, PrivateKey $privateKey): bool
     {
-        return $user->isAdmin() && $user->teams()->get()->firstWhere('id', $privateKey->team_id) !== null;
+        //  return $user->isAdmin() && $user->teams->contains('id', $privateKey->team_id);
+        return true;
     }
 
     /**

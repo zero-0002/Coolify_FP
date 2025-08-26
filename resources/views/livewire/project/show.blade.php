@@ -4,21 +4,16 @@
     </x-slot>
     <div class="flex items-center gap-2">
         <h1>Environments</h1>
-        <x-modal-input buttonTitle="+ Add" title="New Environment">
-            <form class="flex flex-col w-full gap-2 rounded-sm" wire:submit='submit'>
-                <x-forms.input placeholder="production" id="name" label="Name" required />
-                @can('update', $project)
+        @can('update', $project)
+            <x-modal-input buttonTitle="+ Add" title="New Environment">
+                <form class="flex flex-col w-full gap-2 rounded-sm" wire:submit='submit'>
+                    <x-forms.input placeholder="production" id="name" label="Name" required />
                     <x-forms.button type="submit">
                         Save
                     </x-forms.button>
-                @else
-                    <x-forms.button type="submit" disabled
-                        title="You don't have permission to update this project. Contact your team administrator for access.">
-                        Save
-                    </x-forms.button>
-                @endcan
-            </form>
-        </x-modal-input>
+                </form>
+            </x-modal-input>
+        @endcan
         @can('delete', $project)
             <livewire:project.delete-project :disabled="!$project->isEmpty()" :project_id="$project->id" />
         @endcan
@@ -34,12 +29,14 @@
                         <div class="description">
                             {{ $environment->description }}</div>
                     </a>
-                    <div class="flex items-center justify-center gap-2 text-xs">
-                        <a class="font-bold hover:underline"
-                            href="{{ route('project.environment.edit', ['project_uuid' => $project->uuid, 'environment_uuid' => $environment->uuid]) }}">
-                            Settings
-                        </a>
-                    </div>
+                    @can('update', $project)
+                        <div class="flex items-center justify-center gap-2 text-xs">
+                            <a class="font-bold hover:underline"
+                                href="{{ route('project.environment.edit', ['project_uuid' => $project->uuid, 'environment_uuid' => $environment->uuid]) }}">
+                                Settings
+                            </a>
+                        </div>
+                    @endcan
                 </div>
             </div>
         @empty

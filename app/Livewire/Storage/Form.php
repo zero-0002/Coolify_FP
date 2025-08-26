@@ -4,10 +4,13 @@ namespace App\Livewire\Storage;
 
 use App\Models\S3Storage;
 use App\Support\ValidationPatterns;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class Form extends Component
 {
+    use AuthorizesRequests;
+
     public S3Storage $storage;
 
     protected function rules(): array
@@ -60,6 +63,8 @@ class Form extends Component
     public function testConnection()
     {
         try {
+            $this->authorize('validateConnection', $this->storage);
+
             $this->storage->testConnection(shouldSave: true);
 
             return $this->dispatch('success', 'Connection is working.', 'Tested with "ListObjectsV2" action.');
@@ -83,8 +88,10 @@ class Form extends Component
 
     public function submit()
     {
-        $this->validate();
         try {
+            $this->authorize('update', $this->storage);
+
+            $this->validate();
             $this->testConnection();
         } catch (\Throwable $e) {
             return handleError($e, $this);
