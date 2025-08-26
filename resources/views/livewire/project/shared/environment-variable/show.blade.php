@@ -54,7 +54,7 @@
                     @endif
                 </div>
             @endcan
-            @can('manageEnvironment', $this->resource)
+            @can('update', $this->env)
                 <div class="flex flex-col w-full gap-2 lg:flex-row">
                     @if (!$is_redis_credential)
                         @if ($type === 'service')
