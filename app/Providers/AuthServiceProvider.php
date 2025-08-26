@@ -27,6 +27,7 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\ServiceDatabase::class => \App\Policies\ServiceDatabasePolicy::class,
         \App\Models\Project::class => \App\Policies\ProjectPolicy::class,
         \App\Models\Environment::class => \App\Policies\EnvironmentPolicy::class,
+        \App\Models\EnvironmentVariable::class => \App\Policies\EnvironmentVariablePolicy::class,
         \App\Models\SharedEnvironmentVariable::class => \App\Policies\SharedEnvironmentVariablePolicy::class,
         // Database policies - all use the shared DatabasePolicy
         \App\Models\StandalonePostgresql::class => \App\Policies\DatabasePolicy::class,
