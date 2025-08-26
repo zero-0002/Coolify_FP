@@ -6,7 +6,21 @@ All notable changes to this project will be documented in this file.
 
 ### 🐛 Bug Fixes
 
+- *(backups)* Rollback helper update for now
+
+### ⚙️ Miscellaneous Tasks
+
+- *(core)* Update version
+
+## [4.0.0-beta.420.9] - 2025-08-26
+
+### 🐛 Bug Fixes
+
 - *(backups)* S3 backup upload is failing
+
+### 📚 Documentation
+
+- Update changelog
 
 ### ⚙️ Miscellaneous Tasks
 
