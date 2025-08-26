@@ -1025,6 +1025,64 @@ function ip_match($ip, $cidrs, &$match = null)
 
     return false;
 }
+
+function check_ip_against_allowlist($ip, $allowlist)
+{
+    if (empty($allowlist)) {
+        return false;
+    }
+
+    foreach ((array) $allowlist as $allowed) {
+        $allowed = trim($allowed);
+
+        if (empty($allowed)) {
+            continue;
+        }
+
+        // Check if it's a CIDR notation
+        if (str_contains($allowed, '/')) {
+            [$subnet, $mask] = explode('/', $allowed);
+
+            // Special case: 0.0.0.0 with any subnet means allow all
+            if ($subnet === '0.0.0.0') {
+                return true;
+            }
+
+            $mask = (int) $mask;
+
+            // Validate mask
+            if ($mask < 0 || $mask > 32) {
+                continue;
+            }
+
+            // Calculate network addresses
+            $ip_long = ip2long($ip);
+            $subnet_long = ip2long($subnet);
+
+            if ($ip_long === false || $subnet_long === false) {
+                continue;
+            }
+
+            $mask_long = ~((1 << (32 - $mask)) - 1);
+
+            if (($ip_long & $mask_long) == ($subnet_long & $mask_long)) {
+                return true;
+            }
+        } else {
+            // Special case: 0.0.0.0 means allow all
+            if ($allowed === '0.0.0.0') {
+                return true;
+            }
+
+            // Direct IP comparison
+            if ($ip === $allowed) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
 function checkIfDomainIsAlreadyUsed(Collection|array $domains, ?string $teamId = null, ?string $uuid = null)
 {
     if (is_null($teamId)) {
