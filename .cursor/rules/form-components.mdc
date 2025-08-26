@@ -414,6 +414,27 @@ test('application form respects member permissions', function () {
 <x-forms.button canGate="update" :canResource="$application" type="submit">Save</x-forms.button>
 ```
 
+### Service Configuration Forms
+```html
+<!-- Service stack configuration with authorization -->
+<x-forms.input canGate="update" :canResource="$service" id="service.name" label="Service Name" />
+<x-forms.input canGate="update" :canResource="$service" id="service.description" label="Description" />
+<x-forms.checkbox canGate="update" :canResource="$service" instantSave id="service.connect_to_docker_network" label="Connect To Predefined Network" />
+<x-forms.button canGate="update" :canResource="$service" type="submit">Save</x-forms.button>
+
+<!-- Service-specific fields -->
+<x-forms.input canGate="update" :canResource="$service" type="{{ data_get($field, 'isPassword') ? 'password' : 'text' }}"
+    required="{{ str(data_get($field, 'rules'))?->contains('required') }}"
+    id="fields.{{ $serviceName }}.value"></x-forms.input>
+
+<!-- Service restart modal - wrapped with @can -->
+@can('update', $service)
+    <x-modal-confirmation title="Confirm Service Application Restart?"
+        buttonTitle="Restart"
+        submitAction="restartApplication({{ $application->id }})" />
+@endcan
+```
+
 ### Server Management Forms
 ```html
 <!-- Server configuration with appropriate gates -->

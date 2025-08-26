@@ -86,6 +86,49 @@ Coolify uses a **server-side first** approach with minimal JavaScript:
 - **Enhanced Form Components** with built-in authorization system
 - Real-time updates via WebSocket without page refreshes
 
+### Form Authorization Pattern
+**IMPORTANT**: When creating or editing forms, ALWAYS include authorization:
+
+#### For Form Components (Input, Select, Textarea, Checkbox, Button):
+Use `canGate` and `canResource` attributes for automatic authorization:
+```html
+<x-forms.input canGate="update" :canResource="$resource" id="name" label="Name" />
+<x-forms.select canGate="update" :canResource="$resource" id="type" label="Type">...</x-forms.select>
+<x-forms.checkbox instantSave canGate="update" :canResource="$resource" id="enabled" label="Enabled" />
+<x-forms.button canGate="update" :canResource="$resource" type="submit">Save</x-forms.button>
+```
+
+#### For Modal Components:
+Wrap with `@can` directives:
+```html
+@can('update', $resource)
+    <x-modal-confirmation title="Confirm Action?" buttonTitle="Confirm">...</x-modal-confirmation>
+    <x-modal-input buttonTitle="Edit" title="Edit Settings">...</x-modal-input>
+@endcan
+```
+
+#### In Livewire Components:
+Always add the `AuthorizesRequests` trait and check permissions:
+```php
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+
+class MyComponent extends Component
+{
+    use AuthorizesRequests;
+    
+    public function mount()
+    {
+        $this->authorize('view', $this->resource);
+    }
+    
+    public function update()
+    {
+        $this->authorize('update', $this->resource);
+        // ... update logic
+    }
+}
+```
+
 ### Livewire Component Structure
 - Components located in `app/Livewire/`
 - Views in `resources/views/livewire/`
