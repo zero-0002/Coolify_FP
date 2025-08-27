@@ -256,12 +256,12 @@ function generateServiceSpecificFqdns(ServiceApplication|Application $resource)
 
             if (str($MINIO_BROWSER_REDIRECT_URL->value ?? '')->isEmpty()) {
                 $MINIO_BROWSER_REDIRECT_URL->update([
-                    'value' => generateFqdn(server: $server, random: 'console-'.$uuid, parserVersion: $resource->compose_parsing_version, forceHttps: true),
+                    'value' => generateFqdn(server: $server, random: 'console-'.$uuid, parserVersion: $resource->service->compose_parsing_version, forceHttps: true),
                 ]);
             }
             if (str($MINIO_SERVER_URL->value ?? '')->isEmpty()) {
                 $MINIO_SERVER_URL->update([
-                    'value' => generateFqdn(server: $server, random: 'minio-'.$uuid, parserVersion: $resource->compose_parsing_version, forceHttps: true),
+                    'value' => generateFqdn(server: $server, random: 'minio-'.$uuid, parserVersion: $resource->service->compose_parsing_version, forceHttps: true),
                 ]);
             }
             $payload = collect([
@@ -279,12 +279,12 @@ function generateServiceSpecificFqdns(ServiceApplication|Application $resource)
 
             if (str($LOGTO_ENDPOINT->value ?? '')->isEmpty()) {
                 $LOGTO_ENDPOINT->update([
-                    'value' => generateFqdn(server: $server, random: 'logto-'.$uuid, parserVersion: $resource->compose_parsing_version),
+                    'value' => generateFqdn(server: $server, random: 'logto-'.$uuid, parserVersion: $resource->service->compose_parsing_version),
                 ]);
             }
             if (str($LOGTO_ADMIN_ENDPOINT->value ?? '')->isEmpty()) {
                 $LOGTO_ADMIN_ENDPOINT->update([
-                    'value' => generateFqdn(server: $server, random: 'logto-admin-'.$uuid, parserVersion: $resource->compose_parsing_version),
+                    'value' => generateFqdn(server: $server, random: 'logto-admin-'.$uuid, parserVersion: $resource->service->compose_parsing_version),
                 ]);
             }
             $payload = collect([
