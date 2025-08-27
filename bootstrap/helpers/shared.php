@@ -418,8 +418,9 @@ function generateUrl(Server $server, string $random, bool $forceHttps = false): 
 
     return "$scheme://{$random}.$host$path";
 }
-function generateFqdn(Server $server, string $random, bool $forceHttps = false, int $parserVersion = 4): string
+function generateFqdn(Server $server, string $random, bool $forceHttps = false, int $parserVersion = 5): string
 {
+
     $wildcard = data_get($server, 'settings.wildcard_domain');
     if (is_null($wildcard) || $wildcard === '') {
         $wildcard = sslip($server);
