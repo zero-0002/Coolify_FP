@@ -640,6 +640,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
         if ($resource->build_pack !== 'dockercompose') {
             $domains = collect([]);
         }
+        $serviceName = str($serviceName)->replace('-', '_')->value();
         $fqdns = data_get($domains, "$serviceName.domain");
         // Generate SERVICE_FQDN & SERVICE_URL for dockercompose
         if ($resource->build_pack === 'dockercompose') {
@@ -1655,6 +1656,7 @@ function serviceParser(Service $resource): Collection
                 });
             }
         }
+        $serviceName = str($serviceName)->replace('-', '_')->value();
         if (! $isDatabase && $fqdns instanceof Collection && $fqdns->count() > 0) {
             $shouldGenerateLabelsExactly = $resource->server->settings->generate_exact_labels;
             $uuid = $resource->uuid;
