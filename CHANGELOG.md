@@ -6,16 +6,44 @@ All notable changes to this project will be documented in this file.
 
 ### 🚀 Features
 
-- *(docs)* Expand Backlog.md guidelines with comprehensive usage instructions, CLI commands, and best practices for task management to enhance project organization and collaboration
+- *(policies)* Add EnvironmentVariablePolicy for managing environment variables ( it was missing )
+
+### 🐛 Bug Fixes
+
+- *(backups)* Rollback helper update for now
+
+### 📚 Documentation
+
+- Update changelog
+
+### ⚙️ Miscellaneous Tasks
+
+- *(core)* Update version
+- *(versions)* Update coolify version to 4.0.0-beta.421 and nightly version to 4.0.0-beta.422
+
+## [4.0.0-beta.420.9] - 2025-08-26
+
+### 🐛 Bug Fixes
+
+- *(backups)* S3 backup upload is failing
+
+### 📚 Documentation
+
+- Update changelog
+
+### ⚙️ Miscellaneous Tasks
+
+- *(core)* Update version
+
+## [4.0.0-beta.420.8] - 2025-08-26
 
 ### 🚜 Refactor
 
 - *(policies)* Remove Response type hint from update methods in ApplicationPreviewPolicy and DatabasePolicy for improved flexibility
 
-### ⚙️ Miscellaneous Tasks
+### 📚 Documentation
 
-- *(versions)* Update coolify version to 4.0.0-beta.420.8 and nightly version to 4.0.0-beta.420.9 in versions.json and constants.php
-- *(docker)* Update soketi image version to 1.0.10 in production and Windows configurations
+- Update changelog
 
 ## [4.0.0-beta.420.7] - 2025-08-26
 
@@ -81,6 +109,7 @@ All notable changes to this project will be documented in this file.
 - *(docs)* Add Backlog.md guidelines and project manager backlog agent; enhance CLAUDE.md with new links for task management
 - *(docs)* Add tasks for implementing Docker build caching and optimizing staging builds; include detailed acceptance criteria and implementation plans
 - *(docker)* Implement Docker cleanup processing in ScheduledJobManager; refactor server task scheduling to streamline cleanup job dispatching
+- *(docs)* Expand Backlog.md guidelines with comprehensive usage instructions, CLI commands, and best practices for task management to enhance project organization and collaboration
 
 ### 🐛 Bug Fixes
 
@@ -158,11 +187,14 @@ All notable changes to this project will be documented in this file.
 - *(validation)* Implement centralized validation patterns across components
 - *(jobs)* Rename job classes to indicate deprecation status
 - Update check frequency logic for cloud and self-hosted environments; streamline server task scheduling and timezone handling
+- *(policies)* Remove Response type hint from update methods in ApplicationPreviewPolicy and DatabasePolicy for improved flexibility
 
 ### 📚 Documentation
 
 - *(claude)* Clarify that artisan commands should only be run inside the "coolify" container during development
 - Add AGENTS.md for project guidance and development instructions
+- Update changelog
+- Update changelog
 - Update changelog
 
 ### ⚙️ Miscellaneous Tasks
@@ -186,6 +218,8 @@ All notable changes to this project will be documented in this file.
 - *(cleanup)* Remove unused GitLab view files for change, new, and show pages
 - *(workflows)* Add backlog directory to build triggers for production and staging workflows
 - *(config)* Disable auto_commit in backlog configuration to prevent automatic commits
+- *(versions)* Update coolify version to 4.0.0-beta.420.8 and nightly version to 4.0.0-beta.420.9 in versions.json and constants.php
+- *(docker)* Update soketi image version to 1.0.10 in production and Windows configurations
 
 ### ◀️ Revert
 
