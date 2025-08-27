@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### 🚜 Refactor
+
+- *(parsers)* Remove unnecessary hyphen-to-underscore replacement for service names in serviceParser function
+
+### 📚 Documentation
+
+- Update changelog
+
+### ⚙️ Miscellaneous Tasks
+
+- Update coolify version to 4.0.0-beta.423 and nightly version to 4.0.0-beta.424
+
+## [4.0.0-beta.422] - 2025-08-27
+
 ### 🐛 Bug Fixes
 
 - *(parsers)* Replace hyphens with underscores in service names for consistency. this allows to properly parse custom domains in docker compose based applications
