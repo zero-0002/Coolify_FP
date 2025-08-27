@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### 🐛 Bug Fixes
+
+- *(parsers)* Replace hyphens with underscores in service names for consistency. this allows to properly parse custom domains in docker compose based applications
+- *(parsers)* Implement parseDockerVolumeString function to handle various Docker volume formats and modes, including environment variables and Windows paths. Add unit tests for comprehensive coverage.
+- *(git)* Submodule update command uses an unsupported option (#6454)
+- *(service)* Swap URL for FQDN on matrix template (#6466)
+- *(parsers)* Enhance volume string handling by preserving mode in application and service parsers. Update related unit tests for validation.
+- *(docker)* Update parser version in FQDN generation for service-specific URLs
+
+### 🚜 Refactor
+
+- *(git)* Improve submodule cloning
+
+### 📚 Documentation
+
+- Update changelog
+
+### ⚙️ Miscellaneous Tasks
+
+- Update version
+- Update development node version
+
+## [4.0.0-beta.421] - 2025-08-26
+
 ### 🚀 Features
 
 - *(policies)* Add EnvironmentVariablePolicy for managing environment variables ( it was missing )
