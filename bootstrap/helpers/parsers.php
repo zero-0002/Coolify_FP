@@ -1889,7 +1889,6 @@ function serviceParser(Service $resource): Collection
                 });
             }
         }
-        $serviceName = str($serviceName)->replace('-', '_')->value();
         if (! $isDatabase && $fqdns instanceof Collection && $fqdns->count() > 0) {
             $shouldGenerateLabelsExactly = $resource->server->settings->generate_exact_labels;
             $uuid = $resource->uuid;
