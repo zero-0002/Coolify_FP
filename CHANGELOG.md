@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### 🐛 Bug Fixes
+
+- *(parsers)* Do not modify service names, only for getting fqdns and related envs
+- *(compose)* Temporary allow to edit volumes in apps (compose based) and services
+
+### 📚 Documentation
+
+- Update changelog
+
+### ⚙️ Miscellaneous Tasks
+
+- Update coolify version to 4.0.0-beta.424 and nightly version to 4.0.0-beta.425
+
+## [4.0.0-beta.423] - 2025-08-27
+
 ### 🚜 Refactor
 
 - *(parsers)* Remove unnecessary hyphen-to-underscore replacement for service names in serviceParser function
