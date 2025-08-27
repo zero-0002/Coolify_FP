@@ -551,8 +551,14 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                 if ($type->value() === 'bind') {
                     if ($source->value() === '/var/run/docker.sock') {
                         $volume = $source->value().':'.$target->value();
+                        if (isset($parsed['mode']) && $parsed['mode']) {
+                            $volume .= ':'.$parsed['mode']->value();
+                        }
                     } elseif ($source->value() === '/tmp' || $source->value() === '/tmp/') {
                         $volume = $source->value().':'.$target->value();
+                        if (isset($parsed['mode']) && $parsed['mode']) {
+                            $volume .= ':'.$parsed['mode']->value();
+                        }
                     } else {
                         if ((int) $resource->compose_parsing_version >= 4) {
                             $mainDirectory = str(base_configuration_dir().'/applications/'.$uuid);
@@ -586,6 +592,9 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                             }
                         }
                         $volume = "$source:$target";
+                        if (isset($parsed['mode']) && $parsed['mode']) {
+                            $volume .= ':'.$parsed['mode']->value();
+                        }
                     }
                 } elseif ($type->value() === 'volume') {
                     if ($topLevel->get('volumes')->has($source->value())) {
@@ -609,6 +618,9 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         $target = $parsed['target'];
                         $source = $name;
                         $volume = "$source:$target";
+                        if (isset($parsed['mode']) && $parsed['mode']) {
+                            $volume .= ':'.$parsed['mode']->value();
+                        }
                     } elseif (is_array($volume)) {
                         data_set($volume, 'source', $name);
                     }
@@ -1562,8 +1574,14 @@ function serviceParser(Service $resource): Collection
                 if ($type->value() === 'bind') {
                     if ($source->value() === '/var/run/docker.sock') {
                         $volume = $source->value().':'.$target->value();
+                        if (isset($parsed['mode']) && $parsed['mode']) {
+                            $volume .= ':'.$parsed['mode']->value();
+                        }
                     } elseif ($source->value() === '/tmp' || $source->value() === '/tmp/') {
                         $volume = $source->value().':'.$target->value();
+                        if (isset($parsed['mode']) && $parsed['mode']) {
+                            $volume .= ':'.$parsed['mode']->value();
+                        }
                     } else {
                         if ((int) $resource->compose_parsing_version >= 4) {
                             $mainDirectory = str(base_configuration_dir().'/services/'.$uuid);
@@ -1594,6 +1612,9 @@ function serviceParser(Service $resource): Collection
                             }
                         }
                         $volume = "$source:$target";
+                        if (isset($parsed['mode']) && $parsed['mode']) {
+                            $volume .= ':'.$parsed['mode']->value();
+                        }
                     }
                 } elseif ($type->value() === 'volume') {
                     if ($topLevel->get('volumes')->has($source->value())) {
@@ -1614,6 +1635,9 @@ function serviceParser(Service $resource): Collection
                         $target = $parsed['target'];
                         $source = $name;
                         $volume = "$source:$target";
+                        if (isset($parsed['mode']) && $parsed['mode']) {
+                            $volume .= ':'.$parsed['mode']->value();
+                        }
                     } elseif (is_array($volume)) {
                         data_set($volume, 'source', $name);
                     }

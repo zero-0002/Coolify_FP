@@ -6,7 +6,8 @@
                     :resource="$resource" :isFirst="$loop->first" isReadOnly='true' isService='true' />
             @else
                 <livewire:project.shared.storages.show wire:key="storage-{{ $storage->id }}" :storage="$storage"
-                    :resource="$resource" isReadOnly="{{ data_get($storage, 'is_readonly') }}"
+                    :resource="$resource"
+                    isReadOnly="{{ data_get($storage, 'is_readonly') || $resource?->build_pack === 'dockercompose' ? true : false }}"
                     startedAt="{{ data_get($resource, 'started_at') }}" />
             @endif
         @endforeach

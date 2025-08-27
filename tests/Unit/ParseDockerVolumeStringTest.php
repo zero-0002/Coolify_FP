@@ -191,3 +191,31 @@ test('parses complex real-world examples', function () {
     expect($result['target']->value())->toBe('/var/lib/app-data');
     expect($result['mode'])->toBeNull();
 });
+
+test('preserves mode when reconstructing volume strings', function () {
+    // Test cases that specifically verify mode preservation
+    $testCases = [
+        '/var/run/docker.sock:/var/run/docker.sock:ro' => ['source' => '/var/run/docker.sock', 'target' => '/var/run/docker.sock', 'mode' => 'ro'],
+        '/etc/localtime:/etc/localtime:ro' => ['source' => '/etc/localtime', 'target' => '/etc/localtime', 'mode' => 'ro'],
+        '/tmp:/tmp:rw' => ['source' => '/tmp', 'target' => '/tmp', 'mode' => 'rw'],
+        'gitea-data:/data:ro' => ['source' => 'gitea-data', 'target' => '/data', 'mode' => 'ro'],
+        './config:/app/config:cached' => ['source' => './config', 'target' => '/app/config', 'mode' => 'cached'],
+        'volume:/data:delegated' => ['source' => 'volume', 'target' => '/data', 'mode' => 'delegated'],
+    ];
+
+    foreach ($testCases as $input => $expected) {
+        $result = parseDockerVolumeString($input);
+
+        // Verify parsing
+        expect($result['source']->value())->toBe($expected['source']);
+        expect($result['target']->value())->toBe($expected['target']);
+        expect($result['mode']->value())->toBe($expected['mode']);
+
+        // Verify reconstruction would preserve the mode
+        $reconstructed = $result['source']->value().':'.$result['target']->value();
+        if ($result['mode']) {
+            $reconstructed .= ':'.$result['mode']->value();
+        }
+        expect($reconstructed)->toBe($input);
+    }
+});
