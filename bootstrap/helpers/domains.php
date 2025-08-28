@@ -2,6 +2,7 @@
 
 use App\Models\Application;
 use App\Models\ServiceApplication;
+use Illuminate\Support\Collection;
 
 function checkDomainUsage(ServiceApplication|Application|null $resource = null, ?string $domain = null)
 {
@@ -129,6 +130,103 @@ function checkDomainUsage(ServiceApplication|Application|null $resource = null, 
                     'message' => "Domain $naked_domain is already in use by this Coolify instance",
                 ];
             }
+        }
+    }
+
+    return [
+        'conflicts' => $conflicts,
+        'hasConflicts' => count($conflicts) > 0,
+    ];
+}
+
+function checkIfDomainIsAlreadyUsedViaAPI(Collection|array $domains, ?string $teamId = null, ?string $uuid = null)
+{
+    $conflicts = [];
+
+    if (is_null($teamId)) {
+        return ['error' => 'Team ID is required.'];
+    }
+    if (is_array($domains)) {
+        $domains = collect($domains);
+    }
+
+    $domains = $domains->map(function ($domain) {
+        if (str($domain)->endsWith('/')) {
+            $domain = str($domain)->beforeLast('/');
+        }
+
+        return str($domain);
+    });
+
+    // Check applications within the same team
+    $applications = Application::ownedByCurrentTeamAPI($teamId)->get(['fqdn', 'uuid', 'name', 'id']);
+    $serviceApplications = ServiceApplication::ownedByCurrentTeamAPI($teamId)->with('service:id,name')->get(['fqdn', 'uuid', 'id', 'service_id']);
+
+    if ($uuid) {
+        $applications = $applications->filter(fn ($app) => $app->uuid !== $uuid);
+        $serviceApplications = $serviceApplications->filter(fn ($app) => $app->uuid !== $uuid);
+    }
+
+    foreach ($applications as $app) {
+        if (is_null($app->fqdn)) {
+            continue;
+        }
+        $list_of_domains = collect(explode(',', $app->fqdn))->filter(fn ($fqdn) => $fqdn !== '');
+        foreach ($list_of_domains as $domain) {
+            if (str($domain)->endsWith('/')) {
+                $domain = str($domain)->beforeLast('/');
+            }
+            $naked_domain = str($domain)->value();
+            if ($domains->contains($naked_domain)) {
+                $conflicts[] = [
+                    'domain' => $naked_domain,
+                    'resource_name' => $app->name,
+                    'resource_uuid' => $app->uuid,
+                    'resource_type' => 'application',
+                    'message' => "Domain $naked_domain is already in use by application '{$app->name}'",
+                ];
+            }
+        }
+    }
+
+    foreach ($serviceApplications as $app) {
+        if (str($app->fqdn)->isEmpty()) {
+            continue;
+        }
+        $list_of_domains = collect(explode(',', $app->fqdn))->filter(fn ($fqdn) => $fqdn !== '');
+        foreach ($list_of_domains as $domain) {
+            if (str($domain)->endsWith('/')) {
+                $domain = str($domain)->beforeLast('/');
+            }
+            $naked_domain = str($domain)->value();
+            if ($domains->contains($naked_domain)) {
+                $conflicts[] = [
+                    'domain' => $naked_domain,
+                    'resource_name' => $app->service->name ?? 'Unknown Service',
+                    'resource_uuid' => $app->uuid,
+                    'resource_type' => 'service',
+                    'message' => "Domain $naked_domain is already in use by service '{$app->service->name}'",
+                ];
+            }
+        }
+    }
+
+    // Check instance-level domain
+    $settings = instanceSettings();
+    if (data_get($settings, 'fqdn')) {
+        $domain = data_get($settings, 'fqdn');
+        if (str($domain)->endsWith('/')) {
+            $domain = str($domain)->beforeLast('/');
+        }
+        $naked_domain = str($domain)->value();
+        if ($domains->contains($naked_domain)) {
+            $conflicts[] = [
+                'domain' => $naked_domain,
+                'resource_name' => 'Coolify Instance',
+                'resource_uuid' => null,
+                'resource_type' => 'instance',
+                'message' => "Domain $naked_domain is already in use by this Coolify instance",
+            ];
         }
     }
 
