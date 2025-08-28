@@ -37,7 +37,7 @@ class EditDomain extends Component
             if ($warning) {
                 $this->dispatch('warning', __('warning.sslipdomain'));
             }
-            check_domain_usage(resource: $this->application);
+            checkDomainUsage(resource: $this->application);
             $this->validate();
             $this->application->save();
             updateCompose($this->application);

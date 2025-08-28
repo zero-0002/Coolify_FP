@@ -485,7 +485,7 @@ class General extends Component
                     }
                 }
             }
-            check_domain_usage(resource: $this->application);
+            checkDomainUsage(resource: $this->application);
             $this->application->fqdn = $domains->implode(',');
             $this->resetDefaultLabels(false);
         }
@@ -588,7 +588,7 @@ class General extends Component
                             }
                         }
                     }
-                    check_domain_usage(resource: $this->application);
+                    checkDomainUsage(resource: $this->application);
                     $this->application->save();
                     $this->resetDefaultLabels();
                 }

@@ -63,7 +63,7 @@ class Previews extends Component
                     $this->dispatch('error', 'Validating DNS failed.', "Make sure you have added the DNS records correctly.<br><br>$preview->fqdn->{$this->application->destination->server->ip}<br><br>Check this <a target='_blank' class='underline dark:text-white' href='https://coolify.io/docs/knowledge-base/dns-configuration'>documentation</a> for further help.");
                     $success = false;
                 }
-                check_domain_usage(resource: $this->application, domain: $preview->fqdn);
+                checkDomainUsage(resource: $this->application, domain: $preview->fqdn);
             }
 
             if (! $preview) {

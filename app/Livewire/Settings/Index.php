@@ -108,7 +108,7 @@ class Index extends Component
                 }
             }
             if ($this->fqdn) {
-                check_domain_usage(domain: $this->fqdn);
+                checkDomainUsage(domain: $this->fqdn);
             }
 
             $this->instantSave(isSave: false);
