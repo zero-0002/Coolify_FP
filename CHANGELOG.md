@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### 🚀 Features
+
+- *(domains)* Implement domain conflict detection and user confirmation modal across application components
+
+### 🐛 Bug Fixes
+
+- *(previews)* Simplify FQDN generation logic by removing unnecessary empty check
+
+### 🚜 Refactor
+
+- *(urls)* Replace generateFqdn with generateUrl for consistent URL generation across applications
+- *(domains)* Rename check_domain_usage to checkDomainUsage and update references across the application
+- *(auth)* Simplify access control logic in CanAccessTerminal and ServerPolicy by allowing all users to perform actions
+
+### ⚙️ Miscellaneous Tasks
+
+- Update coolify version to 4.0.0-beta.425 and nightly version to 4.0.0-beta.426
+
+## [4.0.0-beta.424] - 2025-08-27
+
 ### 🐛 Bug Fixes
 
 - *(parsers)* Do not modify service names, only for getting fqdns and related envs
@@ -11,6 +31,7 @@ All notable changes to this project will be documented in this file.
 
 ### 📚 Documentation
 
+- Update changelog
 - Update changelog
 
 ### ⚙️ Miscellaneous Tasks
