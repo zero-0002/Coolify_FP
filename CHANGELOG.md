@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### 🚜 Refactor
+
+- *(policy)* Simplify ServiceDatabasePolicy methods to always return true and add manageBackups method
+
+### 📚 Documentation
+
+- Update changelog
+
+### ⚙️ Miscellaneous Tasks
+
+- Update coolify version to 4.0.0-beta.426 and nightly version to 4.0.0-beta.427
+
+## [4.0.0-beta.425] - 2025-08-28
+
 ### 🚀 Features
 
 - *(domains)* Implement domain conflict detection and user confirmation modal across application components
