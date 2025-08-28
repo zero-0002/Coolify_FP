@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### 🚀 Features
 
 - *(domains)* Implement domain conflict detection and user confirmation modal across application components
+- *(domains)* Add force_domain_override option and enhance domain conflict detection responses
 
 ### 🐛 Bug Fixes
 
@@ -17,6 +18,10 @@ All notable changes to this project will be documented in this file.
 - *(urls)* Replace generateFqdn with generateUrl for consistent URL generation across applications
 - *(domains)* Rename check_domain_usage to checkDomainUsage and update references across the application
 - *(auth)* Simplify access control logic in CanAccessTerminal and ServerPolicy by allowing all users to perform actions
+
+### 📚 Documentation
+
+- Update changelog
 
 ### ⚙️ Miscellaneous Tasks
 
