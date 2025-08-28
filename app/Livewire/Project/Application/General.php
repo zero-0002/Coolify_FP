@@ -430,7 +430,7 @@ class General extends Component
 
             $server = data_get($this->application, 'destination.server');
             if ($server) {
-                $fqdn = generateFqdn(server: $server, random: $this->application->uuid, parserVersion: $this->application->compose_parsing_version);
+                $fqdn = generateUrl(server: $server, random: $this->application->uuid);
                 $this->application->fqdn = $fqdn;
                 $this->application->save();
                 $this->resetDefaultLabels();
