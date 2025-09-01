@@ -23,6 +23,11 @@ class SettingsDropdown extends Component
         return app(ChangelogService::class)->getEntriesForUser($user);
     }
 
+    public function getCurrentVersionProperty()
+    {
+        return 'v'.config('constants.coolify.version');
+    }
+
     public function openWhatsNewModal()
     {
         $this->showWhatsNewModal = true;
@@ -62,6 +67,7 @@ class SettingsDropdown extends Component
         return view('livewire.settings-dropdown', [
             'entries' => $this->entries,
             'unreadCount' => $this->unreadCount,
+            'currentVersion' => $this->currentVersion,
         ]);
     }
 }
