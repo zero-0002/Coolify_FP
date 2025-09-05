@@ -82,8 +82,17 @@ class CleanupStuckedResources extends Command
             foreach ($applicationsPreviews as $applicationPreview) {
                 if (! data_get($applicationPreview, 'application')) {
                     echo "Deleting stuck application preview: {$applicationPreview->uuid}\n";
-                    $applicationPreview->delete();
+                    $applicationPreview->forceDelete();
                 }
+            }
+        } catch (\Throwable $e) {
+            echo "Error in cleaning stuck application: {$e->getMessage()}\n";
+        }
+        try {
+            $applicationsPreviews = ApplicationPreview::withTrashed()->whereNotNull('deleted_at')->get();
+            foreach ($applicationsPreviews as $applicationPreview) {
+                echo "Deleting stuck application preview: {$applicationPreview->uuid}\n";
+                $applicationPreview->forceDelete();
             }
         } catch (\Throwable $e) {
             echo "Error in cleaning stuck application: {$e->getMessage()}\n";
