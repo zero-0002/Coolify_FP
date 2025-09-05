@@ -110,52 +110,42 @@ class ServicesDelete extends Command
 
     private function deleteDatabase()
     {
-        $databaseType = select(
-            'What type of database do you want to delete?',
-            [
-                'PostgreSQL' => 'PostgreSQL',
-                'MySQL' => 'MySQL',
-                'MariaDB' => 'MariaDB',
-                'MongoDB' => 'MongoDB',
-                'Redis' => 'Redis',
-                'KeyDB' => 'KeyDB',
-                'Dragonfly' => 'Dragonfly',
-                'ClickHouse' => 'ClickHouse',
-            ],
-        );
+        // Collect all databases from all types
+        $allDatabases = collect()
+            ->merge(StandalonePostgresql::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'PostgreSQL', 'model' => $db]))
+            ->merge(StandaloneMysql::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'MySQL', 'model' => $db]))
+            ->merge(StandaloneMariadb::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'MariaDB', 'model' => $db]))
+            ->merge(StandaloneMongodb::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'MongoDB', 'model' => $db]))
+            ->merge(StandaloneRedis::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'Redis', 'model' => $db]))
+            ->merge(StandaloneKeydb::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'KeyDB', 'model' => $db]))
+            ->merge(StandaloneDragonfly::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'Dragonfly', 'model' => $db]))
+            ->merge(StandaloneClickhouse::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'ClickHouse', 'model' => $db]));
 
-        $databases = match ($databaseType) {
-            'PostgreSQL' => StandalonePostgresql::all(),
-            'MySQL' => StandaloneMysql::all(),
-            'MariaDB' => StandaloneMariadb::all(),
-            'MongoDB' => StandaloneMongodb::all(),
-            'Redis' => StandaloneRedis::all(),
-            'KeyDB' => StandaloneKeydb::all(),
-            'Dragonfly' => StandaloneDragonfly::all(),
-            'ClickHouse' => StandaloneClickhouse::all(),
-            default => collect(),
-        };
-
-        if ($databases->count() === 0) {
-            $this->error("There are no {$databaseType} databases to delete.");
+        if ($allDatabases->count() === 0) {
+            $this->error('There are no databases to delete.');
 
             return;
         }
 
+        // Create options with type information for better UX
+        $databaseOptions = $allDatabases->mapWithKeys(function ($db) {
+            return [$db->id => "{$db->name} ({$db->type})"];
+        })->sortKeys();
+
         $databasesToDelete = multiselect(
-            "What {$databaseType} database do you want to delete?",
-            $databases->pluck('name', 'id')->sortKeys(),
+            'What database do you want to delete?',
+            $databaseOptions,
         );
 
-        foreach ($databasesToDelete as $database) {
-            $toDelete = $databases->where('id', $database)->first();
+        foreach ($databasesToDelete as $databaseId) {
+            $toDelete = $allDatabases->where('id', $databaseId)->first();
             if ($toDelete) {
-                $this->info($toDelete);
+                $this->info("{$toDelete->name} ({$toDelete->type})");
                 $confirmed = confirm('Are you sure you want to delete all selected resources?');
                 if (! $confirmed) {
                     return;
                 }
-                DeleteResourceJob::dispatch($toDelete);
+                DeleteResourceJob::dispatch($toDelete->model);
             }
         }
     }
