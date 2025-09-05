@@ -6,7 +6,14 @@ use App\Jobs\DeleteResourceJob;
 use App\Models\Application;
 use App\Models\Server;
 use App\Models\Service;
+use App\Models\StandaloneClickhouse;
+use App\Models\StandaloneDragonfly;
+use App\Models\StandaloneKeydb;
+use App\Models\StandaloneMariadb;
+use App\Models\StandaloneMongodb;
+use App\Models\StandaloneMysql;
 use App\Models\StandalonePostgresql;
+use App\Models\StandaloneRedis;
 use Illuminate\Console\Command;
 
 use function Laravel\Prompts\confirm;
@@ -103,14 +110,40 @@ class ServicesDelete extends Command
 
     private function deleteDatabase()
     {
-        $databases = StandalonePostgresql::all();
+        $databaseType = select(
+            'What type of database do you want to delete?',
+            [
+                'PostgreSQL' => 'PostgreSQL',
+                'MySQL' => 'MySQL',
+                'MariaDB' => 'MariaDB',
+                'MongoDB' => 'MongoDB',
+                'Redis' => 'Redis',
+                'KeyDB' => 'KeyDB',
+                'Dragonfly' => 'Dragonfly',
+                'ClickHouse' => 'ClickHouse',
+            ],
+        );
+
+        $databases = match ($databaseType) {
+            'PostgreSQL' => StandalonePostgresql::all(),
+            'MySQL' => StandaloneMysql::all(),
+            'MariaDB' => StandaloneMariadb::all(),
+            'MongoDB' => StandaloneMongodb::all(),
+            'Redis' => StandaloneRedis::all(),
+            'KeyDB' => StandaloneKeydb::all(),
+            'Dragonfly' => StandaloneDragonfly::all(),
+            'ClickHouse' => StandaloneClickhouse::all(),
+            default => collect(),
+        };
+
         if ($databases->count() === 0) {
-            $this->error('There are no databases to delete.');
+            $this->error("There are no {$databaseType} databases to delete.");
 
             return;
         }
+
         $databasesToDelete = multiselect(
-            'What database do you want to delete?',
+            "What {$databaseType} database do you want to delete?",
             $databases->pluck('name', 'id')->sortKeys(),
         );
 
