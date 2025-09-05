@@ -110,16 +110,65 @@ class ServicesDelete extends Command
 
     private function deleteDatabase()
     {
-        // Collect all databases from all types
-        $allDatabases = collect()
-            ->merge(StandalonePostgresql::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'PostgreSQL', 'model' => $db]))
-            ->merge(StandaloneMysql::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'MySQL', 'model' => $db]))
-            ->merge(StandaloneMariadb::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'MariaDB', 'model' => $db]))
-            ->merge(StandaloneMongodb::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'MongoDB', 'model' => $db]))
-            ->merge(StandaloneRedis::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'Redis', 'model' => $db]))
-            ->merge(StandaloneKeydb::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'KeyDB', 'model' => $db]))
-            ->merge(StandaloneDragonfly::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'Dragonfly', 'model' => $db]))
-            ->merge(StandaloneClickhouse::all()->map(fn ($db) => (object) ['id' => $db->id, 'name' => $db->name, 'type' => 'ClickHouse', 'model' => $db]));
+        // Collect all databases from all types with unique identifiers
+        $allDatabases = collect();
+        $databaseOptions = collect();
+
+        // Add PostgreSQL databases
+        foreach (StandalonePostgresql::all() as $db) {
+            $key = "postgresql_{$db->id}";
+            $allDatabases->put($key, $db);
+            $databaseOptions->put($key, "{$db->name} (PostgreSQL)");
+        }
+
+        // Add MySQL databases
+        foreach (StandaloneMysql::all() as $db) {
+            $key = "mysql_{$db->id}";
+            $allDatabases->put($key, $db);
+            $databaseOptions->put($key, "{$db->name} (MySQL)");
+        }
+
+        // Add MariaDB databases
+        foreach (StandaloneMariadb::all() as $db) {
+            $key = "mariadb_{$db->id}";
+            $allDatabases->put($key, $db);
+            $databaseOptions->put($key, "{$db->name} (MariaDB)");
+        }
+
+        // Add MongoDB databases
+        foreach (StandaloneMongodb::all() as $db) {
+            $key = "mongodb_{$db->id}";
+            $allDatabases->put($key, $db);
+            $databaseOptions->put($key, "{$db->name} (MongoDB)");
+        }
+
+        // Add Redis databases
+        foreach (StandaloneRedis::all() as $db) {
+            $key = "redis_{$db->id}";
+            $allDatabases->put($key, $db);
+            $databaseOptions->put($key, "{$db->name} (Redis)");
+        }
+
+        // Add KeyDB databases
+        foreach (StandaloneKeydb::all() as $db) {
+            $key = "keydb_{$db->id}";
+            $allDatabases->put($key, $db);
+            $databaseOptions->put($key, "{$db->name} (KeyDB)");
+        }
+
+        // Add Dragonfly databases
+        foreach (StandaloneDragonfly::all() as $db) {
+            $key = "dragonfly_{$db->id}";
+            $allDatabases->put($key, $db);
+            $databaseOptions->put($key, "{$db->name} (Dragonfly)");
+        }
+
+        // Add ClickHouse databases
+        foreach (StandaloneClickhouse::all() as $db) {
+            $key = "clickhouse_{$db->id}";
+            $allDatabases->put($key, $db);
+            $databaseOptions->put($key, "{$db->name} (ClickHouse)");
+        }
 
         if ($allDatabases->count() === 0) {
             $this->error('There are no databases to delete.');
@@ -127,25 +176,20 @@ class ServicesDelete extends Command
             return;
         }
 
-        // Create options with type information for better UX
-        $databaseOptions = $allDatabases->mapWithKeys(function ($db) {
-            return [$db->id => "{$db->name} ({$db->type})"];
-        })->sortKeys();
-
         $databasesToDelete = multiselect(
             'What database do you want to delete?',
-            $databaseOptions,
+            $databaseOptions->sortKeys(),
         );
 
-        foreach ($databasesToDelete as $databaseId) {
-            $toDelete = $allDatabases->where('id', $databaseId)->first();
+        foreach ($databasesToDelete as $databaseKey) {
+            $toDelete = $allDatabases->get($databaseKey);
             if ($toDelete) {
-                $this->info("{$toDelete->name} ({$toDelete->type})");
+                $this->info($toDelete);
                 $confirmed = confirm('Are you sure you want to delete all selected resources?');
                 if (! $confirmed) {
                     return;
                 }
-                DeleteResourceJob::dispatch($toDelete->model);
+                DeleteResourceJob::dispatch($toDelete);
             }
         }
     }
