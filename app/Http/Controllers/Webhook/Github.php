@@ -240,7 +240,7 @@ class Github extends Controller
                     if ($action === 'closed') {
                         $found = ApplicationPreview::where('application_id', $application->id)->where('pull_request_id', $pull_request_id)->first();
                         if ($found) {
-                            $found->delete();
+                            $found->forceDelete();
                             $container_name = generateApplicationContainerName($application, $pull_request_id);
                             instant_remote_process(["docker rm -f $container_name"], $application->destination->server);
                             $return_payloads->push([
@@ -480,7 +480,7 @@ class Github extends Controller
                             }
 
                             ApplicationPullRequestUpdateJob::dispatchSync(application: $application, preview: $found, status: ProcessStatus::CLOSED);
-                            $found->delete();
+                            $found->forceDelete();
 
                             $return_payloads->push([
                                 'application' => $application->name,
