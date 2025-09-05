@@ -78,6 +78,7 @@ class Github extends Controller
                 $pull_request_html_url = data_get($payload, 'pull_request.html_url');
                 $branch = data_get($payload, 'pull_request.head.ref');
                 $base_branch = data_get($payload, 'pull_request.base.ref');
+                $author_association = data_get($payload, 'pull_request.author_association');
             }
             if (! $branch) {
                 return response('Nothing to do. No branch found in the request.');
@@ -170,6 +171,19 @@ class Github extends Controller
                 if ($x_github_event === 'pull_request') {
                     if ($action === 'opened' || $action === 'synchronize' || $action === 'reopened') {
                         if ($application->isPRDeployable()) {
+                            // Check if PR deployments from public contributors are restricted
+                            if (! $application->settings->is_pr_deployments_public_enabled) {
+                                $trustedAssociations = ['OWNER', 'MEMBER', 'COLLABORATOR', 'CONTRIBUTOR'];
+                                if (! in_array($author_association, $trustedAssociations)) {
+                                    $return_payloads->push([
+                                        'application' => $application->name,
+                                        'status' => 'failed',
+                                        'message' => 'PR deployments are restricted to repository members and contributors. Author association: '.$author_association,
+                                    ]);
+
+                                    continue;
+                                }
+                            }
                             $deployment_uuid = new Cuid2;
                             $found = ApplicationPreview::where('application_id', $application->id)->where('pull_request_id', $pull_request_id)->first();
                             if (! $found) {
@@ -327,6 +341,7 @@ class Github extends Controller
                 $pull_request_html_url = data_get($payload, 'pull_request.html_url');
                 $branch = data_get($payload, 'pull_request.head.ref');
                 $base_branch = data_get($payload, 'pull_request.base.ref');
+                $author_association = data_get($payload, 'pull_request.author_association');
             }
             if (! $id || ! $branch) {
                 return response('Nothing to do. No id or branch found.');
@@ -400,6 +415,19 @@ class Github extends Controller
                 if ($x_github_event === 'pull_request') {
                     if ($action === 'opened' || $action === 'synchronize' || $action === 'reopened') {
                         if ($application->isPRDeployable()) {
+                            // Check if PR deployments from public contributors are restricted
+                            if (! $application->settings->is_pr_deployments_public_enabled) {
+                                $trustedAssociations = ['OWNER', 'MEMBER', 'COLLABORATOR', 'CONTRIBUTOR'];
+                                if (! in_array($author_association, $trustedAssociations)) {
+                                    $return_payloads->push([
+                                        'application' => $application->name,
+                                        'status' => 'failed',
+                                        'message' => 'PR deployments are restricted to repository members and contributors. Author association: '.$author_association,
+                                    ]);
+
+                                    continue;
+                                }
+                            }
                             $deployment_uuid = new Cuid2;
                             $found = ApplicationPreview::where('application_id', $application->id)->where('pull_request_id', $pull_request_id)->first();
                             if (! $found) {
