@@ -88,10 +88,6 @@ trait ExecuteRemoteCommand
     private function executeCommandWithProcess($command, $hidden, $customType, $append, $ignore_errors)
     {
         $remote_command = SshMultiplexingHelper::generateSshCommand($this->server, $command);
-        // Randomly fail the command with a key exchange error for testing
-        // if (random_int(1, 20) === 1) { // 5% chance to fail
-        //     throw new \RuntimeException('SSH key exchange failed: kex_exchange_identification: read: Connection reset by peer');
-        // }
         $process = Process::timeout(3600)->idleTimeout(3600)->start($remote_command, function (string $type, string $output) use ($command, $hidden, $customType, $append) {
             $output = str($output)->trim();
             if ($output->startsWith('╔')) {

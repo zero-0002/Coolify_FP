@@ -159,11 +159,18 @@ function excludeCertainErrors(string $errorOutput, ?int $exitCode = null)
         'Could not resolve hostname',
     ]);
     $ignored = $ignoredErrors->contains(fn ($error) => Str::contains($errorOutput, $error));
+
+    // Ensure we always have a meaningful error message
+    $errorMessage = trim($errorOutput);
+    if (empty($errorMessage)) {
+        $errorMessage = "SSH command failed with exit code: $exitCode";
+    }
+
     if ($ignored) {
         // TODO: Create new exception and disable in sentry
-        throw new \RuntimeException($errorOutput, $exitCode);
+        throw new \RuntimeException($errorMessage, $exitCode);
     }
-    throw new \RuntimeException($errorOutput, $exitCode);
+    throw new \RuntimeException($errorMessage, $exitCode);
 }
 
 function decode_remote_command_output(?ApplicationDeploymentQueue $application_deployment_queue = null): Collection

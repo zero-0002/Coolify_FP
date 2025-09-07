@@ -57,9 +57,9 @@ trait SshRetryable
      */
     protected function calculateRetryDelay(int $attempt): int
     {
-        $baseDelay = config('constants.ssh.retry_base_delay', 2);
-        $maxDelay = config('constants.ssh.retry_max_delay', 30);
-        $multiplier = config('constants.ssh.retry_multiplier', 2);
+        $baseDelay = config('constants.ssh.retry_base_delay');
+        $maxDelay = config('constants.ssh.retry_max_delay');
+        $multiplier = config('constants.ssh.retry_multiplier');
 
         $delay = min($baseDelay * pow($multiplier, $attempt), $maxDelay);
 
@@ -76,23 +76,17 @@ trait SshRetryable
      */
     protected function executeWithSshRetry(callable $callback, array $context = [], bool $throwError = true)
     {
-        $maxRetries = config('constants.ssh.max_retries', 3);
+        $maxRetries = config('constants.ssh.max_retries');
         $lastError = null;
         $lastErrorMessage = '';
+        // Randomly fail the command with a key exchange error for testing
+        // if (random_int(1, 10) === 1) { // 10% chance to fail
+        //     ray('SSH key exchange failed: kex_exchange_identification: read: Connection reset by peer');
+        //     throw new \RuntimeException('SSH key exchange failed: kex_exchange_identification: read: Connection reset by peer');
+        // }
         for ($attempt = 0; $attempt < $maxRetries; $attempt++) {
             try {
-                // Execute the callback
-                $result = $callback();
-
-                // If we get here, it succeeded
-                if ($attempt > 0) {
-                    Log::info('SSH operation succeeded after retry', array_merge($context, [
-                        'attempt' => $attempt + 1,
-                    ]));
-                }
-
-                return $result;
-
+                return $callback();
             } catch (\Throwable $e) {
                 $lastError = $e;
                 $lastErrorMessage = $e->getMessage();
@@ -125,6 +119,12 @@ trait SshRetryable
         }
 
         if ($throwError && $lastError) {
+            // If the error message is empty, provide a more meaningful one
+            if (empty($lastErrorMessage) || trim($lastErrorMessage) === '') {
+                $contextInfo = isset($context['server']) ? " to server {$context['server']}" : '';
+                $attemptInfo = $attempt > 1 ? " after {$attempt} attempts" : '';
+                throw new \RuntimeException("SSH connection failed{$contextInfo}{$attemptInfo}", $lastError->getCode());
+            }
             throw $lastError;
         }
 

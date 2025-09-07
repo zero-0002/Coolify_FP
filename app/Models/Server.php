@@ -1082,6 +1082,7 @@ $schema://$host {
 
     public function validateConnection(bool $justCheckingNewKey = false)
     {
+        ray('validateConnection', $this->id);
         $this->disableSshMux();
 
         if ($this->skipServer()) {
