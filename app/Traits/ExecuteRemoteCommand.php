@@ -48,9 +48,9 @@ trait ExecuteRemoteCommand
      */
     private function calculateRetryDelay(int $attempt): int
     {
-        $baseDelay = config('constants.ssh.retry_base_delay', 2);
-        $maxDelay = config('constants.ssh.retry_max_delay', 30);
-        $multiplier = config('constants.ssh.retry_multiplier', 2);
+        $baseDelay = config('constants.ssh.retry_base_delay');
+        $maxDelay = config('constants.ssh.retry_max_delay');
+        $multiplier = config('constants.ssh.retry_multiplier');
 
         $delay = min($baseDelay * pow($multiplier, $attempt), $maxDelay);
 
@@ -98,22 +98,10 @@ trait ExecuteRemoteCommand
                 } catch (\RuntimeException $e) {
                     $lastError = $e;
                     $errorMessage = $e->getMessage();
-
                     // Only retry if it's an SSH connection error and we haven't exhausted retries
                     if ($this->isRetryableSshError($errorMessage) && $attempt < $maxRetries - 1) {
                         $attempt++;
                         $delay = $this->calculateRetryDelay($attempt - 1);
-
-                        // Log the retry attempt
-                        Log::warning('SSH command failed, retrying', [
-                            'server' => $this->server->ip,
-                            'attempt' => $attempt,
-                            'max_retries' => $maxRetries,
-                            'delay' => $delay,
-                            'error' => $errorMessage,
-                            'command_preview' => $hidden ? '[hidden]' : substr($command, 0, 100),
-                        ]);
-
                         // Add log entry for the retry
                         if (isset($this->application_deployment_queue)) {
                             $this->addRetryLogEntry($attempt, $maxRetries, $delay, $errorMessage);
@@ -129,11 +117,6 @@ trait ExecuteRemoteCommand
 
             // If we exhausted all retries and still failed
             if (! $commandExecuted && $lastError) {
-                Log::error('SSH command failed after all retries', [
-                    'server' => $this->server->ip,
-                    'attempts' => $attempt,
-                    'error' => $lastError->getMessage(),
-                ]);
                 throw $lastError;
             }
         });
@@ -145,6 +128,10 @@ trait ExecuteRemoteCommand
     private function executeCommandWithProcess($command, $hidden, $customType, $append, $ignore_errors)
     {
         $remote_command = SshMultiplexingHelper::generateSshCommand($this->server, $command);
+        // Randomly fail the command with a key exchange error for testing
+        // if (random_int(1, 10) === 1) { // 10% chance to fail
+        //     throw new \RuntimeException('SSH key exchange failed: kex_exchange_identification: read: Connection reset by peer');
+        // }
         $process = Process::timeout(3600)->idleTimeout(3600)->start($remote_command, function (string $type, string $output) use ($command, $hidden, $customType, $append) {
             $output = str($output)->trim();
             if ($output->startsWith('╔')) {
@@ -221,11 +208,10 @@ trait ExecuteRemoteCommand
      */
     private function addRetryLogEntry(int $attempt, int $maxRetries, int $delay, string $errorMessage)
     {
-        $retryMessage = "🔄 SSH connection failed. Retrying... (Attempt {$attempt}/{$maxRetries}, waiting {$delay}s)\nError: {$errorMessage}";
+        $retryMessage = "SSH connection failed. Retrying... (Attempt {$attempt}/{$maxRetries}, waiting {$delay}s)\nError: {$errorMessage}";
 
         $new_log_entry = [
-            'command' => 'SSH Retry',
-            'output' => $retryMessage,
+            'output' => remove_iip($retryMessage),
             'type' => 'stdout',
             'timestamp' => Carbon::now('UTC'),
             'hidden' => false,
