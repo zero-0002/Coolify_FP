@@ -7,55 +7,15 @@ use App\Helpers\SshMultiplexingHelper;
 use App\Models\Server;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 
 trait ExecuteRemoteCommand
 {
+    use SshRetryable;
+
     public ?string $save = null;
 
     public static int $batch_counter = 0;
-
-    /**
-     * Check if an error message indicates a retryable SSH connection error
-     */
-    private function isRetryableSshError(string $errorOutput): bool
-    {
-        $retryablePatterns = [
-            'kex_exchange_identification',
-            'Connection reset by peer',
-            'Connection refused',
-            'Connection timed out',
-            'Connection closed by remote host',
-            'ssh_exchange_identification',
-            'Bad file descriptor',
-            'Broken pipe',
-            'No route to host',
-            'Network is unreachable',
-        ];
-
-        foreach ($retryablePatterns as $pattern) {
-            if (str_contains($errorOutput, $pattern)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Calculate delay for exponential backoff
-     */
-    private function calculateRetryDelay(int $attempt): int
-    {
-        $baseDelay = config('constants.ssh.retry_base_delay');
-        $maxDelay = config('constants.ssh.retry_max_delay');
-        $multiplier = config('constants.ssh.retry_multiplier');
-
-        $delay = min($baseDelay * pow($multiplier, $attempt), $maxDelay);
-
-        return (int) $delay;
-    }
 
     public function execute_remote_command(...$commands)
     {
@@ -129,7 +89,7 @@ trait ExecuteRemoteCommand
     {
         $remote_command = SshMultiplexingHelper::generateSshCommand($this->server, $command);
         // Randomly fail the command with a key exchange error for testing
-        // if (random_int(1, 10) === 1) { // 10% chance to fail
+        // if (random_int(1, 20) === 1) { // 5% chance to fail
         //     throw new \RuntimeException('SSH key exchange failed: kex_exchange_identification: read: Connection reset by peer');
         // }
         $process = Process::timeout(3600)->idleTimeout(3600)->start($remote_command, function (string $type, string $output) use ($command, $hidden, $customType, $append) {
