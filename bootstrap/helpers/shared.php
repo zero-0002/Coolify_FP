@@ -204,7 +204,6 @@ function get_latest_version_of_coolify(): string
 
         return data_get($versions, 'coolify.v4.version');
     } catch (\Throwable $e) {
-        ray($e->getMessage());
 
         return '0.0.0';
     }
