@@ -29,11 +29,31 @@ function remote_process(
     $type = $type ?? ActivityTypes::INLINE->value;
     $command = $command instanceof Collection ? $command->toArray() : $command;
 
-    if ($server->isNonRoot()) {
-        $command = parseCommandsByLineForSudo(collect($command), $server);
+    // Process commands and handle file transfers
+    $processed_commands = [];
+    foreach ($command as $cmd) {
+        if (is_array($cmd) && isset($cmd['transfer_file'])) {
+            // Handle file transfer command
+            $transfer_data = $cmd['transfer_file'];
+            $content = $transfer_data['content'];
+            $destination = $transfer_data['destination'];
+
+            // Execute file transfer immediately
+            transfer_file_to_server($content, $destination, $server, ! $ignore_errors);
+
+            // Add a comment to the command log for visibility
+            $processed_commands[] = "# File transferred via SCP: $destination";
+        } else {
+            // Regular string command
+            $processed_commands[] = $cmd;
+        }
     }
 
-    $command_string = implode("\n", $command);
+    if ($server->isNonRoot()) {
+        $processed_commands = parseCommandsByLineForSudo(collect($processed_commands), $server);
+    }
+
+    $command_string = implode("\n", $processed_commands);
 
     if (Auth::check()) {
         $teams = Auth::user()->teams->pluck('id');
@@ -84,6 +104,66 @@ function instant_scp(string $source, string $dest, Server $server, $throwError =
     );
 }
 
+function transfer_file_to_container(string $content, string $container_path, string $deployment_uuid, Server $server, bool $throwError = true): ?string
+{
+    $temp_file = tempnam(sys_get_temp_dir(), 'coolify_env_');
+
+    try {
+        // Write content to temporary file
+        file_put_contents($temp_file, $content);
+
+        // Generate unique filename for server transfer
+        $server_temp_file = '/tmp/coolify_env_'.uniqid().'_'.$deployment_uuid;
+
+        // Transfer file to server
+        instant_scp($temp_file, $server_temp_file, $server, $throwError);
+
+        // Ensure parent directory exists in container, then copy file
+        $parent_dir = dirname($container_path);
+        $commands = [];
+        if ($parent_dir !== '.' && $parent_dir !== '/') {
+            $commands[] = executeInDocker($deployment_uuid, "mkdir -p \"$parent_dir\"");
+        }
+        $commands[] = "docker cp $server_temp_file $deployment_uuid:$container_path";
+        $commands[] = "rm -f $server_temp_file";  // Cleanup server temp file
+
+        return instant_remote_process_with_timeout($commands, $server, $throwError);
+
+    } finally {
+        ray($temp_file);
+        // Always cleanup local temp file
+        if (file_exists($temp_file)) {
+            unlink($temp_file);
+        }
+    }
+}
+
+function transfer_file_to_server(string $content, string $server_path, Server $server, bool $throwError = true): ?string
+{
+    $temp_file = tempnam(sys_get_temp_dir(), 'coolify_env_');
+
+    try {
+        // Write content to temporary file
+        file_put_contents($temp_file, $content);
+
+        // Ensure parent directory exists on server
+        $parent_dir = dirname($server_path);
+        if ($parent_dir !== '.' && $parent_dir !== '/') {
+            instant_remote_process_with_timeout(["mkdir -p \"$parent_dir\""], $server, $throwError);
+        }
+
+        // Transfer file directly to server destination
+        return instant_scp($temp_file, $server_path, $server, $throwError);
+
+    } finally {
+        ray($temp_file);
+        // Always cleanup local temp file
+        if (file_exists($temp_file)) {
+            unlink($temp_file);
+        }
+    }
+}
+
 function instant_remote_process_with_timeout(Collection|array $command, Server $server, bool $throwError = true, bool $no_sudo = false): ?string
 {
     $command = $command instanceof Collection ? $command->toArray() : $command;
@@ -121,10 +201,31 @@ function instant_remote_process_with_timeout(Collection|array $command, Server $
 function instant_remote_process(Collection|array $command, Server $server, bool $throwError = true, bool $no_sudo = false): ?string
 {
     $command = $command instanceof Collection ? $command->toArray() : $command;
-    if ($server->isNonRoot() && ! $no_sudo) {
-        $command = parseCommandsByLineForSudo(collect($command), $server);
+
+    // Process commands and handle file transfers
+    $processed_commands = [];
+    foreach ($command as $cmd) {
+        if (is_array($cmd) && isset($cmd['transfer_file'])) {
+            // Handle file transfer command
+            $transfer_data = $cmd['transfer_file'];
+            $content = $transfer_data['content'];
+            $destination = $transfer_data['destination'];
+
+            // Execute file transfer immediately
+            transfer_file_to_server($content, $destination, $server, $throwError);
+
+            // Add a comment to the command log for visibility
+            $processed_commands[] = "# File transferred via SCP: $destination";
+        } else {
+            // Regular string command
+            $processed_commands[] = $cmd;
+        }
     }
-    $command_string = implode("\n", $command);
+
+    if ($server->isNonRoot() && ! $no_sudo) {
+        $processed_commands = parseCommandsByLineForSudo(collect($processed_commands), $server);
+    }
+    $command_string = implode("\n", $processed_commands);
 
     return \App\Helpers\SshRetryHandler::retry(
         function () use ($server, $command_string) {

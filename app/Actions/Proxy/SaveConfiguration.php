@@ -22,7 +22,12 @@ class SaveConfiguration
 
         return instant_remote_process([
             "mkdir -p $proxy_path",
-            "echo '$docker_compose_yml_base64' | base64 -d | tee $proxy_path/docker-compose.yml > /dev/null",
+            [
+                'transfer_file' => [
+                    'content' => base64_decode($docker_compose_yml_base64),
+                    'destination' => "$proxy_path/docker-compose.yml",
+                ],
+            ],
         ], $server);
     }
 }
