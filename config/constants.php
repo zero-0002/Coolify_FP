@@ -62,6 +62,10 @@ return [
         'connection_timeout' => 10,
         'server_interval' => 20,
         'command_timeout' => 7200,
+        'max_retries' => env('SSH_MAX_RETRIES', 3),
+        'retry_base_delay' => env('SSH_RETRY_BASE_DELAY', 2), // seconds
+        'retry_max_delay' => env('SSH_RETRY_MAX_DELAY', 30), // seconds
+        'retry_multiplier' => env('SSH_RETRY_MULTIPLIER', 2),
     ],
 
     'invitation' => [
