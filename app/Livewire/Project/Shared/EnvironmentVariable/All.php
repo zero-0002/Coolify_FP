@@ -257,7 +257,7 @@ class All extends Component
     {
         $count = 0;
         foreach ($variables as $key => $value) {
-            if (str($key)->startsWith('SERVICE_FQDN') || str($key)->startsWith('SERVICE_URL')) {
+            if (str($key)->startsWith('SERVICE_FQDN') || str($key)->startsWith('SERVICE_URL') || str($key)->startsWith('SERVICE_NAME')) {
                 continue;
             }
             $method = $isPreview ? 'environment_variables_preview' : 'environment_variables';

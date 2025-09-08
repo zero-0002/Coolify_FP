@@ -221,7 +221,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             if ($this->pull_request_id === 0) {
                 $this->container_name = $this->application->settings->custom_internal_name;
             } else {
-                $this->container_name = "{$this->application->settings->custom_internal_name}-pr-{$this->pull_request_id}";
+                $this->container_name = addPreviewDeploymentSuffix($this->application->settings->custom_internal_name, $this->pull_request_id);
             }
         }
 
@@ -706,8 +706,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             if ($this->pull_request_id === 0) {
                 $composeFileName = "$mainDir/docker-compose.yaml";
             } else {
-                $composeFileName = "$mainDir/docker-compose-pr-{$this->pull_request_id}.yaml";
-                $this->docker_compose_location = "/docker-compose-pr-{$this->pull_request_id}.yaml";
+                $composeFileName = "$mainDir/".addPreviewDeploymentSuffix('docker-compose', $this->pull_request_id).'.yaml';
+                $this->docker_compose_location = '/'.addPreviewDeploymentSuffix('docker-compose', $this->pull_request_id).'.yaml';
             }
             $this->execute_remote_command([
                 "mkdir -p $mainDir",
@@ -898,10 +898,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         }
         if ($this->build_pack === 'dockercompose') {
             $sorted_environment_variables = $sorted_environment_variables->filter(function ($env) {
-                return ! str($env->key)->startsWith('SERVICE_FQDN_') && ! str($env->key)->startsWith('SERVICE_URL_');
+                return ! str($env->key)->startsWith('SERVICE_FQDN_') && ! str($env->key)->startsWith('SERVICE_URL_') && ! str($env->key)->startsWith('SERVICE_NAME_');
             });
             $sorted_environment_variables_preview = $sorted_environment_variables_preview->filter(function ($env) {
-                return ! str($env->key)->startsWith('SERVICE_FQDN_') && ! str($env->key)->startsWith('SERVICE_URL_');
+                return ! str($env->key)->startsWith('SERVICE_FQDN_') && ! str($env->key)->startsWith('SERVICE_URL_') && ! str($env->key)->startsWith('SERVICE_NAME_');
             });
         }
         $ports = $this->application->main_port();
@@ -942,9 +942,20 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                         $envs->push('SERVICE_FQDN_'.str($forServiceName)->upper().'='.$coolifyFqdn);
                     }
                 }
+
+                // Generate SERVICE_NAME for dockercompose services from processed compose
+                if ($this->application->settings->is_raw_compose_deployment_enabled) {
+                    $dockerCompose = Yaml::parse($this->application->docker_compose_raw);
+                } else {
+                    $dockerCompose = Yaml::parse($this->application->docker_compose);
+                }
+                $services = data_get($dockerCompose, 'services', []);
+                foreach ($services as $serviceName => $_) {
+                    $envs->push('SERVICE_NAME_'.str($serviceName)->upper().'='.$serviceName);
+                }
             }
         } else {
-            $this->env_filename = ".env-pr-$this->pull_request_id";
+            $this->env_filename = addPreviewDeploymentSuffix(".env", $this->pull_request_id);
             foreach ($sorted_environment_variables_preview as $env) {
                 $envs->push($env->key.'='.$env->real_value);
             }
@@ -974,6 +985,13 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                         $envs->push('SERVICE_URL_'.str($forServiceName)->upper().'='.$coolifyUrl->__toString());
                         $envs->push('SERVICE_FQDN_'.str($forServiceName)->upper().'='.$coolifyFqdn);
                     }
+                }
+
+                // Generate SERVICE_NAME for dockercompose services
+                $rawDockerCompose = Yaml::parse($this->application->docker_compose_raw);
+                $rawServices = data_get($rawDockerCompose, 'services', []);
+                foreach ($rawServices as $rawServiceName => $_) {
+                            $envs->push('SERVICE_NAME_'.str($rawServiceName)->upper().'='.addPreviewDeploymentSuffix($rawServiceName, $this->pull_request_id));
                 }
             }
         }
@@ -1986,7 +2004,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $volume_name = $persistentStorage->name;
             }
             if ($this->pull_request_id !== 0) {
-                $volume_name = $volume_name.'-pr-'.$this->pull_request_id;
+                $volume_name = addPreviewDeploymentSuffix($volume_name, $this->pull_request_id);
             }
             $local_persistent_volumes[] = $volume_name.':'.$persistentStorage->mount_path;
         }
@@ -2004,7 +2022,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $name = $persistentStorage->name;
 
             if ($this->pull_request_id !== 0) {
-                $name = $name.'-pr-'.$this->pull_request_id;
+                $name = addPreviewDeploymentSuffix($name, $this->pull_request_id);
             }
 
             $local_persistent_volumes_names[$name] = [
@@ -2301,7 +2319,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 $containers = getCurrentApplicationContainerStatus($this->server, $this->application->id, $this->pull_request_id);
                 if ($this->pull_request_id === 0) {
                     $containers = $containers->filter(function ($container) {
-                        return data_get($container, 'Names') !== $this->container_name && data_get($container, 'Names') !== $this->container_name.'-pr-'.$this->pull_request_id;
+                        return data_get($container, 'Names') !== $this->container_name && data_get($container, 'Names') !== addPreviewDeploymentSuffix($this->container_name, $this->pull_request_id);
                     });
                 }
                 $containers->each(function ($container) {
