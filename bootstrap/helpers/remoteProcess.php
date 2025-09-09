@@ -156,7 +156,6 @@ function transfer_file_to_server(string $content, string $server_path, Server $s
         return instant_scp($temp_file, $server_path, $server, $throwError);
 
     } finally {
-        ray($temp_file);
         // Always cleanup local temp file
         if (file_exists($temp_file)) {
             unlink($temp_file);
