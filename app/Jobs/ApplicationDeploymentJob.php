@@ -1424,12 +1424,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         }
         $private_key = data_get($this->application, 'private_key.private_key');
         if ($private_key) {
-            $private_key = base64_encode($private_key);
             $this->execute_remote_command([
                 executeInDocker($this->deployment_uuid, 'mkdir -p /root/.ssh'),
             ]);
-            $key_content = base64_decode($private_key);
-            transfer_file_to_container($key_content, '/root/.ssh/id_rsa', $this->deployment_uuid, $this->server);
+            transfer_file_to_container($private_key, '/root/.ssh/id_rsa', $this->deployment_uuid, $this->server);
             $this->execute_remote_command(
                 [
                     executeInDocker($this->deployment_uuid, 'chmod 600 /root/.ssh/id_rsa'),
