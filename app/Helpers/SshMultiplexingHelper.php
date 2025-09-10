@@ -44,6 +44,12 @@ class SshMultiplexingHelper
             return self::establishNewMultiplexedConnection($server);
         }
 
+        // Connection exists, ensure we have metadata for age tracking
+        if (self::getConnectionAge($server) === null) {
+            // Existing connection but no metadata, store current time as fallback
+            self::storeConnectionMetadata($server);
+        }
+
         // Connection exists, check if it needs refresh due to age
         if (self::isConnectionExpired($server)) {
             return self::refreshMultiplexedConnection($server);
@@ -278,11 +284,6 @@ class SshMultiplexingHelper
      */
     public static function refreshMultiplexedConnection(Server $server): bool
     {
-        Log::debug('Refreshing SSH multiplexed connection', [
-            'server' => $server->name ?? $server->ip,
-            'age' => self::getConnectionAge($server),
-        ]);
-
         // Close existing connection
         self::removeMuxFile($server);
 
