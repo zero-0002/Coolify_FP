@@ -68,7 +68,7 @@ function queue_application_deployment(Application $application, string $deployme
         ApplicationDeploymentJob::dispatch(
             application_deployment_queue_id: $deployment->id,
         );
-    } elseif (next_queuable($server_id, $application_id, $commit)) {
+    } elseif (next_queuable($server_id, $application_id, $commit, $pull_request_id)) {
         ApplicationDeploymentJob::dispatch(
             application_deployment_queue_id: $deployment->id,
         );
@@ -93,32 +93,32 @@ function force_start_deployment(ApplicationDeploymentQueue $deployment)
 function queue_next_deployment(Application $application)
 {
     $server_id = $application->destination->server_id;
-    $next_found = ApplicationDeploymentQueue::where('server_id', $server_id)->where('status', ApplicationDeploymentStatus::QUEUED)->get()->sortBy('created_at')->first();
-    if ($next_found) {
-        $next_found->update([
-            'status' => ApplicationDeploymentStatus::IN_PROGRESS->value,
-        ]);
+    $queued_deployments = ApplicationDeploymentQueue::where('server_id', $server_id)
+        ->where('status', ApplicationDeploymentStatus::QUEUED)
+        ->get()
+        ->sortBy('created_at');
 
-        ApplicationDeploymentJob::dispatch(
-            application_deployment_queue_id: $next_found->id,
-        );
+    foreach ($queued_deployments as $next_deployment) {
+        // Check if this queued deployment can actually run
+        if (next_queuable($next_deployment->server_id, $next_deployment->application_id, $next_deployment->commit, $next_deployment->pull_request_id)) {
+            $next_deployment->update([
+                'status' => ApplicationDeploymentStatus::IN_PROGRESS->value,
+            ]);
+
+            ApplicationDeploymentJob::dispatch(
+                application_deployment_queue_id: $next_deployment->id,
+            );
+            break;
+        }
     }
 }
 
-function next_queuable(string $server_id, string $application_id, string $commit = 'HEAD'): bool
+function next_queuable(string $server_id, string $application_id, string $commit = 'HEAD', int $pull_request_id = 0): bool
 {
-    // Check if there's already a deployment in progress for this application and commit
-    $existing_deployment = ApplicationDeploymentQueue::where('application_id', $application_id)
-        ->where('commit', $commit)
-        ->where('status', ApplicationDeploymentStatus::IN_PROGRESS->value)
-        ->first();
-
-    if ($existing_deployment) {
-        return false;
-    }
-
-    // Check if there's any deployment in progress for this application
+    // Check if there's already a deployment in progress for this application with the same pull_request_id
+    // This allows normal deployments and PR deployments to run concurrently
     $in_progress = ApplicationDeploymentQueue::where('application_id', $application_id)
+        ->where('pull_request_id', $pull_request_id)
         ->where('status', ApplicationDeploymentStatus::IN_PROGRESS->value)
         ->exists();
 
@@ -142,13 +142,15 @@ function next_queuable(string $server_id, string $application_id, string $commit
 function next_after_cancel(?Server $server = null)
 {
     if ($server) {
-        $next_found = ApplicationDeploymentQueue::where('server_id', data_get($server, 'id'))->where('status', ApplicationDeploymentStatus::QUEUED)->get()->sortBy('created_at');
+        $next_found = ApplicationDeploymentQueue::where('server_id', data_get($server, 'id'))
+            ->where('status', ApplicationDeploymentStatus::QUEUED)
+            ->get()
+            ->sortBy('created_at');
+
         if ($next_found->count() > 0) {
             foreach ($next_found as $next) {
-                $server = Server::find($next->server_id);
-                $concurrent_builds = $server->settings->concurrent_builds;
-                $inprogress_deployments = ApplicationDeploymentQueue::where('server_id', $next->server_id)->whereIn('status', [ApplicationDeploymentStatus::IN_PROGRESS])->get()->sortByDesc('created_at');
-                if ($inprogress_deployments->count() < $concurrent_builds) {
+                // Use next_queuable to properly check if this deployment can run
+                if (next_queuable($next->server_id, $next->application_id, $next->commit, $next->pull_request_id)) {
                     $next->update([
                         'status' => ApplicationDeploymentStatus::IN_PROGRESS->value,
                     ]);
@@ -156,8 +158,8 @@ function next_after_cancel(?Server $server = null)
                     ApplicationDeploymentJob::dispatch(
                         application_deployment_queue_id: $next->id,
                     );
+                    break;
                 }
-                break;
             }
         }
     }
