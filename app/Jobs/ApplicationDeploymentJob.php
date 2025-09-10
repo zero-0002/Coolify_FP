@@ -1600,6 +1600,12 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
         }
 
+        // Add COOLIFY_* environment variables to Nixpacks build context
+        $coolify_envs = $this->generate_coolify_env_variables();
+        $coolify_envs->each(function ($value, $key) {
+            $this->env_nixpacks_args->push("--env {$key}={$value}");
+        });
+
         $this->env_nixpacks_args = $this->env_nixpacks_args->implode(' ');
     }
 
