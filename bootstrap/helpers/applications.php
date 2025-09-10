@@ -147,7 +147,7 @@ function next_after_cancel(?Server $server = null)
             foreach ($next_found as $next) {
                 $server = Server::find($next->server_id);
                 $concurrent_builds = $server->settings->concurrent_builds;
-                $inprogress_deployments = ApplicationDeploymentQueue::where('server_id', $next->server_id)->whereIn('status', [ApplicationDeploymentStatus::QUEUED])->get()->sortByDesc('created_at');
+                $inprogress_deployments = ApplicationDeploymentQueue::where('server_id', $next->server_id)->whereIn('status', [ApplicationDeploymentStatus::IN_PROGRESS])->get()->sortByDesc('created_at');
                 if ($inprogress_deployments->count() < $concurrent_builds) {
                     $next->update([
                         'status' => ApplicationDeploymentStatus::IN_PROGRESS->value,
