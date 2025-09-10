@@ -130,7 +130,6 @@ function transfer_file_to_container(string $content, string $container_path, str
         return instant_remote_process_with_timeout($commands, $server, $throwError);
 
     } finally {
-        ray($temp_file);
         // Always cleanup local temp file
         if (file_exists($temp_file)) {
             unlink($temp_file);
