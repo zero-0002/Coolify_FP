@@ -158,7 +158,6 @@ class PrivateKey extends BaseModel
 
     public function storeInFileSystem()
     {
-        ray('storing private key in filesystem', $this->uuid);
         $filename = "ssh_key@{$this->uuid}";
         $disk = Storage::disk('ssh-keys');
 
