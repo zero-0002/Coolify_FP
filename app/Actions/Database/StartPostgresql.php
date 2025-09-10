@@ -20,8 +20,6 @@ class StartPostgresql
 
     public string $configuration_dir;
 
-    public string $volume_configuration_dir;
-
     private ?SslCertificate $ssl_certificate = null;
 
     public function handle(StandalonePostgresql $database)
@@ -29,10 +27,6 @@ class StartPostgresql
         $this->database = $database;
         $container_name = $this->database->uuid;
         $this->configuration_dir = database_configuration_dir().'/'.$container_name;
-        $this->volume_configuration_dir = $this->configuration_dir;
-        if (isDev()) {
-            $this->volume_configuration_dir = '/var/lib/docker/volumes/coolify_dev_coolify_data/_data/databases/'.$container_name;
-        }
 
         $this->commands = [
             "echo 'Starting database.'",
@@ -195,7 +189,7 @@ class StartPostgresql
                 $docker_compose['services'][$container_name]['volumes'],
                 [[
                     'type' => 'bind',
-                    'source' => $this->volume_configuration_dir.'/custom-postgres.conf',
+                    'source' => $this->configuration_dir.'/custom-postgres.conf',
                     'target' => '/etc/postgresql/postgresql.conf',
                     'read_only' => true,
                 ]]
@@ -223,7 +217,7 @@ class StartPostgresql
         $this->commands[] = [
             'transfer_file' => [
                 'content' => $docker_compose,
-                'destination' => "$this->volume_configuration_dir/docker-compose.yml",
+                'destination' => "$this->configuration_dir/docker-compose.yml",
             ],
         ];
         $readme = generate_readme_file($this->database->name, now());
@@ -235,6 +229,8 @@ class StartPostgresql
             $this->commands[] = executeInDocker($this->database->uuid, "chown {$this->database->postgres_user}:{$this->database->postgres_user} /var/lib/postgresql/certs/server.key /var/lib/postgresql/certs/server.crt");
         }
         $this->commands[] = "echo 'Database started.'";
+
+        ray($this->commands);
 
         return remote_process($this->commands, $database->destination->server, callEventOnFinish: 'DatabaseStatusChanged');
     }

@@ -18,8 +18,6 @@ class StartMongodb
 
     public string $configuration_dir;
 
-    public string $volume_configuration_dir;
-
     private ?SslCertificate $ssl_certificate = null;
 
     public function handle(StandaloneMongodb $database)
@@ -29,10 +27,7 @@ class StartMongodb
         $startCommand = 'mongod';
 
         $container_name = $this->database->uuid;
-        $this->volume_configuration_dir = $this->configuration_dir = database_configuration_dir().'/'.$container_name;
-        if (isDev()) {
-            $this->volume_configuration_dir = '/var/lib/docker/volumes/coolify_dev_coolify_data/_data/databases/'.$container_name;
-        }
+        $this->configuration_dir = database_configuration_dir().'/'.$container_name;
 
         $this->commands = [
             "echo 'Starting database.'",
@@ -178,7 +173,7 @@ class StartMongodb
                 $docker_compose['services'][$container_name]['volumes'] ?? [],
                 [[
                     'type' => 'bind',
-                    'source' => $this->volume_configuration_dir.'/mongod.conf',
+                    'source' => $this->configuration_dir.'/mongod.conf',
                     'target' => '/etc/mongo/mongod.conf',
                     'read_only' => true,
                 ]]
@@ -192,7 +187,7 @@ class StartMongodb
             $docker_compose['services'][$container_name]['volumes'] ?? [],
             [[
                 'type' => 'bind',
-                'source' => $this->volume_configuration_dir.'/docker-entrypoint-initdb.d',
+                'source' => $this->configuration_dir.'/docker-entrypoint-initdb.d',
                 'target' => '/docker-entrypoint-initdb.d',
                 'read_only' => true,
             ]]
@@ -259,7 +254,7 @@ class StartMongodb
         $this->commands[] = [
             'transfer_file' => [
                 'content' => $docker_compose,
-                'destination' => "$this->volume_configuration_dir/docker-compose.yml",
+                'destination' => "$this->configuration_dir/docker-compose.yml",
             ],
         ];
         $readme = generate_readme_file($this->database->name, now());
