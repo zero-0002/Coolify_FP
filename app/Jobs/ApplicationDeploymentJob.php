@@ -2457,8 +2457,6 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
     private function next(string $status)
     {
-        queue_next_deployment($this->application);
-
         // Never allow changing status from FAILED or CANCELLED_BY_USER to anything else
         if ($this->application_deployment_queue->status === ApplicationDeploymentStatus::FAILED->value) {
             $this->application->environment->project->team?->notify(new DeploymentFailed($this->application, $this->deployment_uuid, $this->preview));
@@ -2472,6 +2470,8 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         $this->application_deployment_queue->update([
             'status' => $status,
         ]);
+
+        queue_next_deployment($this->application);
 
         if ($status === ApplicationDeploymentStatus::FINISHED->value) {
             if (! $this->only_this_server) {

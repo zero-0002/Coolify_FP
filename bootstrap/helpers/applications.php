@@ -108,7 +108,6 @@ function queue_next_deployment(Application $application)
             ApplicationDeploymentJob::dispatch(
                 application_deployment_queue_id: $next_deployment->id,
             );
-            break;
         }
     }
 }
@@ -158,7 +157,6 @@ function next_after_cancel(?Server $server = null)
                     ApplicationDeploymentJob::dispatch(
                         application_deployment_queue_id: $next->id,
                     );
-                    break;
                 }
             }
         }
