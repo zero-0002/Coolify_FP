@@ -317,18 +317,38 @@ function clone_application(Application $source, $destination, array $overrides =
         $newStorage->save();
     }
 
-    // Clone environment variables
+    // Clone production environment variables without triggering the created hook
     $environmentVariables = $source->environment_variables()->get();
     foreach ($environmentVariables as $environmentVariable) {
-        $newEnvironmentVariable = $environmentVariable->replicate([
-            'id',
-            'created_at',
-            'updated_at',
-        ])->fill([
-            'resourceable_id' => $newApplication->id,
-            'resourceable_type' => $newApplication->getMorphClass(),
-        ]);
-        $newEnvironmentVariable->save();
+        \App\Models\EnvironmentVariable::withoutEvents(function () use ($environmentVariable, $newApplication) {
+            $newEnvironmentVariable = $environmentVariable->replicate([
+                'id',
+                'created_at',
+                'updated_at',
+            ])->fill([
+                'resourceable_id' => $newApplication->id,
+                'resourceable_type' => $newApplication->getMorphClass(),
+                'is_preview' => false,
+            ]);
+            $newEnvironmentVariable->save();
+        });
+    }
+
+    // Clone preview environment variables
+    $previewEnvironmentVariables = $source->environment_variables_preview()->get();
+    foreach ($previewEnvironmentVariables as $previewEnvironmentVariable) {
+        \App\Models\EnvironmentVariable::withoutEvents(function () use ($previewEnvironmentVariable, $newApplication) {
+            $newPreviewEnvironmentVariable = $previewEnvironmentVariable->replicate([
+                'id',
+                'created_at',
+                'updated_at',
+            ])->fill([
+                'resourceable_id' => $newApplication->id,
+                'resourceable_type' => $newApplication->getMorphClass(),
+                'is_preview' => true,
+            ]);
+            $newPreviewEnvironmentVariable->save();
+        });
     }
 
     return $newApplication;
