@@ -32,8 +32,6 @@ class Show extends Component
 
     public bool $is_shared = false;
 
-    public bool $is_build_time = false;
-
     public bool $is_multiline = false;
 
     public bool $is_literal = false;
@@ -55,7 +53,6 @@ class Show extends Component
     protected $rules = [
         'key' => 'required|string',
         'value' => 'nullable',
-        'is_build_time' => 'required|boolean',
         'is_multiline' => 'required|boolean',
         'is_literal' => 'required|boolean',
         'is_shown_once' => 'required|boolean',
@@ -101,7 +98,6 @@ class Show extends Component
                 ]);
             } else {
                 $this->validate();
-                $this->env->is_build_time = $this->is_build_time;
                 $this->env->is_required = $this->is_required;
                 $this->env->is_shared = $this->is_shared;
             }
@@ -114,7 +110,6 @@ class Show extends Component
         } else {
             $this->key = $this->env->key;
             $this->value = $this->env->value;
-            $this->is_build_time = $this->env->is_build_time ?? false;
             $this->is_multiline = $this->env->is_multiline;
             $this->is_literal = $this->env->is_literal;
             $this->is_shown_once = $this->env->is_shown_once;
@@ -139,9 +134,6 @@ class Show extends Component
     public function serialize()
     {
         data_forget($this->env, 'real_value');
-        if ($this->env->getMorphClass() === \App\Models\SharedEnvironmentVariable::class) {
-            data_forget($this->env, 'is_build_time');
-        }
     }
 
     public function lock()

@@ -703,7 +703,6 @@ class General extends Component
                     'key' => "SERVICE_FQDN_{$serviceNameFormatted}",
                 ], [
                     'value' => $fqdnValue,
-                    'is_build_time' => false,
                     'is_preview' => false,
                 ]);
 
@@ -712,7 +711,6 @@ class General extends Component
                     'key' => "SERVICE_URL_{$serviceNameFormatted}",
                 ], [
                     'value' => $urlValue,
-                    'is_build_time' => false,
                     'is_preview' => false,
                 ]);
                 // Create/update port-specific variables if port exists
@@ -721,7 +719,6 @@ class General extends Component
                         'key' => "SERVICE_FQDN_{$serviceNameFormatted}_{$port}",
                     ], [
                         'value' => $fqdnValue,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
 
@@ -729,7 +726,6 @@ class General extends Component
                         'key' => "SERVICE_URL_{$serviceNameFormatted}_{$port}",
                     ], [
                         'value' => $urlValue,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
                 }

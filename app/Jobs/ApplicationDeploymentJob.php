@@ -1049,32 +1049,17 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $envType = 'environment_variables_preview';
         }
         $mix_env = $this->application->{$envType}->where('key', 'MIX_ENV')->first();
-        if ($mix_env) {
-            if ($mix_env->is_build_time === false) {
-                $this->application_deployment_queue->addLogEntry('MIX_ENV environment variable is not set as build time.', type: 'error');
-                $this->application_deployment_queue->addLogEntry('Please set MIX_ENV environment variable to be build time variable if you facing any issues with the deployment.', type: 'error');
-            }
-        } else {
+        if (! $mix_env) {
             $this->application_deployment_queue->addLogEntry('MIX_ENV environment variable not found.', type: 'error');
             $this->application_deployment_queue->addLogEntry('Please add MIX_ENV environment variable and set it to be build time variable if you facing any issues with the deployment.', type: 'error');
         }
         $secret_key_base = $this->application->{$envType}->where('key', 'SECRET_KEY_BASE')->first();
-        if ($secret_key_base) {
-            if ($secret_key_base->is_build_time === false) {
-                $this->application_deployment_queue->addLogEntry('SECRET_KEY_BASE environment variable is not set as build time.', type: 'error');
-                $this->application_deployment_queue->addLogEntry('Please set SECRET_KEY_BASE environment variable to be build time variable if you facing any issues with the deployment.', type: 'error');
-            }
-        } else {
+        if (! $secret_key_base) {
             $this->application_deployment_queue->addLogEntry('SECRET_KEY_BASE environment variable not found.', type: 'error');
             $this->application_deployment_queue->addLogEntry('Please add SECRET_KEY_BASE environment variable and set it to be build time variable if you facing any issues with the deployment.', type: 'error');
         }
         $database_url = $this->application->{$envType}->where('key', 'DATABASE_URL')->first();
-        if ($database_url) {
-            if ($database_url->is_build_time === false) {
-                $this->application_deployment_queue->addLogEntry('DATABASE_URL environment variable is not set as build time.', type: 'error');
-                $this->application_deployment_queue->addLogEntry('Please set DATABASE_URL environment variable to be build time variable if you facing any issues with the deployment.', type: 'error');
-            }
-        } else {
+        if (! $database_url) {
             $this->application_deployment_queue->addLogEntry('DATABASE_URL environment variable not found.', type: 'error');
             $this->application_deployment_queue->addLogEntry('Please add DATABASE_URL environment variable and set it to be build time variable if you facing any issues with the deployment.', type: 'error');
         }
@@ -1094,7 +1079,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $nixpacks_php_fallback_path = new EnvironmentVariable;
             $nixpacks_php_fallback_path->key = 'NIXPACKS_PHP_FALLBACK_PATH';
             $nixpacks_php_fallback_path->value = '/index.php';
-            $nixpacks_php_fallback_path->is_build_time = false;
             $nixpacks_php_fallback_path->resourceable_id = $this->application->id;
             $nixpacks_php_fallback_path->resourceable_type = 'App\Models\Application';
             $nixpacks_php_fallback_path->save();
@@ -1103,7 +1087,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $nixpacks_php_root_dir = new EnvironmentVariable;
             $nixpacks_php_root_dir->key = 'NIXPACKS_PHP_ROOT_DIR';
             $nixpacks_php_root_dir->value = '/app/public';
-            $nixpacks_php_root_dir->is_build_time = false;
             $nixpacks_php_root_dir->resourceable_id = $this->application->id;
             $nixpacks_php_root_dir->resourceable_type = 'App\Models\Application';
             $nixpacks_php_root_dir->save();

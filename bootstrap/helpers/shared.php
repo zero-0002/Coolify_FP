@@ -1564,7 +1564,6 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                             EnvironmentVariable::create([
                                 'key' => $key,
                                 'value' => $fqdn,
-                                'is_build_time' => false,
                                 'resourceable_type' => get_class($resource),
                                 'resourceable_id' => $resource->id,
                                 'is_preview' => false,
@@ -1644,7 +1643,6 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                                         EnvironmentVariable::create([
                                             'key' => $key,
                                             'value' => $fqdn,
-                                            'is_build_time' => false,
                                             'resourceable_type' => get_class($resource),
                                             'resourceable_id' => $resource->id,
                                             'is_preview' => false,
@@ -1683,7 +1681,6 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                                         EnvironmentVariable::create([
                                             'key' => $key,
                                             'value' => $generatedValue,
-                                            'is_build_time' => false,
                                             'resourceable_type' => get_class($resource),
                                             'resourceable_id' => $resource->id,
                                             'is_preview' => false,
@@ -1722,7 +1719,6 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                                 'resourceable_id' => $resource->id,
                             ], [
                                 'value' => $defaultValue,
-                                'is_build_time' => false,
                                 'resourceable_type' => get_class($resource),
                                 'resourceable_id' => $resource->id,
                                 'is_preview' => false,
@@ -2413,7 +2409,6 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                                     EnvironmentVariable::create([
                                         'key' => $key,
                                         'value' => $fqdn,
-                                        'is_build_time' => false,
                                         'resourceable_type' => get_class($resource),
                                         'resourceable_id' => $resource->id,
                                         'is_preview' => false,
@@ -2425,7 +2420,6 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                                     EnvironmentVariable::create([
                                         'key' => $key,
                                         'value' => $generatedValue,
-                                        'is_build_time' => false,
                                         'resourceable_type' => get_class($resource),
                                         'resourceable_id' => $resource->id,
                                         'is_preview' => false,
@@ -2459,20 +2453,17 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                         if ($foundEnv) {
                             $defaultValue = data_get($foundEnv, 'value');
                         }
-                        $isBuildTime = data_get($foundEnv, 'is_build_time', false);
                         if ($foundEnv) {
                             $foundEnv->update([
                                 'key' => $key,
                                 'resourceable_type' => get_class($resource),
                                 'resourceable_id' => $resource->id,
-                                'is_build_time' => $isBuildTime,
                                 'value' => $defaultValue,
                             ]);
                         } else {
                             EnvironmentVariable::create([
                                 'key' => $key,
                                 'value' => $defaultValue,
-                                'is_build_time' => $isBuildTime,
                                 'resourceable_type' => get_class($resource),
                                 'resourceable_id' => $resource->id,
                                 'is_preview' => false,

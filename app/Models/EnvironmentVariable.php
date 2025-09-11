@@ -14,7 +14,6 @@ use OpenApi\Attributes as OA;
         'uuid' => ['type' => 'string'],
         'resourceable_type' => ['type' => 'string'],
         'resourceable_id' => ['type' => 'integer'],
-        'is_build_time' => ['type' => 'boolean'],
         'is_literal' => ['type' => 'boolean'],
         'is_multiline' => ['type' => 'boolean'],
         'is_preview' => ['type' => 'boolean'],
@@ -35,7 +34,6 @@ class EnvironmentVariable extends BaseModel
     protected $casts = [
         'key' => 'string',
         'value' => 'encrypted',
-        'is_build_time' => 'boolean',
         'is_multiline' => 'boolean',
         'is_preview' => 'boolean',
         'version' => 'string',
@@ -61,7 +59,6 @@ class EnvironmentVariable extends BaseModel
                         ModelsEnvironmentVariable::create([
                             'key' => $environment_variable->key,
                             'value' => $environment_variable->value,
-                            'is_build_time' => $environment_variable->is_build_time,
                             'is_multiline' => $environment_variable->is_multiline ?? false,
                             'is_literal' => $environment_variable->is_literal ?? false,
                             'resourceable_type' => Application::class,

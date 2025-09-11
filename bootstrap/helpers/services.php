@@ -133,7 +133,6 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                 'key' => $variableName,
             ], [
                 'value' => $urlValue,
-                'is_build_time' => false,
                 'is_preview' => false,
             ]);
             if ($port) {
@@ -144,7 +143,6 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                     'key' => $variableName,
                 ], [
                     'value' => $urlValue,
-                    'is_build_time' => false,
                     'is_preview' => false,
                 ]);
             }
@@ -163,7 +161,6 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                 'key' => $variableName,
             ], [
                 'value' => $fqdnValue,
-                'is_build_time' => false,
                 'is_preview' => false,
             ]);
             if ($port) {
@@ -174,7 +171,6 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                     'key' => $variableName,
                 ], [
                     'value' => $fqdnValue,
-                    'is_build_time' => false,
                     'is_preview' => false,
                 ]);
             }

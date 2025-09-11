@@ -1113,7 +1113,6 @@ class Service extends BaseModel
                 $this->environment_variables()->create([
                     'key' => $key,
                     'value' => $value,
-                    'is_build_time' => false,
                     'resourceable_id' => $this->id,
                     'resourceable_type' => $this->getMorphClass(),
                     'is_preview' => false,

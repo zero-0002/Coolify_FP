@@ -212,7 +212,6 @@ class All extends Component
         $environment = new EnvironmentVariable;
         $environment->key = $data['key'];
         $environment->value = $data['value'];
-        $environment->is_build_time = $data['is_build_time'] ?? false;
         $environment->is_multiline = $data['is_multiline'] ?? false;
         $environment->is_literal = $data['is_literal'] ?? false;
         $environment->is_preview = $data['is_preview'] ?? false;
@@ -276,7 +275,6 @@ class All extends Component
                 $environment = new EnvironmentVariable;
                 $environment->key = $key;
                 $environment->value = $value;
-                $environment->is_build_time = false;
                 $environment->is_multiline = false;
                 $environment->is_preview = $isPreview;
                 $environment->resourceable_id = $this->resource->id;

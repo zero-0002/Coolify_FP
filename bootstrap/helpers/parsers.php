@@ -342,7 +342,6 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $fqdn,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
                 }
@@ -355,7 +354,6 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $fqdn,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
                 }
@@ -384,7 +382,6 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $fqdn,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
                     if ($resource->build_pack === 'dockercompose') {
@@ -418,7 +415,6 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $url,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
                     if ($resource->build_pack === 'dockercompose') {
@@ -446,7 +442,6 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $value,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
                 }
@@ -760,7 +755,6 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     'resourceable_id' => $resource->id,
                 ], [
                     'value' => $value,
-                    'is_build_time' => false,
                     'is_preview' => false,
                 ]);
 
@@ -777,7 +771,6 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     'resourceable_id' => $resource->id,
                 ], [
                     'value' => $value,
-                    'is_build_time' => false,
                     'is_preview' => false,
                 ]);
             } else {
@@ -813,7 +806,6 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                             'resourceable_type' => get_class($resource),
                             'resourceable_id' => $resource->id,
                         ], [
-                            'is_build_time' => false,
                             'is_preview' => false,
                             'is_required' => $isRequired,
                         ]);
@@ -828,7 +820,6 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $value,
-                        'is_build_time' => false,
                         'is_preview' => false,
                         'is_required' => $isRequired,
                     ]);
@@ -886,7 +877,6 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         'key' => 'SERVICE_URL_'.str($forServiceName)->upper()->replace('-', '_')->replace('.', '_'),
                     ], [
                         'value' => $coolifyUrl->__toString(),
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
                     $resource->environment_variables()->updateOrCreate([
@@ -895,7 +885,6 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         'key' => 'SERVICE_FQDN_'.str($forServiceName)->upper()->replace('-', '_')->replace('.', '_'),
                     ], [
                         'value' => $coolifyFqdn,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
                 } else {
@@ -1343,7 +1332,6 @@ function serviceParser(Service $resource): Collection
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $fqdn,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
                     $resource->environment_variables()->updateOrCreate([
@@ -1352,7 +1340,6 @@ function serviceParser(Service $resource): Collection
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $url,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
                 }
@@ -1364,7 +1351,6 @@ function serviceParser(Service $resource): Collection
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $fqdn,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
                     $resource->environment_variables()->updateOrCreate([
@@ -1373,7 +1359,6 @@ function serviceParser(Service $resource): Collection
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $url,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
                 }
@@ -1403,7 +1388,6 @@ function serviceParser(Service $resource): Collection
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $fqdn,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
 
@@ -1423,7 +1407,6 @@ function serviceParser(Service $resource): Collection
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $url,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
 
@@ -1435,7 +1418,6 @@ function serviceParser(Service $resource): Collection
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $value,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
                 }
@@ -1754,7 +1736,6 @@ function serviceParser(Service $resource): Collection
                     'resourceable_id' => $resource->id,
                 ], [
                     'value' => $value,
-                    'is_build_time' => false,
                     'is_preview' => false,
                 ]);
 
@@ -1771,7 +1752,6 @@ function serviceParser(Service $resource): Collection
                     'resourceable_id' => $resource->id,
                 ], [
                     'value' => $value,
-                    'is_build_time' => false,
                     'is_preview' => false,
                 ]);
             } else {
@@ -1807,7 +1787,6 @@ function serviceParser(Service $resource): Collection
                             'resourceable_type' => get_class($resource),
                             'resourceable_id' => $resource->id,
                         ], [
-                            'is_build_time' => false,
                             'is_preview' => false,
                             'is_required' => $isRequired,
                         ]);
@@ -1822,7 +1801,6 @@ function serviceParser(Service $resource): Collection
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $value,
-                        'is_build_time' => false,
                         'is_preview' => false,
                         'is_required' => $isRequired,
                     ]);

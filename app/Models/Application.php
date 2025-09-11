@@ -738,14 +738,6 @@ class Application extends BaseModel
             ->where('key', 'not like', 'NIXPACKS_%');
     }
 
-    public function build_environment_variables()
-    {
-        return $this->morphMany(EnvironmentVariable::class, 'resourceable')
-            ->where('is_preview', false)
-            ->where('is_build_time', true)
-            ->where('key', 'not like', 'NIXPACKS_%');
-    }
-
     public function nixpacks_environment_variables()
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
@@ -764,14 +756,6 @@ class Application extends BaseModel
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->where('is_preview', true)
-            ->where('key', 'not like', 'NIXPACKS_%');
-    }
-
-    public function build_environment_variables_preview()
-    {
-        return $this->morphMany(EnvironmentVariable::class, 'resourceable')
-            ->where('is_preview', true)
-            ->where('is_build_time', true)
             ->where('key', 'not like', 'NIXPACKS_%');
     }
 
@@ -936,9 +920,9 @@ class Application extends BaseModel
     {
         $newConfigHash = base64_encode($this->fqdn.$this->git_repository.$this->git_branch.$this->git_commit_sha.$this->build_pack.$this->static_image.$this->install_command.$this->build_command.$this->start_command.$this->ports_exposes.$this->ports_mappings.$this->base_directory.$this->publish_directory.$this->dockerfile.$this->dockerfile_location.$this->custom_labels.$this->custom_docker_run_options.$this->dockerfile_target_build.$this->redirect.$this->custom_nginx_configuration.$this->custom_labels);
         if ($this->pull_request_id === 0 || $this->pull_request_id === null) {
-            $newConfigHash .= json_encode($this->environment_variables()->get(['value', 'is_build_time', 'is_multiline', 'is_literal'])->sort());
+            $newConfigHash .= json_encode($this->environment_variables()->get(['value',  'is_multiline', 'is_literal'])->sort());
         } else {
-            $newConfigHash .= json_encode($this->environment_variables_preview->get(['value', 'is_build_time', 'is_multiline', 'is_literal'])->sort());
+            $newConfigHash .= json_encode($this->environment_variables_preview->get(['value',  'is_multiline', 'is_literal'])->sort());
         }
         $newConfigHash = md5($newConfigHash);
         $oldConfigHash = data_get($this, 'config_hash');
