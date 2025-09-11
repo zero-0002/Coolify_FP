@@ -911,7 +911,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         });
         if ($this->pull_request_id === 0) {
             $this->env_filename = '.env';
-            foreach ($sorted_environment_variables as $env) {
+            // Filter out buildtime-only variables from runtime environment
+            $runtime_environment_variables = $sorted_environment_variables->filter(function ($env) {
+                return ! $env->is_buildtime_only;
+            });
+            foreach ($runtime_environment_variables as $env) {
                 $envs->push($env->key.'='.$env->real_value);
             }
             // Add PORT if not exists, use the first port as default
@@ -955,7 +959,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
         } else {
             $this->env_filename = '.env';
-            foreach ($sorted_environment_variables_preview as $env) {
+            // Filter out buildtime-only variables from runtime environment for preview
+            $runtime_environment_variables_preview = $sorted_environment_variables_preview->filter(function ($env) {
+                return ! $env->is_buildtime_only;
+            });
+            foreach ($runtime_environment_variables_preview as $env) {
                 $envs->push($env->key.'='.$env->real_value);
             }
             // Add PORT if not exists, use the first port as default

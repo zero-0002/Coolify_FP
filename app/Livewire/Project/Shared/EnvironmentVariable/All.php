@@ -214,6 +214,7 @@ class All extends Component
         $environment->value = $data['value'];
         $environment->is_multiline = $data['is_multiline'] ?? false;
         $environment->is_literal = $data['is_literal'] ?? false;
+        $environment->is_buildtime_only = $data['is_buildtime_only'] ?? false;
         $environment->is_preview = $data['is_preview'] ?? false;
         $environment->resourceable_id = $this->resource->id;
         $environment->resourceable_type = $this->resource->getMorphClass();
