@@ -373,7 +373,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     $fqdnFor = $key->after('SERVICE_FQDN_')->lower()->value();
                     $originalFqdnFor = str($fqdnFor)->replace('_', '-');
                     if (str($fqdnFor)->contains('-')) {
-                        $fqdnFor = str($fqdnFor)->replace('-', '_');
+                        $fqdnFor = str($fqdnFor)->replace('-', '_')->replace('.', '_');
                     }
                     // Generated FQDN & URL
                     $fqdn = generateFqdn(server: $server, random: "$originalFqdnFor-$uuid", parserVersion: $resource->compose_parsing_version);
@@ -409,7 +409,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     $urlFor = $key->after('SERVICE_URL_')->lower()->value();
                     $originalUrlFor = str($urlFor)->replace('_', '-');
                     if (str($urlFor)->contains('-')) {
-                        $urlFor = str($urlFor)->replace('-', '_');
+                        $urlFor = str($urlFor)->replace('-', '_')->replace('.', '_');
                     }
                     $url = generateUrl(server: $server, random: "$originalUrlFor-$uuid");
                     $resource->environment_variables()->firstOrCreate([
@@ -452,6 +452,12 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                 }
             }
         }
+    }
+
+    // generate SERVICE_NAME variables for docker compose services
+    $serviceNameEnvironments = collect([]);
+    if ($resource->build_pack === 'dockercompose') {
+        $serviceNameEnvironments = generateDockerComposeServiceName($services, $pullRequestId);
     }
 
     // Parse the rest of the services
@@ -567,7 +573,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         }
                         $source = replaceLocalSource($source, $mainDirectory);
                         if ($isPullRequest) {
-                            $source = $source."-pr-$pullRequestId";
+                            $source = addPreviewDeploymentSuffix($source, $pull_request_id);
                         }
                         LocalFileVolume::updateOrCreate(
                             [
@@ -610,7 +616,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     $name = "{$uuid}_{$slugWithoutUuid}";
 
                     if ($isPullRequest) {
-                        $name = "{$name}-pr-$pullRequestId";
+                        $name = addPreviewDeploymentSuffix($name, $pull_request_id);
                     }
                     if (is_string($volume)) {
                         $parsed = parseDockerVolumeString($volume);
@@ -651,11 +657,11 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                 $newDependsOn = collect([]);
                 $depends_on->each(function ($dependency, $condition) use ($pullRequestId, $newDependsOn) {
                     if (is_numeric($condition)) {
-                        $dependency = "$dependency-pr-$pullRequestId";
+                        $dependency = addPreviewDeploymentSuffix($dependency, $pullRequestId);
 
                         $newDependsOn->put($condition, $dependency);
                     } else {
-                        $condition = "$condition-pr-$pullRequestId";
+                        $condition = addPreviewDeploymentSuffix($condition, $pullRequestId);
                         $newDependsOn->put($condition, $dependency);
                     }
                 });
@@ -858,13 +864,13 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
         if ($resource->build_pack !== 'dockercompose') {
             $domains = collect([]);
         }
-        $changedServiceName = str($serviceName)->replace('-', '_')->value();
+        $changedServiceName = str($serviceName)->replace('-', '_')->replace('.', '_')->value();
         $fqdns = data_get($domains, "$changedServiceName.domain");
         // Generate SERVICE_FQDN & SERVICE_URL for dockercompose
         if ($resource->build_pack === 'dockercompose') {
             foreach ($domains as $forServiceName => $domain) {
                 $parsedDomain = data_get($domain, 'domain');
-                $serviceNameFormatted = str($serviceName)->upper()->replace('-', '_');
+                $serviceNameFormatted = str($serviceName)->upper()->replace('-', '_')->replace('.', '_');
 
                 if (filled($parsedDomain)) {
                     $parsedDomain = str($parsedDomain)->explode(',')->first();
@@ -872,12 +878,12 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     $coolifyScheme = $coolifyUrl->getScheme();
                     $coolifyFqdn = $coolifyUrl->getHost();
                     $coolifyUrl = $coolifyUrl->withScheme($coolifyScheme)->withHost($coolifyFqdn)->withPort(null);
-                    $coolifyEnvironments->put('SERVICE_URL_'.str($forServiceName)->upper()->replace('-', '_'), $coolifyUrl->__toString());
-                    $coolifyEnvironments->put('SERVICE_FQDN_'.str($forServiceName)->upper()->replace('-', '_'), $coolifyFqdn);
+                    $coolifyEnvironments->put('SERVICE_URL_'.str($forServiceName)->upper()->replace('-', '_')->replace('.', '_'), $coolifyUrl->__toString());
+                    $coolifyEnvironments->put('SERVICE_FQDN_'.str($forServiceName)->upper()->replace('-', '_')->replace('.', '_'), $coolifyFqdn);
                     $resource->environment_variables()->updateOrCreate([
                         'resourceable_type' => Application::class,
                         'resourceable_id' => $resource->id,
-                        'key' => 'SERVICE_URL_'.str($forServiceName)->upper()->replace('-', '_'),
+                        'key' => 'SERVICE_URL_'.str($forServiceName)->upper()->replace('-', '_')->replace('.', '_'),
                     ], [
                         'value' => $coolifyUrl->__toString(),
                         'is_build_time' => false,
@@ -886,7 +892,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     $resource->environment_variables()->updateOrCreate([
                         'resourceable_type' => Application::class,
                         'resourceable_id' => $resource->id,
-                        'key' => 'SERVICE_FQDN_'.str($forServiceName)->upper()->replace('-', '_'),
+                        'key' => 'SERVICE_FQDN_'.str($forServiceName)->upper()->replace('-', '_')->replace('.', '_'),
                     ], [
                         'value' => $coolifyFqdn,
                         'is_build_time' => false,
@@ -1082,7 +1088,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
             $payload['volumes'] = $volumesParsed;
         }
         if ($environment->count() > 0 || $coolifyEnvironments->count() > 0) {
-            $payload['environment'] = $environment->merge($coolifyEnvironments);
+            $payload['environment'] = $environment->merge($coolifyEnvironments)->merge($serviceNameEnvironments);
         }
         if ($logging) {
             $payload['logging'] = $logging;
@@ -1091,7 +1097,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
             $payload['depends_on'] = $depends_on;
         }
         if ($isPullRequest) {
-            $serviceName = "{$serviceName}-pr-{$pullRequestId}";
+            $serviceName = addPreviewDeploymentSuffix($serviceName, $pullRequestId);
         }
 
         $parsedServices->put($serviceName, $payload);

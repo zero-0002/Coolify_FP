@@ -128,7 +128,7 @@ class Show extends Component
     public function checkEnvs()
     {
         $this->isDisabled = false;
-        if (str($this->env->key)->startsWith('SERVICE_FQDN') || str($this->env->key)->startsWith('SERVICE_URL')) {
+        if (str($this->env->key)->startsWith('SERVICE_FQDN') || str($this->env->key)->startsWith('SERVICE_URL') || str($this->env->key)->startsWith('SERVICE_NAME')) {
             $this->isDisabled = true;
         }
         if ($this->env->is_shown_once) {

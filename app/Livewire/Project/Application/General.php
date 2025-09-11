@@ -487,7 +487,7 @@ class General extends Component
             $domains = str($this->application->fqdn)->trim()->explode(',');
             if ($this->application->additional_servers->count() === 0) {
                 foreach ($domains as $domain) {
-                    if (! validate_dns_entry($domain, $this->application->destination->server)) {
+                    if (! validateDNSEntry($domain, $this->application->destination->server)) {
                         $showToaster && $this->dispatch('error', 'Validating DNS failed.', "Make sure you have added the DNS records correctly.<br><br>$domain->{$this->application->destination->server->ip}<br><br>Check this <a target='_blank' class='underline dark:text-white' href='https://coolify.io/docs/knowledge-base/dns-configuration'>documentation</a> for further help.");
                     }
                 }
@@ -615,7 +615,7 @@ class General extends Component
                     foreach ($this->parsedServiceDomains as $service) {
                         $domain = data_get($service, 'domain');
                         if ($domain) {
-                            if (! validate_dns_entry($domain, $this->application->destination->server)) {
+                            if (! validateDNSEntry($domain, $this->application->destination->server)) {
                                 $showToaster && $this->dispatch('error', 'Validating DNS failed.', "Make sure you have added the DNS records correctly.<br><br>$domain->{$this->application->destination->server->ip}<br><br>Check this <a target='_blank' class='underline dark:text-white' href='https://coolify.io/docs/knowledge-base/dns-configuration'>documentation</a> for further help.");
                             }
                         }
@@ -671,7 +671,7 @@ class General extends Component
         $domains = collect(json_decode($this->application->docker_compose_domains, true)) ?? collect([]);
 
         foreach ($domains as $serviceName => $service) {
-            $serviceNameFormatted = str($serviceName)->upper()->replace('-', '_');
+            $serviceNameFormatted = str($serviceName)->upper()->replace('-', '_')->replace('.', '_');
             $domain = data_get($service, 'domain');
             // Delete SERVICE_FQDN_ and SERVICE_URL_ variables if domain is removed
             $this->application->environment_variables()->where('resourceable_type', Application::class)
