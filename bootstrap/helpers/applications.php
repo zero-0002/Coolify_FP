@@ -238,7 +238,28 @@ function clone_application(Application $source, $destination, array $overrides =
     }
 
     // Clone previews with FQDN regeneration
-    clone_application_previews($source, $newApplication);
+    $applicationPreviews = $source->previews()->get();
+    foreach ($applicationPreviews as $preview) {
+        $newPreview = $preview->replicate([
+            'id',
+            'created_at',
+            'updated_at',
+        ])->fill([
+            'uuid' => (string) new Cuid2,
+            'application_id' => $newApplication->id,
+            'status' => 'exited',
+            'fqdn' => null,
+            'docker_compose_domains' => null,
+        ]);
+        $newPreview->save();
+
+        // Regenerate FQDN for the cloned preview
+        if ($newApplication->build_pack === 'dockercompose') {
+            $newPreview->generate_preview_fqdn_compose();
+        } else {
+            $newPreview->generate_preview_fqdn();
+        }
+    }
 
     // Clone persistent volumes
     $persistentVolumes = $source->persistentStorages()->get();
@@ -311,30 +332,4 @@ function clone_application(Application $source, $destination, array $overrides =
     }
 
     return $newApplication;
-}
-
-function clone_application_previews(Application $sourceApplication, Application $targetApplication): void
-{
-    $applicationPreviews = $sourceApplication->previews()->get();
-    foreach ($applicationPreviews as $preview) {
-        $newPreview = $preview->replicate([
-            'id',
-            'created_at',
-            'updated_at',
-        ])->fill([
-            'uuid' => (string) new Cuid2,
-            'application_id' => $targetApplication->id,
-            'status' => 'exited',
-            'fqdn' => null,
-            'docker_compose_domains' => null,
-        ]);
-        $newPreview->save();
-
-        // Regenerate FQDN for the cloned preview
-        if ($targetApplication->build_pack === 'dockercompose') {
-            $newPreview->generate_preview_fqdn_compose();
-        } else {
-            $newPreview->generate_preview_fqdn();
-        }
-    }
 }
