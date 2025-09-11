@@ -479,7 +479,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             if (filled($this->env_filename)) {
                 $services = collect(data_get($composeFile, 'services', []));
                 $services = $services->map(function ($service, $name) {
-                    $service['env_file'] = [$this->env_filename];
+                    $service['env_file'] = ["/artifacts/{$this->env_filename}"];
 
                     return $service;
                 });
@@ -504,8 +504,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             );
         } else {
             $command = "{$this->coolify_variables} docker compose";
-            if ($this->env_filename) {
-                $command .= " --env-file {$this->workdir}/{$this->env_filename}";
+            if (filled($this->env_filename)) {
+                $command .= " --env-file /artifacts/{$this->env_filename}";
             }
             if ($this->force_rebuild) {
                 $command .= " --project-name {$this->application->uuid} --project-directory {$this->workdir} -f {$this->workdir}{$this->docker_compose_location} build --pull --no-cache";
@@ -550,8 +550,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $this->docker_compose_location = '/docker-compose.yaml';
 
                 $command = "{$this->coolify_variables} docker compose";
-                if ($this->env_filename) {
-                    $command .= " --env-file {$server_workdir}/{$this->env_filename}";
+                if (filled($this->env_filename)) {
+                    $command .= " --env-file /artifacts/{$this->env_filename}";
                 }
                 $command .= " --project-directory {$server_workdir} -f {$server_workdir}{$this->docker_compose_location} up -d";
                 $this->execute_remote_command(
@@ -567,8 +567,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             } else {
                 $command = "{$this->coolify_variables} docker compose";
                 if ($this->preserveRepository) {
-                    if ($this->env_filename) {
-                        $command .= " --env-file {$server_workdir}/{$this->env_filename}";
+                    if (filled($this->env_filename)) {
+                        $command .= " --env-file /artifacts/{$this->env_filename}";
                     }
                     $command .= " --project-name {$this->application->uuid} --project-directory {$server_workdir} -f {$server_workdir}{$this->docker_compose_location} up -d";
                     $this->write_deployment_configurations();
@@ -577,8 +577,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                         ['command' => $command, 'hidden' => true],
                     );
                 } else {
-                    if ($this->env_filename) {
-                        $command .= " --env-file {$this->workdir}/{$this->env_filename}";
+                    if (filled($this->env_filename)) {
+                        $command .= " --env-file /artifacts/{$this->env_filename}";
                     }
                     $command .= " --project-name {$this->application->uuid} --project-directory {$this->workdir} -f {$this->workdir}{$this->docker_compose_location} up -d";
                     $this->execute_remote_command(
@@ -911,7 +911,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         });
         if ($this->pull_request_id === 0) {
             $this->env_filename = '.env';
-
             foreach ($sorted_environment_variables as $env) {
                 $envs->push($env->key.'='.$env->real_value);
             }
@@ -955,7 +954,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 }
             }
         } else {
-            $this->env_filename = addPreviewDeploymentSuffix('.env', $this->pull_request_id);
+            $this->env_filename = '.env';
             foreach ($sorted_environment_variables_preview as $env) {
                 $envs->push($env->key.'='.$env->real_value);
             }
@@ -996,43 +995,47 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
         }
         if ($envs->isEmpty()) {
-            $this->env_filename = null;
-            if ($this->use_build_server) {
-                $this->server = $this->original_server;
-                $this->execute_remote_command(
-                    [
-                        'command' => "rm -f $this->configuration_dir/{$this->env_filename}",
-                        'hidden' => true,
-                        'ignore_errors' => true,
-                    ]
-                );
-                $this->server = $this->build_server;
-                $this->execute_remote_command(
-                    [
-                        'command' => "rm -f $this->configuration_dir/{$this->env_filename}",
-                        'hidden' => true,
-                        'ignore_errors' => true,
-                    ]
-                );
-            } else {
-                $this->execute_remote_command(
-                    [
-                        'command' => "rm -f $this->configuration_dir/{$this->env_filename}",
-                        'hidden' => true,
-                        'ignore_errors' => true,
-                    ]
-                );
+            if ($this->env_filename) {
+                if ($this->use_build_server) {
+                    $this->server = $this->original_server;
+                    $this->execute_remote_command(
+                        [
+                            'command' => "rm -f $this->configuration_dir/{$this->env_filename}",
+                            'hidden' => true,
+                            'ignore_errors' => true,
+                        ]
+                    );
+                    $this->server = $this->build_server;
+                    $this->execute_remote_command(
+                        [
+                            'command' => "rm -f $this->configuration_dir/{$this->env_filename}",
+                            'hidden' => true,
+                            'ignore_errors' => true,
+                        ]
+                    );
+                } else {
+                    $this->execute_remote_command(
+                        [
+                            'command' => "rm -f $this->configuration_dir/{$this->env_filename}",
+                            'hidden' => true,
+                            'ignore_errors' => true,
+                        ]
+                    );
+                }
             }
+            $this->env_filename = null;
         } else {
             $envs_content = $envs->implode("\n");
-            transfer_file_to_container($envs_content, "$this->workdir/{$this->env_filename}", $this->deployment_uuid, $this->server);
+            transfer_file_to_container($envs_content, "/artifacts/{$this->env_filename}", $this->deployment_uuid, $this->server);
 
+            // Save the env filename with preview deployment suffix
+            $env_filename = addPreviewDeploymentSuffix($this->env_filename, $this->pull_request_id);
             if ($this->use_build_server) {
                 $this->server = $this->original_server;
-                transfer_file_to_server($envs_content, "$this->configuration_dir/{$this->env_filename}", $this->server);
+                transfer_file_to_server($envs_content, "$this->configuration_dir/{$env_filename}", $this->server);
                 $this->server = $this->build_server;
             } else {
-                transfer_file_to_server($envs_content, "$this->configuration_dir/{$this->env_filename}", $this->server);
+                transfer_file_to_server($envs_content, "$this->configuration_dir/{$env_filename}", $this->server);
             }
         }
         $this->environment_variables = $envs;
@@ -1717,8 +1720,16 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->env_args = collect([]);
         $this->env_args->put('SOURCE_COMMIT', $this->commit);
         $coolify_envs = $this->generate_coolify_env_variables();
+
+        // Include ALL environment variables (both build-time and runtime) for all build packs
+        // This deprecates the need for is_build_time flag
         if ($this->pull_request_id === 0) {
-            foreach ($this->application->build_environment_variables as $env) {
+            // Get all environment variables except NIXPACKS_ prefixed ones for non-nixpacks builds
+            $envs = $this->application->build_pack === 'nixpacks'
+                ? $this->application->runtime_environment_variables
+                : $this->application->environment_variables()->where('key', 'not like', 'NIXPACKS_%')->get();
+
+            foreach ($envs as $env) {
                 if (! is_null($env->real_value)) {
                     $this->env_args->put($env->key, $env->real_value);
                     if (str($env->real_value)->startsWith('$')) {
@@ -1738,7 +1749,12 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 }
             }
         } else {
-            foreach ($this->application->build_environment_variables_preview as $env) {
+            // Get all preview environment variables except NIXPACKS_ prefixed ones for non-nixpacks builds
+            $envs = $this->application->build_pack === 'nixpacks'
+                ? $this->application->runtime_environment_variables_preview
+                : $this->application->environment_variables_preview()->where('key', 'not like', 'NIXPACKS_%')->get();
+
+            foreach ($envs as $env) {
                 if (! is_null($env->real_value)) {
                     $this->env_args->put($env->key, $env->real_value);
                     if (str($env->real_value)->startsWith('$')) {
@@ -1837,8 +1853,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ],
             ],
         ];
-        if (! is_null($this->env_filename)) {
-            $docker_compose['services'][$this->container_name]['env_file'] = [$this->env_filename];
+        if (filled($this->env_filename)) {
+            $docker_compose['services'][$this->container_name]['env_file'] = ["/artifacts/{$this->env_filename}"];
         }
         $docker_compose['services'][$this->container_name]['healthcheck'] = [
             'test' => [
@@ -2129,22 +2145,20 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                         $this->execute_remote_command([
                             executeInDocker($this->deployment_uuid, "nixpacks build -c /artifacts/thegameplan.json --no-cache --no-error-without-start -n {$this->build_image_name} {$this->workdir} -o {$this->workdir}"),
                             'hidden' => true,
+                        ], [
+                            executeInDocker($this->deployment_uuid, "cat {$this->workdir}/.nixpacks/Dockerfile"),
+                            'hidden' => true,
                         ]);
-                        $env_copy_command = '';
-                        if ($this->pull_request_id !== 0 && $this->env_filename) {
-                            $env_copy_command = "if [ -f {$this->workdir}/{$this->env_filename} ]; then cp {$this->workdir}/{$this->env_filename} {$this->workdir}/.env; fi && ";
-                        }
-                        $build_command = "{$env_copy_command}docker build --no-cache {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile {$this->build_args} --progress plain -t {$this->build_image_name} {$this->workdir}";
+                        $build_command = "docker build --no-cache {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile --progress plain -t {$this->build_image_name} {$this->build_args} {$this->workdir}";
                     } else {
                         $this->execute_remote_command([
                             executeInDocker($this->deployment_uuid, "nixpacks build -c /artifacts/thegameplan.json --cache-key '{$this->application->uuid}' --no-error-without-start -n {$this->build_image_name} {$this->workdir} -o {$this->workdir}"),
                             'hidden' => true,
+                        ], [
+                            executeInDocker($this->deployment_uuid, "cat {$this->workdir}/.nixpacks/Dockerfile"),
+                            'hidden' => true,
                         ]);
-                        $env_copy_command = '';
-                        if ($this->pull_request_id !== 0 && $this->env_filename) {
-                            $env_copy_command = "if [ -f {$this->workdir}/{$this->env_filename} ]; then cp {$this->workdir}/{$this->env_filename} {$this->workdir}/.env; fi && ";
-                        }
-                        $build_command = "{$env_copy_command}docker build {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile {$this->build_args} --progress plain -t {$this->build_image_name} {$this->workdir}";
+                        $build_command = "docker build {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile --progress plain -t {$this->build_image_name} {$this->build_args} {$this->workdir}";
                     }
 
                     $base64_build_command = base64_encode($build_command);
@@ -2255,22 +2269,20 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                         $this->execute_remote_command([
                             executeInDocker($this->deployment_uuid, "nixpacks build -c /artifacts/thegameplan.json --no-cache --no-error-without-start -n {$this->production_image_name} {$this->workdir} -o {$this->workdir}"),
                             'hidden' => true,
+                        ], [
+                            executeInDocker($this->deployment_uuid, "cat {$this->workdir}/.nixpacks/Dockerfile"),
+                            'hidden' => true,
                         ]);
-                        $env_copy_command = '';
-                        if ($this->pull_request_id !== 0 && $this->env_filename) {
-                            $env_copy_command = "if [ -f {$this->workdir}/{$this->env_filename} ]; then cp {$this->workdir}/{$this->env_filename} {$this->workdir}/.env; fi && ";
-                        }
-                        $build_command = "{$env_copy_command}docker build --no-cache {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile {$this->build_args} --progress plain -t {$this->production_image_name} {$this->workdir}";
+                        $build_command = "docker build --no-cache {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile --progress plain -t {$this->production_image_name} {$this->build_args} {$this->workdir}";
                     } else {
                         $this->execute_remote_command([
                             executeInDocker($this->deployment_uuid, "nixpacks build -c /artifacts/thegameplan.json --cache-key '{$this->application->uuid}' --no-error-without-start -n {$this->production_image_name} {$this->workdir} -o {$this->workdir}"),
                             'hidden' => true,
+                        ], [
+                            executeInDocker($this->deployment_uuid, "cat {$this->workdir}/.nixpacks/Dockerfile"),
+                            'hidden' => true,
                         ]);
-                        $env_copy_command = '';
-                        if ($this->pull_request_id !== 0 && $this->env_filename) {
-                            $env_copy_command = "if [ -f {$this->workdir}/{$this->env_filename} ]; then cp {$this->workdir}/{$this->env_filename} {$this->workdir}/.env; fi && ";
-                        }
-                        $build_command = "{$env_copy_command}docker build {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile {$this->build_args} --progress plain -t {$this->production_image_name} {$this->workdir}";
+                        $build_command = "docker build {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile --progress plain -t {$this->production_image_name} {$this->build_args} {$this->workdir}";
                     }
                     $base64_build_command = base64_encode($build_command);
                     $this->execute_remote_command(
@@ -2406,20 +2418,26 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
             'save' => 'dockerfile',
         ]);
         $dockerfile = collect(str($this->saved_outputs->get('dockerfile'))->trim()->explode("\n"));
+
+        // Include ALL environment variables as build args (deprecating is_build_time flag)
         if ($this->pull_request_id === 0) {
-            foreach ($this->application->build_environment_variables as $env) {
+            // Get all environment variables except NIXPACKS_ prefixed ones
+            $envs = $this->application->environment_variables()->where('key', 'not like', 'NIXPACKS_%')->get();
+            foreach ($envs as $env) {
                 if (data_get($env, 'is_multiline') === true) {
-                    $dockerfile->splice(1, 0, "ARG {$env->key}");
+                    $dockerfile->splice(1, 0, ["ARG {$env->key}"]);
                 } else {
-                    $dockerfile->splice(1, 0, "ARG {$env->key}={$env->real_value}");
+                    $dockerfile->splice(1, 0, ["ARG {$env->key}={$env->real_value}"]);
                 }
             }
         } else {
-            foreach ($this->application->build_environment_variables_preview as $env) {
+            // Get all preview environment variables except NIXPACKS_ prefixed ones
+            $envs = $this->application->environment_variables_preview()->where('key', 'not like', 'NIXPACKS_%')->get();
+            foreach ($envs as $env) {
                 if (data_get($env, 'is_multiline') === true) {
-                    $dockerfile->splice(1, 0, "ARG {$env->key}");
+                    $dockerfile->splice(1, 0, ["ARG {$env->key}"]);
                 } else {
-                    $dockerfile->splice(1, 0, "ARG {$env->key}={$env->real_value}");
+                    $dockerfile->splice(1, 0, ["ARG {$env->key}={$env->real_value}"]);
                 }
             }
         }
