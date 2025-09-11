@@ -231,6 +231,18 @@ class Previews extends Component
         $this->parameters['deployment_uuid'] = $this->deployment_uuid;
     }
 
+    private function stopContainers(array $containers, $server)
+    {
+        $containersToStop = collect($containers)->pluck('Names')->toArray();
+
+        foreach ($containersToStop as $containerName) {
+            instant_remote_process(command: [
+                "docker stop --time=30 $containerName",
+                "docker rm -f $containerName",
+            ], server: $server, throwError: false);
+        }
+    }
+
     public function stop(int $pull_request_id)
     {
         $this->authorize('deploy', $this->application);
