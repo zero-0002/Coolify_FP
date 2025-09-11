@@ -373,7 +373,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     $fqdnFor = $key->after('SERVICE_FQDN_')->lower()->value();
                     $originalFqdnFor = str($fqdnFor)->replace('_', '-');
                     if (str($fqdnFor)->contains('-')) {
-                        $fqdnFor = str($fqdnFor)->replace('-', '_');
+                        $fqdnFor = str($fqdnFor)->replace('-', '_')->replace('.', '_');
                     }
                     // Generated FQDN & URL
                     $fqdn = generateFqdn(server: $server, random: "$originalFqdnFor-$uuid", parserVersion: $resource->compose_parsing_version);
@@ -409,7 +409,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     $urlFor = $key->after('SERVICE_URL_')->lower()->value();
                     $originalUrlFor = str($urlFor)->replace('_', '-');
                     if (str($urlFor)->contains('-')) {
-                        $urlFor = str($urlFor)->replace('-', '_');
+                        $urlFor = str($urlFor)->replace('-', '_')->replace('.', '_');
                     }
                     $url = generateUrl(server: $server, random: "$originalUrlFor-$uuid");
                     $resource->environment_variables()->firstOrCreate([
@@ -864,13 +864,13 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
         if ($resource->build_pack !== 'dockercompose') {
             $domains = collect([]);
         }
-        $changedServiceName = str($serviceName)->replace('-', '_')->value();
+        $changedServiceName = str($serviceName)->replace('-', '_')->replace('.', '_')->value();
         $fqdns = data_get($domains, "$changedServiceName.domain");
         // Generate SERVICE_FQDN & SERVICE_URL for dockercompose
         if ($resource->build_pack === 'dockercompose') {
             foreach ($domains as $forServiceName => $domain) {
                 $parsedDomain = data_get($domain, 'domain');
-                $serviceNameFormatted = str($serviceName)->upper()->replace('-', '_');
+                $serviceNameFormatted = str($serviceName)->upper()->replace('-', '_')->replace('.', '_');
 
                 if (filled($parsedDomain)) {
                     $parsedDomain = str($parsedDomain)->explode(',')->first();
@@ -878,12 +878,12 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     $coolifyScheme = $coolifyUrl->getScheme();
                     $coolifyFqdn = $coolifyUrl->getHost();
                     $coolifyUrl = $coolifyUrl->withScheme($coolifyScheme)->withHost($coolifyFqdn)->withPort(null);
-                    $coolifyEnvironments->put('SERVICE_URL_'.str($forServiceName)->upper()->replace('-', '_'), $coolifyUrl->__toString());
-                    $coolifyEnvironments->put('SERVICE_FQDN_'.str($forServiceName)->upper()->replace('-', '_'), $coolifyFqdn);
+                    $coolifyEnvironments->put('SERVICE_URL_'.str($forServiceName)->upper()->replace('-', '_')->replace('.', '_'), $coolifyUrl->__toString());
+                    $coolifyEnvironments->put('SERVICE_FQDN_'.str($forServiceName)->upper()->replace('-', '_')->replace('.', '_'), $coolifyFqdn);
                     $resource->environment_variables()->updateOrCreate([
                         'resourceable_type' => Application::class,
                         'resourceable_id' => $resource->id,
-                        'key' => 'SERVICE_URL_'.str($forServiceName)->upper()->replace('-', '_'),
+                        'key' => 'SERVICE_URL_'.str($forServiceName)->upper()->replace('-', '_')->replace('.', '_'),
                     ], [
                         'value' => $coolifyUrl->__toString(),
                         'is_build_time' => false,
@@ -892,7 +892,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     $resource->environment_variables()->updateOrCreate([
                         'resourceable_type' => Application::class,
                         'resourceable_id' => $resource->id,
-                        'key' => 'SERVICE_FQDN_'.str($forServiceName)->upper()->replace('-', '_'),
+                        'key' => 'SERVICE_FQDN_'.str($forServiceName)->upper()->replace('-', '_')->replace('.', '_'),
                     ], [
                         'value' => $coolifyFqdn,
                         'is_build_time' => false,

@@ -3003,14 +3003,15 @@ function parseDockerfileInterval(string $something)
 
 function addPreviewDeploymentSuffix(string $name, int $pull_request_id = 0): string
 {
-    return ($pull_request_id === 0)? $name : $name.'-pr-'.$pull_request_id;
+    return ($pull_request_id === 0) ? $name : $name.'-pr-'.$pull_request_id;
 }
 
-function generateDockerComposeServiceName(mixed $services, int $pullRequestId = 0) : Collection
+function generateDockerComposeServiceName(mixed $services, int $pullRequestId = 0): Collection
 {
     $collection = collect([]);
     foreach ($services as $serviceName => $_) {
-            $collection->put('SERVICE_NAME_'.str($serviceName)->upper(), addPreviewDeploymentSuffix($serviceName,$pullRequestId));
+        $collection->put('SERVICE_NAME_'.str($serviceName)->replace('-', '_')->replace('.', '_')->upper(), addPreviewDeploymentSuffix($serviceName, $pullRequestId));
     }
+
     return $collection;
 }

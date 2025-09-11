@@ -955,7 +955,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 }
             }
         } else {
-            $this->env_filename = addPreviewDeploymentSuffix(".env", $this->pull_request_id);
+            $this->env_filename = addPreviewDeploymentSuffix('.env', $this->pull_request_id);
             foreach ($sorted_environment_variables_preview as $env) {
                 $envs->push($env->key.'='.$env->real_value);
             }
@@ -991,7 +991,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $rawDockerCompose = Yaml::parse($this->application->docker_compose_raw);
                 $rawServices = data_get($rawDockerCompose, 'services', []);
                 foreach ($rawServices as $rawServiceName => $_) {
-                            $envs->push('SERVICE_NAME_'.str($rawServiceName)->upper().'='.addPreviewDeploymentSuffix($rawServiceName, $this->pull_request_id));
+                    $envs->push('SERVICE_NAME_'.str($rawServiceName)->upper().'='.addPreviewDeploymentSuffix($rawServiceName, $this->pull_request_id));
                 }
             }
         }

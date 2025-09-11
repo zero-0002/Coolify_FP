@@ -671,7 +671,7 @@ class General extends Component
         $domains = collect(json_decode($this->application->docker_compose_domains, true)) ?? collect([]);
 
         foreach ($domains as $serviceName => $service) {
-            $serviceNameFormatted = str($serviceName)->upper()->replace('-', '_');
+            $serviceNameFormatted = str($serviceName)->upper()->replace('-', '_')->replace('.', '_');
             $domain = data_get($service, 'domain');
             // Delete SERVICE_FQDN_ and SERVICE_URL_ variables if domain is removed
             $this->application->environment_variables()->where('resourceable_type', Application::class)
