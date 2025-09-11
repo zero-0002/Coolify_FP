@@ -454,6 +454,12 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
         }
     }
 
+    // generate SERVICE_NAME variables for docker compose services
+    $serviceNameEnvironments = collect([]);
+    if ($resource->build_pack === 'dockercompose') {
+        $serviceNameEnvironments = generateDockerComposeServiceName($services, $pullRequestId);
+    }
+
     // Parse the rest of the services
     foreach ($services as $serviceName => $service) {
         $image = data_get_str($service, 'image');
@@ -567,7 +573,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         }
                         $source = replaceLocalSource($source, $mainDirectory);
                         if ($isPullRequest) {
-                            $source = $source."-pr-$pullRequestId";
+                            $source = addPreviewDeploymentSuffix($source, $pull_request_id);
                         }
                         LocalFileVolume::updateOrCreate(
                             [
@@ -610,7 +616,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     $name = "{$uuid}_{$slugWithoutUuid}";
 
                     if ($isPullRequest) {
-                        $name = "{$name}-pr-$pullRequestId";
+                        $name = addPreviewDeploymentSuffix($name, $pull_request_id);
                     }
                     if (is_string($volume)) {
                         $parsed = parseDockerVolumeString($volume);
@@ -651,11 +657,11 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                 $newDependsOn = collect([]);
                 $depends_on->each(function ($dependency, $condition) use ($pullRequestId, $newDependsOn) {
                     if (is_numeric($condition)) {
-                        $dependency = "$dependency-pr-$pullRequestId";
+                        $dependency = addPreviewDeploymentSuffix($dependency, $pullRequestId);
 
                         $newDependsOn->put($condition, $dependency);
                     } else {
-                        $condition = "$condition-pr-$pullRequestId";
+                        $condition = addPreviewDeploymentSuffix($condition, $pullRequestId);
                         $newDependsOn->put($condition, $dependency);
                     }
                 });
@@ -1082,7 +1088,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
             $payload['volumes'] = $volumesParsed;
         }
         if ($environment->count() > 0 || $coolifyEnvironments->count() > 0) {
-            $payload['environment'] = $environment->merge($coolifyEnvironments);
+            $payload['environment'] = $environment->merge($coolifyEnvironments)->merge($serviceNameEnvironments);
         }
         if ($logging) {
             $payload['logging'] = $logging;
@@ -1091,7 +1097,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
             $payload['depends_on'] = $depends_on;
         }
         if ($isPullRequest) {
-            $serviceName = "{$serviceName}-pr-{$pullRequestId}";
+            $serviceName = addPreviewDeploymentSuffix($serviceName, $pullRequestId);
         }
 
         $parsedServices->put($serviceName, $payload);
