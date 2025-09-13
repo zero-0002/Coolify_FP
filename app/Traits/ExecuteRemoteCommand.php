@@ -45,62 +45,12 @@ trait ExecuteRemoteCommand
                     $command = parseLineForSudo($command, $this->server);
                 }
             }
-
-            $maxRetries = config('constants.ssh.max_retries');
-            $attempt = 0;
-            $lastError = null;
-            $commandExecuted = false;
-
-            while ($attempt < $maxRetries && ! $commandExecuted) {
-                try {
-                    $this->executeCommandWithProcess($command, $hidden, $customType, $append, $ignore_errors);
-                    $commandExecuted = true;
-                } catch (\RuntimeException $e) {
-                    $lastError = $e;
-                    $errorMessage = $e->getMessage();
-                    // Only retry if it's an SSH connection error and we haven't exhausted retries
-                    if ($this->isRetryableSshError($errorMessage) && $attempt < $maxRetries - 1) {
-                        $attempt++;
-                        $delay = $this->calculateRetryDelay($attempt - 1);
-
-                        // Track SSH retry event in Sentry
-                        $this->trackSshRetryEvent($attempt, $maxRetries, $delay, $errorMessage, [
-                            'server' => $this->server->name ?? $this->server->ip ?? 'unknown',
-                            'command' => remove_iip($command),
-                            'trait' => 'ExecuteRemoteCommand',
-                        ]);
-
-                        // Add log entry for the retry
-                        if (isset($this->application_deployment_queue)) {
-                            $this->addRetryLogEntry($attempt, $maxRetries, $delay, $errorMessage);
-                        }
-
-                        sleep($delay);
-                    } else {
-                        // Not retryable or max retries reached
-                        throw $e;
-                    }
+            $remote_command = SshMultiplexingHelper::generateSshCommand($this->server, $command);
+            $process = Process::timeout(config('constants.ssh.command_timeout'))->idleTimeout(3600)->start($remote_command, function (string $type, string $output) use ($command, $hidden, $customType, $append) { 
+                $output = str($output)->trim();
+                if ($output->startsWith('╔')) {
+                    $output = "\n".$output;
                 }
-            }
-
-            // If we exhausted all retries and still failed
-            if (! $commandExecuted && $lastError) {
-                throw $lastError;
-            }
-        });
-    }
-
-    /**
-     * Execute the actual command with process handling
-     */
-    private function executeCommandWithProcess($command, $hidden, $customType, $append, $ignore_errors)
-    {
-        $remote_command = SshMultiplexingHelper::generateSshCommand($this->server, $command);
-        $process = Process::timeout(config('constants.ssh.command_timeout'))->idleTimeout(3600)->start($remote_command, function (string $type, string $output) use ($command, $hidden, $customType, $append) {
-            $output = str($output)->trim();
-            if ($output->startsWith('╔')) {
-                $output = "\n".$output;
-            }
 
             // Sanitize output to ensure valid UTF-8 encoding before JSON encoding
             $sanitized_output = sanitize_utf8_text($output);
