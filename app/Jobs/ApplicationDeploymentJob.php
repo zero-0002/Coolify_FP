@@ -388,8 +388,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $dockerfile_base64 = base64_encode($this->application->dockerfile);
         $this->application_deployment_queue->addLogEntry("Starting deployment of {$this->application->name} to {$this->server->name}.");
         $this->prepare_builder_image();
-        $dockerfile_content = base64_decode($dockerfile_base64);
-        transfer_file_to_container($dockerfile_content, "{$this->workdir}{$this->dockerfile_location}", $this->deployment_uuid, $this->server);
+        $this->execute_remote_command(
+            [
+                executeInDocker($this->deployment_uuid, "echo '$dockerfile_base64' | base64 -d | tee {$this->workdir}{$this->dockerfile_location} > /dev/null"),
+            ],
+        );
         $this->generate_image_names();
         $this->generate_compose_file();
         $this->generate_build_env_variables();
@@ -479,7 +482,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             if (filled($this->env_filename)) {
                 $services = collect(data_get($composeFile, 'services', []));
                 $services = $services->map(function ($service, $name) {
-                    $service['env_file'] = ["/artifacts/{$this->env_filename}"];
+                    $service['env_file'] = [$this->env_filename];
 
                     return $service;
                 });
@@ -494,7 +497,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $yaml = Yaml::dump(convertToArray($composeFile), 10);
         }
         $this->docker_compose_base64 = base64_encode($yaml);
-        transfer_file_to_container($yaml, "{$this->workdir}{$this->docker_compose_location}", $this->deployment_uuid, $this->server);
+        $this->execute_remote_command([
+            executeInDocker($this->deployment_uuid, "echo '{$this->docker_compose_base64}' | base64 -d | tee {$this->workdir}{$this->docker_compose_location} > /dev/null"),
+            'hidden' => true,
+        ]);
         // Build new container to limit downtime.
         $this->application_deployment_queue->addLogEntry('Pulling & building required images.');
 
@@ -505,7 +511,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         } else {
             $command = "{$this->coolify_variables} docker compose";
             if (filled($this->env_filename)) {
-                $command .= " --env-file /artifacts/{$this->env_filename}";
+                $command .= " --env-file {$this->workdir}/{$this->env_filename}";
             }
             if ($this->force_rebuild) {
                 $command .= " --project-name {$this->application->uuid} --project-directory {$this->workdir} -f {$this->workdir}{$this->docker_compose_location} build --pull --no-cache";
@@ -551,7 +557,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
                 $command = "{$this->coolify_variables} docker compose";
                 if (filled($this->env_filename)) {
-                    $command .= " --env-file /artifacts/{$this->env_filename}";
+                    $command .= " --env-file {$server_workdir}/{$this->env_filename}";
                 }
                 $command .= " --project-directory {$server_workdir} -f {$server_workdir}{$this->docker_compose_location} up -d";
                 $this->execute_remote_command(
@@ -568,7 +574,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $command = "{$this->coolify_variables} docker compose";
                 if ($this->preserveRepository) {
                     if (filled($this->env_filename)) {
-                        $command .= " --env-file /artifacts/{$this->env_filename}";
+                        $command .= " --env-file {$server_workdir}/{$this->env_filename}";
                     }
                     $command .= " --project-name {$this->application->uuid} --project-directory {$server_workdir} -f {$server_workdir}{$this->docker_compose_location} up -d";
                     $this->write_deployment_configurations();
@@ -578,7 +584,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     );
                 } else {
                     if (filled($this->env_filename)) {
-                        $command .= " --env-file /artifacts/{$this->env_filename}";
+                        $command .= " --env-file {$this->workdir}/{$this->env_filename}";
                     }
                     $command .= " --project-name {$this->application->uuid} --project-directory {$this->workdir} -f {$this->workdir}{$this->docker_compose_location} up -d";
                     $this->execute_remote_command(
@@ -709,12 +715,13 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $composeFileName = "$mainDir/".addPreviewDeploymentSuffix('docker-compose', $this->pull_request_id).'.yaml';
                 $this->docker_compose_location = '/'.addPreviewDeploymentSuffix('docker-compose', $this->pull_request_id).'.yaml';
             }
-            $this->execute_remote_command([
-                "mkdir -p $mainDir",
-            ]);
-            $docker_compose_content = base64_decode($this->docker_compose_base64);
-            transfer_file_to_server($docker_compose_content, $composeFileName, $this->server);
             $this->execute_remote_command(
+                [
+                    "mkdir -p $mainDir",
+                ],
+                [
+                    "echo '{$this->docker_compose_base64}' | base64 -d | tee $composeFileName > /dev/null",
+                ],
                 [
                     "echo '{$readme}' > $mainDir/README.md",
                 ]
@@ -911,24 +918,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         });
         if ($this->pull_request_id === 0) {
             $this->env_filename = '.env';
-            // Filter out buildtime-only variables from runtime environment
-            $runtime_environment_variables = $sorted_environment_variables->filter(function ($env) {
-                return ! $env->is_buildtime_only;
-            });
-            foreach ($runtime_environment_variables as $env) {
-                $envs->push($env->key.'='.$env->real_value);
-            }
-            // Add PORT if not exists, use the first port as default
-            if ($this->build_pack !== 'dockercompose') {
-                if ($this->application->environment_variables->where('key', 'PORT')->isEmpty()) {
-                    $envs->push("PORT={$ports[0]}");
-                }
-            }
-            // Add HOST if not exists
-            if ($this->application->environment_variables->where('key', 'HOST')->isEmpty()) {
-                $envs->push('HOST=0.0.0.0');
-            }
 
+            // Generate SERVICE_ variables first for dockercompose
             if ($this->build_pack === 'dockercompose') {
                 $domains = collect(json_decode($this->application->docker_compose_domains)) ?? collect([]);
 
@@ -957,26 +948,38 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     $envs->push('SERVICE_NAME_'.str($serviceName)->upper().'='.$serviceName);
                 }
             }
-        } else {
-            $this->env_filename = '.env';
-            // Filter out buildtime-only variables from runtime environment for preview
-            $runtime_environment_variables_preview = $sorted_environment_variables_preview->filter(function ($env) {
+
+            // Filter out buildtime-only variables from runtime environment
+            $runtime_environment_variables = $sorted_environment_variables->filter(function ($env) {
                 return ! $env->is_buildtime_only;
             });
-            foreach ($runtime_environment_variables_preview as $env) {
+
+            // Sort runtime environment variables: those referencing SERVICE_ variables come after others
+            $runtime_environment_variables = $runtime_environment_variables->sortBy(function ($env) {
+                if (str($env->value)->startsWith('$SERVICE_') || str($env->value)->contains('${SERVICE_')) {
+                    return 2;
+                }
+
+                return 1;
+            });
+
+            foreach ($runtime_environment_variables as $env) {
                 $envs->push($env->key.'='.$env->real_value);
             }
             // Add PORT if not exists, use the first port as default
             if ($this->build_pack !== 'dockercompose') {
-                if ($this->application->environment_variables_preview->where('key', 'PORT')->isEmpty()) {
+                if ($this->application->environment_variables->where('key', 'PORT')->isEmpty()) {
                     $envs->push("PORT={$ports[0]}");
                 }
             }
             // Add HOST if not exists
-            if ($this->application->environment_variables_preview->where('key', 'HOST')->isEmpty()) {
+            if ($this->application->environment_variables->where('key', 'HOST')->isEmpty()) {
                 $envs->push('HOST=0.0.0.0');
             }
+        } else {
+            $this->env_filename = '.env';
 
+            // Generate SERVICE_ variables first for dockercompose preview
             if ($this->build_pack === 'dockercompose') {
                 $domains = collect(json_decode(data_get($this->preview, 'docker_compose_domains'))) ?? collect([]);
 
@@ -1000,6 +1003,34 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 foreach ($rawServices as $rawServiceName => $_) {
                     $envs->push('SERVICE_NAME_'.str($rawServiceName)->upper().'='.addPreviewDeploymentSuffix($rawServiceName, $this->pull_request_id));
                 }
+            }
+
+            // Filter out buildtime-only variables from runtime environment for preview
+            $runtime_environment_variables_preview = $sorted_environment_variables_preview->filter(function ($env) {
+                return ! $env->is_buildtime_only;
+            });
+
+            // Sort runtime environment variables: those referencing SERVICE_ variables come after others
+            $runtime_environment_variables_preview = $runtime_environment_variables_preview->sortBy(function ($env) {
+                if (str($env->value)->startsWith('$SERVICE_') || str($env->value)->contains('${SERVICE_')) {
+                    return 2;
+                }
+
+                return 1;
+            });
+
+            foreach ($runtime_environment_variables_preview as $env) {
+                $envs->push($env->key.'='.$env->real_value);
+            }
+            // Add PORT if not exists, use the first port as default
+            if ($this->build_pack !== 'dockercompose') {
+                if ($this->application->environment_variables_preview->where('key', 'PORT')->isEmpty()) {
+                    $envs->push("PORT={$ports[0]}");
+                }
+            }
+            // Add HOST if not exists
+            if ($this->application->environment_variables_preview->where('key', 'HOST')->isEmpty()) {
+                $envs->push('HOST=0.0.0.0');
             }
         }
         if ($envs->isEmpty()) {
@@ -1033,17 +1064,27 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
             $this->env_filename = null;
         } else {
-            $envs_content = $envs->implode("\n");
-            transfer_file_to_container($envs_content, "/artifacts/{$this->env_filename}", $this->deployment_uuid, $this->server);
+            $envs_base64 = base64_encode($envs->implode("\n"));
+            $this->execute_remote_command(
+                [
+                    executeInDocker($this->deployment_uuid, "echo '$envs_base64' | base64 -d | tee $this->workdir/{$this->env_filename} > /dev/null"),
+                ],
 
-            // Save the env filename with preview deployment suffix
-            $env_filename = addPreviewDeploymentSuffix($this->env_filename, $this->pull_request_id);
+            );
             if ($this->use_build_server) {
                 $this->server = $this->original_server;
-                transfer_file_to_server($envs_content, "$this->configuration_dir/{$env_filename}", $this->server);
+                $this->execute_remote_command(
+                    [
+                        "echo '$envs_base64' | base64 -d | tee $this->configuration_dir/{$this->env_filename} > /dev/null",
+                    ]
+                );
                 $this->server = $this->build_server;
             } else {
-                transfer_file_to_server($envs_content, "$this->configuration_dir/{$env_filename}", $this->server);
+                $this->execute_remote_command(
+                    [
+                        "echo '$envs_base64' | base64 -d | tee $this->configuration_dir/{$this->env_filename} > /dev/null",
+                    ]
+                );
             }
         }
         $this->environment_variables = $envs;
@@ -1436,11 +1477,14 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         }
         $private_key = data_get($this->application, 'private_key.private_key');
         if ($private_key) {
-            $this->execute_remote_command([
-                executeInDocker($this->deployment_uuid, 'mkdir -p /root/.ssh'),
-            ]);
-            transfer_file_to_container($private_key, '/root/.ssh/id_rsa', $this->deployment_uuid, $this->server);
+            $private_key = base64_encode($private_key);
             $this->execute_remote_command(
+                [
+                    executeInDocker($this->deployment_uuid, 'mkdir -p /root/.ssh'),
+                ],
+                [
+                    executeInDocker($this->deployment_uuid, "echo '{$private_key}' | base64 -d | tee /root/.ssh/id_rsa > /dev/null"),
+                ],
                 [
                     executeInDocker($this->deployment_uuid, 'chmod 600 /root/.ssh/id_rsa'),
                 ],
@@ -1845,7 +1889,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             ],
         ];
         if (filled($this->env_filename)) {
-            $docker_compose['services'][$this->container_name]['env_file'] = ["/artifacts/{$this->env_filename}"];
+            $docker_compose['services'][$this->container_name]['env_file'] = [$this->env_filename];
         }
         $docker_compose['services'][$this->container_name]['healthcheck'] = [
             'test' => [
@@ -2002,7 +2046,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         $this->docker_compose = Yaml::dump($docker_compose, 10);
         $this->docker_compose_base64 = base64_encode($this->docker_compose);
-        transfer_file_to_container(base64_decode($this->docker_compose_base64), "{$this->workdir}/docker-compose.yaml", $this->deployment_uuid, $this->server);
+        $this->execute_remote_command([executeInDocker($this->deployment_uuid, "echo '{$this->docker_compose_base64}' | base64 -d | tee {$this->workdir}/docker-compose.yaml > /dev/null"), 'hidden' => true]);
     }
 
     private function generate_local_persistent_volumes()
@@ -2130,8 +2174,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
             } else {
                 if ($this->application->build_pack === 'nixpacks') {
                     $this->nixpacks_plan = base64_encode($this->nixpacks_plan);
-                    $nixpacks_content = base64_decode($this->nixpacks_plan);
-                    transfer_file_to_container($nixpacks_content, '/artifacts/thegameplan.json', $this->deployment_uuid, $this->server);
+                    $this->execute_remote_command([executeInDocker($this->deployment_uuid, "echo '{$this->nixpacks_plan}' | base64 -d | tee /artifacts/thegameplan.json > /dev/null"), 'hidden' => true]);
                     if ($this->force_rebuild) {
                         $this->execute_remote_command([
                             executeInDocker($this->deployment_uuid, "nixpacks build -c /artifacts/thegameplan.json --no-cache --no-error-without-start -n {$this->build_image_name} {$this->workdir} -o {$this->workdir}"),
@@ -2155,7 +2198,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                     $base64_build_command = base64_encode($build_command);
                     $this->execute_remote_command(
                         [
-                            transfer_file_to_container(base64_decode($base64_build_command), '/artifacts/build.sh', $this->deployment_uuid, $this->server),
+                            executeInDocker($this->deployment_uuid, "echo '{$base64_build_command}' | base64 -d | tee /artifacts/build.sh > /dev/null"),
                             'hidden' => true,
                         ],
                         [
@@ -2178,7 +2221,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                     }
                     $this->execute_remote_command(
                         [
-                            transfer_file_to_container(base64_decode($base64_build_command), '/artifacts/build.sh', $this->deployment_uuid, $this->server),
+                            executeInDocker($this->deployment_uuid, "echo '{$base64_build_command}' | base64 -d | tee /artifacts/build.sh > /dev/null"),
                             'hidden' => true,
                         ],
                         [
@@ -2210,13 +2253,13 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
             $base64_build_command = base64_encode($build_command);
             $this->execute_remote_command(
                 [
-                    transfer_file_to_container(base64_decode($dockerfile), "{$this->workdir}/Dockerfile", $this->deployment_uuid, $this->server),
+                    executeInDocker($this->deployment_uuid, "echo '{$dockerfile}' | base64 -d | tee {$this->workdir}/Dockerfile > /dev/null"),
                 ],
                 [
-                    transfer_file_to_container(base64_decode($nginx_config), "{$this->workdir}/nginx.conf", $this->deployment_uuid, $this->server),
+                    executeInDocker($this->deployment_uuid, "echo '{$nginx_config}' | base64 -d | tee {$this->workdir}/nginx.conf > /dev/null"),
                 ],
                 [
-                    transfer_file_to_container(base64_decode($base64_build_command), '/artifacts/build.sh', $this->deployment_uuid, $this->server),
+                    executeInDocker($this->deployment_uuid, "echo '{$base64_build_command}' | base64 -d | tee /artifacts/build.sh > /dev/null"),
                     'hidden' => true,
                 ],
                 [
@@ -2239,7 +2282,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 $base64_build_command = base64_encode($build_command);
                 $this->execute_remote_command(
                     [
-                        transfer_file_to_container(base64_decode($base64_build_command), '/artifacts/build.sh', $this->deployment_uuid, $this->server),
+                        executeInDocker($this->deployment_uuid, "echo '{$base64_build_command}' | base64 -d | tee /artifacts/build.sh > /dev/null"),
                         'hidden' => true,
                     ],
                     [
@@ -2254,8 +2297,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
             } else {
                 if ($this->application->build_pack === 'nixpacks') {
                     $this->nixpacks_plan = base64_encode($this->nixpacks_plan);
-                    $nixpacks_content = base64_decode($this->nixpacks_plan);
-                    transfer_file_to_container($nixpacks_content, '/artifacts/thegameplan.json', $this->deployment_uuid, $this->server);
+                    $this->execute_remote_command([executeInDocker($this->deployment_uuid, "echo '{$this->nixpacks_plan}' | base64 -d | tee /artifacts/thegameplan.json > /dev/null"), 'hidden' => true]);
                     if ($this->force_rebuild) {
                         $this->execute_remote_command([
                             executeInDocker($this->deployment_uuid, "nixpacks build -c /artifacts/thegameplan.json --no-cache --no-error-without-start -n {$this->production_image_name} {$this->workdir} -o {$this->workdir}"),
@@ -2278,7 +2320,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                     $base64_build_command = base64_encode($build_command);
                     $this->execute_remote_command(
                         [
-                            transfer_file_to_container(base64_decode($base64_build_command), '/artifacts/build.sh', $this->deployment_uuid, $this->server),
+                            executeInDocker($this->deployment_uuid, "echo '{$base64_build_command}' | base64 -d | tee /artifacts/build.sh > /dev/null"),
                             'hidden' => true,
                         ],
                         [
@@ -2301,7 +2343,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                     }
                     $this->execute_remote_command(
                         [
-                            transfer_file_to_container(base64_decode($base64_build_command), '/artifacts/build.sh', $this->deployment_uuid, $this->server),
+                            executeInDocker($this->deployment_uuid, "echo '{$base64_build_command}' | base64 -d | tee /artifacts/build.sh > /dev/null"),
                             'hidden' => true,
                         ],
                         [
@@ -2434,7 +2476,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         }
         $dockerfile_base64 = base64_encode($dockerfile->implode("\n"));
         $this->execute_remote_command([
-            transfer_file_to_container(base64_decode($dockerfile_base64), "{$this->workdir}{$this->dockerfile_location}", $this->deployment_uuid, $this->server),
+            executeInDocker($this->deployment_uuid, "echo '{$dockerfile_base64}' | base64 -d | tee {$this->workdir}{$this->dockerfile_location} > /dev/null"),
             'hidden' => true,
         ]);
     }
