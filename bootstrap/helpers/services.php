@@ -114,14 +114,14 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
             $resource->save();
         }
 
-        $serviceName = str($resource->name)->upper()->replace('-', '_');
+        $serviceName = str($resource->name)->upper()->replace('-', '_')->replace('.', '_');
         $resource->service->environment_variables()->where('key', 'LIKE', "SERVICE_FQDN_{$serviceName}%")->delete();
         $resource->service->environment_variables()->where('key', 'LIKE', "SERVICE_URL_{$serviceName}%")->delete();
 
         if ($resource->fqdn) {
             $resourceFqdns = str($resource->fqdn)->explode(',');
             $resourceFqdns = $resourceFqdns->first();
-            $variableName = 'SERVICE_URL_'.str($resource->name)->upper()->replace('-', '_');
+            $variableName = 'SERVICE_URL_'.str($resource->name)->upper()->replace('-', '_')->replace('.', '_');
             $url = Url::fromString($resourceFqdns);
             $port = $url->getPort();
             $path = $url->getPath();
@@ -133,7 +133,6 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                 'key' => $variableName,
             ], [
                 'value' => $urlValue,
-                'is_build_time' => false,
                 'is_preview' => false,
             ]);
             if ($port) {
@@ -144,11 +143,10 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                     'key' => $variableName,
                 ], [
                     'value' => $urlValue,
-                    'is_build_time' => false,
                     'is_preview' => false,
                 ]);
             }
-            $variableName = 'SERVICE_FQDN_'.str($resource->name)->upper()->replace('-', '_');
+            $variableName = 'SERVICE_FQDN_'.str($resource->name)->upper()->replace('-', '_')->replace('.', '_');
             $fqdn = Url::fromString($resourceFqdns);
             $port = $fqdn->getPort();
             $path = $fqdn->getPath();
@@ -163,7 +161,6 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                 'key' => $variableName,
             ], [
                 'value' => $fqdnValue,
-                'is_build_time' => false,
                 'is_preview' => false,
             ]);
             if ($port) {
@@ -174,7 +171,6 @@ function updateCompose(ServiceApplication|ServiceDatabase $resource)
                     'key' => $variableName,
                 ], [
                     'value' => $fqdnValue,
-                    'is_build_time' => false,
                     'is_preview' => false,
                 ]);
             }
