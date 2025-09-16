@@ -1073,20 +1073,26 @@ class Application extends BaseModel
             if (is_null($private_key)) {
                 throw new RuntimeException('Private key not found. Please add a private key to the application and try again.');
             }
+            $private_key = base64_encode($private_key);
             $base_comamnd = "GIT_SSH_COMMAND=\"ssh -o ConnectTimeout=30 -p {$customPort} -o Port={$customPort} -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa\" {$base_command} {$customRepository}";
 
-            $commands = collect([]);
+            if ($exec_in_docker) {
+                $commands = collect([
+                    executeInDocker($deployment_uuid, 'mkdir -p /root/.ssh'),
+                    executeInDocker($deployment_uuid, "echo '{$private_key}' | base64 -d | tee /root/.ssh/id_rsa > /dev/null"),
+                    executeInDocker($deployment_uuid, 'chmod 600 /root/.ssh/id_rsa'),
+                ]);
+            } else {
+                $commands = collect([
+                    'mkdir -p /root/.ssh',
+                    "echo '{$private_key}' | base64 -d | tee /root/.ssh/id_rsa > /dev/null",
+                    'chmod 600 /root/.ssh/id_rsa',
+                ]);
+            }
 
             if ($exec_in_docker) {
-                $commands->push(executeInDocker($deployment_uuid, 'mkdir -p /root/.ssh'));
-                // SSH key transfer handled by ApplicationDeploymentJob, assume key is already in container
-                $commands->push(executeInDocker($deployment_uuid, 'chmod 600 /root/.ssh/id_rsa'));
                 $commands->push(executeInDocker($deployment_uuid, $base_comamnd));
             } else {
-                $server = $this->destination->server;
-                $commands->push('mkdir -p /root/.ssh');
-                transfer_file_to_server($private_key, '/root/.ssh/id_rsa', $server);
-                $commands->push('chmod 600 /root/.ssh/id_rsa');
                 $commands->push($base_comamnd);
             }
 
@@ -1212,6 +1218,7 @@ class Application extends BaseModel
             if (is_null($private_key)) {
                 throw new RuntimeException('Private key not found. Please add a private key to the application and try again.');
             }
+            $private_key = base64_encode($private_key);
             $escapedCustomRepository = escapeshellarg($customRepository);
             $git_clone_command_base = "GIT_SSH_COMMAND=\"ssh -o ConnectTimeout=30 -p {$customPort} -o Port={$customPort} -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa\" {$git_clone_command} {$escapedCustomRepository} {$escapedBaseDir}";
             if ($only_checkout) {
@@ -1219,18 +1226,18 @@ class Application extends BaseModel
             } else {
                 $git_clone_command = $this->setGitImportSettings($deployment_uuid, $git_clone_command_base);
             }
-
-            $commands = collect([]);
-
             if ($exec_in_docker) {
-                $commands->push(executeInDocker($deployment_uuid, 'mkdir -p /root/.ssh'));
-                // SSH key transfer handled by ApplicationDeploymentJob, assume key is already in container
-                $commands->push(executeInDocker($deployment_uuid, 'chmod 600 /root/.ssh/id_rsa'));
+                $commands = collect([
+                    executeInDocker($deployment_uuid, 'mkdir -p /root/.ssh'),
+                    executeInDocker($deployment_uuid, "echo '{$private_key}' | base64 -d | tee /root/.ssh/id_rsa > /dev/null"),
+                    executeInDocker($deployment_uuid, 'chmod 600 /root/.ssh/id_rsa'),
+                ]);
             } else {
-                $server = $this->destination->server;
-                $commands->push('mkdir -p /root/.ssh');
-                transfer_file_to_server($private_key, '/root/.ssh/id_rsa', $server);
-                $commands->push('chmod 600 /root/.ssh/id_rsa');
+                $commands = collect([
+                    'mkdir -p /root/.ssh',
+                    "echo '{$private_key}' | base64 -d | tee /root/.ssh/id_rsa > /dev/null",
+                    'chmod 600 /root/.ssh/id_rsa',
+                ]);
             }
             if ($pull_request_id !== 0) {
                 if ($git_type === 'gitlab') {
@@ -1563,7 +1570,19 @@ class Application extends BaseModel
         if (is_null($this->watch_paths)) {
             return false;
         }
-        $watch_paths = collect(explode("\n", $this->watch_paths));
+        $watch_paths = collect(explode("\n", $this->watch_paths))
+            ->map(function (string $path): string {
+                return trim($path);
+            })
+            ->filter(function (string $path): bool {
+                return strlen($path) > 0;
+            });
+
+        // If no valid patterns after filtering, don't trigger
+        if ($watch_paths->isEmpty()) {
+            return false;
+        }
+
         $matches = $modified_files->filter(function ($file) use ($watch_paths) {
             return $watch_paths->contains(function ($glob) use ($file) {
                 return fnmatch($glob, $file);
