@@ -167,6 +167,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private bool $preserveRepository = false;
 
+    private bool $dockerBuildkitSupported = false;
+
+    private Collection|string $build_secrets;
+
     public function tags()
     {
         // Do not remove this one, it needs to properly identify which worker is running the job
@@ -183,6 +187,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->application = Application::find($this->application_deployment_queue->application_id);
         $this->build_pack = data_get($this->application, 'build_pack');
         $this->build_args = collect([]);
+        $this->build_secrets = '';
 
         $this->deployment_uuid = $this->application_deployment_queue->deployment_uuid;
         $this->pull_request_id = $this->application_deployment_queue->pull_request_id;
@@ -271,7 +276,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         try {
             // Make sure the private key is stored in the filesystem
             $this->server->privateKey->storeInFileSystem();
-
             // Generate custom host<->ip mapping
             $allContainers = instant_remote_process(["docker network inspect {$this->destination->network} -f '{{json .Containers}}' "], $this->server);
 
@@ -327,6 +331,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $this->build_server = $this->server;
                 $this->original_server = $this->server;
             }
+            $this->detectBuildKitCapabilities();
             $this->decide_what_to_do();
         } catch (Exception $e) {
             if ($this->pull_request_id !== 0 && $this->application->is_github_based()) {
@@ -344,10 +349,85 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             } else {
                 $this->write_deployment_configurations();
             }
+
             $this->application_deployment_queue->addLogEntry("Gracefully shutting down build container: {$this->deployment_uuid}");
             $this->graceful_shutdown_container($this->deployment_uuid);
 
             ServiceStatusChanged::dispatch(data_get($this->application, 'environment.project.team.id'));
+        }
+    }
+
+    private function detectBuildKitCapabilities(): void
+    {
+        // If build secrets are not enabled, skip detection and use traditional args
+        if (! $this->application->settings->use_build_secrets) {
+            $this->dockerBuildkitSupported = false;
+
+            return;
+        }
+
+        $serverToCheck = $this->use_build_server ? $this->build_server : $this->server;
+        $serverName = $this->use_build_server ? "build server ({$serverToCheck->name})" : "deployment server ({$serverToCheck->name})";
+
+        try {
+            $dockerVersion = instant_remote_process(
+                ["docker version --format '{{.Server.Version}}'"],
+                $serverToCheck
+            );
+
+            $versionParts = explode('.', $dockerVersion);
+            $majorVersion = (int) $versionParts[0];
+            $minorVersion = (int) ($versionParts[1] ?? 0);
+
+            if ($majorVersion < 18 || ($majorVersion == 18 && $minorVersion < 9)) {
+                $this->dockerBuildkitSupported = false;
+                $this->application_deployment_queue->addLogEntry("Docker {$dockerVersion} on {$serverName} does not support BuildKit (requires 18.09+). Build secrets feature disabled.");
+
+                return;
+            }
+
+            $buildkitEnabled = instant_remote_process(
+                ["docker buildx version >/dev/null 2>&1 && echo 'available' || echo 'not-available'"],
+                $serverToCheck
+            );
+
+            if (trim($buildkitEnabled) !== 'available') {
+                $buildkitTest = instant_remote_process(
+                    ["DOCKER_BUILDKIT=1 docker build --help 2>&1 | grep -q 'secret' && echo 'supported' || echo 'not-supported'"],
+                    $serverToCheck
+                );
+
+                if (trim($buildkitTest) === 'supported') {
+                    $this->dockerBuildkitSupported = true;
+                    $this->application_deployment_queue->addLogEntry("Docker {$dockerVersion} with BuildKit secrets support detected on {$serverName}.");
+                    $this->application_deployment_queue->addLogEntry('Build secrets are enabled and will be used for enhanced security.');
+                } else {
+                    $this->dockerBuildkitSupported = false;
+                    $this->application_deployment_queue->addLogEntry("Docker {$dockerVersion} on {$serverName} does not have BuildKit secrets support.");
+                    $this->application_deployment_queue->addLogEntry('Build secrets feature is enabled but not supported. Using traditional build arguments.');
+                }
+            } else {
+                // Buildx is available, which means BuildKit is available
+                // Now specifically test for secrets support
+                $secretsTest = instant_remote_process(
+                    ["docker build --help 2>&1 | grep -q 'secret' && echo 'supported' || echo 'not-supported'"],
+                    $serverToCheck
+                );
+
+                if (trim($secretsTest) === 'supported') {
+                    $this->dockerBuildkitSupported = true;
+                    $this->application_deployment_queue->addLogEntry("Docker {$dockerVersion} with BuildKit and Buildx detected on {$serverName}.");
+                    $this->application_deployment_queue->addLogEntry('Build secrets are enabled and will be used for enhanced security.');
+                } else {
+                    $this->dockerBuildkitSupported = false;
+                    $this->application_deployment_queue->addLogEntry("Docker {$dockerVersion} with Buildx on {$serverName}, but secrets not supported.");
+                    $this->application_deployment_queue->addLogEntry('Build secrets feature is enabled but not supported. Using traditional build arguments.');
+                }
+            }
+        } catch (\Exception $e) {
+            $this->dockerBuildkitSupported = false;
+            $this->application_deployment_queue->addLogEntry("Could not detect BuildKit capabilities on {$serverName}: {$e->getMessage()}");
+            $this->application_deployment_queue->addLogEntry('Build secrets feature is enabled but detection failed. Using traditional build arguments.');
         }
     }
 
@@ -479,11 +559,20 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         }
         $this->generate_image_names();
         $this->cleanup_git();
+
+        $this->generate_build_env_variables();
+
         $this->application->loadComposeFile(isInit: false);
         if ($this->application->settings->is_raw_compose_deployment_enabled) {
             $this->application->oldRawParser();
             $yaml = $composeFile = $this->application->docker_compose_raw;
             $this->save_environment_variables();
+
+            // For raw compose, we cannot automatically add secrets configuration
+            // User must define it manually in their docker-compose file
+            if ($this->application->settings->use_build_secrets && $this->dockerBuildkitSupported && ! empty($this->build_secrets)) {
+                $this->application_deployment_queue->addLogEntry('Build secrets are configured. Ensure your docker-compose file includes build.secrets configuration for services that need them.');
+            }
         } else {
             $composeFile = $this->application->parse(pull_request_id: $this->pull_request_id, preview_id: data_get($this->preview, 'id'));
             $this->save_environment_variables();
@@ -502,6 +591,12 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
                 return;
             }
+
+            // Add build secrets to compose file if enabled and BuildKit is supported
+            if ($this->application->settings->use_build_secrets && $this->dockerBuildkitSupported && ! empty($this->build_secrets)) {
+                $composeFile = $this->add_build_secrets_to_compose($composeFile);
+            }
+
             $yaml = Yaml::dump(convertToArray($composeFile), 10);
         }
         $this->docker_compose_base64 = base64_encode($yaml);
@@ -513,11 +608,20 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->application_deployment_queue->addLogEntry('Pulling & building required images.');
 
         if ($this->docker_compose_custom_build_command) {
+            // Prepend DOCKER_BUILDKIT=1 if BuildKit is supported
+            $build_command = $this->docker_compose_custom_build_command;
+            if ($this->dockerBuildkitSupported) {
+                $build_command = "DOCKER_BUILDKIT=1 {$build_command}";
+            }
             $this->execute_remote_command(
-                [executeInDocker($this->deployment_uuid, "cd {$this->basedir} && {$this->docker_compose_custom_build_command}"), 'hidden' => true],
+                [executeInDocker($this->deployment_uuid, "cd {$this->basedir} && {$build_command}"), 'hidden' => true],
             );
         } else {
             $command = "{$this->coolify_variables} docker compose";
+            // Prepend DOCKER_BUILDKIT=1 if BuildKit is supported
+            if ($this->dockerBuildkitSupported) {
+                $command = "DOCKER_BUILDKIT=1 {$command}";
+            }
             if (filled($this->env_filename)) {
                 $command .= " --env-file {$this->workdir}/{$this->env_filename}";
             }
@@ -677,7 +781,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->clone_repository();
         $this->cleanup_git();
         $this->generate_compose_file();
-        $this->build_image();
+        $this->build_static_image();
         $this->push_to_docker_registry();
         $this->rolling_update();
     }
@@ -1315,7 +1419,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         }
         $this->build_image();
         $this->push_to_docker_registry();
-        // $this->stop_running_container();
         $this->rolling_update();
     }
 
@@ -1358,16 +1461,19 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         // Get user home directory
         $this->serverUserHomeDir = instant_remote_process(['echo $HOME'], $this->server);
         $this->dockerConfigFileExists = instant_remote_process(["test -f {$this->serverUserHomeDir}/.docker/config.json && echo 'OK' || echo 'NOK'"], $this->server);
+
+        $env_flags = $this->generate_docker_env_flags_for_secrets();
+
         if ($this->use_build_server) {
             if ($this->dockerConfigFileExists === 'NOK') {
                 throw new RuntimeException('Docker config file (~/.docker/config.json) not found on the build server. Please run "docker login" to login to the docker registry on the server.');
             }
-            $runCommand = "docker run -d --name {$this->deployment_uuid} --rm -v {$this->serverUserHomeDir}/.docker/config.json:/root/.docker/config.json:ro -v /var/run/docker.sock:/var/run/docker.sock {$helperImage}";
+            $runCommand = "docker run -d --name {$this->deployment_uuid} {$env_flags} --rm -v {$this->serverUserHomeDir}/.docker/config.json:/root/.docker/config.json:ro -v /var/run/docker.sock:/var/run/docker.sock {$helperImage}";
         } else {
             if ($this->dockerConfigFileExists === 'OK') {
-                $runCommand = "docker run -d --network {$this->destination->network} --name {$this->deployment_uuid} --rm -v {$this->serverUserHomeDir}/.docker/config.json:/root/.docker/config.json:ro -v /var/run/docker.sock:/var/run/docker.sock {$helperImage}";
+                $runCommand = "docker run -d --network {$this->destination->network} --name {$this->deployment_uuid} {$env_flags} --rm -v {$this->serverUserHomeDir}/.docker/config.json:/root/.docker/config.json:ro -v /var/run/docker.sock:/var/run/docker.sock {$helperImage}";
             } else {
-                $runCommand = "docker run -d --network {$this->destination->network} --name {$this->deployment_uuid} --rm -v /var/run/docker.sock:/var/run/docker.sock {$helperImage}";
+                $runCommand = "docker run -d --network {$this->destination->network} --name {$this->deployment_uuid} {$env_flags} --rm -v /var/run/docker.sock:/var/run/docker.sock {$helperImage}";
             }
         }
         $this->application_deployment_queue->addLogEntry("Preparing container with helper image: $helperImage.");
@@ -2136,16 +2242,74 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         );
     }
 
+    private function build_static_image()
+    {
+        $this->application_deployment_queue->addLogEntry('----------------------------------------');
+        $this->application_deployment_queue->addLogEntry('Static deployment. Copying static assets to the image.');
+        if ($this->application->static_image) {
+            $this->pull_latest_image($this->application->static_image);
+        }
+        $dockerfile = base64_encode("FROM {$this->application->static_image}
+        WORKDIR /usr/share/nginx/html/
+        LABEL coolify.deploymentId={$this->deployment_uuid}
+        COPY . .
+        RUN rm -f /usr/share/nginx/html/nginx.conf
+        RUN rm -f /usr/share/nginx/html/Dockerfile
+        RUN rm -f /usr/share/nginx/html/docker-compose.yaml
+        RUN rm -f /usr/share/nginx/html/.env
+        COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
+        if (str($this->application->custom_nginx_configuration)->isNotEmpty()) {
+            $nginx_config = base64_encode($this->application->custom_nginx_configuration);
+        } else {
+            if ($this->application->settings->is_spa) {
+                $nginx_config = base64_encode(defaultNginxConfiguration('spa'));
+            } else {
+                $nginx_config = base64_encode(defaultNginxConfiguration());
+            }
+        }
+        $build_command = "docker build {$this->addHosts} --network host -f {$this->workdir}/Dockerfile --progress plain -t {$this->production_image_name} {$this->workdir}";
+        $base64_build_command = base64_encode($build_command);
+        $this->execute_remote_command(
+            [
+                executeInDocker($this->deployment_uuid, "echo '{$dockerfile}' | base64 -d | tee {$this->workdir}/Dockerfile > /dev/null"),
+            ],
+            [
+                executeInDocker($this->deployment_uuid, "echo '{$nginx_config}' | base64 -d | tee {$this->workdir}/nginx.conf > /dev/null"),
+            ],
+            [
+                executeInDocker($this->deployment_uuid, "echo '{$base64_build_command}' | base64 -d | tee /artifacts/build.sh > /dev/null"),
+                'hidden' => true,
+            ],
+            [
+                executeInDocker($this->deployment_uuid, 'cat /artifacts/build.sh'),
+                'hidden' => true,
+            ],
+            [
+                executeInDocker($this->deployment_uuid, 'bash /artifacts/build.sh'),
+                'hidden' => true,
+            ]
+        );
+        $this->application_deployment_queue->addLogEntry('Building docker image completed.');
+    }
+
     private function build_image()
     {
-        // Add Coolify related variables to the build args
-        $this->environment_variables->filter(function ($key, $value) {
-            return str($key)->startsWith('COOLIFY_');
-        })->each(function ($key, $value) {
-            $this->build_args->push("--build-arg '{$key}'");
-        });
+        // Add Coolify related variables to the build args/secrets
+        if ($this->dockerBuildkitSupported) {
+            // Coolify variables are already included in the secrets from generate_build_env_variables
+            // build_secrets is already a string at this point
+        } else {
+            // Traditional build args approach
+            $this->environment_variables->filter(function ($key, $value) {
+                return str($key)->startsWith('COOLIFY_');
+            })->each(function ($key, $value) {
+                $this->build_args->push("--build-arg '{$key}'");
+            });
 
-        $this->build_args = $this->build_args->implode(' ');
+            $this->build_args = $this->build_args instanceof \Illuminate\Support\Collection
+                ? $this->build_args->implode(' ')
+                : (string) $this->build_args;
+        }
 
         $this->application_deployment_queue->addLogEntry('----------------------------------------');
         if ($this->disableBuildCache) {
@@ -2158,106 +2322,114 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->application_deployment_queue->addLogEntry('To check the current progress, click on Show Debug Logs.');
         }
 
-        if ($this->application->settings->is_static || $this->application->build_pack === 'static') {
+        if ($this->application->settings->is_static) {
             if ($this->application->static_image) {
                 $this->pull_latest_image($this->application->static_image);
                 $this->application_deployment_queue->addLogEntry('Continuing with the building process.');
             }
-            if ($this->application->build_pack === 'static') {
-                $dockerfile = base64_encode("FROM {$this->application->static_image}
-WORKDIR /usr/share/nginx/html/
-LABEL coolify.deploymentId={$this->deployment_uuid}
-COPY . .
-RUN rm -f /usr/share/nginx/html/nginx.conf
-RUN rm -f /usr/share/nginx/html/Dockerfile
-RUN rm -f /usr/share/nginx/html/docker-compose.yaml
-RUN rm -f /usr/share/nginx/html/.env
-COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
-                if (str($this->application->custom_nginx_configuration)->isNotEmpty()) {
-                    $nginx_config = base64_encode($this->application->custom_nginx_configuration);
-                } else {
-                    if ($this->application->settings->is_spa) {
-                        $nginx_config = base64_encode(defaultNginxConfiguration('spa'));
+            if ($this->application->build_pack === 'nixpacks') {
+                $this->nixpacks_plan = base64_encode($this->nixpacks_plan);
+                $this->execute_remote_command([executeInDocker($this->deployment_uuid, "echo '{$this->nixpacks_plan}' | base64 -d | tee /artifacts/thegameplan.json > /dev/null"), 'hidden' => true]);
+                if ($this->force_rebuild) {
+                    $this->execute_remote_command([
+                        executeInDocker($this->deployment_uuid, "nixpacks build -c /artifacts/thegameplan.json --no-cache --no-error-without-start -n {$this->build_image_name} {$this->workdir} -o {$this->workdir}"),
+                        'hidden' => true,
+                    ], [
+                        executeInDocker($this->deployment_uuid, "cat {$this->workdir}/.nixpacks/Dockerfile"),
+                        'hidden' => true,
+                    ]);
+                    if ($this->dockerBuildkitSupported && $this->application->settings->use_build_secrets) {
+                        // Modify the nixpacks Dockerfile to use build secrets
+                        $this->modify_dockerfile_for_secrets("{$this->workdir}/.nixpacks/Dockerfile");
+                        $secrets_flags = $this->build_secrets ? " {$this->build_secrets}" : '';
+                        $build_command = "DOCKER_BUILDKIT=1 docker build --no-cache {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile{$secrets_flags} --progress plain -t {$this->build_image_name} {$this->workdir}";
+                    } elseif ($this->dockerBuildkitSupported) {
+                        // BuildKit without secrets
+                        $build_command = "DOCKER_BUILDKIT=1 docker build --no-cache {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile --progress plain -t {$this->build_image_name} {$this->build_args} {$this->workdir}";
                     } else {
-                        $nginx_config = base64_encode(defaultNginxConfiguration());
-                    }
-                }
-            } else {
-                if ($this->application->build_pack === 'nixpacks') {
-                    $this->nixpacks_plan = base64_encode($this->nixpacks_plan);
-                    $this->execute_remote_command([executeInDocker($this->deployment_uuid, "echo '{$this->nixpacks_plan}' | base64 -d | tee /artifacts/thegameplan.json > /dev/null"), 'hidden' => true]);
-                    if ($this->force_rebuild) {
-                        $this->execute_remote_command([
-                            executeInDocker($this->deployment_uuid, "nixpacks build -c /artifacts/thegameplan.json --no-cache --no-error-without-start -n {$this->build_image_name} {$this->workdir} -o {$this->workdir}"),
-                            'hidden' => true,
-                        ], [
-                            executeInDocker($this->deployment_uuid, "cat {$this->workdir}/.nixpacks/Dockerfile"),
-                            'hidden' => true,
-                        ]);
                         $build_command = "docker build --no-cache {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile --progress plain -t {$this->build_image_name} {$this->build_args} {$this->workdir}";
+                    }
+                } else {
+                    $this->execute_remote_command([
+                        executeInDocker($this->deployment_uuid, "nixpacks build -c /artifacts/thegameplan.json --cache-key '{$this->application->uuid}' --no-error-without-start -n {$this->build_image_name} {$this->workdir} -o {$this->workdir}"),
+                        'hidden' => true,
+                    ], [
+                        executeInDocker($this->deployment_uuid, "cat {$this->workdir}/.nixpacks/Dockerfile"),
+                        'hidden' => true,
+                    ]);
+                    if ($this->dockerBuildkitSupported) {
+                        // Modify the nixpacks Dockerfile to use build secrets
+                        $this->modify_dockerfile_for_secrets("{$this->workdir}/.nixpacks/Dockerfile");
+                        $secrets_flags = $this->build_secrets ? " {$this->build_secrets}" : '';
+                        $build_command = "DOCKER_BUILDKIT=1 docker build {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile{$secrets_flags} --progress plain -t {$this->build_image_name} {$this->workdir}";
                     } else {
-                        $this->execute_remote_command([
-                            executeInDocker($this->deployment_uuid, "nixpacks build -c /artifacts/thegameplan.json --cache-key '{$this->application->uuid}' --no-error-without-start -n {$this->build_image_name} {$this->workdir} -o {$this->workdir}"),
-                            'hidden' => true,
-                        ], [
-                            executeInDocker($this->deployment_uuid, "cat {$this->workdir}/.nixpacks/Dockerfile"),
-                            'hidden' => true,
-                        ]);
                         $build_command = "docker build {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile --progress plain -t {$this->build_image_name} {$this->build_args} {$this->workdir}";
                     }
+                }
 
-                    $base64_build_command = base64_encode($build_command);
-                    $this->execute_remote_command(
-                        [
-                            executeInDocker($this->deployment_uuid, "echo '{$base64_build_command}' | base64 -d | tee /artifacts/build.sh > /dev/null"),
-                            'hidden' => true,
-                        ],
-                        [
-                            executeInDocker($this->deployment_uuid, 'cat /artifacts/build.sh'),
-                            'hidden' => true,
-                        ],
-                        [
-                            executeInDocker($this->deployment_uuid, 'bash /artifacts/build.sh'),
-                            'hidden' => true,
-                        ]
-                    );
-                    $this->execute_remote_command([executeInDocker($this->deployment_uuid, 'rm /artifacts/thegameplan.json'), 'hidden' => true]);
+                $base64_build_command = base64_encode($build_command);
+                $this->execute_remote_command(
+                    [
+                        executeInDocker($this->deployment_uuid, "echo '{$base64_build_command}' | base64 -d | tee /artifacts/build.sh > /dev/null"),
+                        'hidden' => true,
+                    ],
+                    [
+                        executeInDocker($this->deployment_uuid, 'cat /artifacts/build.sh'),
+                        'hidden' => true,
+                    ],
+                    [
+                        executeInDocker($this->deployment_uuid, 'bash /artifacts/build.sh'),
+                        'hidden' => true,
+                    ]
+                );
+                $this->execute_remote_command([executeInDocker($this->deployment_uuid, 'rm /artifacts/thegameplan.json'), 'hidden' => true]);
+            } else {
+                // Dockerfile buildpack
+                if ($this->dockerBuildkitSupported && $this->application->settings->use_build_secrets) {
+                    // Modify the Dockerfile to use build secrets
+                    $this->modify_dockerfile_for_secrets("{$this->workdir}{$this->dockerfile_location}");
+                    $secrets_flags = $this->build_secrets ? " {$this->build_secrets}" : '';
+                    if ($this->force_rebuild) {
+                        $build_command = "DOCKER_BUILDKIT=1 docker build --no-cache {$this->buildTarget} --network {$this->destination->network} -f {$this->workdir}{$this->dockerfile_location}{$secrets_flags} --progress plain -t $this->build_image_name {$this->workdir}";
+                    } else {
+                        $build_command = "DOCKER_BUILDKIT=1 docker build {$this->buildTarget} --network {$this->destination->network} -f {$this->workdir}{$this->dockerfile_location}{$secrets_flags} --progress plain -t $this->build_image_name {$this->workdir}";
+                    }
                 } else {
+                    // Traditional build with args
                     if ($this->force_rebuild) {
                         $build_command = "docker build --no-cache {$this->buildTarget} --network {$this->destination->network} -f {$this->workdir}{$this->dockerfile_location} {$this->build_args} --progress plain -t $this->build_image_name {$this->workdir}";
-                        $base64_build_command = base64_encode($build_command);
                     } else {
                         $build_command = "docker build {$this->buildTarget} --network {$this->destination->network} -f {$this->workdir}{$this->dockerfile_location} {$this->build_args} --progress plain -t $this->build_image_name {$this->workdir}";
-                        $base64_build_command = base64_encode($build_command);
                     }
-                    $this->execute_remote_command(
-                        [
-                            executeInDocker($this->deployment_uuid, "echo '{$base64_build_command}' | base64 -d | tee /artifacts/build.sh > /dev/null"),
-                            'hidden' => true,
-                        ],
-                        [
-                            executeInDocker($this->deployment_uuid, 'cat /artifacts/build.sh'),
-                            'hidden' => true,
-                        ],
-                        [
-                            executeInDocker($this->deployment_uuid, 'bash /artifacts/build.sh'),
-                            'hidden' => true,
-                        ]
-                    );
                 }
-                $dockerfile = base64_encode("FROM {$this->application->static_image}
+                $base64_build_command = base64_encode($build_command);
+                $this->execute_remote_command(
+                    [
+                        executeInDocker($this->deployment_uuid, "echo '{$base64_build_command}' | base64 -d | tee /artifacts/build.sh > /dev/null"),
+                        'hidden' => true,
+                    ],
+                    [
+                        executeInDocker($this->deployment_uuid, 'cat /artifacts/build.sh'),
+                        'hidden' => true,
+                    ],
+                    [
+                        executeInDocker($this->deployment_uuid, 'bash /artifacts/build.sh'),
+                        'hidden' => true,
+                    ]
+                );
+            }
+            $dockerfile = base64_encode("FROM {$this->application->static_image}
 WORKDIR /usr/share/nginx/html/
 LABEL coolify.deploymentId={$this->deployment_uuid}
 COPY --from=$this->build_image_name /app/{$this->application->publish_directory} .
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
-                if (str($this->application->custom_nginx_configuration)->isNotEmpty()) {
-                    $nginx_config = base64_encode($this->application->custom_nginx_configuration);
+            if (str($this->application->custom_nginx_configuration)->isNotEmpty()) {
+                $nginx_config = base64_encode($this->application->custom_nginx_configuration);
+            } else {
+                if ($this->application->settings->is_spa) {
+                    $nginx_config = base64_encode(defaultNginxConfiguration('spa'));
                 } else {
-                    if ($this->application->settings->is_spa) {
-                        $nginx_config = base64_encode(defaultNginxConfiguration('spa'));
-                    } else {
-                        $nginx_config = base64_encode(defaultNginxConfiguration());
-                    }
+                    $nginx_config = base64_encode(defaultNginxConfiguration());
                 }
             }
             $build_command = "docker build {$this->addHosts} --network host -f {$this->workdir}/Dockerfile {$this->build_args} --progress plain -t {$this->production_image_name} {$this->workdir}";
@@ -2285,10 +2457,22 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         } else {
             // Pure Dockerfile based deployment
             if ($this->application->dockerfile) {
-                if ($this->force_rebuild) {
-                    $build_command = "docker build --no-cache --pull {$this->buildTarget} {$this->addHosts} --network host -f {$this->workdir}{$this->dockerfile_location} {$this->build_args} --progress plain -t {$this->production_image_name} {$this->workdir}";
+                if ($this->dockerBuildkitSupported && $this->application->settings->use_build_secrets) {
+                    // Modify the Dockerfile to use build secrets
+                    $this->modify_dockerfile_for_secrets("{$this->workdir}{$this->dockerfile_location}");
+                    $secrets_flags = $this->build_secrets ? " {$this->build_secrets}" : '';
+                    if ($this->force_rebuild) {
+                        $build_command = "DOCKER_BUILDKIT=1 docker build --no-cache --pull {$this->buildTarget} {$this->addHosts} --network host -f {$this->workdir}{$this->dockerfile_location}{$secrets_flags} --progress plain -t {$this->production_image_name} {$this->workdir}";
+                    } else {
+                        $build_command = "DOCKER_BUILDKIT=1 docker build --pull {$this->buildTarget} {$this->addHosts} --network host -f {$this->workdir}{$this->dockerfile_location}{$secrets_flags} --progress plain -t {$this->production_image_name} {$this->workdir}";
+                    }
                 } else {
-                    $build_command = "docker build --pull {$this->buildTarget} {$this->addHosts} --network host -f {$this->workdir}{$this->dockerfile_location} {$this->build_args} --progress plain -t {$this->production_image_name} {$this->workdir}";
+                    // Traditional build with args
+                    if ($this->force_rebuild) {
+                        $build_command = "docker build --no-cache --pull {$this->buildTarget} {$this->addHosts} --network host -f {$this->workdir}{$this->dockerfile_location} {$this->build_args} --progress plain -t {$this->production_image_name} {$this->workdir}";
+                    } else {
+                        $build_command = "docker build --pull {$this->buildTarget} {$this->addHosts} --network host -f {$this->workdir}{$this->dockerfile_location} {$this->build_args} --progress plain -t {$this->production_image_name} {$this->workdir}";
+                    }
                 }
                 $base64_build_command = base64_encode($build_command);
                 $this->execute_remote_command(
@@ -2317,7 +2501,14 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                             executeInDocker($this->deployment_uuid, "cat {$this->workdir}/.nixpacks/Dockerfile"),
                             'hidden' => true,
                         ]);
-                        $build_command = "docker build --no-cache {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile --progress plain -t {$this->production_image_name} {$this->build_args} {$this->workdir}";
+                        if ($this->dockerBuildkitSupported) {
+                            // Modify the nixpacks Dockerfile to use build secrets
+                            $this->modify_dockerfile_for_secrets("{$this->workdir}/.nixpacks/Dockerfile");
+                            $secrets_flags = $this->build_secrets ? " {$this->build_secrets}" : '';
+                            $build_command = "DOCKER_BUILDKIT=1 docker build --no-cache {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile{$secrets_flags} --progress plain -t {$this->production_image_name} {$this->workdir}";
+                        } else {
+                            $build_command = "docker build --no-cache {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile --progress plain -t {$this->production_image_name} {$this->build_args} {$this->workdir}";
+                        }
                     } else {
                         $this->execute_remote_command([
                             executeInDocker($this->deployment_uuid, "nixpacks build -c /artifacts/thegameplan.json --cache-key '{$this->application->uuid}' --no-error-without-start -n {$this->production_image_name} {$this->workdir} -o {$this->workdir}"),
@@ -2326,7 +2517,14 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                             executeInDocker($this->deployment_uuid, "cat {$this->workdir}/.nixpacks/Dockerfile"),
                             'hidden' => true,
                         ]);
-                        $build_command = "docker build {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile --progress plain -t {$this->production_image_name} {$this->build_args} {$this->workdir}";
+                        if ($this->dockerBuildkitSupported) {
+                            // Modify the nixpacks Dockerfile to use build secrets
+                            $this->modify_dockerfile_for_secrets("{$this->workdir}/.nixpacks/Dockerfile");
+                            $secrets_flags = $this->build_secrets ? " {$this->build_secrets}" : '';
+                            $build_command = "DOCKER_BUILDKIT=1 docker build {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile{$secrets_flags} --progress plain -t {$this->production_image_name} {$this->workdir}";
+                        } else {
+                            $build_command = "docker build {$this->addHosts} --network host -f {$this->workdir}/.nixpacks/Dockerfile --progress plain -t {$this->production_image_name} {$this->build_args} {$this->workdir}";
+                        }
                     }
                     $base64_build_command = base64_encode($build_command);
                     $this->execute_remote_command(
@@ -2345,13 +2543,24 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                     );
                     $this->execute_remote_command([executeInDocker($this->deployment_uuid, 'rm /artifacts/thegameplan.json'), 'hidden' => true]);
                 } else {
-                    if ($this->force_rebuild) {
-                        $build_command = "docker build --no-cache {$this->buildTarget} {$this->addHosts} --network host -f {$this->workdir}{$this->dockerfile_location} {$this->build_args} --progress plain -t {$this->production_image_name} {$this->workdir}";
-                        $base64_build_command = base64_encode($build_command);
+                    // Dockerfile buildpack
+                    if ($this->dockerBuildkitSupported) {
+                        // Use BuildKit with secrets
+                        $secrets_flags = $this->build_secrets ? " {$this->build_secrets}" : '';
+                        if ($this->force_rebuild) {
+                            $build_command = "DOCKER_BUILDKIT=1 docker build --no-cache {$this->buildTarget} {$this->addHosts} --network host -f {$this->workdir}{$this->dockerfile_location}{$secrets_flags} --progress plain -t {$this->production_image_name} {$this->workdir}";
+                        } else {
+                            $build_command = "DOCKER_BUILDKIT=1 docker build {$this->buildTarget} {$this->addHosts} --network host -f {$this->workdir}{$this->dockerfile_location}{$secrets_flags} --progress plain -t {$this->production_image_name} {$this->workdir}";
+                        }
                     } else {
-                        $build_command = "docker build {$this->buildTarget} {$this->addHosts} --network host -f {$this->workdir}{$this->dockerfile_location} {$this->build_args} --progress plain -t {$this->production_image_name} {$this->workdir}";
-                        $base64_build_command = base64_encode($build_command);
+                        // Traditional build with args
+                        if ($this->force_rebuild) {
+                            $build_command = "docker build --no-cache {$this->buildTarget} {$this->addHosts} --network host -f {$this->workdir}{$this->dockerfile_location} {$this->build_args} --progress plain -t {$this->production_image_name} {$this->workdir}";
+                        } else {
+                            $build_command = "docker build {$this->buildTarget} {$this->addHosts} --network host -f {$this->workdir}{$this->dockerfile_location} {$this->build_args} --progress plain -t {$this->production_image_name} {$this->workdir}";
+                        }
                     }
+                    $base64_build_command = base64_encode($build_command);
                     $this->execute_remote_command(
                         [
                             executeInDocker($this->deployment_uuid, "echo '{$base64_build_command}' | base64 -d | tee /artifacts/build.sh > /dev/null"),
@@ -2447,49 +2656,207 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
             $variables = collect([])->merge($this->env_args);
         }
 
-        $this->build_args = $variables->map(function ($value, $key) {
-            $value = escapeshellarg($value);
+        // Check if build secrets are enabled and BuildKit is supported
+        if ($this->dockerBuildkitSupported && $this->application->settings->use_build_secrets) {
+            $this->generate_build_secrets($variables);
+            $this->build_args = '';
+        } else {
+            // Fall back to traditional build args
+            $this->build_args = $variables->map(function ($value, $key) {
+                $value = escapeshellarg($value);
 
-            return "--build-arg {$key}={$value}";
-        });
+                return "--build-arg {$key}={$value}";
+            });
+        }
+    }
+
+    private function generate_docker_env_flags_for_secrets()
+    {
+        // Only generate env flags if build secrets are enabled
+        if (! $this->application->settings->use_build_secrets) {
+            return '';
+        }
+
+        $variables = $this->pull_request_id === 0
+            ? $this->application->environment_variables()->where('key', 'not like', 'NIXPACKS_%')->get()
+            : $this->application->environment_variables_preview()->where('key', 'not like', 'NIXPACKS_%')->get();
+
+        if ($variables->isEmpty()) {
+            return '';
+        }
+
+        return $variables
+            ->map(function ($env) {
+                $escaped_value = escapeshellarg($env->real_value);
+
+                return "-e {$env->key}={$escaped_value}";
+            })
+            ->implode(' ');
+    }
+
+    private function generate_build_secrets(Collection $variables)
+    {
+        if ($variables->isEmpty()) {
+            $this->build_secrets = '';
+
+            return;
+        }
+
+        $this->build_secrets = $variables
+            ->map(function ($value, $key) {
+                return "--secret id={$key},env={$key}";
+            })
+            ->implode(' ');
     }
 
     private function add_build_env_variables_to_dockerfile()
     {
-        $this->execute_remote_command([
-            executeInDocker($this->deployment_uuid, "cat {$this->workdir}{$this->dockerfile_location}"),
-            'hidden' => true,
-            'save' => 'dockerfile',
-        ]);
-        $dockerfile = collect(str($this->saved_outputs->get('dockerfile'))->trim()->explode("\n"));
+        if ($this->dockerBuildkitSupported) {
+            // We dont need to add build secrets to dockerfile for buildkit, as we already added them with --secret flag in function generate_docker_env_flags_for_secrets
+        } else {
+            $this->execute_remote_command([
+                executeInDocker($this->deployment_uuid, "cat {$this->workdir}{$this->dockerfile_location}"),
+                'hidden' => true,
+                'save' => 'dockerfile',
+            ]);
+            $dockerfile = collect(str($this->saved_outputs->get('dockerfile'))->trim()->explode("\n"));
 
-        // Include ALL environment variables as build args (deprecating is_build_time flag)
-        if ($this->pull_request_id === 0) {
-            // Get all environment variables except NIXPACKS_ prefixed ones
-            $envs = $this->application->environment_variables()->where('key', 'not like', 'NIXPACKS_%')->get();
-            foreach ($envs as $env) {
-                if (data_get($env, 'is_multiline') === true) {
-                    $dockerfile->splice(1, 0, ["ARG {$env->key}"]);
-                } else {
-                    $dockerfile->splice(1, 0, ["ARG {$env->key}={$env->real_value}"]);
+            if ($this->pull_request_id === 0) {
+                $envs = $this->application->environment_variables()->where('key', 'not like', 'NIXPACKS_%')->get();
+                foreach ($envs as $env) {
+                    if (data_get($env, 'is_multiline') === true) {
+                        $dockerfile->splice(1, 0, ["ARG {$env->key}"]);
+                    } else {
+                        $dockerfile->splice(1, 0, ["ARG {$env->key}={$env->real_value}"]);
+                    }
+                }
+            } else {
+                // Get all preview environment variables except NIXPACKS_ prefixed ones
+                $envs = $this->application->environment_variables_preview()->where('key', 'not like', 'NIXPACKS_%')->get();
+                foreach ($envs as $env) {
+                    if (data_get($env, 'is_multiline') === true) {
+                        $dockerfile->splice(1, 0, ["ARG {$env->key}"]);
+                    } else {
+                        $dockerfile->splice(1, 0, ["ARG {$env->key}={$env->real_value}"]);
+                    }
                 }
             }
-        } else {
-            // Get all preview environment variables except NIXPACKS_ prefixed ones
-            $envs = $this->application->environment_variables_preview()->where('key', 'not like', 'NIXPACKS_%')->get();
-            foreach ($envs as $env) {
-                if (data_get($env, 'is_multiline') === true) {
-                    $dockerfile->splice(1, 0, ["ARG {$env->key}"]);
-                } else {
-                    $dockerfile->splice(1, 0, ["ARG {$env->key}={$env->real_value}"]);
+            $dockerfile_base64 = base64_encode($dockerfile->implode("\n"));
+            $this->execute_remote_command([
+                executeInDocker($this->deployment_uuid, "echo '{$dockerfile_base64}' | base64 -d | tee {$this->workdir}{$this->dockerfile_location} > /dev/null"),
+                'hidden' => true,
+            ]);
+        }
+    }
+
+    private function modify_dockerfile_for_secrets($dockerfile_path)
+    {
+        // Only process if build secrets are enabled and we have secrets to mount
+        if (! $this->application->settings->use_build_secrets || empty($this->build_secrets)) {
+            return;
+        }
+
+        // Read the Dockerfile
+        $this->execute_remote_command([
+            executeInDocker($this->deployment_uuid, "cat {$dockerfile_path}"),
+            'hidden' => true,
+            'save' => 'dockerfile_content',
+        ]);
+
+        $dockerfile = str($this->saved_outputs->get('dockerfile_content'))->trim()->explode("\n");
+
+        // Add BuildKit syntax directive if not present
+        if (! str_starts_with($dockerfile->first(), '# syntax=')) {
+            $dockerfile->prepend('# syntax=docker/dockerfile:1');
+        }
+
+        // Get environment variables for secrets
+        $variables = $this->pull_request_id === 0
+            ? $this->application->environment_variables()->where('key', 'not like', 'NIXPACKS_%')->get()
+            : $this->application->environment_variables_preview()->where('key', 'not like', 'NIXPACKS_%')->get();
+
+        if ($variables->isEmpty()) {
+            return;
+        }
+
+        // Generate mount strings for all secrets
+        $mountStrings = $variables->map(fn ($env) => "--mount=type=secret,id={$env->key},env={$env->key}")->implode(' ');
+
+        $modified = false;
+        $dockerfile = $dockerfile->map(function ($line) use ($mountStrings, &$modified) {
+            $trimmed = ltrim($line);
+
+            // Skip lines that already have secret mounts or are not RUN commands
+            if (str_contains($line, '--mount=type=secret') || ! str_starts_with($trimmed, 'RUN')) {
+                return $line;
+            }
+
+            // Add mount strings to RUN command
+            $originalCommand = trim(substr($trimmed, 3));
+            $modified = true;
+
+            return "RUN {$mountStrings} {$originalCommand}";
+        });
+
+        if ($modified) {
+            // Write the modified Dockerfile back
+            $dockerfile_base64 = base64_encode($dockerfile->implode("\n"));
+            $this->execute_remote_command([
+                executeInDocker($this->deployment_uuid, "echo '{$dockerfile_base64}' | base64 -d | tee {$dockerfile_path} > /dev/null"),
+                'hidden' => true,
+            ]);
+
+            $this->application_deployment_queue->addLogEntry('Modified Dockerfile to use build secrets.');
+        }
+    }
+
+    private function add_build_secrets_to_compose($composeFile)
+    {
+        // Get environment variables for secrets
+        $variables = $this->pull_request_id === 0
+            ? $this->application->environment_variables()->where('key', 'not like', 'NIXPACKS_%')->get()
+            : $this->application->environment_variables_preview()->where('key', 'not like', 'NIXPACKS_%')->get();
+
+        if ($variables->isEmpty()) {
+            return $composeFile;
+        }
+
+        $secrets = [];
+        foreach ($variables as $env) {
+            $secrets[$env->key] = [
+                'environment' => $env->key,
+            ];
+        }
+
+        $services = data_get($composeFile, 'services', []);
+        foreach ($services as $serviceName => &$service) {
+            if (isset($service['build'])) {
+                if (is_string($service['build'])) {
+                    $service['build'] = [
+                        'context' => $service['build'],
+                    ];
+                }
+                if (! isset($service['build']['secrets'])) {
+                    $service['build']['secrets'] = [];
+                }
+                foreach ($variables as $env) {
+                    if (! in_array($env->key, $service['build']['secrets'])) {
+                        $service['build']['secrets'][] = $env->key;
+                    }
                 }
             }
         }
-        $dockerfile_base64 = base64_encode($dockerfile->implode("\n"));
-        $this->execute_remote_command([
-            executeInDocker($this->deployment_uuid, "echo '{$dockerfile_base64}' | base64 -d | tee {$this->workdir}{$this->dockerfile_location} > /dev/null"),
-            'hidden' => true,
-        ]);
+
+        $composeFile['services'] = $services;
+        $existingSecrets = data_get($composeFile, 'secrets', []);
+        if ($existingSecrets instanceof \Illuminate\Support\Collection) {
+            $existingSecrets = $existingSecrets->toArray();
+        }
+        $composeFile['secrets'] = array_replace($existingSecrets, $secrets);
+
+        $this->application_deployment_queue->addLogEntry('Added build secrets configuration to docker-compose file (using environment variables).');
+
+        return $composeFile;
     }
 
     private function run_pre_deployment_command()
