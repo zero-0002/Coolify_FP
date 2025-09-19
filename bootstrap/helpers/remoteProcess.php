@@ -29,31 +29,11 @@ function remote_process(
     $type = $type ?? ActivityTypes::INLINE->value;
     $command = $command instanceof Collection ? $command->toArray() : $command;
 
-    // Process commands and handle file transfers
-    $processed_commands = [];
-    foreach ($command as $cmd) {
-        if (is_array($cmd) && isset($cmd['transfer_file'])) {
-            // Handle file transfer command
-            $transfer_data = $cmd['transfer_file'];
-            $content = $transfer_data['content'];
-            $destination = $transfer_data['destination'];
-
-            // Execute file transfer immediately
-            transfer_file_to_server($content, $destination, $server, ! $ignore_errors);
-
-            // Add a comment to the command log for visibility
-            $processed_commands[] = "# File transferred via SCP: $destination";
-        } else {
-            // Regular string command
-            $processed_commands[] = $cmd;
-        }
-    }
-
     if ($server->isNonRoot()) {
-        $processed_commands = parseCommandsByLineForSudo(collect($processed_commands), $server);
+        $command = parseCommandsByLineForSudo(collect($command), $server);
     }
 
-    $command_string = implode("\n", $processed_commands);
+    $command_string = implode("\n", $command);
 
     if (Auth::check()) {
         $teams = Auth::user()->teams->pluck('id');
@@ -200,30 +180,10 @@ function instant_remote_process(Collection|array $command, Server $server, bool 
 {
     $command = $command instanceof Collection ? $command->toArray() : $command;
 
-    // Process commands and handle file transfers
-    $processed_commands = [];
-    foreach ($command as $cmd) {
-        if (is_array($cmd) && isset($cmd['transfer_file'])) {
-            // Handle file transfer command
-            $transfer_data = $cmd['transfer_file'];
-            $content = $transfer_data['content'];
-            $destination = $transfer_data['destination'];
-
-            // Execute file transfer immediately
-            transfer_file_to_server($content, $destination, $server, $throwError);
-
-            // Add a comment to the command log for visibility
-            $processed_commands[] = "# File transferred via SCP: $destination";
-        } else {
-            // Regular string command
-            $processed_commands[] = $cmd;
-        }
-    }
-
     if ($server->isNonRoot() && ! $no_sudo) {
-        $processed_commands = parseCommandsByLineForSudo(collect($processed_commands), $server);
+        $command = parseCommandsByLineForSudo(collect($command), $server);
     }
-    $command_string = implode("\n", $processed_commands);
+    $command_string = implode("\n", $command);
 
     return \App\Helpers\SshRetryHandler::retry(
         function () use ($server, $command_string) {
