@@ -671,7 +671,7 @@ class General extends Component
         $domains = collect(json_decode($this->application->docker_compose_domains, true)) ?? collect([]);
 
         foreach ($domains as $serviceName => $service) {
-            $serviceNameFormatted = str($serviceName)->upper()->replace('-', '_');
+            $serviceNameFormatted = str($serviceName)->upper()->replace('-', '_')->replace('.', '_');
             $domain = data_get($service, 'domain');
             // Delete SERVICE_FQDN_ and SERVICE_URL_ variables if domain is removed
             $this->application->environment_variables()->where('resourceable_type', Application::class)
@@ -703,7 +703,6 @@ class General extends Component
                     'key' => "SERVICE_FQDN_{$serviceNameFormatted}",
                 ], [
                     'value' => $fqdnValue,
-                    'is_build_time' => false,
                     'is_preview' => false,
                 ]);
 
@@ -712,7 +711,6 @@ class General extends Component
                     'key' => "SERVICE_URL_{$serviceNameFormatted}",
                 ], [
                     'value' => $urlValue,
-                    'is_build_time' => false,
                     'is_preview' => false,
                 ]);
                 // Create/update port-specific variables if port exists
@@ -721,7 +719,6 @@ class General extends Component
                         'key' => "SERVICE_FQDN_{$serviceNameFormatted}_{$port}",
                     ], [
                         'value' => $fqdnValue,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
 
@@ -729,7 +726,6 @@ class General extends Component
                         'key' => "SERVICE_URL_{$serviceNameFormatted}_{$port}",
                     ], [
                         'value' => $urlValue,
-                        'is_build_time' => false,
                         'is_preview' => false,
                     ]);
                 }
