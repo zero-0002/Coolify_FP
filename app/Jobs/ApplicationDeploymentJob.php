@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Actions\Docker\GetContainersStatus;
 use App\Enums\ApplicationDeploymentStatus;
 use App\Enums\ProcessStatus;
+use App\Events\ApplicationConfigurationChanged;
 use App\Events\ServiceStatusChanged;
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
@@ -146,6 +147,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     private bool $disableBuildCache = false;
 
     private Collection $saved_outputs;
+
+    private ?string $secrets_hash_key = null;
 
     private ?string $full_healthcheck_url = null;
 
@@ -606,6 +609,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             executeInDocker($this->deployment_uuid, "echo '{$this->docker_compose_base64}' | base64 -d | tee {$this->workdir}{$this->docker_compose_location} > /dev/null"),
             'hidden' => true,
         ]);
+
+        // Modify Dockerfiles for ARGs and build secrets
+        $this->modify_dockerfiles_for_compose($composeFile);
         // Build new container to limit downtime.
         $this->application_deployment_queue->addLogEntry('Pulling & building required images.');
 
@@ -632,6 +638,13 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             } else {
                 $command .= " --project-name {$this->application->uuid} --project-directory {$this->workdir} -f {$this->workdir}{$this->docker_compose_location} build --pull";
             }
+
+            if (! $this->application->settings->use_build_secrets && $this->build_args instanceof \Illuminate\Support\Collection && $this->build_args->isNotEmpty()) {
+                $build_args_string = $this->build_args->implode(' ');
+                $command .= " {$build_args_string}";
+                $this->application_deployment_queue->addLogEntry('Adding build arguments to Docker Compose build command.');
+            }
+
             $this->execute_remote_command(
                 [executeInDocker($this->deployment_uuid, $command), 'hidden' => true],
             );
@@ -2702,22 +2715,28 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         if ($this->application->build_pack === 'nixpacks') {
             $variables = collect($this->nixpacks_plan_json->get('variables'));
         } else {
-            // Generate environment variables for build process (filters by is_buildtime = true)
             $this->generate_env_variables();
             $variables = collect([])->merge($this->env_args);
         }
 
-        // Check if build secrets are enabled and BuildKit is supported
         if ($this->dockerBuildkitSupported && $this->application->settings->use_build_secrets) {
             $this->generate_build_secrets($variables);
             $this->build_args = '';
         } else {
-            // Fall back to traditional build args
+            $secrets_hash = '';
+            if ($variables->isNotEmpty()) {
+                $secrets_hash = $this->generate_secrets_hash($variables);
+            }
+
             $this->build_args = $variables->map(function ($value, $key) {
                 $value = escapeshellarg($value);
 
                 return "--build-arg {$key}={$value}";
             });
+
+            if ($secrets_hash) {
+                $this->build_args->push("--build-arg COOLIFY_BUILD_SECRETS_HASH={$secrets_hash}");
+            }
         }
     }
 
@@ -2736,13 +2755,18 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
             return '';
         }
 
-        return $variables
+        $secrets_hash = $this->generate_secrets_hash($variables);
+        $env_flags = $variables
             ->map(function ($env) {
                 $escaped_value = escapeshellarg($env->real_value);
 
                 return "-e {$env->key}={$escaped_value}";
             })
             ->implode(' ');
+
+        $env_flags .= " -e COOLIFY_BUILD_SECRETS_HASH={$secrets_hash}";
+
+        return $env_flags;
     }
 
     private function generate_build_secrets(Collection $variables)
@@ -2758,6 +2782,36 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 return "--secret id={$key},env={$key}";
             })
             ->implode(' ');
+
+        $this->build_secrets .= ' --secret id=COOLIFY_BUILD_SECRETS_HASH,env=COOLIFY_BUILD_SECRETS_HASH';
+    }
+
+    private function generate_secrets_hash($variables)
+    {
+        if (! $this->secrets_hash_key) {
+            $this->secrets_hash_key = bin2hex(random_bytes(32));
+        }
+
+        if ($variables instanceof Collection) {
+            $secrets_string = $variables
+                ->mapWithKeys(function ($value, $key) {
+                    return [$key => $value];
+                })
+                ->sortKeys()
+                ->map(function ($value, $key) {
+                    return "{$key}={$value}";
+                })
+                ->implode('|');
+        } else {
+            $secrets_string = $variables
+                ->map(function ($env) {
+                    return "{$env->key}={$env->real_value}";
+                })
+                ->sort()
+                ->implode('|');
+        }
+
+        return hash_hmac('sha256', $secrets_string, $this->secrets_hash_key);
     }
 
     private function add_build_env_variables_to_dockerfile()
@@ -2799,6 +2853,12 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                     }
                 }
             }
+
+            if ($envs->isNotEmpty()) {
+                $secrets_hash = $this->generate_secrets_hash($envs);
+                $dockerfile->splice(1, 0, ["ARG COOLIFY_BUILD_SECRETS_HASH={$secrets_hash}"]);
+            }
+
             $dockerfile_base64 = base64_encode($dockerfile->implode("\n"));
             $this->execute_remote_command([
                 executeInDocker($this->deployment_uuid, "echo '{$dockerfile_base64}' | base64 -d | tee {$this->workdir}{$this->dockerfile_location} > /dev/null"),
@@ -2830,8 +2890,8 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
         // Get environment variables for secrets
         $variables = $this->pull_request_id === 0
-            ? $this->application->environment_variables()->where('key', 'not like', 'NIXPACKS_%')->get()
-            : $this->application->environment_variables_preview()->where('key', 'not like', 'NIXPACKS_%')->get();
+            ? $this->application->environment_variables()->where('key', 'not like', 'NIXPACKS_%')->where('is_buildtime', true)->get()
+            : $this->application->environment_variables_preview()->where('key', 'not like', 'NIXPACKS_%')->where('is_buildtime', true)->get();
 
         if ($variables->isEmpty()) {
             return;
@@ -2839,6 +2899,9 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
         // Generate mount strings for all secrets
         $mountStrings = $variables->map(fn ($env) => "--mount=type=secret,id={$env->key},env={$env->key}")->implode(' ');
+
+        // Add mount for the secrets hash to ensure cache invalidation
+        $mountStrings .= ' --mount=type=secret,id=COOLIFY_BUILD_SECRETS_HASH,env=COOLIFY_BUILD_SECRETS_HASH';
 
         $modified = false;
         $dockerfile = $dockerfile->map(function ($line) use ($mountStrings, &$modified) {
@@ -2865,6 +2928,164 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
             ]);
 
             $this->application_deployment_queue->addLogEntry('Modified Dockerfile to use build secrets.');
+        }
+    }
+
+    private function modify_dockerfiles_for_compose($composeFile)
+    {
+        if ($this->application->build_pack !== 'dockercompose') {
+            return;
+        }
+
+        $variables = $this->pull_request_id === 0
+            ? $this->application->environment_variables()
+                ->where('key', 'not like', 'NIXPACKS_%')
+                ->where('is_buildtime', true)
+                ->get()
+            : $this->application->environment_variables_preview()
+                ->where('key', 'not like', 'NIXPACKS_%')
+                ->where('is_buildtime', true)
+                ->get();
+
+        if ($variables->isEmpty()) {
+            $this->application_deployment_queue->addLogEntry('No build-time variables to add to Dockerfiles.');
+
+            return;
+        }
+
+        $services = data_get($composeFile, 'services', []);
+
+        foreach ($services as $serviceName => $service) {
+            if (! isset($service['build'])) {
+                continue;
+            }
+
+            $context = '.';
+            $dockerfile = 'Dockerfile';
+
+            if (is_string($service['build'])) {
+                $context = $service['build'];
+            } elseif (is_array($service['build'])) {
+                $context = data_get($service['build'], 'context', '.');
+                $dockerfile = data_get($service['build'], 'dockerfile', 'Dockerfile');
+            }
+
+            $dockerfilePath = rtrim($context, '/').'/'.ltrim($dockerfile, '/');
+            if (str_starts_with($dockerfilePath, './')) {
+                $dockerfilePath = substr($dockerfilePath, 2);
+            }
+            if (str_starts_with($dockerfilePath, '/')) {
+                $dockerfilePath = substr($dockerfilePath, 1);
+            }
+
+            $this->execute_remote_command([
+                executeInDocker($this->deployment_uuid, "test -f {$this->workdir}/{$dockerfilePath} && echo 'exists' || echo 'not found'"),
+                'hidden' => true,
+                'save' => 'dockerfile_check_'.$serviceName,
+            ]);
+
+            if (str($this->saved_outputs->get('dockerfile_check_'.$serviceName))->trim()->toString() !== 'exists') {
+                $this->application_deployment_queue->addLogEntry("Dockerfile not found for service {$serviceName} at {$dockerfilePath}, skipping ARG injection.");
+
+                continue;
+            }
+
+            $this->execute_remote_command([
+                executeInDocker($this->deployment_uuid, "cat {$this->workdir}/{$dockerfilePath}"),
+                'hidden' => true,
+                'save' => 'dockerfile_content_'.$serviceName,
+            ]);
+
+            $dockerfileContent = $this->saved_outputs->get('dockerfile_content_'.$serviceName);
+            if (! $dockerfileContent) {
+                continue;
+            }
+
+            $dockerfile_lines = collect(str($dockerfileContent)->trim()->explode("\n"));
+
+            $fromIndices = [];
+            $dockerfile_lines->each(function ($line, $index) use (&$fromIndices) {
+                if (str($line)->trim()->startsWith('FROM')) {
+                    $fromIndices[] = $index;
+                }
+            });
+
+            if (empty($fromIndices)) {
+                $this->application_deployment_queue->addLogEntry("No FROM instruction found in Dockerfile for service {$serviceName}, skipping.");
+
+                continue;
+            }
+
+            $isMultiStage = count($fromIndices) > 1;
+
+            $argsToAdd = collect([]);
+            foreach ($variables as $env) {
+                $argsToAdd->push("ARG {$env->key}");
+            }
+
+            ray($argsToAdd);
+            if ($argsToAdd->isEmpty()) {
+                $this->application_deployment_queue->addLogEntry("Service {$serviceName}: No build-time variables to add.");
+
+                continue;
+            }
+
+            $totalAdded = 0;
+            $offset = 0;
+
+            foreach ($fromIndices as $stageIndex => $fromIndex) {
+                $adjustedIndex = $fromIndex + $offset;
+
+                $stageStart = $adjustedIndex + 1;
+                $stageEnd = isset($fromIndices[$stageIndex + 1])
+                    ? $fromIndices[$stageIndex + 1] + $offset
+                    : $dockerfile_lines->count();
+
+                $existingStageArgs = collect([]);
+                for ($i = $stageStart; $i < $stageEnd; $i++) {
+                    $line = $dockerfile_lines->get($i);
+                    if (! $line || ! str($line)->trim()->startsWith('ARG')) {
+                        break;
+                    }
+                    $parts = explode(' ', trim($line), 2);
+                    if (count($parts) >= 2) {
+                        $argPart = $parts[1];
+                        $keyValue = explode('=', $argPart, 2);
+                        $existingStageArgs->push($keyValue[0]);
+                    }
+                }
+
+                $stageArgsToAdd = $argsToAdd->filter(function ($arg) use ($existingStageArgs) {
+                    $key = str($arg)->after('ARG ')->trim()->toString();
+
+                    return ! $existingStageArgs->contains($key);
+                });
+
+                if ($stageArgsToAdd->isNotEmpty()) {
+                    $dockerfile_lines->splice($adjustedIndex + 1, 0, $stageArgsToAdd->toArray());
+                    $totalAdded += $stageArgsToAdd->count();
+                    $offset += $stageArgsToAdd->count();
+                }
+            }
+
+            if ($totalAdded > 0) {
+                $dockerfile_base64 = base64_encode($dockerfile_lines->implode("\n"));
+                $this->execute_remote_command([
+                    executeInDocker($this->deployment_uuid, "echo '{$dockerfile_base64}' | base64 -d | tee {$this->workdir}/{$dockerfilePath} > /dev/null"),
+                    'hidden' => true,
+                ]);
+
+                $stageInfo = $isMultiStage ? ' (multi-stage build, added to '.count($fromIndices).' stages)' : '';
+                $this->application_deployment_queue->addLogEntry("Added {$totalAdded} ARG declarations to Dockerfile for service {$serviceName}{$stageInfo}.");
+            } else {
+                $this->application_deployment_queue->addLogEntry("Service {$serviceName}: All required ARG declarations already exist.");
+            }
+
+            if ($this->application->settings->use_build_secrets && $this->dockerBuildkitSupported && ! empty($this->build_secrets)) {
+                $fullDockerfilePath = "{$this->workdir}/{$dockerfilePath}";
+                $this->modify_dockerfile_for_secrets($fullDockerfilePath);
+                $this->application_deployment_queue->addLogEntry("Modified Dockerfile for service {$serviceName} to use build secrets.");
+            }
         }
     }
 
@@ -3018,6 +3239,9 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         queue_next_deployment($this->application);
 
         if ($status === ApplicationDeploymentStatus::FINISHED->value) {
+            ray($this->application->team()->id);
+            event(new ApplicationConfigurationChanged($this->application->team()->id));
+
             if (! $this->only_this_server) {
                 $this->deploy_to_additional_destinations();
             }
