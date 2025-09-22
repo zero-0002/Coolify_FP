@@ -4,10 +4,10 @@
             <a class="flex items-center mb-1 text-5xl font-extrabold tracking-tight text-gray-900 dark:text-white">
                 Coolify
             </a> <div class="flex items-center gap-2">
-                {{ __('auth.forgot_password') }}
+                {{ __('auth.forgot_password_heading') }}
             </div>
             <div
-                class="w-full bg-white shadow md:mt-0 sm:max-w-md xl:p-0 dark:bg-base ">
+                class="w-full bg-white shadow-sm md:mt-0 sm:max-w-md xl:p-0 dark:bg-base ">
                 <div class="p-6 space-y-4 md:space-y-6 sm:p-8">
                     @if (is_transactional_emails_enabled())
                     <form action="/forgot-password" method="POST" class="flex flex-col gap-2">

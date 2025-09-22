@@ -40,7 +40,7 @@
     @if ($unsupported)
         <div>Database restore is not supported.</div>
     @else
-        <div class="pt-2 rounded alert-error">
+        <div class="pt-2 rounded-sm alert-error">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 stroke-current shrink-0" fill="none"
                 viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -108,8 +108,8 @@
                 <div>Location: <span x-text="filename ?? 'N/A'"></span> <span x-text="filesize">/ </span></div>
                 <x-forms.button class="w-full my-4" wire:click='runImport'>Restore Backup</x-forms.button>
             </div>
-            <div class="container w-full mx-auto">
-                <livewire:activity-monitor header="Database Restore Output" />
+            <div class="container w-full mx-auto" x-show="$wire.importRunning">
+                <livewire:activity-monitor header="Database Restore Output" :showWaiting="false" />
             </div>
         @else
             <div>Database must be running to restore a backup.</div>

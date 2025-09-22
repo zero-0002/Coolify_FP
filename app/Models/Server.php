@@ -13,6 +13,8 @@ use App\Jobs\RegenerateSslCertJob;
 use App\Notifications\Server\Reachable;
 use App\Notifications\Server\Unreachable;
 use App\Services\ConfigurationRepository;
+use App\Traits\ClearsGlobalSearchCache;
+use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -54,7 +56,7 @@ use Visus\Cuid2\Cuid2;
 
 class Server extends BaseModel
 {
-    use HasFactory, SchemalessAttributesTrait, SoftDeletes;
+    use ClearsGlobalSearchCache, HasFactory, SchemalessAttributesTrait, SoftDeletes;
 
     public static $batch_counter = 0;
 
@@ -69,6 +71,11 @@ class Server extends BaseModel
             }
             if ($server->ip) {
                 $payload['ip'] = str($server->ip)->trim();
+
+                // Update ip_previous when ip is being changed
+                if ($server->isDirty('ip') && $server->getOriginal('ip')) {
+                    $payload['ip_previous'] = $server->getOriginal('ip');
+                }
             }
             $server->forceFill($payload);
         });
@@ -158,6 +165,8 @@ class Server extends BaseModel
     ];
 
     protected $guarded = [];
+
+    use HasSafeStringAttribute;
 
     public function type()
     {
@@ -882,7 +891,7 @@ $schema://$host {
 
     public function muxFilename()
     {
-        return $this->uuid;
+        return 'mux_'.$this->uuid;
     }
 
     public function team()
@@ -950,6 +959,11 @@ $schema://$host {
         } else {
             return false;
         }
+    }
+
+    public function isTerminalEnabled()
+    {
+        return $this->settings->is_terminal_enabled ?? false;
     }
 
     public function isSwarm()
@@ -1246,13 +1260,13 @@ $schema://$host {
         return str($this->ip)->contains(':');
     }
 
-    public function restartSentinel(bool $async = true)
+    public function restartSentinel(?string $customImage = null, bool $async = true)
     {
         try {
             if ($async) {
-                StartSentinel::dispatch($this, true);
+                StartSentinel::dispatch($this, true, null, $customImage);
             } else {
-                StartSentinel::run($this, true);
+                StartSentinel::run($this, true, null, $customImage);
             }
         } catch (\Throwable $e) {
             return handleError($e);

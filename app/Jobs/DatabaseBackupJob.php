@@ -23,6 +23,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
+use Throwable;
+use Visus\Cuid2\Cuid2;
 
 class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -52,13 +54,28 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
 
     public ?string $backup_output = null;
 
+    public ?string $error_output = null;
+
+    public bool $s3_uploaded = false;
+
     public ?string $postgres_password = null;
 
+    public ?string $mongo_root_username = null;
+
+    public ?string $mongo_root_password = null;
+
     public ?S3Storage $s3 = null;
+
+    public $timeout = 3600;
+
+    public string $backup_log_uuid;
 
     public function __construct(public ScheduledDatabaseBackup $backup)
     {
         $this->onQueue('high');
+        $this->timeout = $backup->timeout;
+
+        $this->backup_log_uuid = (string) new Cuid2;
     }
 
     public function handle(): void
@@ -189,6 +206,36 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                             throw new \Exception('MARIADB_DATABASE or MYSQL_DATABASE not found');
                         }
                     }
+                } elseif (str($databaseType)->contains('mongo')) {
+                    $databasesToBackup = ['*'];
+                    $this->container_name = "{$this->database->name}-$serviceUuid";
+                    $this->directory_name = $serviceName.'-'.$this->container_name;
+
+                    // Try to extract MongoDB credentials from environment variables
+                    try {
+                        $commands = [];
+                        $commands[] = "docker exec $this->container_name env | grep MONGO_INITDB_";
+                        $envs = instant_remote_process($commands, $this->server);
+
+                        if (filled($envs)) {
+                            $envs = str($envs)->explode("\n");
+                            $rootPassword = $envs->filter(function ($env) {
+                                return str($env)->startsWith('MONGO_INITDB_ROOT_PASSWORD=');
+                            })->first();
+                            if ($rootPassword) {
+                                $this->mongo_root_password = str($rootPassword)->after('MONGO_INITDB_ROOT_PASSWORD=')->value();
+                            }
+                            $rootUsername = $envs->filter(function ($env) {
+                                return str($env)->startsWith('MONGO_INITDB_ROOT_USERNAME=');
+                            })->first();
+                            if ($rootUsername) {
+                                $this->mongo_root_username = str($rootUsername)->after('MONGO_INITDB_ROOT_USERNAME=')->value();
+                            }
+                        }
+
+                    } catch (\Throwable $e) {
+                        // Continue without env vars - will be handled in backup_standalone_mongodb method
+                    }
                 }
             } else {
                 $databaseName = str($this->database->name)->slug()->value();
@@ -200,7 +247,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
             if (blank($databasesToBackup)) {
                 if (str($databaseType)->contains('postgres')) {
                     $databasesToBackup = [$this->database->postgres_db];
-                } elseif (str($databaseType)->contains('mongodb')) {
+                } elseif (str($databaseType)->contains('mongo')) {
                     $databasesToBackup = ['*'];
                 } elseif (str($databaseType)->contains('mysql')) {
                     $databasesToBackup = [$this->database->mysql_database];
@@ -214,10 +261,13 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                     // Format: db1,db2,db3
                     $databasesToBackup = explode(',', $databasesToBackup);
                     $databasesToBackup = array_map('trim', $databasesToBackup);
-                } elseif (str($databaseType)->contains('mongodb')) {
+                } elseif (str($databaseType)->contains('mongo')) {
                     // Format: db1:collection1,collection2|db2:collection3,collection4
-                    $databasesToBackup = explode('|', $databasesToBackup);
-                    $databasesToBackup = array_map('trim', $databasesToBackup);
+                    // Only explode if it's a string, not if it's already an array
+                    if (is_string($databasesToBackup)) {
+                        $databasesToBackup = explode('|', $databasesToBackup);
+                        $databasesToBackup = array_map('trim', $databasesToBackup);
+                    }
                 } elseif (str($databaseType)->contains('mysql')) {
                     // Format: db1,db2,db3
                     $databasesToBackup = explode(',', $databasesToBackup);
@@ -247,12 +297,13 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                         }
                         $this->backup_location = $this->backup_dir.$this->backup_file;
                         $this->backup_log = ScheduledDatabaseBackupExecution::create([
+                            'uuid' => $this->backup_log_uuid,
                             'database_name' => $database,
                             'filename' => $this->backup_location,
                             'scheduled_database_backup_id' => $this->backup->id,
                         ]);
                         $this->backup_standalone_postgresql($database);
-                    } elseif (str($databaseType)->contains('mongodb')) {
+                    } elseif (str($databaseType)->contains('mongo')) {
                         if ($database === '*') {
                             $database = 'all';
                             $databaseName = 'all';
@@ -266,6 +317,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                         $this->backup_file = "/mongo-dump-$databaseName-".Carbon::now()->timestamp.'.tar.gz';
                         $this->backup_location = $this->backup_dir.$this->backup_file;
                         $this->backup_log = ScheduledDatabaseBackupExecution::create([
+                            'uuid' => $this->backup_log_uuid,
                             'database_name' => $databaseName,
                             'filename' => $this->backup_location,
                             'scheduled_database_backup_id' => $this->backup->id,
@@ -278,6 +330,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                         }
                         $this->backup_location = $this->backup_dir.$this->backup_file;
                         $this->backup_log = ScheduledDatabaseBackupExecution::create([
+                            'uuid' => $this->backup_log_uuid,
                             'database_name' => $database,
                             'filename' => $this->backup_location,
                             'scheduled_database_backup_id' => $this->backup->id,
@@ -290,6 +343,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                         }
                         $this->backup_location = $this->backup_dir.$this->backup_file;
                         $this->backup_log = ScheduledDatabaseBackupExecution::create([
+                            'uuid' => $this->backup_log_uuid,
                             'database_name' => $database,
                             'filename' => $this->backup_location,
                             'scheduled_database_backup_id' => $this->backup->id,
@@ -301,6 +355,11 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                     $size = $this->calculate_size();
                     if ($this->backup->save_s3) {
                         $this->upload_to_s3();
+
+                        // If local backup is disabled, delete the local file immediately after S3 upload
+                        if ($this->backup->disable_local_backup) {
+                            deleteBackupsLocally($this->backup_location, $this->server);
+                        }
                     }
 
                     $this->team->notify(new BackupSuccess($this->backup, $this->database, $database));
@@ -311,15 +370,34 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                         'size' => $size,
                     ]);
                 } catch (\Throwable $e) {
-                    if ($this->backup_log) {
-                        $this->backup_log->update([
-                            'status' => 'failed',
-                            'message' => $this->backup_output,
-                            'size' => $size,
-                            'filename' => null,
-                        ]);
+                    // Check if backup actually failed or if it's just a post-backup issue
+                    $actualBackupFailed = ! $this->s3_uploaded && $this->backup->save_s3;
+
+                    if ($actualBackupFailed || $size === 0) {
+                        // Real backup failure
+                        if ($this->backup_log) {
+                            $this->backup_log->update([
+                                'status' => 'failed',
+                                'message' => $this->error_output ?? $this->backup_output ?? $e->getMessage(),
+                                'size' => $size,
+                                'filename' => null,
+                            ]);
+                        }
+                        $this->team?->notify(new BackupFailed($this->backup, $this->database, $this->error_output ?? $this->backup_output ?? $e->getMessage(), $database));
+                    } else {
+                        // Backup succeeded but post-processing failed (cleanup, notification, etc.)
+                        if ($this->backup_log) {
+                            $this->backup_log->update([
+                                'status' => 'success',
+                                'message' => $this->backup_output ? $this->backup_output."\nWarning: Post-backup cleanup encountered an issue: ".$e->getMessage() : 'Warning: '.$e->getMessage(),
+                                'size' => $size,
+                            ]);
+                        }
+                        // Send success notification since the backup itself succeeded
+                        $this->team->notify(new BackupSuccess($this->backup, $this->database, $database));
+                        // Log the post-backup issue
+                        ray('Post-backup operation failed but backup was successful: '.$e->getMessage());
                     }
-                    $this->team?->notify(new BackupFailed($this->backup, $this->database, $this->backup_output, $database));
                 }
             }
             if ($this->backup_log && $this->backup_log->status === 'success') {
@@ -343,6 +421,17 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
     {
         try {
             $url = $this->database->internal_db_url;
+            if (blank($url)) {
+                // For service-based MongoDB, try to build URL from environment variables
+                if (filled($this->mongo_root_username) && filled($this->mongo_root_password)) {
+                    // Use container name instead of server IP for service-based MongoDB
+                    $url = "mongodb://{$this->mongo_root_username}:{$this->mongo_root_password}@{$this->container_name}:27017";
+                } else {
+                    // If no environment variables are available, throw an exception
+                    throw new \Exception('MongoDB credentials not found. Ensure MONGO_INITDB_ROOT_USERNAME and MONGO_INITDB_ROOT_PASSWORD environment variables are available in the container.');
+                }
+            }
+            \Log::info('MongoDB backup URL configured', ['has_url' => filled($url), 'using_env_vars' => blank($this->database->internal_db_url)]);
             if ($databaseWithCollections === 'all') {
                 $commands[] = 'mkdir -p '.$this->backup_dir;
                 if (str($this->database->image)->startsWith('mongo:4')) {
@@ -379,7 +468,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                 $this->backup_output = null;
             }
         } catch (\Throwable $e) {
-            $this->add_to_backup_output($e->getMessage());
+            $this->add_to_error_output($e->getMessage());
             throw $e;
         }
     }
@@ -405,7 +494,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                 $this->backup_output = null;
             }
         } catch (\Throwable $e) {
-            $this->add_to_backup_output($e->getMessage());
+            $this->add_to_error_output($e->getMessage());
             throw $e;
         }
     }
@@ -425,7 +514,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                 $this->backup_output = null;
             }
         } catch (\Throwable $e) {
-            $this->add_to_backup_output($e->getMessage());
+            $this->add_to_error_output($e->getMessage());
             throw $e;
         }
     }
@@ -445,7 +534,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                 $this->backup_output = null;
             }
         } catch (\Throwable $e) {
-            $this->add_to_backup_output($e->getMessage());
+            $this->add_to_error_output($e->getMessage());
             throw $e;
         }
     }
@@ -456,6 +545,15 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
             $this->backup_output = $this->backup_output."\n".$output;
         } else {
             $this->backup_output = $output;
+        }
+    }
+
+    private function add_to_error_output($output): void
+    {
+        if ($this->error_output) {
+            $this->error_output = $this->error_output."\n".$output;
+        } else {
+            $this->error_output = $output;
         }
     }
 
@@ -500,13 +598,14 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
             } else {
                 $commands[] = "docker run -d --network {$network} --name backup-of-{$this->backup->uuid} --rm -v $this->backup_location:$this->backup_location:ro {$fullImageName}";
             }
-            $commands[] = "docker exec backup-of-{$this->backup->uuid} mc config host add temporary {$endpoint} $key \"$secret\"";
+            $commands[] = "docker exec backup-of-{$this->backup->uuid} mc alias set temporary {$endpoint} {$key} \"{$secret}\"";
             $commands[] = "docker exec backup-of-{$this->backup->uuid} mc cp $this->backup_location temporary/$bucket{$this->backup_dir}/";
             instant_remote_process($commands, $this->server);
 
-            $this->add_to_backup_output('Uploaded to S3.');
+            $this->s3_uploaded = true;
         } catch (\Throwable $e) {
-            $this->add_to_backup_output($e->getMessage());
+            $this->s3_uploaded = false;
+            $this->add_to_error_output($e->getMessage());
             throw $e;
         } finally {
             $command = "docker rm -f backup-of-{$this->backup->uuid}";
@@ -521,5 +620,19 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
         $latestVersion = $settings->helper_version;
 
         return "{$helperImage}:{$latestVersion}";
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        $log = ScheduledDatabaseBackupExecution::where('uuid', $this->backup_log_uuid)->first();
+
+        if ($log) {
+            $log->update([
+                'status' => 'failed',
+                'message' => 'Job failed: '.($exception?->getMessage() ?? 'Unknown error'),
+                'size' => 0,
+                'filename' => null,
+            ]);
+        }
     }
 }

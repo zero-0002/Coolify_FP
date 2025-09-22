@@ -16,7 +16,7 @@
         <div class="relative" x-data="{ type: 'password' }">
             @if ($allowToPeak)
                 <div x-on:click="changePasswordFieldType"
-                    class="flex absolute inset-y-0 right-0 items-center pr-2 cursor-pointer hover:dark:text-white">
+                    class="flex absolute inset-y-0 right-0 items-center pr-2 cursor-pointer dark:hover:text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" stroke-width="1.5"
                         stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none" />
@@ -32,7 +32,8 @@
                 wire:dirty.class="dark:focus:ring-warning dark:ring-warning" wire:loading.attr="disabled"
                 type="{{ $type }}" @readonly($readonly) @disabled($disabled) id="{{ $id }}"
                 name="{{ $name }}" placeholder="{{ $attributes->get('placeholder') }}"
-                aria-placeholder="{{ $attributes->get('placeholder') }}">
+                aria-placeholder="{{ $attributes->get('placeholder') }}"
+                @if ($autofocus) x-ref="autofocusInput" @endif>
 
         </div>
     @else
@@ -45,7 +46,8 @@
             max="{{ $attributes->get('max') }}" minlength="{{ $attributes->get('minlength') }}"
             maxlength="{{ $attributes->get('maxlength') }}"
             @if ($id !== 'null') id={{ $id }} @endif name="{{ $name }}"
-            placeholder="{{ $attributes->get('placeholder') }}">
+            placeholder="{{ $attributes->get('placeholder') }}"
+            @if ($autofocus) x-ref="autofocusInput" @endif>
     @endif
     @if (!$label && $helper)
         <x-helper :helper="$helper" />

@@ -25,21 +25,7 @@ class DockerCompose extends Component
         $this->parameters = get_route_parameters();
         $this->query = request()->query();
         if (isDev()) {
-            $this->dockerComposeRaw = 'services:
-            appsmith:
-              build:
-                context: .
-                dockerfile_inline: |
-                  FROM nginx
-                  ARG GIT_COMMIT
-                  ARG GIT_BRANCH
-                  RUN echo "Hello World ${GIT_COMMIT} ${GIT_BRANCH}"
-                args:
-                  - GIT_COMMIT=cdc3b19
-                  - GIT_BRANCH=${GIT_BRANCH}
-              environment:
-                - APPSMITH_MAIL_ENABLED=${APPSMITH_MAIL_ENABLED}
-          ';
+            $this->dockerComposeRaw = file_get_contents(base_path('templates/test-database-detection.yaml'));
         }
     }
 
@@ -77,7 +63,6 @@ class DockerCompose extends Component
                 EnvironmentVariable::create([
                     'key' => $key,
                     'value' => $variable,
-                    'is_build_time' => false,
                     'is_preview' => false,
                     'resourceable_id' => $service->id,
                     'resourceable_type' => $service->getMorphClass(),

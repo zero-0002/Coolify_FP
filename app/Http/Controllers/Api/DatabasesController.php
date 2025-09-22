@@ -14,6 +14,7 @@ use App\Jobs\DeleteResourceJob;
 use App\Models\Project;
 use App\Models\ScheduledDatabaseBackup;
 use App\Models\Server;
+use App\Models\StandalonePostgresql;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
@@ -217,6 +218,8 @@ class DatabasesController extends Controller
             return response()->json(['message' => 'Database not found.'], 404);
         }
 
+        $this->authorize('view', $database);
+
         return response()->json($this->removeSensitiveData($database));
     }
 
@@ -364,6 +367,9 @@ class DatabasesController extends Controller
         if (! $database) {
             return response()->json(['message' => 'Database not found.'], 404);
         }
+
+        $this->authorize('update', $database);
+
         if ($request->is_public && $request->public_port) {
             if (isPublicPortAlreadyUsed($database->destination->server, $request->public_port, $database->id)) {
                 return response()->json(['message' => 'Public port already used by another database.'], 400);
@@ -1266,6 +1272,9 @@ class DatabasesController extends Controller
             return invalidTokenResponse();
         }
 
+        // Use a generic authorization for database creation - using PostgreSQL as representative model
+        $this->authorize('create', StandalonePostgresql::class);
+
         $return = validateIncomingRequest($request);
         if ($return instanceof \Illuminate\Http\JsonResponse) {
             return $return;
@@ -1844,12 +1853,14 @@ class DatabasesController extends Controller
             return response()->json(['message' => 'Database not found.'], 404);
         }
 
+        $this->authorize('delete', $database);
+
         DeleteResourceJob::dispatch(
             resource: $database,
-            deleteConfigurations: $request->query->get('delete_configurations', true),
             deleteVolumes: $request->query->get('delete_volumes', true),
-            dockerCleanup: $request->query->get('docker_cleanup', true),
-            deleteConnectedNetworks: $request->query->get('delete_connected_networks', true)
+            deleteConnectedNetworks: $request->query->get('delete_connected_networks', true),
+            deleteConfigurations: $request->query->get('delete_configurations', true),
+            dockerCleanup: $request->query->get('docker_cleanup', true)
         );
 
         return response()->json([
@@ -2017,6 +2028,9 @@ class DatabasesController extends Controller
         if (! $database) {
             return response()->json(['message' => 'Database not found.'], 404);
         }
+
+        $this->authorize('manage', $database);
+
         if (str($database->status)->contains('running')) {
             return response()->json(['message' => 'Database is already running.'], 400);
         }
@@ -2095,6 +2109,9 @@ class DatabasesController extends Controller
         if (! $database) {
             return response()->json(['message' => 'Database not found.'], 404);
         }
+
+        $this->authorize('manage', $database);
+
         if (str($database->status)->contains('stopped') || str($database->status)->contains('exited')) {
             return response()->json(['message' => 'Database is already stopped.'], 400);
         }
@@ -2173,6 +2190,9 @@ class DatabasesController extends Controller
         if (! $database) {
             return response()->json(['message' => 'Database not found.'], 404);
         }
+
+        $this->authorize('manage', $database);
+
         RestartDatabase::dispatch($database);
 
         return response()->json(
