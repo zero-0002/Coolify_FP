@@ -72,6 +72,26 @@
                     </div>
                     <div wire:loading.remove wire:target="loadProxyConfiguration">
                         @if ($proxySettings)
+                            <div class="flex flex-col gap-2 pt-4">
+                                <x-forms.textarea canGate="update" :canResource="$server" useMonacoEditor
+                                    monacoEditorLanguage="yaml"
+                                    label="Configuration file ( {{ $this->configurationFilePath }} )" name="proxySettings"
+                                    id="proxySettings" rows="30" />
+                                @can('update', $server)
+                                    <x-modal-confirmation title="Reset Proxy Configuration?"
+                                        buttonTitle="Reset configuration to default" isErrorButton
+                                        submitAction="resetProxyConfiguration" :actions="[
+                                            'Reset proxy configuration to default settings',
+                                            'All custom configurations will be lost',
+                                            'Custom ports and entrypoints will be removed',
+                                        ]"
+                                        confirmationText="{{ $server->name }}"
+                                        confirmationLabel="Please confirm by entering the server name below"
+                                        shortConfirmationLabel="Server Name" step2ButtonText="Reset Configuration"
+                                        :confirmWithPassword="false" :confirmWithText="true">
+                                    </x-modal-confirmation>
+                                @endcan
+                            </div>
                              <div class="flex flex-col gap-2 pt-2">
                                   <x-forms.textarea canGate="update" :canResource="$server" useMonacoEditor
                                       monacoEditorLanguage="yaml"
