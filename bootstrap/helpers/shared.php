@@ -634,10 +634,14 @@ function getTopLevelNetworks(Service|Application $resource)
             $definedNetwork = collect([$resource->uuid]);
             $services = collect($services)->map(function ($service, $_) use ($topLevelNetworks, $definedNetwork) {
                 $serviceNetworks = collect(data_get($service, 'networks', []));
-                $hasHostNetworkMode = data_get($service, 'network_mode') === 'host' ? true : false;
+                $networkMode = data_get($service, 'network_mode');
 
-                // Only add 'networks' key if 'network_mode' is not 'host'
-                if (! $hasHostNetworkMode) {
+                $hasValidNetworkMode =
+                    $networkMode === 'host' ||
+                    (is_string($networkMode) && (str_starts_with($networkMode, 'service:') || str_starts_with($networkMode, 'container:')));
+
+                // Only add 'networks' key if 'network_mode' is not 'host' or does not start with 'service:' or 'container:'
+                if (! $hasValidNetworkMode) {
                     // Collect/create/update networks
                     if ($serviceNetworks->count() > 0) {
                         foreach ($serviceNetworks as $networkName => $networkDetails) {
@@ -1125,30 +1129,77 @@ function get_public_ips()
 function isAnyDeploymentInprogress()
 {
     $runningJobs = ApplicationDeploymentQueue::where('horizon_job_worker', gethostname())->where('status', ApplicationDeploymentStatus::IN_PROGRESS->value)->get();
-    $basicDetails = $runningJobs->map(function ($job) {
-        return [
-            'id' => $job->id,
-            'created_at' => $job->created_at,
-            'application_id' => $job->application_id,
-            'server_id' => $job->server_id,
-            'horizon_job_id' => $job->horizon_job_id,
-            'status' => $job->status,
-        ];
-    });
-    echo 'Running jobs: '.json_encode($basicDetails)."\n";
+
+    if ($runningJobs->isEmpty()) {
+        echo "No deployments in progress.\n";
+        exit(0);
+    }
+
     $horizonJobIds = [];
+    $deploymentDetails = [];
+
     foreach ($runningJobs as $runningJob) {
         $horizonJobStatus = getJobStatus($runningJob->horizon_job_id);
         if ($horizonJobStatus === 'unknown' || $horizonJobStatus === 'reserved') {
             $horizonJobIds[] = $runningJob->horizon_job_id;
+
+            // Get application and team information
+            $application = Application::find($runningJob->application_id);
+            $teamMembers = [];
+            $deploymentUrl = '';
+
+            if ($application) {
+                // Get team members through the application's project
+                $team = $application->team();
+                if ($team) {
+                    $teamMembers = $team->members()->pluck('email')->toArray();
+                }
+
+                // Construct the full deployment URL
+                if ($runningJob->deployment_url) {
+                    $baseUrl = base_url();
+                    $deploymentUrl = $baseUrl.$runningJob->deployment_url;
+                }
+            }
+
+            $deploymentDetails[] = [
+                'id' => $runningJob->id,
+                'application_name' => $runningJob->application_name ?? 'Unknown',
+                'server_name' => $runningJob->server_name ?? 'Unknown',
+                'deployment_url' => $deploymentUrl,
+                'team_members' => $teamMembers,
+                'created_at' => $runningJob->created_at->format('Y-m-d H:i:s'),
+                'horizon_job_id' => $runningJob->horizon_job_id,
+            ];
         }
     }
+
     if (count($horizonJobIds) === 0) {
-        echo "No deployments in progress.\n";
+        echo "No active deployments in progress (all jobs completed or failed).\n";
         exit(0);
     }
-    $horizonJobIds = collect($horizonJobIds)->unique()->toArray();
-    echo 'There are '.count($horizonJobIds)." deployments in progress.\n";
+
+    // Display enhanced deployment information
+    echo "\n=== Running Deployments ===\n";
+    echo 'Total active deployments: '.count($horizonJobIds)."\n\n";
+
+    foreach ($deploymentDetails as $index => $deployment) {
+        echo 'Deployment #'.($index + 1).":\n";
+        echo '  Application: '.$deployment['application_name']."\n";
+        echo '  Server: '.$deployment['server_name']."\n";
+        echo '  Started: '.$deployment['created_at']."\n";
+        if ($deployment['deployment_url']) {
+            echo '  URL: '.$deployment['deployment_url']."\n";
+        }
+        if (! empty($deployment['team_members'])) {
+            echo '  Team members: '.implode(', ', $deployment['team_members'])."\n";
+        } else {
+            echo "  Team members: No team members found\n";
+        }
+        echo '  Horizon Job ID: '.$deployment['horizon_job_id']."\n";
+        echo "\n";
+    }
+
     exit(1);
 }
 
@@ -1225,7 +1276,12 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                 $serviceNetworks = collect(data_get($service, 'networks', []));
                 $serviceVariables = collect(data_get($service, 'environment', []));
                 $serviceLabels = collect(data_get($service, 'labels', []));
-                $hasHostNetworkMode = data_get($service, 'network_mode') === 'host' ? true : false;
+                $networkMode = data_get($service, 'network_mode');
+
+                $hasValidNetworkMode =
+                    $networkMode === 'host' ||
+                    (is_string($networkMode) && (str_starts_with($networkMode, 'service:') || str_starts_with($networkMode, 'container:')));
+
                 if ($serviceLabels->count() > 0) {
                     $removedLabels = collect([]);
                     $serviceLabels = $serviceLabels->filter(function ($serviceLabel, $serviceLabelName) use ($removedLabels) {
@@ -1336,7 +1392,7 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                 $savedService->ports = $collectedPorts->implode(',');
                 $savedService->save();
 
-                if (! $hasHostNetworkMode) {
+                if (! $hasValidNetworkMode) {
                     // Add Coolify specific networks
                     $definedNetworkExists = $topLevelNetworks->contains(function ($value, $_) use ($definedNetwork) {
                         return $value == $definedNetwork;

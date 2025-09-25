@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ApplicationDeploymentStatus;
 use App\Services\ConfigurationGenerator;
+use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasConfiguration;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -110,7 +111,7 @@ use Visus\Cuid2\Cuid2;
 
 class Application extends BaseModel
 {
-    use HasConfiguration, HasFactory, HasSafeStringAttribute, SoftDeletes;
+    use ClearsGlobalSearchCache, HasConfiguration, HasFactory, HasSafeStringAttribute, SoftDeletes;
 
     private static $parserVersion = '5';
 
@@ -122,66 +123,6 @@ class Application extends BaseModel
         'custom_network_aliases' => 'array',
         'http_basic_auth_password' => 'encrypted',
     ];
-
-    public function customNetworkAliases(): Attribute
-    {
-        return Attribute::make(
-            set: function ($value) {
-                if (is_null($value) || $value === '') {
-                    return null;
-                }
-
-                // If it's already a JSON string, decode it
-                if (is_string($value) && $this->isJson($value)) {
-                    $value = json_decode($value, true);
-                }
-
-                // If it's a string but not JSON, treat it as a comma-separated list
-                if (is_string($value) && ! is_array($value)) {
-                    $value = explode(',', $value);
-                }
-
-                $value = collect($value)
-                    ->map(function ($alias) {
-                        if (is_string($alias)) {
-                            return str_replace(' ', '-', trim($alias));
-                        }
-
-                        return null;
-                    })
-                    ->filter()
-                    ->unique() // Remove duplicate values
-                    ->values()
-                    ->toArray();
-
-                return empty($value) ? null : json_encode($value);
-            },
-            get: function ($value) {
-                if (is_null($value)) {
-                    return null;
-                }
-
-                if (is_string($value) && $this->isJson($value)) {
-                    return json_decode($value, true);
-                }
-
-                return is_array($value) ? $value : [];
-            }
-        );
-    }
-
-    /**
-     * Check if a string is a valid JSON
-     */
-    private function isJson($string)
-    {
-        if (! is_string($string)) {
-            return false;
-        }
-        json_decode($string);
-
-        return json_last_error() === JSON_ERROR_NONE;
-    }
 
     protected static function booted()
     {
@@ -248,6 +189,66 @@ class Application extends BaseModel
                 $deployment->delete();
             }
         });
+    }
+
+    public function customNetworkAliases(): Attribute
+    {
+        return Attribute::make(
+            set: function ($value) {
+                if (is_null($value) || $value === '') {
+                    return null;
+                }
+
+                // If it's already a JSON string, decode it
+                if (is_string($value) && $this->isJson($value)) {
+                    $value = json_decode($value, true);
+                }
+
+                // If it's a string but not JSON, treat it as a comma-separated list
+                if (is_string($value) && ! is_array($value)) {
+                    $value = explode(',', $value);
+                }
+
+                $value = collect($value)
+                    ->map(function ($alias) {
+                        if (is_string($alias)) {
+                            return str_replace(' ', '-', trim($alias));
+                        }
+
+                        return null;
+                    })
+                    ->filter()
+                    ->unique() // Remove duplicate values
+                    ->values()
+                    ->toArray();
+
+                return empty($value) ? null : json_encode($value);
+            },
+            get: function ($value) {
+                if (is_null($value)) {
+                    return null;
+                }
+
+                if (is_string($value) && $this->isJson($value)) {
+                    return json_decode($value, true);
+                }
+
+                return is_array($value) ? $value : [];
+            }
+        );
+    }
+
+    /**
+     * Check if a string is a valid JSON
+     */
+    private function isJson($string)
+    {
+        if (! is_string($string)) {
+            return false;
+        }
+        json_decode($string);
+
+        return json_last_error() === JSON_ERROR_NONE;
     }
 
     public static function ownedByCurrentTeamAPI(int $teamId)
@@ -932,11 +933,11 @@ class Application extends BaseModel
 
     public function isConfigurationChanged(bool $save = false)
     {
-        $newConfigHash = base64_encode($this->fqdn.$this->git_repository.$this->git_branch.$this->git_commit_sha.$this->build_pack.$this->static_image.$this->install_command.$this->build_command.$this->start_command.$this->ports_exposes.$this->ports_mappings.$this->base_directory.$this->publish_directory.$this->dockerfile.$this->dockerfile_location.$this->custom_labels.$this->custom_docker_run_options.$this->dockerfile_target_build.$this->redirect.$this->custom_nginx_configuration.$this->custom_labels);
+        $newConfigHash = base64_encode($this->fqdn.$this->git_repository.$this->git_branch.$this->git_commit_sha.$this->build_pack.$this->static_image.$this->install_command.$this->build_command.$this->start_command.$this->ports_exposes.$this->ports_mappings.$this->base_directory.$this->publish_directory.$this->dockerfile.$this->dockerfile_location.$this->custom_labels.$this->custom_docker_run_options.$this->dockerfile_target_build.$this->redirect.$this->custom_nginx_configuration.$this->custom_labels.$this->settings->use_build_secrets);
         if ($this->pull_request_id === 0 || $this->pull_request_id === null) {
-            $newConfigHash .= json_encode($this->environment_variables()->get(['value',  'is_multiline', 'is_literal'])->sort());
+            $newConfigHash .= json_encode($this->environment_variables()->get(['value',  'is_multiline', 'is_literal', 'is_buildtime', 'is_runtime'])->sort());
         } else {
-            $newConfigHash .= json_encode($this->environment_variables_preview->get(['value',  'is_multiline', 'is_literal'])->sort());
+            $newConfigHash .= json_encode($this->environment_variables_preview->get(['value',  'is_multiline', 'is_literal', 'is_buildtime', 'is_runtime'])->sort());
         }
         $newConfigHash = md5($newConfigHash);
         $oldConfigHash = data_get($this, 'config_hash');
@@ -1073,20 +1074,26 @@ class Application extends BaseModel
             if (is_null($private_key)) {
                 throw new RuntimeException('Private key not found. Please add a private key to the application and try again.');
             }
+            $private_key = base64_encode($private_key);
             $base_comamnd = "GIT_SSH_COMMAND=\"ssh -o ConnectTimeout=30 -p {$customPort} -o Port={$customPort} -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa\" {$base_command} {$customRepository}";
 
-            $commands = collect([]);
+            if ($exec_in_docker) {
+                $commands = collect([
+                    executeInDocker($deployment_uuid, 'mkdir -p /root/.ssh'),
+                    executeInDocker($deployment_uuid, "echo '{$private_key}' | base64 -d | tee /root/.ssh/id_rsa > /dev/null"),
+                    executeInDocker($deployment_uuid, 'chmod 600 /root/.ssh/id_rsa'),
+                ]);
+            } else {
+                $commands = collect([
+                    'mkdir -p /root/.ssh',
+                    "echo '{$private_key}' | base64 -d | tee /root/.ssh/id_rsa > /dev/null",
+                    'chmod 600 /root/.ssh/id_rsa',
+                ]);
+            }
 
             if ($exec_in_docker) {
-                $commands->push(executeInDocker($deployment_uuid, 'mkdir -p /root/.ssh'));
-                // SSH key transfer handled by ApplicationDeploymentJob, assume key is already in container
-                $commands->push(executeInDocker($deployment_uuid, 'chmod 600 /root/.ssh/id_rsa'));
                 $commands->push(executeInDocker($deployment_uuid, $base_comamnd));
             } else {
-                $server = $this->destination->server;
-                $commands->push('mkdir -p /root/.ssh');
-                transfer_file_to_server($private_key, '/root/.ssh/id_rsa', $server);
-                $commands->push('chmod 600 /root/.ssh/id_rsa');
                 $commands->push($base_comamnd);
             }
 
@@ -1212,6 +1219,7 @@ class Application extends BaseModel
             if (is_null($private_key)) {
                 throw new RuntimeException('Private key not found. Please add a private key to the application and try again.');
             }
+            $private_key = base64_encode($private_key);
             $escapedCustomRepository = escapeshellarg($customRepository);
             $git_clone_command_base = "GIT_SSH_COMMAND=\"ssh -o ConnectTimeout=30 -p {$customPort} -o Port={$customPort} -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa\" {$git_clone_command} {$escapedCustomRepository} {$escapedBaseDir}";
             if ($only_checkout) {
@@ -1219,18 +1227,18 @@ class Application extends BaseModel
             } else {
                 $git_clone_command = $this->setGitImportSettings($deployment_uuid, $git_clone_command_base);
             }
-
-            $commands = collect([]);
-
             if ($exec_in_docker) {
-                $commands->push(executeInDocker($deployment_uuid, 'mkdir -p /root/.ssh'));
-                // SSH key transfer handled by ApplicationDeploymentJob, assume key is already in container
-                $commands->push(executeInDocker($deployment_uuid, 'chmod 600 /root/.ssh/id_rsa'));
+                $commands = collect([
+                    executeInDocker($deployment_uuid, 'mkdir -p /root/.ssh'),
+                    executeInDocker($deployment_uuid, "echo '{$private_key}' | base64 -d | tee /root/.ssh/id_rsa > /dev/null"),
+                    executeInDocker($deployment_uuid, 'chmod 600 /root/.ssh/id_rsa'),
+                ]);
             } else {
-                $server = $this->destination->server;
-                $commands->push('mkdir -p /root/.ssh');
-                transfer_file_to_server($private_key, '/root/.ssh/id_rsa', $server);
-                $commands->push('chmod 600 /root/.ssh/id_rsa');
+                $commands = collect([
+                    'mkdir -p /root/.ssh',
+                    "echo '{$private_key}' | base64 -d | tee /root/.ssh/id_rsa > /dev/null",
+                    'chmod 600 /root/.ssh/id_rsa',
+                ]);
             }
             if ($pull_request_id !== 0) {
                 if ($git_type === 'gitlab') {
@@ -1471,14 +1479,14 @@ class Application extends BaseModel
             if ($this->docker_compose_domains) {
                 $json = collect(json_decode($this->docker_compose_domains));
                 foreach ($json as $key => $value) {
-                    if (str($key)->contains('-')) {
+                    if (str($key)->contains('-') || str($key)->contains('.')) {
                         $key = str($key)->replace('-', '_')->replace('.', '_');
                     }
                     $json->put((string) $key, $value);
                 }
                 $services = collect(data_get($parsedServices, 'services', []));
                 foreach ($services as $name => $service) {
-                    if (str($name)->contains('-')) {
+                    if (str($name)->contains('-') || str($name)->contains('.')) {
                         $replacedName = str($name)->replace('-', '_')->replace('.', '_');
                         $services->put((string) $replacedName, $service);
                         $services->forget((string) $name);
@@ -1495,6 +1503,7 @@ class Application extends BaseModel
                 } else {
                     $this->docker_compose_domains = null;
                 }
+                ray($this->docker_compose_domains);
                 $this->save();
             }
 
@@ -1547,15 +1556,169 @@ class Application extends BaseModel
         return $command;
     }
 
+    private function parseWatchPaths($value)
+    {
+        if ($value) {
+            $watch_paths = collect(explode("\n", $value))
+                ->map(function (string $path): string {
+                    // Trim whitespace and remove leading slashes to normalize paths
+                    $path = trim($path);
+
+                    return ltrim($path, '/');
+                })
+                ->filter(function (string $path): bool {
+                    return strlen($path) > 0;
+                });
+
+            return trim($watch_paths->implode("\n"));
+        }
+    }
+
     public function watchPaths(): Attribute
     {
         return Attribute::make(
             set: function ($value) {
                 if ($value) {
-                    return trim($value);
+                    return $this->parseWatchPaths($value);
                 }
             }
         );
+    }
+
+    public function matchWatchPaths(Collection $modified_files, ?Collection $watch_paths): Collection
+    {
+        return self::matchPaths($modified_files, $watch_paths);
+    }
+
+    /**
+     * Static method to match paths against watch patterns with negation support
+     * Uses order-based matching: last matching pattern wins
+     */
+    public static function matchPaths(Collection $modified_files, ?Collection $watch_paths): Collection
+    {
+        if (is_null($watch_paths) || $watch_paths->isEmpty()) {
+            return collect([]);
+        }
+
+        return $modified_files->filter(function ($file) use ($watch_paths) {
+            $shouldInclude = null; // null means no patterns matched
+
+            // Process patterns in order - last match wins
+            foreach ($watch_paths as $pattern) {
+                $pattern = trim($pattern);
+                if (empty($pattern)) {
+                    continue;
+                }
+
+                $isExclusion = str_starts_with($pattern, '!');
+                $matchPattern = $isExclusion ? substr($pattern, 1) : $pattern;
+
+                if (self::globMatch($matchPattern, $file)) {
+                    // This pattern matches - it determines the current state
+                    $shouldInclude = ! $isExclusion;
+                }
+            }
+
+            // If no patterns matched and we only have exclusion patterns, include by default
+            if ($shouldInclude === null) {
+                // Check if we only have exclusion patterns
+                $hasInclusionPatterns = $watch_paths->contains(fn ($p) => ! str_starts_with(trim($p), '!'));
+
+                return ! $hasInclusionPatterns;
+            }
+
+            return $shouldInclude;
+        })->values();
+    }
+
+    /**
+     * Check if a path matches a glob pattern
+     * Supports: *, **, ?, [abc], [!abc]
+     */
+    public static function globMatch(string $pattern, string $path): bool
+    {
+        $regex = self::globToRegex($pattern);
+
+        return preg_match($regex, $path) === 1;
+    }
+
+    /**
+     * Convert a glob pattern to a regular expression
+     */
+    public static function globToRegex(string $pattern): string
+    {
+        $regex = '';
+        $inGroup = false;
+        $chars = str_split($pattern);
+        $len = count($chars);
+
+        for ($i = 0; $i < $len; $i++) {
+            $c = $chars[$i];
+
+            switch ($c) {
+                case '*':
+                    // Check for **
+                    if ($i + 1 < $len && $chars[$i + 1] === '*') {
+                        // ** matches any number of directories
+                        $regex .= '.*';
+                        $i++; // Skip next *
+                        // Skip optional /
+                        if ($i + 1 < $len && $chars[$i + 1] === '/') {
+                            $i++;
+                        }
+                    } else {
+                        // * matches anything except /
+                        $regex .= '[^/]*';
+                    }
+                    break;
+
+                case '?':
+                    // ? matches any single character except /
+                    $regex .= '[^/]';
+                    break;
+
+                case '[':
+                    // Character class
+                    $inGroup = true;
+                    $regex .= '[';
+                    // Check for negation
+                    if ($i + 1 < $len && ($chars[$i + 1] === '!' || $chars[$i + 1] === '^')) {
+                        $regex .= '^';
+                        $i++;
+                    }
+                    break;
+
+                case ']':
+                    if ($inGroup) {
+                        $inGroup = false;
+                        $regex .= ']';
+                    } else {
+                        $regex .= preg_quote($c, '#');
+                    }
+                    break;
+
+                case '.':
+                case '(':
+                case ')':
+                case '+':
+                case '{':
+                case '}':
+                case '$':
+                case '^':
+                case '|':
+                case '\\':
+                    // Escape regex special characters
+                    $regex .= '\\'.$c;
+                    break;
+
+                default:
+                    $regex .= $c;
+                    break;
+            }
+        }
+
+        // Wrap in delimiters and anchors
+        return '#^'.$regex.'$#';
     }
 
     public function isWatchPathsTriggered(Collection $modified_files): bool
@@ -1563,12 +1726,15 @@ class Application extends BaseModel
         if (is_null($this->watch_paths)) {
             return false;
         }
+        $this->watch_paths = $this->parseWatchPaths($this->watch_paths);
+        $this->save();
         $watch_paths = collect(explode("\n", $this->watch_paths));
-        $matches = $modified_files->filter(function ($file) use ($watch_paths) {
-            return $watch_paths->contains(function ($glob) use ($file) {
-                return fnmatch($glob, $file);
-            });
-        });
+
+        // If no valid patterns after filtering, don't trigger
+        if ($watch_paths->isEmpty()) {
+            return false;
+        }
+        $matches = $this->matchWatchPaths($modified_files, $watch_paths);
 
         return $matches->count() > 0;
     }
