@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Livewire\GlobalSearch;
+use Illuminate\Database\Eloquent\Model;
 
 trait ClearsGlobalSearchCache
 {
@@ -65,7 +66,11 @@ trait ClearsGlobalSearchCache
     {
         // For database models, team is accessed through environment.project.team
         if (method_exists($this, 'team')) {
-            $team = $this->team();
+            if ($this instanceof \App\Models\Server) {
+                $team = $this->team;
+            } else {
+                $team = $this->team();
+            }
             if (filled($team)) {
                 return is_object($team) ? $team->id : null;
             }
