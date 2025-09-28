@@ -43,9 +43,9 @@ class Proxy extends Component
         $this->redirectUrl = data_get($this->server, 'proxy.redirect_url');
     }
 
-    public function getConfigurationFilePathProperty()
+    public function getConfigurationFilePathProperty(): string
     {
-        return $this->server->proxyPath().'docker-compose.yml';
+        return rtrim($this->server->proxyPath(), '/') . '/docker-compose.yml';
     }
 
     public function changeProxy()
