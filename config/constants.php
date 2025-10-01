@@ -2,8 +2,8 @@
 
 return [
     'coolify' => [
-        'version' => '4.0.0-beta.427',
-        'helper_version' => '1.0.10',
+        'version' => '4.0.0-beta.433',
+        'helper_version' => '1.0.11',
         'realtime_version' => '1.0.10',
         'self_hosted' => env('SELF_HOSTED', true),
         'autoupdate' => env('AUTOUPDATE'),
@@ -59,9 +59,16 @@ return [
     'ssh' => [
         'mux_enabled' => env('MUX_ENABLED', env('SSH_MUX_ENABLED', true)),
         'mux_persist_time' => env('SSH_MUX_PERSIST_TIME', 3600),
+        'mux_health_check_enabled' => env('SSH_MUX_HEALTH_CHECK_ENABLED', true),
+        'mux_health_check_timeout' => env('SSH_MUX_HEALTH_CHECK_TIMEOUT', 5),
+        'mux_max_age' => env('SSH_MUX_MAX_AGE', 1800), // 30 minutes
         'connection_timeout' => 10,
         'server_interval' => 20,
-        'command_timeout' => 7200,
+        'command_timeout' => 3600,
+        'max_retries' => env('SSH_MAX_RETRIES', 3),
+        'retry_base_delay' => env('SSH_RETRY_BASE_DELAY', 2), // seconds
+        'retry_max_delay' => env('SSH_RETRY_MAX_DELAY', 30), // seconds
+        'retry_multiplier' => env('SSH_RETRY_MULTIPLIER', 2),
     ],
 
     'invitation' => [
