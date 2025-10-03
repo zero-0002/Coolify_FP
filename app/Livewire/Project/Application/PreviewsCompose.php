@@ -60,7 +60,7 @@ class PreviewsCompose extends Component
                 $random = new Cuid2;
 
                 // Generate a unique domain like main app services do
-                $generated_fqdn = generateFqdn(server: $server, random: $random, parserVersion: $this->preview->application->compose_parsing_version);
+                $generated_fqdn = generateUrl(server: $server, random: $random);
 
                 $preview_fqdn = str_replace('{{random}}', $random, $template);
                 $preview_fqdn = str_replace('{{domain}}', str($generated_fqdn)->after('://'), $preview_fqdn);
@@ -72,10 +72,13 @@ class PreviewsCompose extends Component
                 $template = $this->preview->application->preview_url_template;
                 $host = $url->getHost();
                 $schema = $url->getScheme();
+                $portInt = $url->getPort();
+                $port = $portInt !== null ? ':'.$portInt : '';
                 $random = new Cuid2;
                 $preview_fqdn = str_replace('{{random}}', $random, $template);
                 $preview_fqdn = str_replace('{{domain}}', $host, $preview_fqdn);
                 $preview_fqdn = str_replace('{{pr_id}}', $this->preview->pull_request_id, $preview_fqdn);
+                $preview_fqdn = str_replace('{{port}}', $port, $preview_fqdn);
                 $preview_fqdn = "$schema://$preview_fqdn";
             }
 

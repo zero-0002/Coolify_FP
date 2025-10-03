@@ -3,12 +3,10 @@
         @foreach ($resource->persistentStorages as $storage)
             @if ($resource->type() === 'service')
                 <livewire:project.shared.storages.show wire:key="storage-{{ $storage->id }}" :storage="$storage"
-                    :resource="$resource" :isFirst="$loop->first" isReadOnly='true' isService='true' />
+                    :resource="$resource" :isFirst="$storage->id === $this->firstStorageId" isService='true' />
             @else
                 <livewire:project.shared.storages.show wire:key="storage-{{ $storage->id }}" :storage="$storage"
-                    :resource="$resource"
-                    isReadOnly="{{ data_get($storage, 'is_readonly') || $resource?->build_pack === 'dockercompose' ? true : false }}"
-                    startedAt="{{ data_get($resource, 'started_at') }}" />
+                    :resource="$resource" :isFirst="$storage->id === $this->firstStorageId" startedAt="{{ data_get($resource, 'started_at') }}" />
             @endif
         @endforeach
     </div>
