@@ -155,6 +155,15 @@ class Application extends BaseModel
             if ($application->isDirty('publish_directory')) {
                 $payload['publish_directory'] = str($application->publish_directory)->trim();
             }
+            if ($application->isDirty('git_repository')) {
+                $payload['git_repository'] = str($application->git_repository)->trim();
+            }
+            if ($application->isDirty('git_branch')) {
+                $payload['git_branch'] = str($application->git_branch)->trim();
+            }
+            if ($application->isDirty('git_commit_sha')) {
+                $payload['git_commit_sha'] = str($application->git_commit_sha)->trim();
+            }
             if ($application->isDirty('status')) {
                 $payload['last_online_at'] = now();
             }
@@ -730,9 +739,9 @@ class Application extends BaseModel
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->where('is_preview', false)
             ->orderByRaw("
-                CASE 
-                    WHEN LOWER(key) LIKE 'service_%' THEN 1
-                    WHEN is_required = true AND (value IS NULL OR value = '') THEN 2
+                CASE
+                    WHEN is_required = true THEN 1
+                    WHEN LOWER(key) LIKE 'service_%' THEN 2
                     ELSE 3
                 END,
                 LOWER(key) ASC
@@ -758,9 +767,9 @@ class Application extends BaseModel
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->where('is_preview', true)
             ->orderByRaw("
-                CASE 
-                    WHEN LOWER(key) LIKE 'service_%' THEN 1
-                    WHEN is_required = true AND (value IS NULL OR value = '') THEN 2
+                CASE
+                    WHEN is_required = true THEN 1
+                    WHEN LOWER(key) LIKE 'service_%' THEN 2
                     ELSE 3
                 END,
                 LOWER(key) ASC
