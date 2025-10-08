@@ -580,7 +580,7 @@ class DatabasesController extends Controller
         }
 
         // Only update database fields, not backup configuration
-        $database->update($request->all());
+        $database->update($request->only($allowedFields));
 
         if ($whatToDoWithDatabaseProxy === 'start') {
             StartDatabaseProxy::dispatch($database);
@@ -2173,7 +2173,7 @@ class DatabasesController extends Controller
                     properties: [
                         'executions' => new OA\Schema(
                             type: 'array',
-                            items: new OA\Schema(
+                            items: new OA\Items(
                                 type: 'object',
                                 properties: [
                                     'uuid' => ['type' => 'string'],

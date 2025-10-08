@@ -219,9 +219,9 @@ class GithubController extends Controller
                     schema: new OA\Schema(
                         type: 'object',
                         properties: [
-                            'repositories' => new OA\Items(
+                            'repositories' => new OA\Schema(
                                 type: 'array',
-                                items: new OA\Schema(type: 'object')
+                                items: new OA\Items(type: 'object')
                             ),
                         ]
                     )
@@ -335,9 +335,9 @@ class GithubController extends Controller
                     schema: new OA\Schema(
                         type: 'object',
                         properties: [
-                            'branches' => new OA\Items(
+                            'branches' => new OA\Schema(
                                 type: 'array',
-                                items: new OA\Schema(type: 'object')
+                                items: new OA\Items(type: 'object')
                             ),
                         ]
                     )
@@ -402,7 +402,7 @@ class GithubController extends Controller
         path: '/github-apps/{github_app_id}',
         operationId: 'updateGithubApp',
         security: [
-            ['api_token' => []],
+            ['bearerAuth' => []],
         ],
         tags: ['GitHub Apps'],
         summary: 'Update GitHub App',
@@ -581,7 +581,7 @@ class GithubController extends Controller
         path: '/github-apps/{github_app_id}',
         operationId: 'deleteGithubApp',
         security: [
-            ['api_token' => []],
+            ['bearerAuth' => []],
         ],
         tags: ['GitHub Apps'],
         summary: 'Delete GitHub App',
