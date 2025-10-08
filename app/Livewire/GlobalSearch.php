@@ -3,6 +3,8 @@
 namespace App\Livewire;
 
 use App\Models\Application;
+use App\Models\Environment;
+use App\Models\Project;
 use App\Models\Server;
 use App\Models\Service;
 use App\Models\StandaloneClickhouse;
@@ -26,12 +28,21 @@ class GlobalSearch extends Component
 
     public $allSearchableItems = [];
 
+    public $isCreateMode = false;
+
+    public $creatableItems = [];
+
+    public $autoOpenResource = null;
+
     public function mount()
     {
         $this->searchQuery = '';
         $this->isModalOpen = false;
         $this->searchResults = [];
         $this->allSearchableItems = [];
+        $this->isCreateMode = false;
+        $this->creatableItems = [];
+        $this->autoOpenResource = null;
     }
 
     public function openSearchModal()
@@ -60,7 +71,63 @@ class GlobalSearch extends Component
 
     public function updatedSearchQuery()
     {
-        $this->search();
+        $query = strtolower(trim($this->searchQuery));
+
+        if (str_starts_with($query, 'new')) {
+            $this->isCreateMode = true;
+            $this->loadCreatableItems();
+            $this->searchResults = [];
+
+            // Check for sub-commands like "new project", "new server", etc.
+            // Use original query (not trimmed) to ensure exact match without trailing spaces
+            $this->autoOpenResource = $this->detectSpecificResource(strtolower($this->searchQuery));
+        } else {
+            $this->isCreateMode = false;
+            $this->creatableItems = [];
+            $this->autoOpenResource = null;
+            $this->search();
+        }
+    }
+
+    private function detectSpecificResource(string $query): ?string
+    {
+        // Map of keywords to resource types - order matters for multi-word matches
+        $resourceMap = [
+            'new project' => 'project',
+            'new server' => 'server',
+            'new team' => 'team',
+            'new storage' => 'storage',
+            'new s3' => 'storage',
+            'new private key' => 'private-key',
+            'new privatekey' => 'private-key',
+            'new key' => 'private-key',
+            'new github' => 'source',
+            'new source' => 'source',
+            'new git' => 'source',
+        ];
+
+        foreach ($resourceMap as $command => $type) {
+            if ($query === $command) {
+                // Check if user has permission for this resource type
+                if ($this->canCreateResource($type)) {
+                    return $type;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function canCreateResource(string $type): bool
+    {
+        $user = auth()->user();
+
+        return match ($type) {
+            'project', 'source' => $user->can('createAnyResource'),
+            'server', 'storage', 'private-key' => $user->isAdmin() || $user->isOwner(),
+            'team' => true,
+            default => false,
+        };
     }
 
     private function loadSearchableItems()
@@ -335,11 +402,81 @@ class GlobalSearch extends Component
                     ];
                 });
 
+            // Get all projects
+            $projects = Project::ownedByCurrentTeam()
+                ->withCount(['environments', 'applications', 'services'])
+                ->get()
+                ->map(function ($project) {
+                    $resourceCount = $project->applications_count + $project->services_count;
+                    $resourceSummary = $resourceCount > 0
+                        ? "{$resourceCount} resource".($resourceCount !== 1 ? 's' : '')
+                        : 'No resources';
+
+                    return [
+                        'id' => $project->id,
+                        'name' => $project->name,
+                        'type' => 'project',
+                        'uuid' => $project->uuid,
+                        'description' => $project->description,
+                        'link' => $project->navigateTo(),
+                        'project' => null,
+                        'environment' => null,
+                        'resource_count' => $resourceSummary,
+                        'environment_count' => $project->environments_count,
+                        'search_text' => strtolower($project->name.' '.$project->description.' project'),
+                    ];
+                });
+
+            // Get all environments
+            $environments = Environment::query()
+                ->whereHas('project', function ($query) {
+                    $query->where('team_id', auth()->user()->currentTeam()->id);
+                })
+                ->with('project')
+                ->withCount(['applications', 'services'])
+                ->get()
+                ->map(function ($environment) {
+                    $resourceCount = $environment->applications_count + $environment->services_count;
+                    $resourceSummary = $resourceCount > 0
+                        ? "{$resourceCount} resource".($resourceCount !== 1 ? 's' : '')
+                        : 'No resources';
+
+                    // Build description with project context
+                    $descriptionParts = [];
+                    if ($environment->project) {
+                        $descriptionParts[] = "Project: {$environment->project->name}";
+                    }
+                    if ($environment->description) {
+                        $descriptionParts[] = $environment->description;
+                    }
+                    if (empty($descriptionParts)) {
+                        $descriptionParts[] = $resourceSummary;
+                    }
+
+                    return [
+                        'id' => $environment->id,
+                        'name' => $environment->name,
+                        'type' => 'environment',
+                        'uuid' => $environment->uuid,
+                        'description' => implode(' • ', $descriptionParts),
+                        'link' => route('project.resource.index', [
+                            'project_uuid' => $environment->project->uuid,
+                            'environment_uuid' => $environment->uuid,
+                        ]),
+                        'project' => $environment->project->name ?? null,
+                        'environment' => null,
+                        'resource_count' => $resourceSummary,
+                        'search_text' => strtolower($environment->name.' '.$environment->description.' '.$environment->project->name.' environment'),
+                    ];
+                });
+
             // Merge all collections
             $items = $items->merge($applications)
                 ->merge($services)
                 ->merge($databases)
-                ->merge($servers);
+                ->merge($servers)
+                ->merge($projects)
+                ->merge($environments);
 
             return $items->toArray();
         });
@@ -363,6 +500,72 @@ class GlobalSearch extends Component
             ->take(20)
             ->values()
             ->toArray();
+    }
+
+    private function loadCreatableItems()
+    {
+        $items = collect();
+        $user = auth()->user();
+
+        // Project - can be created if user has createAnyResource permission
+        if ($user->can('createAnyResource')) {
+            $items->push([
+                'name' => 'Project',
+                'description' => 'Create a new project to organize your resources',
+                'type' => 'project',
+                'component' => 'project.add-empty',
+            ]);
+        }
+
+        // Server - can be created if user is admin or owner
+        if ($user->isAdmin() || $user->isOwner()) {
+            $items->push([
+                'name' => 'Server',
+                'description' => 'Add a new server to deploy your applications',
+                'type' => 'server',
+                'component' => 'server.create',
+            ]);
+        }
+
+        // Team - can be created by anyone (they become owner of new team)
+        $items->push([
+            'name' => 'Team',
+            'description' => 'Create a new team to collaborate with others',
+            'type' => 'team',
+            'component' => 'team.create',
+        ]);
+
+        // Storage - can be created if user is admin or owner
+        if ($user->isAdmin() || $user->isOwner()) {
+            $items->push([
+                'name' => 'S3 Storage',
+                'description' => 'Add S3 storage for backups and file uploads',
+                'type' => 'storage',
+                'component' => 'storage.create',
+            ]);
+        }
+
+        // Private Key - can be created if user is admin or owner
+        if ($user->isAdmin() || $user->isOwner()) {
+            $items->push([
+                'name' => 'Private Key',
+                'description' => 'Add an SSH private key for server access',
+                'type' => 'private-key',
+                'component' => 'security.private-key.create',
+            ]);
+        }
+
+        // GitHub Source - can be created if user has createAnyResource permission
+        if ($user->can('createAnyResource')) {
+            $items->push([
+                'name' => 'GitHub App',
+                'description' => 'Connect a GitHub app for source control',
+                'type' => 'source',
+                'component' => 'source.github.create',
+            ]);
+        }
+
+        $this->creatableItems = $items->toArray();
     }
 
     public function render()
