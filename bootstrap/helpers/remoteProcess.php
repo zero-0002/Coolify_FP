@@ -121,6 +121,7 @@ function instant_remote_process_with_timeout(Collection|array $command, Server $
 function instant_remote_process(Collection|array $command, Server $server, bool $throwError = true, bool $no_sudo = false): ?string
 {
     $command = $command instanceof Collection ? $command->toArray() : $command;
+
     if ($server->isNonRoot() && ! $no_sudo) {
         $command = parseCommandsByLineForSudo(collect($command), $server);
     }
