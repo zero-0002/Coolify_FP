@@ -1005,6 +1005,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $this->skip_build = true;
                 $this->application_deployment_queue->addLogEntry("Image found ({$this->production_image_name}) with the same Git Commit SHA. Build step skipped.");
                 $this->generate_compose_file();
+
+                // Save runtime environment variables even when skipping build
+                $this->save_runtime_environment_variables();
+
                 $this->push_to_docker_registry();
                 $this->rolling_update();
 
@@ -1014,6 +1018,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $this->application_deployment_queue->addLogEntry("No configuration changed & image found ({$this->production_image_name}) with the same Git Commit SHA. Build step skipped.");
                 $this->skip_build = true;
                 $this->generate_compose_file();
+
+                // Save runtime environment variables even when skipping build
+                $this->save_runtime_environment_variables();
+
                 $this->push_to_docker_registry();
                 $this->rolling_update();
 
@@ -1694,7 +1702,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         }
     }
 
-    private function prepare_builder_image()
+    private function prepare_builder_image(bool $firstTry = true)
     {
         $this->checkForCancellation();
         $settings = instanceSettings();
@@ -1717,7 +1725,12 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $runCommand = "docker run -d --network {$this->destination->network} --name {$this->deployment_uuid} {$env_flags} --rm -v /var/run/docker.sock:/var/run/docker.sock {$helperImage}";
             }
         }
-        $this->application_deployment_queue->addLogEntry("Preparing container with helper image: $helperImage.");
+        if ($firstTry) {
+            $this->application_deployment_queue->addLogEntry("Preparing container with helper image: $helperImage");
+        } else {
+            $this->application_deployment_queue->addLogEntry('Preparing container with helper image with updated envs.');
+        }
+
         $this->graceful_shutdown_container($this->deployment_uuid);
         $this->execute_remote_command(
             [
@@ -1740,7 +1753,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->env_args = null;
 
         // Restart the helper container with updated environment variables (including actual SOURCE_COMMIT)
-        $this->prepare_builder_image();
+        $this->prepare_builder_image(firstTry: false);
     }
 
     private function deploy_to_additional_destinations()
@@ -1987,6 +2000,15 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 }
                 if ($this->nixpacks_type === 'elixir') {
                     $this->elixir_finetunes();
+                }
+                if ($this->nixpacks_type === 'node') {
+                    // Check if NIXPACKS_NODE_VERSION is set
+                    $variables = data_get($parsed, 'variables', []);
+                    if (! isset($variables['NIXPACKS_NODE_VERSION'])) {
+                        $this->application_deployment_queue->addLogEntry('----------------------------------------');
+                        $this->application_deployment_queue->addLogEntry('⚠️ NIXPACKS_NODE_VERSION not set. Nixpacks will use Node.js 18 by default, which is EOL.');
+                        $this->application_deployment_queue->addLogEntry('You can override this by setting NIXPACKS_NODE_VERSION=22 in your environment variables.');
+                    }
                 }
                 $this->nixpacks_plan = json_encode($parsed, JSON_PRETTY_PRINT);
                 $this->nixpacks_plan_json = collect($parsed);
