@@ -3,6 +3,7 @@
 namespace App\Livewire\Server\New;
 
 use App\Enums\ProxyTypes;
+use App\Models\CloudInitScript;
 use App\Models\CloudProviderToken;
 use App\Models\PrivateKey;
 use App\Models\Server;
@@ -62,14 +63,31 @@ class ByHetzner extends Component
 
     public bool $enable_ipv6 = true;
 
+    public ?string $cloud_init_script = null;
+
+    public bool $save_cloud_init_script = false;
+
+    public ?string $cloud_init_script_name = null;
+
+    public ?int $selected_cloud_init_script_id = null;
+
+    #[Locked]
+    public Collection $saved_cloud_init_scripts;
+
     public function mount()
     {
         $this->authorize('viewAny', CloudProviderToken::class);
         $this->loadTokens();
+        $this->loadSavedCloudInitScripts();
         $this->server_name = generate_random_name();
         if ($this->private_keys->count() > 0) {
             $this->private_key_id = $this->private_keys->first()->id;
         }
+    }
+
+    public function loadSavedCloudInitScripts()
+    {
+        $this->saved_cloud_init_scripts = CloudInitScript::ownedByCurrentTeam()->get();
     }
 
     public function getListeners()
@@ -85,6 +103,10 @@ class ByHetzner extends Component
     {
         $this->selected_token_id = null;
         $this->current_step = 1;
+        $this->cloud_init_script = null;
+        $this->save_cloud_init_script = false;
+        $this->cloud_init_script_name = null;
+        $this->selected_cloud_init_script_id = null;
     }
 
     public function loadTokens()
@@ -135,6 +157,10 @@ class ByHetzner extends Component
                 'selectedHetznerSshKeyIds.*' => 'integer',
                 'enable_ipv4' => 'required|boolean',
                 'enable_ipv6' => 'required|boolean',
+                'cloud_init_script' => ['nullable', 'string', new \App\Rules\ValidCloudInitYaml],
+                'save_cloud_init_script' => 'boolean',
+                'cloud_init_script_name' => 'nullable|string|max:255',
+                'selected_cloud_init_script_id' => 'nullable|integer|exists:cloud_init_scripts,id',
             ]);
         }
 
@@ -372,6 +398,23 @@ class ByHetzner extends Component
         ray('Image selected', $value);
     }
 
+    public function updatedSelectedCloudInitScriptId($value)
+    {
+        if ($value) {
+            $script = CloudInitScript::ownedByCurrentTeam()->findOrFail($value);
+            $this->cloud_init_script = $script->script;
+            $this->cloud_init_script_name = $script->name;
+        }
+    }
+
+    public function clearCloudInitScript()
+    {
+        $this->selected_cloud_init_script_id = null;
+        $this->cloud_init_script = '';
+        $this->cloud_init_script_name = '';
+        $this->save_cloud_init_script = false;
+    }
+
     private function createHetznerServer(string $token): array
     {
         $hetznerService = new HetznerService($token);
@@ -439,6 +482,11 @@ class ByHetzner extends Component
             ],
         ];
 
+        // Add cloud-init script if provided
+        if (! empty($this->cloud_init_script)) {
+            $params['user_data'] = $this->cloud_init_script;
+        }
+
         ray('Server creation parameters', $params);
 
         // Create server on Hetzner
@@ -458,6 +506,17 @@ class ByHetzner extends Component
 
             if (Team::serverLimitReached()) {
                 return $this->dispatch('error', 'You have reached the server limit for your subscription.');
+            }
+
+            // Save cloud-init script if requested
+            if ($this->save_cloud_init_script && ! empty($this->cloud_init_script) && ! empty($this->cloud_init_script_name)) {
+                $this->authorize('create', CloudInitScript::class);
+
+                CloudInitScript::create([
+                    'team_id' => currentTeam()->id,
+                    'name' => $this->cloud_init_script_name,
+                    'script' => $this->cloud_init_script,
+                ]);
             }
 
             $hetznerToken = $this->getHetznerToken();
