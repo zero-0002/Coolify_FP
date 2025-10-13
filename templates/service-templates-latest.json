@@ -1561,6 +1561,20 @@
         "minversion": "0.0.0",
         "port": "3000"
     },
+    "gotify": {
+        "documentation": "https://gotify.net/docs/install?utm_source=coolify.io",
+        "slogan": "Gotify is an open-source self-hosted notification server.",
+        "compose": "c2VydmljZXM6CiAgZ290aWZ5OgogICAgaW1hZ2U6ICdnb3RpZnkvc2VydmVyOjIuNy4zJwogICAgZW52aXJvbm1lbnQ6CiAgICAgIC0gU0VSVklDRV9VUkxfR09USUZZXzgwCiAgICAgIC0gJ0dPVElGWV9ERUZBVUxUVVNFUl9OQU1FPSR7R09USUZZX1VTRVJOQU1FOi1hZG1pbn0nCiAgICAgIC0gJ0dPVElGWV9ERUZBVUxUVVNFUl9QQVNTPSR7U0VSVklDRV9QQVNTV09SRF9HT1RJRll9JwogICAgICAtICdHT1RJRllfREFUQUJBU0VfRElBTEVDVD0ke0dPVElGWV9EQVRBQkFTRV9ESUFMRUNUOi1zcWxpdGUzfScKICAgICAgLSAnR09USUZZX0RBVEFCQVNFX0NPTk5FQ1RJT049JHtHT1RJRllfREFUQUJBU0VfQ09OTkVDVElPTjotZGF0YS9nb3RpZnkuZGJ9JwogICAgICAtICdHT1RJRllfUEFTU1NUUkVOR1RIPSR7R09USUZZX1BBU1NTVFJFTkdUSDotMTB9JwogICAgICAtICdHT1RJRllfVVBMT0FERURJTUFHRVNESVI9JHtHT1RJRllfVVBMT0FERURJTUFHRVNESVI6LWRhdGEvaW1hZ2VzfScKICAgICAgLSAnR09USUZZX1BMVUdJTlNESVI9JHtHT1RJRllfUExVR0lOU0RJUjotZGF0YS9wbHVnaW5zfScKICAgICAgLSAnR09USUZZX1NFUlZFUl9QT1JUPSR7R09USUZZX1NFUlZFUl9QT1JUOi04MH0nCiAgICAgIC0gJ0dPVElGWV9SRUdJU1RSQVRJT049JHtHT1RJRllfUkVHSVNUUkFUSU9OOi1mYWxzZX0nCiAgICB2b2x1bWVzOgogICAgICAtICdnb3RpZnktZGF0YTovYXBwL2RhdGEnCiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gY3VybAogICAgICAgIC0gJy1mJwogICAgICAgIC0gJ2h0dHA6Ly8xMjcuMC4wLjE6ODAvaGVhbHRoJwogICAgICBpbnRlcnZhbDogNXMKICAgICAgdGltZW91dDogMjBzCiAgICAgIHJldHJpZXM6IDEwCg==",
+        "tags": [
+            "productivity",
+            "notification",
+            "collaboration"
+        ],
+        "category": "productivity",
+        "logo": "svgs/gotify.png",
+        "minversion": "0.0.0",
+        "port": "80"
+    },
     "gowa": {
         "documentation": "https://github.com/aldinokemal/go-whatsapp-web-multidevice?utm_source=coolify.io",
         "slogan": "Golang WhatsApp - Built with Go for efficient memory use",
