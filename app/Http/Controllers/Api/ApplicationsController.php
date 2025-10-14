@@ -1512,9 +1512,32 @@ class ApplicationsController extends Controller
             if ($return instanceof \Illuminate\Http\JsonResponse) {
                 return $return;
             }
-            if (! $request->docker_registry_image_tag) {
-                $request->offsetSet('docker_registry_image_tag', 'latest');
+            // Process docker image name and tag for SHA256 digests
+            $dockerImageName = $request->docker_registry_image_name;
+            $dockerImageTag = $request->docker_registry_image_tag;
+
+            // Strip 'sha256:' prefix if user provided it in the tag
+            if ($dockerImageTag) {
+                $dockerImageTag = preg_replace('/^sha256:/i', '', trim($dockerImageTag));
             }
+
+            // Remove @sha256 from image name if user added it
+            if ($dockerImageName) {
+                $dockerImageName = preg_replace('/@sha256$/i', '', trim($dockerImageName));
+            }
+
+            // Check if tag is a valid SHA256 hash (64 hex characters)
+            $isSha256Hash = $dockerImageTag && preg_match('/^[a-f0-9]{64}$/i', $dockerImageTag);
+
+            // Append @sha256 to image name if using digest and not already present
+            if ($isSha256Hash && ! str_ends_with($dockerImageName, '@sha256')) {
+                $dockerImageName .= '@sha256';
+            }
+
+            // Set processed values back to request
+            $request->offsetSet('docker_registry_image_name', $dockerImageName);
+            $request->offsetSet('docker_registry_image_tag', $dockerImageTag ?: 'latest');
+
             $application = new Application;
             removeUnnecessaryFieldsFromRequest($request);
 
@@ -2469,7 +2492,7 @@ class ApplicationsController extends Controller
     )]
     public function update_env_by_uuid(Request $request)
     {
-        $allowedFields = ['key', 'value', 'is_preview', 'is_literal'];
+        $allowedFields = ['key', 'value', 'is_preview', 'is_literal', 'is_multiline', 'is_shown_once', 'is_runtime', 'is_buildtime'];
         $teamId = getTeamIdFromToken();
 
         if (is_null($teamId)) {
@@ -2497,6 +2520,8 @@ class ApplicationsController extends Controller
             'is_literal' => 'boolean',
             'is_multiline' => 'boolean',
             'is_shown_once' => 'boolean',
+            'is_runtime' => 'boolean',
+            'is_buildtime' => 'boolean',
         ]);
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
@@ -2692,7 +2717,7 @@ class ApplicationsController extends Controller
             ], 400);
         }
         $bulk_data = collect($bulk_data)->map(function ($item) {
-            return collect($item)->only(['key', 'value', 'is_preview',  'is_literal']);
+            return collect($item)->only(['key', 'value', 'is_preview', 'is_literal', 'is_multiline', 'is_shown_once', 'is_runtime', 'is_buildtime']);
         });
         $returnedEnvs = collect();
         foreach ($bulk_data as $item) {
@@ -2703,6 +2728,8 @@ class ApplicationsController extends Controller
                 'is_literal' => 'boolean',
                 'is_multiline' => 'boolean',
                 'is_shown_once' => 'boolean',
+                'is_runtime' => 'boolean',
+                'is_buildtime' => 'boolean',
             ]);
             if ($validator->fails()) {
                 return response()->json([
@@ -2862,7 +2889,7 @@ class ApplicationsController extends Controller
     )]
     public function create_env(Request $request)
     {
-        $allowedFields = ['key', 'value', 'is_preview',  'is_literal'];
+        $allowedFields = ['key', 'value', 'is_preview', 'is_literal', 'is_multiline', 'is_shown_once', 'is_runtime', 'is_buildtime'];
         $teamId = getTeamIdFromToken();
 
         if (is_null($teamId)) {
@@ -2885,6 +2912,8 @@ class ApplicationsController extends Controller
             'is_literal' => 'boolean',
             'is_multiline' => 'boolean',
             'is_shown_once' => 'boolean',
+            'is_runtime' => 'boolean',
+            'is_buildtime' => 'boolean',
         ]);
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
