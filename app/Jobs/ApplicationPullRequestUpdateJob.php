@@ -35,22 +35,23 @@ class ApplicationPullRequestUpdateJob implements ShouldBeEncrypted, ShouldQueue
             if ($this->application->is_public_repository()) {
                 return;
             }
+            $serviceName = $this->application->name;
+
             if ($this->status === ProcessStatus::CLOSED) {
                 $this->delete_comment();
 
                 return;
             } elseif ($this->status === ProcessStatus::IN_PROGRESS) {
-                $this->body = "The preview deployment is in progress. 🟡\n\n";
+                $this->body = "The preview deployment for **{$serviceName}** is in progress. 🟡\n\n";
             } elseif ($this->status === ProcessStatus::FINISHED) {
-                $this->body = "The preview deployment is ready. 🟢\n\n";
+                $this->body = "The preview deployment for **{$serviceName}** is ready. 🟢\n\n";
                 if ($this->preview->fqdn) {
                     $this->body .= "[Open Preview]({$this->preview->fqdn}) | ";
                 }
             } elseif ($this->status === ProcessStatus::ERROR) {
-                $this->body = "The preview deployment failed. 🔴\n\n";
+                $this->body = "The preview deployment for **{$serviceName}** failed. 🔴\n\n";
             }
             $this->build_logs_url = base_url()."/project/{$this->application->environment->project->uuid}/{$this->application->environment->name}/application/{$this->application->uuid}/deployment/{$this->deployment_uuid}";
-
             $this->body .= '[Open Build Logs]('.$this->build_logs_url.")\n\n\n";
             $this->body .= 'Last updated at: '.now()->toDateTimeString().' CET';
             if ($this->preview->pull_request_issue_comment_id) {
