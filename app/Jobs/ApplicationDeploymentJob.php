@@ -491,6 +491,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->generate_build_env_variables();
         $this->add_build_env_variables_to_dockerfile();
         $this->build_image();
+
+        // Save runtime environment variables AFTER the build
+        // This overwrites the build-time .env with ALL variables (build-time + runtime)
+        $this->save_runtime_environment_variables();
+
         $this->push_to_docker_registry();
         $this->rolling_update();
     }
@@ -2723,10 +2728,12 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     ]
                 );
             }
+            $publishDir = trim($this->application->publish_directory, '/');
+            $publishDir = $publishDir ? "/{$publishDir}" : '';
             $dockerfile = base64_encode("FROM {$this->application->static_image}
 WORKDIR /usr/share/nginx/html/
 LABEL coolify.deploymentId={$this->deployment_uuid}
-COPY --from=$this->build_image_name /app/{$this->application->publish_directory} .
+COPY --from=$this->build_image_name /app{$publishDir} .
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
             if (str($this->application->custom_nginx_configuration)->isNotEmpty()) {
                 $nginx_config = base64_encode($this->application->custom_nginx_configuration);
