@@ -35,7 +35,7 @@ class InstanceSettings extends Model
     protected static function booted(): void
     {
         static::updated(function ($settings) {
-            if ($settings->isDirty('helper_version')) {
+            if ($settings->wasChanged('helper_version')) {
                 Server::chunkById(100, function ($servers) {
                     foreach ($servers as $server) {
                         PullHelperImageJob::dispatch($server);
@@ -44,7 +44,7 @@ class InstanceSettings extends Model
             }
 
             // Clear trusted hosts cache when FQDN changes
-            if ($settings->isDirty('fqdn')) {
+            if ($settings->wasChanged('fqdn')) {
                 \Cache::forget('instance_settings_fqdn_host');
             }
         });
