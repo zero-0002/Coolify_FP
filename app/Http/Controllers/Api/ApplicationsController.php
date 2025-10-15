@@ -17,6 +17,7 @@ use App\Models\Server;
 use App\Models\Service;
 use App\Rules\ValidGitBranch;
 use App\Rules\ValidGitRepositoryUrl;
+use App\Services\DockerImageParser;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use OpenApi\Attributes as OA;
@@ -1512,9 +1513,33 @@ class ApplicationsController extends Controller
             if ($return instanceof \Illuminate\Http\JsonResponse) {
                 return $return;
             }
-            if (! $request->docker_registry_image_tag) {
-                $request->offsetSet('docker_registry_image_tag', 'latest');
+            // Process docker image name and tag using DockerImageParser
+            $dockerImageName = $request->docker_registry_image_name;
+            $dockerImageTag = $request->docker_registry_image_tag;
+
+            // Build the full Docker image string for parsing
+            if ($dockerImageTag) {
+                $dockerImageString = $dockerImageName.':'.$dockerImageTag;
+            } else {
+                $dockerImageString = $dockerImageName;
             }
+
+            // Parse using DockerImageParser to normalize the image reference
+            $parser = new DockerImageParser;
+            $parser->parse($dockerImageString);
+
+            // Get normalized image name and tag
+            $normalizedImageName = $parser->getFullImageNameWithoutTag();
+
+            // Append @sha256 to image name if using digest
+            if ($parser->isImageHash() && ! str_ends_with($normalizedImageName, '@sha256')) {
+                $normalizedImageName .= '@sha256';
+            }
+
+            // Set processed values back to request
+            $request->offsetSet('docker_registry_image_name', $normalizedImageName);
+            $request->offsetSet('docker_registry_image_tag', $parser->getTag());
+
             $application = new Application;
             removeUnnecessaryFieldsFromRequest($request);
 
@@ -2469,7 +2494,7 @@ class ApplicationsController extends Controller
     )]
     public function update_env_by_uuid(Request $request)
     {
-        $allowedFields = ['key', 'value', 'is_preview', 'is_literal'];
+        $allowedFields = ['key', 'value', 'is_preview', 'is_literal', 'is_multiline', 'is_shown_once', 'is_runtime', 'is_buildtime'];
         $teamId = getTeamIdFromToken();
 
         if (is_null($teamId)) {
@@ -2497,6 +2522,8 @@ class ApplicationsController extends Controller
             'is_literal' => 'boolean',
             'is_multiline' => 'boolean',
             'is_shown_once' => 'boolean',
+            'is_runtime' => 'boolean',
+            'is_buildtime' => 'boolean',
         ]);
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
@@ -2692,7 +2719,7 @@ class ApplicationsController extends Controller
             ], 400);
         }
         $bulk_data = collect($bulk_data)->map(function ($item) {
-            return collect($item)->only(['key', 'value', 'is_preview',  'is_literal']);
+            return collect($item)->only(['key', 'value', 'is_preview', 'is_literal', 'is_multiline', 'is_shown_once', 'is_runtime', 'is_buildtime']);
         });
         $returnedEnvs = collect();
         foreach ($bulk_data as $item) {
@@ -2703,6 +2730,8 @@ class ApplicationsController extends Controller
                 'is_literal' => 'boolean',
                 'is_multiline' => 'boolean',
                 'is_shown_once' => 'boolean',
+                'is_runtime' => 'boolean',
+                'is_buildtime' => 'boolean',
             ]);
             if ($validator->fails()) {
                 return response()->json([
@@ -2862,7 +2891,7 @@ class ApplicationsController extends Controller
     )]
     public function create_env(Request $request)
     {
-        $allowedFields = ['key', 'value', 'is_preview',  'is_literal'];
+        $allowedFields = ['key', 'value', 'is_preview', 'is_literal', 'is_multiline', 'is_shown_once', 'is_runtime', 'is_buildtime'];
         $teamId = getTeamIdFromToken();
 
         if (is_null($teamId)) {
@@ -2885,6 +2914,8 @@ class ApplicationsController extends Controller
             'is_literal' => 'boolean',
             'is_multiline' => 'boolean',
             'is_shown_once' => 'boolean',
+            'is_runtime' => 'boolean',
+            'is_buildtime' => 'boolean',
         ]);
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
