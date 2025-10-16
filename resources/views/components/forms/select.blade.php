@@ -11,8 +11,8 @@
         </label>
     @endif
     <select {{ $attributes->merge(['class' => $defaultClass]) }} @disabled($disabled) @required($required)
-        wire:dirty.class="dark:border-l-warning border-l-coollabs border-l-4" wire:loading.attr="disabled" name={{ $modelBinding }} id="{{ $htmlId }}"
-        @if ($attributes->whereStartsWith('wire:model')->first()) {{ $attributes->whereStartsWith('wire:model')->first() }} @else wire:model={{ $modelBinding }} @endif>
+        wire:loading.attr="disabled" name={{ $modelBinding }} id="{{ $htmlId }}"
+        @if ($attributes->whereStartsWith('wire:model')->first()) {{ $attributes->whereStartsWith('wire:model')->first() }} wire:dirty.class="dark:border-l-warning border-l-coollabs border-l-4" @else wire:model={{ $modelBinding }} wire:dirty.class="dark:border-l-warning border-l-coollabs border-l-4" @endif>
         {{ $slot }}
     </select>
     @error($modelBinding)
