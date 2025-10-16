@@ -28,7 +28,7 @@
             <input autocomplete="{{ $autocomplete }}" value="{{ $value }}"
                 {{ $attributes->merge(['class' => $defaultClass]) }} @required($required)
                 @if ($modelBinding !== 'null') wire:model={{ $modelBinding }} @endif
-                wire:dirty.class="dark:ring-warning ring-warning" wire:loading.attr="disabled"
+                wire:dirty.class="dark:border-l-warning border-l-coollabs border-l-4" wire:loading.attr="disabled"
                 type="{{ $type }}" @readonly($readonly) @disabled($disabled) id="{{ $htmlId }}"
                 name="{{ $name }}" placeholder="{{ $attributes->get('placeholder') }}"
                 aria-placeholder="{{ $attributes->get('placeholder') }}"
@@ -39,7 +39,7 @@
         <input autocomplete="{{ $autocomplete }}" @if ($value) value="{{ $value }}" @endif
             {{ $attributes->merge(['class' => $defaultClass]) }} @required($required) @readonly($readonly)
             @if ($modelBinding !== 'null') wire:model={{ $modelBinding }} @endif
-            wire:dirty.class="dark:ring-warning ring-warning" wire:loading.attr="disabled"
+            wire:dirty.class="dark:border-l-warning border-l-coollabs border-l-4" wire:loading.attr="disabled"
             type="{{ $type }}" @disabled($disabled) min="{{ $attributes->get('min') }}"
             max="{{ $attributes->get('max') }}" minlength="{{ $attributes->get('minlength') }}"
             maxlength="{{ $attributes->get('maxlength') }}"
