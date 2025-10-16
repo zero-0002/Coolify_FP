@@ -10,7 +10,7 @@ use Livewire\Component;
 
 class Dashboard extends Component
 {
-    public $projects = [];
+    public Collection $projects;
 
     public Collection $servers;
 
@@ -21,11 +21,6 @@ class Dashboard extends Component
         $this->privateKeys = PrivateKey::ownedByCurrentTeam()->get();
         $this->servers = Server::ownedByCurrentTeam()->get();
         $this->projects = Project::ownedByCurrentTeam()->get();
-    }
-
-    public function navigateToProject($projectUuid)
-    {
-        return $this->redirect(collect($this->projects)->firstWhere('uuid', $projectUuid)->navigateTo(), navigate: false);
     }
 
     public function render()

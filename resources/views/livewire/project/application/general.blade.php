@@ -90,12 +90,12 @@
             @if ($application->build_pack !== 'dockercompose')
                 <div class="flex items-end gap-2">
                     @if ($application->settings->is_container_label_readonly_enabled == false)
-                        <x-forms.input placeholder="https://coolify.io" wire:model.blur="application.fqdn"
+                        <x-forms.input placeholder="https://coolify.io" wire:model="application.fqdn"
                             label="Domains" readonly
                             helper="Readonly labels are disabled. You can set the domains in the labels section."
                             x-bind:disabled="!canUpdate" />
                     @else
-                        <x-forms.input placeholder="https://coolify.io" wire:model.blur="application.fqdn"
+                        <x-forms.input placeholder="https://coolify.io" wire:model="application.fqdn"
                             label="Domains"
                             helper="You can specify one domain with path or more with comma. You can specify a port to bind the domain to.<br><br><span class='text-helper'>Example</span><br>- http://app.coolify.io,https://cloud.coolify.io/dashboard<br>- http://app.coolify.io/api/v3<br>- http://app.coolify.io:3000 -> app.coolify.io will point to port 3000 inside the container. "
                             x-bind:disabled="!canUpdate" />
@@ -166,12 +166,14 @@
                         @if ($application->destination->server->isSwarm())
                             <x-forms.input required id="application.docker_registry_image_name" label="Docker Image"
                                 x-bind:disabled="!canUpdate" />
-                            <x-forms.input id="application.docker_registry_image_tag" label="Docker Image Tag"
+                            <x-forms.input id="application.docker_registry_image_tag" label="Docker Image Tag or Hash"
+                                helper="Enter a tag (e.g., 'latest', 'v1.2.3') or SHA256 hash (e.g., 'sha256-59e02939b1bf39f16c93138a28727aec520bb916da021180ae502c61626b3cf0')"
                                 x-bind:disabled="!canUpdate" />
                         @else
                             <x-forms.input id="application.docker_registry_image_name" label="Docker Image"
                                 x-bind:disabled="!canUpdate" />
-                            <x-forms.input id="application.docker_registry_image_tag" label="Docker Image Tag"
+                            <x-forms.input id="application.docker_registry_image_tag" label="Docker Image Tag or Hash"
+                                helper="Enter a tag (e.g., 'latest', 'v1.2.3') or SHA256 hash (e.g., 'sha256-59e02939b1bf39f16c93138a28727aec520bb916da021180ae502c61626b3cf0')"
                                 x-bind:disabled="!canUpdate" />
                         @endif
                     @else
