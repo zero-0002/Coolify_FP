@@ -1,0 +1,24 @@
+name: Cleanup Untagged GHCR Images
+
+on:
+  workflow_dispatch: # Allow manual trigger
+  schedule:
+    - cron: '0 */6 * * *' # Run every 6 hours to handle large volume (16k+ images)
+
+env:
+  GITHUB_REGISTRY: ghcr.io
+
+jobs:
+  cleanup-testing-host:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Delete untagged coolify-testing-host images
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'coolify-testing-host'
+          package-type: 'container'
+          min-versions-to-keep: 0
+          delete-only-untagged-versions: 'true'
