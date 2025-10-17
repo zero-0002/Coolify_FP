@@ -290,7 +290,7 @@ class ByHetzner extends Component
         }
     }
 
-    private function getCpuVendorInfo(array $serverType): string|null
+    private function getCpuVendorInfo(array $serverType): ?string
     {
         $name = strtolower($serverType['name'] ?? '');
 
