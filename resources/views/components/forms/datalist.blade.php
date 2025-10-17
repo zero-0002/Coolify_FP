@@ -16,7 +16,7 @@
         <div x-data="{
             open: false,
             search: '',
-            selected: @entangle($id).live,
+            selected: @entangle($modelBinding).live,
             options: [],
             filteredOptions: [],
         
@@ -98,12 +98,12 @@
 
             {{-- Unified Input Container with Tags Inside --}}
             <div @click="$refs.searchInput.focus()"
-                class="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto scrollbar py-1.5 w-full text-sm rounded-sm border-0 ring-1 ring-inset ring-neutral-200 dark:ring-coolgray-300 bg-white dark:bg-coolgray-100 cursor-text px-1 focus-within:ring-2 focus-within:ring-coollabs dark:focus-within:ring-warning text-black dark:text-white"
+                class="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto scrollbar py-1.5 w-full text-sm rounded-sm border-0 ring-2 ring-inset ring-neutral-200 dark:ring-coolgray-300 bg-white dark:bg-coolgray-100 cursor-text px-1 focus-within:border-l-4 focus-within:border-l-coollabs dark:focus-within:border-l-warning text-black dark:text-white"
                 :class="{
                     'opacity-50': {{ $disabled ? 'true' : 'false' }}
                 }"
                 wire:loading.class="opacity-50"
-                wire:dirty.class="dark:ring-warning ring-warning">
+                wire:dirty.class="dark:border-l-warning border-l-coollabs border-l-4">
 
                 {{-- Selected Tags Inside Input --}}
                 <template x-for="value in selected" :key="value">
@@ -161,7 +161,7 @@
 <div x-data="{
     open: false,
     search: '',
-    selected: @entangle(($attributes->whereStartsWith('wire:model')->first() ? $attributes->wire('model')->value() : $id)).live,
+    selected: @entangle(($attributes->whereStartsWith('wire:model')->first() ? $attributes->wire('model')->value() : $modelBinding)).live,
     options: [],
     filteredOptions: [],
 
@@ -229,12 +229,12 @@
 
     {{-- Input Container --}}
     <div @click="openDropdown()"
-        class="flex items-center gap-2 py-1.5 w-full text-sm rounded-sm border-0 ring-1 ring-inset ring-neutral-200 dark:ring-coolgray-300 bg-white dark:bg-coolgray-100 cursor-text focus-within:ring-2 focus-within:ring-coollabs dark:focus-within:ring-warning text-black dark:text-white"
+        class="flex items-center gap-2 py-1.5 w-full text-sm rounded-sm border-0 ring-2 ring-inset ring-neutral-200 dark:ring-coolgray-300 bg-white dark:bg-coolgray-100 cursor-text focus-within:border-l-4 focus-within:border-l-coollabs dark:focus-within:border-l-warning text-black dark:text-white"
         :class="{
             'opacity-50': {{ $disabled ? 'true' : 'false' }}
         }"
         wire:loading.class="opacity-50"
-        wire:dirty.class="dark:ring-warning ring-warning">
+        wire:dirty.class="dark:border-l-warning border-l-coollabs border-l-4">
 
         {{-- Display Selected Value or Search Input --}}
         <div class="flex-1 flex items-center min-w-0 px-1">
@@ -284,7 +284,7 @@
 </div>
 @endif
 
-@error($id)
+@error($modelBinding)
     <label class="label">
         <span class="text-red-500 label-text-alt">{{ $message }}</span>
     </label>
