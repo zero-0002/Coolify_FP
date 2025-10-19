@@ -3,7 +3,8 @@
 namespace App\Actions\Proxy;
 
 use App\Enums\ProxyTypes;
-use App\Events\ProxyStarted;
+use App\Events\ProxyStatusChanged;
+use App\Events\ProxyStatusChangedUI;
 use App\Models\Server;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Spatie\Activitylog\Models\Activity;
@@ -18,16 +19,22 @@ class StartProxy
         if ((is_null($proxyType) || $proxyType === 'NONE' || $server->proxy->force_stop || $server->isBuildServer()) && $force === false) {
             return 'OK';
         }
+        $server->proxy->set('status', 'starting');
+        $server->save();
+        $server->refresh();
+        ProxyStatusChangedUI::dispatch($server->team_id);
+
         $commands = collect([]);
         $proxy_path = $server->proxyPath();
-        $configuration = CheckConfiguration::run($server);
+        $configuration = GetProxyConfiguration::run($server);
         if (! $configuration) {
             throw new \Exception('Configuration is not synced');
         }
-        SaveConfiguration::run($server, $configuration);
+        SaveProxyConfiguration::run($server, $configuration);
         $docker_compose_yml_base64 = base64_encode($configuration);
         $server->proxy->last_applied_settings = str($docker_compose_yml_base64)->pipe('md5')->value();
         $server->save();
+
         if ($server->isSwarmManager()) {
             $commands = $commands->merge([
                 "mkdir -p $proxy_path/dynamic",
@@ -57,20 +64,20 @@ class StartProxy
                 "    echo 'Successfully stopped and removed existing coolify-proxy.'",
                 'fi',
                 "echo 'Starting coolify-proxy.'",
-                'docker compose up -d',
+                'docker compose up -d --wait --remove-orphans',
                 "echo 'Successfully started coolify-proxy.'",
             ]);
             $commands = $commands->merge(connectProxyToNetworks($server));
         }
 
         if ($async) {
-            return remote_process($commands, $server, callEventOnFinish: 'ProxyStarted', callEventData: $server);
+            return remote_process($commands, $server, callEventOnFinish: 'ProxyStatusChanged', callEventData: $server->id);
         } else {
             instant_remote_process($commands, $server);
-            $server->proxy->set('status', 'running');
+
             $server->proxy->set('type', $proxyType);
             $server->save();
-            ProxyStarted::dispatch($server);
+            ProxyStatusChanged::dispatch($server->id);
 
             return 'OK';
         }

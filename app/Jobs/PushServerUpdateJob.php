@@ -9,7 +9,6 @@ use App\Actions\Proxy\StartProxy;
 use App\Actions\Server\StartLogDrain;
 use App\Actions\Shared\ComplexStatusCheck;
 use App\Models\Application;
-use App\Models\ApplicationPreview;
 use App\Models\Server;
 use App\Models\ServiceApplication;
 use App\Models\ServiceDatabase;
@@ -22,8 +21,9 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
+use Laravel\Horizon\Contracts\Silenced;
 
-class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
+class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -65,13 +65,15 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
 
     public Collection $foundApplicationPreviewsIds;
 
+    public Collection $applicationContainerStatuses;
+
     public bool $foundProxy = false;
 
     public bool $foundLogDrainContainer = false;
 
     public function middleware(): array
     {
-        return [(new WithoutOverlapping($this->server->uuid))->dontRelease()];
+        return [(new WithoutOverlapping('push-server-update-'.$this->server->uuid))->expireAfter(30)->dontRelease()];
     }
 
     public function backoff(): int
@@ -87,6 +89,7 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
         $this->foundServiceApplicationIds = collect();
         $this->foundApplicationPreviewsIds = collect();
         $this->foundServiceDatabaseIds = collect();
+        $this->applicationContainerStatuses = collect();
         $this->allApplicationIds = collect();
         $this->allDatabaseUuids = collect();
         $this->allTcpProxyUuids = collect();
@@ -122,7 +125,9 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
         $this->allApplicationsWithAdditionalServers = $this->applications->filter(function ($application) {
             return $application->additional_servers->count() > 0;
         });
-        $this->allApplicationPreviewsIds = $this->previews->pluck('id');
+        $this->allApplicationPreviewsIds = $this->previews->map(function ($preview) {
+            return $preview->application_id.':'.$preview->pull_request_id;
+        });
         $this->allDatabaseUuids = $this->databases->pluck('uuid');
         $this->allTcpProxyUuids = $this->databases->where('is_public', true)->pluck('uuid');
         $this->services->each(function ($service) {
@@ -147,18 +152,26 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
                 }
                 if ($labels->has('coolify.applicationId')) {
                     $applicationId = $labels->get('coolify.applicationId');
-                    $pullRequestId = data_get($labels, 'coolify.pullRequestId', '0');
+                    $pullRequestId = $labels->get('coolify.pullRequestId', '0');
                     try {
                         if ($pullRequestId === '0') {
                             if ($this->allApplicationIds->contains($applicationId) && $this->isRunning($containerStatus)) {
                                 $this->foundApplicationIds->push($applicationId);
                             }
-                            $this->updateApplicationStatus($applicationId, $containerStatus);
-                        } else {
-                            if ($this->allApplicationPreviewsIds->contains($applicationId) && $this->isRunning($containerStatus)) {
-                                $this->foundApplicationPreviewsIds->push($applicationId);
+                            // Store container status for aggregation
+                            if (! $this->applicationContainerStatuses->has($applicationId)) {
+                                $this->applicationContainerStatuses->put($applicationId, collect());
                             }
-                            $this->updateApplicationPreviewStatus($applicationId, $containerStatus);
+                            $containerName = $labels->get('com.docker.compose.service');
+                            if ($containerName) {
+                                $this->applicationContainerStatuses->get($applicationId)->put($containerName, $containerStatus);
+                            }
+                        } else {
+                            $previewKey = $applicationId.':'.$pullRequestId;
+                            if ($this->allApplicationPreviewsIds->contains($previewKey) && $this->isRunning($containerStatus)) {
+                                $this->foundApplicationPreviewsIds->push($previewKey);
+                            }
+                            $this->updateApplicationPreviewStatus($applicationId, $pullRequestId, $containerStatus);
                         }
                     } catch (\Exception $e) {
                     }
@@ -202,7 +215,84 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
 
         $this->updateAdditionalServersStatus();
 
+        // Aggregate multi-container application statuses
+        $this->aggregateMultiContainerStatuses();
+
         $this->checkLogDrainContainer();
+    }
+
+    private function aggregateMultiContainerStatuses()
+    {
+        if ($this->applicationContainerStatuses->isEmpty()) {
+            return;
+        }
+
+        foreach ($this->applicationContainerStatuses as $applicationId => $containerStatuses) {
+            $application = $this->applications->where('id', $applicationId)->first();
+            if (! $application) {
+                continue;
+            }
+
+            // Parse docker compose to check for excluded containers
+            $dockerComposeRaw = data_get($application, 'docker_compose_raw');
+            $excludedContainers = collect();
+
+            if ($dockerComposeRaw) {
+                try {
+                    $dockerCompose = \Symfony\Component\Yaml\Yaml::parse($dockerComposeRaw);
+                    $services = data_get($dockerCompose, 'services', []);
+
+                    foreach ($services as $serviceName => $serviceConfig) {
+                        // Check if container should be excluded
+                        $excludeFromHc = data_get($serviceConfig, 'exclude_from_hc', false);
+                        $restartPolicy = data_get($serviceConfig, 'restart', 'always');
+
+                        if ($excludeFromHc || $restartPolicy === 'no') {
+                            $excludedContainers->push($serviceName);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    // If we can't parse, treat all containers as included
+                }
+            }
+
+            // Filter out excluded containers
+            $relevantStatuses = $containerStatuses->filter(function ($status, $containerName) use ($excludedContainers) {
+                return ! $excludedContainers->contains($containerName);
+            });
+
+            // If all containers are excluded, don't update status
+            if ($relevantStatuses->isEmpty()) {
+                continue;
+            }
+
+            // Aggregate status: if any container is running, app is running
+            $hasRunning = false;
+            $hasUnhealthy = false;
+
+            foreach ($relevantStatuses as $status) {
+                if (str($status)->contains('running')) {
+                    $hasRunning = true;
+                    if (str($status)->contains('unhealthy')) {
+                        $hasUnhealthy = true;
+                    }
+                }
+            }
+
+            $aggregatedStatus = null;
+            if ($hasRunning) {
+                $aggregatedStatus = $hasUnhealthy ? 'running (unhealthy)' : 'running (healthy)';
+            } else {
+                // All containers are exited
+                $aggregatedStatus = 'exited (unhealthy)';
+            }
+
+            // Update application status with aggregated result
+            if ($aggregatedStatus && $application->status !== $aggregatedStatus) {
+                $application->status = $aggregatedStatus;
+                $application->save();
+            }
+        }
     }
 
     private function updateApplicationStatus(string $applicationId, string $containerStatus)
@@ -211,18 +301,24 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
         if (! $application) {
             return;
         }
-        $application->status = $containerStatus;
-        $application->save();
+        if ($application->status !== $containerStatus) {
+            $application->status = $containerStatus;
+            $application->save();
+        }
     }
 
-    private function updateApplicationPreviewStatus(string $applicationId, string $containerStatus)
+    private function updateApplicationPreviewStatus(string $applicationId, string $pullRequestId, string $containerStatus)
     {
-        $application = $this->previews->where('id', $applicationId)->first();
+        $application = $this->previews->where('application_id', $applicationId)
+            ->where('pull_request_id', $pullRequestId)
+            ->first();
         if (! $application) {
             return;
         }
-        $application->status = $containerStatus;
-        $application->save();
+        if ($application->status !== $containerStatus) {
+            $application->status = $containerStatus;
+            $application->save();
+        }
     }
 
     private function updateNotFoundApplicationStatus()
@@ -232,8 +328,21 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
             $notFoundApplicationIds->each(function ($applicationId) {
                 $application = Application::find($applicationId);
                 if ($application) {
-                    $application->status = 'exited';
-                    $application->save();
+                    // Don't mark as exited if already exited
+                    if (str($application->status)->startsWith('exited')) {
+                        return;
+                    }
+
+                    // Only protection: Verify we received any container data at all
+                    // If containers collection is completely empty, Sentinel might have failed
+                    if ($this->containers->isEmpty()) {
+                        return;
+                    }
+
+                    if ($application->status !== 'exited') {
+                        $application->status = 'exited';
+                        $application->save();
+                    }
                 }
             });
         }
@@ -243,11 +352,36 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
     {
         $notFoundApplicationPreviewsIds = $this->allApplicationPreviewsIds->diff($this->foundApplicationPreviewsIds);
         if ($notFoundApplicationPreviewsIds->isNotEmpty()) {
-            $notFoundApplicationPreviewsIds->each(function ($applicationPreviewId) {
-                $applicationPreview = ApplicationPreview::find($applicationPreviewId);
+            $notFoundApplicationPreviewsIds->each(function ($previewKey) {
+                // Parse the previewKey format "application_id:pull_request_id"
+                $parts = explode(':', $previewKey);
+                if (count($parts) !== 2) {
+                    return;
+                }
+
+                $applicationId = $parts[0];
+                $pullRequestId = $parts[1];
+
+                $applicationPreview = $this->previews->where('application_id', $applicationId)
+                    ->where('pull_request_id', $pullRequestId)
+                    ->first();
+
                 if ($applicationPreview) {
-                    $applicationPreview->status = 'exited';
-                    $applicationPreview->save();
+                    // Don't mark as exited if already exited
+                    if (str($applicationPreview->status)->startsWith('exited')) {
+                        return;
+                    }
+
+                    // Only protection: Verify we received any container data at all
+                    // If containers collection is completely empty, Sentinel might have failed
+                    if ($this->containers->isEmpty()) {
+
+                        return;
+                    }
+                    if ($applicationPreview->status !== 'exited') {
+                        $applicationPreview->status = 'exited';
+                        $applicationPreview->save();
+                    }
                 }
             });
         }
@@ -260,7 +394,7 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
             if ($this->foundProxy === false) {
                 try {
                     if (CheckProxy::run($this->server)) {
-                        StartProxy::run($this->server, false);
+                        StartProxy::run($this->server, async: false);
                         $this->server->team?->notify(new ContainerRestarted('coolify-proxy', $this->server));
                     }
                 } catch (\Throwable $e) {
@@ -278,8 +412,10 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
         if (! $database) {
             return;
         }
-        $database->status = $containerStatus;
-        $database->save();
+        if ($database->status !== $containerStatus) {
+            $database->status = $containerStatus;
+            $database->save();
+        }
         if ($this->isRunning($containerStatus) && $tcpProxy) {
             $tcpProxyContainerFound = $this->containers->filter(function ($value, $key) use ($databaseUuid) {
                 return data_get($value, 'name') === "$databaseUuid-proxy" && data_get($value, 'state') === 'running';
@@ -299,8 +435,10 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
             $notFoundDatabaseUuids->each(function ($databaseUuid) {
                 $database = $this->databases->where('uuid', $databaseUuid)->first();
                 if ($database) {
-                    $database->status = 'exited';
-                    $database->save();
+                    if ($database->status !== 'exited') {
+                        $database->status = 'exited';
+                        $database->save();
+                    }
                     if ($database->is_public) {
                         StopDatabaseProxy::dispatch($database);
                     }
@@ -317,13 +455,20 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
         }
         if ($subType === 'application') {
             $application = $service->applications()->where('id', $subId)->first();
-            $application->status = $containerStatus;
-            $application->save();
+            if ($application) {
+                if ($application->status !== $containerStatus) {
+                    $application->status = $containerStatus;
+                    $application->save();
+                }
+            }
         } elseif ($subType === 'database') {
             $database = $service->databases()->where('id', $subId)->first();
-            $database->status = $containerStatus;
-            $database->save();
-        } else {
+            if ($database) {
+                if ($database->status !== $containerStatus) {
+                    $database->status = $containerStatus;
+                    $database->save();
+                }
+            }
         }
     }
 
@@ -335,8 +480,10 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
             $notFoundServiceApplicationIds->each(function ($serviceApplicationId) {
                 $application = ServiceApplication::find($serviceApplicationId);
                 if ($application) {
-                    $application->status = 'exited';
-                    $application->save();
+                    if ($application->status !== 'exited') {
+                        $application->status = 'exited';
+                        $application->save();
+                    }
                 }
             });
         }
@@ -344,8 +491,10 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue
             $notFoundServiceDatabaseIds->each(function ($serviceDatabaseId) {
                 $database = ServiceDatabase::find($serviceDatabaseId);
                 if ($database) {
-                    $database->status = 'exited';
-                    $database->save();
+                    if ($database->status !== 'exited') {
+                        $database->status = 'exited';
+                        $database->save();
+                    }
                 }
             });
         }

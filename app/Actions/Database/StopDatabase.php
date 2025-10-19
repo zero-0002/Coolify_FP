@@ -18,7 +18,7 @@ class StopDatabase
 {
     use AsAction;
 
-    public function handle(StandaloneRedis|StandalonePostgresql|StandaloneMongodb|StandaloneMysql|StandaloneMariadb|StandaloneKeydb|StandaloneDragonfly|StandaloneClickhouse $database, bool $isDeleteOperation = false, bool $dockerCleanup = true)
+    public function handle(StandaloneRedis|StandalonePostgresql|StandaloneMongodb|StandaloneMysql|StandaloneMariadb|StandaloneKeydb|StandaloneDragonfly|StandaloneClickhouse $database, bool $dockerCleanup = true)
     {
         try {
             $server = $database->destination->server;
@@ -27,10 +27,9 @@ class StopDatabase
             }
 
             $this->stopContainer($database, $database->uuid, 30);
-            if ($isDeleteOperation) {
-                if ($dockerCleanup) {
-                    CleanupDocker::dispatch($server, true);
-                }
+
+            if ($dockerCleanup) {
+                CleanupDocker::dispatch($server, false, false);
             }
 
             if ($database->is_public) {
@@ -50,7 +49,7 @@ class StopDatabase
     {
         $server = $database->destination->server;
         instant_remote_process(command: [
-            "docker stop --time=$timeout $containerName",
+            "docker stop --timeout=$timeout $containerName",
             "docker rm -f $containerName",
         ], server: $server, throwError: false);
     }

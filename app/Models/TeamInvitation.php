@@ -15,6 +15,14 @@ class TeamInvitation extends Model
         'via',
     ];
 
+    /**
+     * Set the email attribute to lowercase.
+     */
+    public function setEmailAttribute(string $value): void
+    {
+        $this->attributes['email'] = strtolower($value);
+    }
+
     public function team()
     {
         return $this->belongsTo(Team::class);
@@ -33,6 +41,10 @@ class TeamInvitation extends Model
             return true;
         } else {
             $this->delete();
+            $user = User::whereEmail($this->email)->first();
+            if (filled($user)) {
+                $user->deleteIfNotVerifiedAndForcePasswordReset();
+            }
 
             return false;
         }

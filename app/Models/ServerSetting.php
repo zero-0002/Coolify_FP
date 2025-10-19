@@ -28,6 +28,7 @@ use OpenApi\Attributes as OA;
         'is_sentinel_enabled' => ['type' => 'boolean'],
         'is_swarm_manager' => ['type' => 'boolean'],
         'is_swarm_worker' => ['type' => 'boolean'],
+        'is_terminal_enabled' => ['type' => 'boolean'],
         'is_usable' => ['type' => 'boolean'],
         'logdrain_axiom_api_key' => ['type' => 'string'],
         'logdrain_axiom_dataset_name' => ['type' => 'string'],
@@ -59,6 +60,7 @@ class ServerSetting extends Model
         'sentinel_token' => 'encrypted',
         'is_reachable' => 'boolean',
         'is_usable' => 'boolean',
+        'is_terminal_enabled' => 'boolean',
     ];
 
     protected static function booted()
@@ -77,11 +79,11 @@ class ServerSetting extends Model
         });
         static::updated(function ($settings) {
             if (
-                $settings->isDirty('sentinel_token') ||
-                $settings->isDirty('sentinel_custom_url') ||
-                $settings->isDirty('sentinel_metrics_refresh_rate_seconds') ||
-                $settings->isDirty('sentinel_metrics_history_days') ||
-                $settings->isDirty('sentinel_push_interval_seconds')
+                $settings->wasChanged('sentinel_token') ||
+                $settings->wasChanged('sentinel_custom_url') ||
+                $settings->wasChanged('sentinel_metrics_refresh_rate_seconds') ||
+                $settings->wasChanged('sentinel_metrics_history_days') ||
+                $settings->wasChanged('sentinel_push_interval_seconds')
             ) {
                 $settings->server->restartSentinel();
             }

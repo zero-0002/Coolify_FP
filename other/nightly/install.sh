@@ -20,7 +20,6 @@ DATE=$(date +"%Y%m%d-%H%M%S")
 
 OS_TYPE=$(grep -w "ID" /etc/os-release | cut -d "=" -f 2 | tr -d '"')
 ENV_FILE="/data/coolify/source/.env"
-VERSION="20"
 DOCKER_VERSION="27.0"
 # TODO: Ask for a user
 CURRENT_USER=$USER
@@ -32,7 +31,7 @@ fi
 
 echo -e "Welcome to Coolify Installer!"
 echo -e "This script will install everything for you. Sit back and relax."
-echo -e "Source code: https://github.com/coollabsio/coolify/blob/main/scripts/install.sh\n"
+echo -e "Source code: https://github.com/coollabsio/coolify/blob/v4.x/scripts/install.sh"
 
 # Predefined root user
 ROOT_USERNAME=${ROOT_USERNAME:-}
@@ -253,6 +252,11 @@ if [ "$OS_TYPE" = "endeavouros" ]; then
     OS_TYPE="arch"
 fi
 
+# Check if the OS is Cachy OS, if so, change it to arch
+if [ "$OS_TYPE" = "cachyos" ]; then
+    OS_TYPE="arch"
+fi
+
 # Check if the OS is Asahi Linux, if so, change it to fedora
 if [ "$OS_TYPE" = "fedora-asahi-remix" ]; then
     OS_TYPE="fedora"
@@ -438,7 +442,7 @@ fi
 if [ -x "$(command -v snap)" ]; then
     SNAP_DOCKER_INSTALLED=$(snap list docker >/dev/null 2>&1 && echo "true" || echo "false")
     if [ "$SNAP_DOCKER_INSTALLED" = "true" ]; then
-        echo " - Docker is installed via snap."
+        echo "Docker is installed via snap."
         echo "   Please note that Coolify does not support Docker installed via snap."
         echo "   Please remove Docker with snap (snap remove docker) and reexecute this script."
         exit 1
@@ -446,15 +450,45 @@ if [ -x "$(command -v snap)" ]; then
 fi
 
 install_docker() {
+    set +e
     curl -s https://releases.rancher.com/install-docker/${DOCKER_VERSION}.sh | sh 2>&1 || true
     if ! [ -x "$(command -v docker)" ]; then
         curl -s https://get.docker.com | sh -s -- --version ${DOCKER_VERSION} 2>&1
         if ! [ -x "$(command -v docker)" ]; then
-            echo " - Docker installation failed."
-            echo "   Maybe your OS is not supported?"
-            echo " - Please visit https://docs.docker.com/engine/install/ and install Docker manually to continue."
-            exit 1
+            echo "Automated Docker installation failed. Trying manual installation."
+            install_docker_manually
         fi
+    fi
+    set -e
+}
+
+install_docker_manually() {
+    case "$OS_TYPE" in
+    "ubuntu" | "debian" | "raspbian")
+        apt-get update
+        apt-get install -y ca-certificates curl
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/$OS_TYPE/gpg -o /etc/apt/keyrings/docker.asc
+        chmod a+r /etc/apt/keyrings/docker.asc
+
+        # Add the repository to Apt sources
+        echo \
+            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/$OS_TYPE \
+                  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" |
+            tee /etc/apt/sources.list.d/docker.list
+        apt-get update
+        apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+        ;;
+    *)
+        exit 1
+        ;;
+    esac
+    if ! [ -x "$(command -v docker)" ]; then
+        echo "Docker installation failed."
+        echo "   Please visit https://docs.docker.com/engine/install/ and install Docker manually to continue."
+        exit 1
+    else
+        echo "Docker installed successfully."
     fi
 }
 echo -e "3. Check Docker Installation. "
@@ -522,34 +556,18 @@ if ! [ -x "$(command -v docker)" ]; then
         systemctl enable docker >/dev/null 2>&1
         ;;
     "ubuntu" | "debian" | "raspbian")
-        if [ "$OS_TYPE" = "ubuntu" ] && [ "$OS_VERSION" = "24.10" ]; then
-            echo " - Installing Docker for Ubuntu 24.10..."
-            apt-get update >/dev/null
-            apt-get install -y ca-certificates curl >/dev/null
-            install -m 0755 -d /etc/apt/keyrings
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-            chmod a+r /etc/apt/keyrings/docker.asc
-
-            # Add the repository to Apt sources
-            echo \
-                "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-                  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" |
-                tee /etc/apt/sources.list.d/docker.list >/dev/null
-            apt-get update >/dev/null
-            apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null
-
-            if ! [ -x "$(command -v docker)" ]; then
-                echo " - Docker installation failed."
-                echo "   Please visit https://docs.docker.com/engine/install/ubuntu/ and install Docker manually to continue."
-                exit 1
-            fi
-            echo " - Docker installed successfully for Ubuntu 24.10."
-        else
-            install_docker
+        install_docker
+        if ! [ -x "$(command -v docker)" ]; then
+            echo " - Automated Docker installation failed. Trying manual installation."
+            install_docker_manually
         fi
         ;;
     *)
         install_docker
+        if ! [ -x "$(command -v docker)" ]; then
+            echo " - Automated Docker installation failed. Trying manual installation."
+            install_docker_manually
+        fi
         ;;
     esac
     echo " - Docker installed successfully."
@@ -692,84 +710,80 @@ curl -fsSL $CDN/docker-compose.prod.yml -o /data/coolify/source/docker-compose.p
 curl -fsSL $CDN/.env.production -o /data/coolify/source/.env.production
 curl -fsSL $CDN/upgrade.sh -o /data/coolify/source/upgrade.sh
 
-echo -e "6. Make backup of .env to .env-$DATE"
+echo -e "6. Setting up environment variable file"
 
-# Copy .env.example if .env does not exist
-if [ -f $ENV_FILE ]; then
-    cp $ENV_FILE $ENV_FILE-$DATE
+if [ -f "$ENV_FILE" ]; then
+    # If .env exists, create backup
+    echo " - Creating backup of existing .env file to .env-$DATE"
+    cp "$ENV_FILE" "$ENV_FILE-$DATE"
+    # Merge .env.production values into .env
+    echo " - Merging .env.production values into .env"
+    awk -F '=' '!seen[$1]++' "$ENV_FILE" "/data/coolify/source/.env.production" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
+    echo " - .env file merged successfully"
 else
-    echo " - File does not exist: $ENV_FILE"
-    echo " - Copying .env.production to .env-$DATE"
-    cp /data/coolify/source/.env.production $ENV_FILE-$DATE
-    # Generate a secure APP_ID and APP_KEY
-    sed -i "s|^APP_ID=.*|APP_ID=$(openssl rand -hex 16)|" "$ENV_FILE-$DATE"
-    sed -i "s|^APP_KEY=.*|APP_KEY=base64:$(openssl rand -base64 32)|" "$ENV_FILE-$DATE"
-
-    # Generate a secure Postgres DB username and password
-    # Causes issues: database "random-user" does not exist
-    # sed -i "s|^DB_USERNAME=.*|DB_USERNAME=$(openssl rand -hex 16)|" "$ENV_FILE-$DATE"
-    sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=$(openssl rand -base64 32)|" "$ENV_FILE-$DATE"
-
-    # Generate a secure Redis password
-    sed -i "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=$(openssl rand -base64 32)|" "$ENV_FILE-$DATE"
-
-    # Generate secure Pusher credentials
-    sed -i "s|^PUSHER_APP_ID=.*|PUSHER_APP_ID=$(openssl rand -hex 32)|" "$ENV_FILE-$DATE"
-    sed -i "s|^PUSHER_APP_KEY=.*|PUSHER_APP_KEY=$(openssl rand -hex 32)|" "$ENV_FILE-$DATE"
-    sed -i "s|^PUSHER_APP_SECRET=.*|PUSHER_APP_SECRET=$(openssl rand -hex 32)|" "$ENV_FILE-$DATE"
+    # If no .env exists, copy .env.production to .env
+    echo " - No .env file found, copying .env.production to .env"
+    cp "/data/coolify/source/.env.production" "$ENV_FILE"
 fi
+
+echo -e "7. Checking and updating environment variables if necessary..."
+
+update_env_var() {
+    local key="$1"
+    local value="$2"
+
+    # If variable "key=" exists but has no value, update the value of the existing line
+    if grep -q "^${key}=$" "$ENV_FILE"; then
+        sed -i "s|^${key}=$|${key}=${value}|" "$ENV_FILE"
+        echo " - Updated value of ${key} as the current value was empty"
+    # If variable "key=" doesn't exist, append it to the file with value
+    elif ! grep -q "^${key}=" "$ENV_FILE"; then
+        printf '%s=%s\n' "$key" "$value" >>"$ENV_FILE"
+        echo " - Added ${key} and it's value as the variable was missing"
+    fi
+}
+
+update_env_var "APP_ID" "$(openssl rand -hex 16)"
+update_env_var "APP_KEY" "base64:$(openssl rand -base64 32)"
+# update_env_var "DB_USERNAME" "$(openssl rand -hex 16)" # Causes issues: database "random-user" does not exist
+update_env_var "DB_PASSWORD" "$(openssl rand -base64 32)"
+update_env_var "REDIS_PASSWORD" "$(openssl rand -base64 32)"
+update_env_var "PUSHER_APP_ID" "$(openssl rand -hex 32)"
+update_env_var "PUSHER_APP_KEY" "$(openssl rand -hex 32)"
+update_env_var "PUSHER_APP_SECRET" "$(openssl rand -hex 32)"
 
 # Add default root user credentials from environment variables
 if [ -n "$ROOT_USERNAME" ] && [ -n "$ROOT_USER_EMAIL" ] && [ -n "$ROOT_USER_PASSWORD" ]; then
-    if grep -q "^ROOT_USERNAME=" "$ENV_FILE-$DATE"; then
-        sed -i "s|^ROOT_USERNAME=.*|ROOT_USERNAME=$ROOT_USERNAME|" "$ENV_FILE-$DATE"
-    fi
-    if grep -q "^ROOT_USER_EMAIL=" "$ENV_FILE-$DATE"; then
-        sed -i "s|^ROOT_USER_EMAIL=.*|ROOT_USER_EMAIL=$ROOT_USER_EMAIL|" "$ENV_FILE-$DATE"
-    fi
-    if grep -q "^ROOT_USER_PASSWORD=" "$ENV_FILE-$DATE"; then
-        sed -i "s|^ROOT_USER_PASSWORD=.*|ROOT_USER_PASSWORD=$ROOT_USER_PASSWORD|" "$ENV_FILE-$DATE"
-    fi
+    echo " - Setting predefined root user credentials from environment"
+    update_env_var "ROOT_USERNAME" "$ROOT_USERNAME"
+    update_env_var "ROOT_USER_EMAIL" "$ROOT_USER_EMAIL"
+    update_env_var "ROOT_USER_PASSWORD" "$ROOT_USER_PASSWORD"
 fi
 
-# Add registry URL to .env file
 if [ -n "${REGISTRY_URL+x}" ]; then
     # Only update if REGISTRY_URL was explicitly provided
-    if grep -q "^REGISTRY_URL=" "$ENV_FILE-$DATE"; then
-        sed -i "s|^REGISTRY_URL=.*|REGISTRY_URL=$REGISTRY_URL|" "$ENV_FILE-$DATE"
-    else
-        echo "REGISTRY_URL=$REGISTRY_URL" >>"$ENV_FILE-$DATE"
-    fi
+    update_env_var "REGISTRY_URL" "$REGISTRY_URL"
 fi
-
-# Merge .env and .env.production. New values will be added to .env
-echo -e "7. Propagating .env with new values - if necessary."
-awk -F '=' '!seen[$1]++' "$ENV_FILE-$DATE" /data/coolify/source/.env.production >$ENV_FILE
 
 if [ "$AUTOUPDATE" = "false" ]; then
-    if ! grep -q "AUTOUPDATE=" /data/coolify/source/.env; then
-        echo "AUTOUPDATE=false" >>/data/coolify/source/.env
-    else
-        sed -i "s|AUTOUPDATE=.*|AUTOUPDATE=false|g" /data/coolify/source/.env
+    update_env_var "AUTOUPDATE" "false"
+fi
+
+if [ "$DOCKER_POOL_BASE_PROVIDED" = true ]; then
+    update_env_var "DOCKER_ADDRESS_POOL_BASE" "$DOCKER_ADDRESS_POOL_BASE"
+else
+    # Add with default value if missing
+    if ! grep -q "^DOCKER_ADDRESS_POOL_BASE=" "$ENV_FILE"; then
+        update_env_var "DOCKER_ADDRESS_POOL_BASE" "$DOCKER_ADDRESS_POOL_BASE"
     fi
 fi
 
-# Save Docker address pool configuration to .env file
-if ! grep -q "DOCKER_ADDRESS_POOL_BASE=" /data/coolify/source/.env; then
-    echo "DOCKER_ADDRESS_POOL_BASE=$DOCKER_ADDRESS_POOL_BASE" >>/data/coolify/source/.env
+if [ "$DOCKER_POOL_SIZE_PROVIDED" = true ]; then
+    update_env_var "DOCKER_ADDRESS_POOL_SIZE" "$DOCKER_ADDRESS_POOL_SIZE"
 else
-    # Only update if explicitly provided
-    if [ "$DOCKER_POOL_BASE_PROVIDED" = true ]; then
-        sed -i "s|DOCKER_ADDRESS_POOL_BASE=.*|DOCKER_ADDRESS_POOL_BASE=$DOCKER_ADDRESS_POOL_BASE|g" /data/coolify/source/.env
-    fi
-fi
-
-if ! grep -q "DOCKER_ADDRESS_POOL_SIZE=" /data/coolify/source/.env; then
-    echo "DOCKER_ADDRESS_POOL_SIZE=$DOCKER_ADDRESS_POOL_SIZE" >>/data/coolify/source/.env
-else
-    # Only update if explicitly provided
-    if [ "$DOCKER_POOL_SIZE_PROVIDED" = true ]; then
-        sed -i "s|DOCKER_ADDRESS_POOL_SIZE=.*|DOCKER_ADDRESS_POOL_SIZE=$DOCKER_ADDRESS_POOL_SIZE|g" /data/coolify/source/.env
+    # Add with default value if missing
+    if ! grep -q "^DOCKER_ADDRESS_POOL_SIZE=" "$ENV_FILE"; then
+        update_env_var "DOCKER_ADDRESS_POOL_SIZE" "$DOCKER_ADDRESS_POOL_SIZE"
     fi
 fi
 
@@ -787,6 +801,8 @@ set -e
 
 if [ "$IS_COOLIFY_VOLUME_EXISTS" -eq 0 ]; then
     echo " - Generating SSH key."
+    test -f /data/coolify/ssh/keys/id.$CURRENT_USER@host.docker.internal && rm -f /data/coolify/ssh/keys/id.$CURRENT_USER@host.docker.internal
+    test -f /data/coolify/ssh/keys/id.$CURRENT_USER@host.docker.internal.pub && rm -f /data/coolify/ssh/keys/id.$CURRENT_USER@host.docker.internal.pub
     ssh-keygen -t ed25519 -a 100 -f /data/coolify/ssh/keys/id.$CURRENT_USER@host.docker.internal -q -N "" -C coolify
     chown 9999 /data/coolify/ssh/keys/id.$CURRENT_USER@host.docker.internal
     sed -i "/coolify/d" ~/.ssh/authorized_keys
@@ -803,14 +819,13 @@ echo -e " - Please wait."
 getAJoke
 
 if [[ $- == *x* ]]; then
-    bash -x /data/coolify/source/upgrade.sh "${LATEST_VERSION:-latest}" "${LATEST_HELPER_VERSION:-latest}" "${REGISTRY_URL:-ghcr.io}"
+    bash -x /data/coolify/source/upgrade.sh "${LATEST_VERSION:-latest}" "${LATEST_HELPER_VERSION:-latest}" "${REGISTRY_URL:-ghcr.io}" "true"
 else
-    bash /data/coolify/source/upgrade.sh "${LATEST_VERSION:-latest}" "${LATEST_HELPER_VERSION:-latest}" "${REGISTRY_URL:-ghcr.io}"
+    bash /data/coolify/source/upgrade.sh "${LATEST_VERSION:-latest}" "${LATEST_HELPER_VERSION:-latest}" "${REGISTRY_URL:-ghcr.io}" "true"
 fi
 echo " - Coolify installed successfully."
-rm -f $ENV_FILE-$DATE
 
-echo " - Waiting for 20 seconds for Coolify (database migrations) to be ready."
+echo " - Waiting 20 seconds for Coolify database migrations to complete."
 getAJoke
 
 sleep 20
@@ -828,7 +843,7 @@ IPV6_PUBLIC_IP=$(curl -6s https://ifconfig.io || true)
 
 echo -e "\nYour instance is ready to use!\n"
 if [ -n "$IPV4_PUBLIC_IP" ]; then
-    echo -e "You can access Coolify through your Public IPV4: http://$(curl -4s https://ifconfig.io):8000"
+    echo -e "You can access Coolify through your Public IPV4: http://$IPV4_PUBLIC_IP:8000"
 fi
 if [ -n "$IPV6_PUBLIC_IP" ]; then
     echo -e "You can access Coolify through your Public IPv6: http://[$IPV6_PUBLIC_IP]:8000"
@@ -847,5 +862,5 @@ if [ -n "$PRIVATE_IPS" ]; then
         fi
     done
 fi
+
 echo -e "\nWARNING: It is highly recommended to backup your Environment variables file (/data/coolify/source/.env) to a safe location, outside of this server (e.g. into a Password Manager).\n"
-cp /data/coolify/source/.env /data/coolify/source/.env.backup

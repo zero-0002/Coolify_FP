@@ -4,11 +4,15 @@ namespace App\Livewire\Server;
 
 use App\Actions\Proxy\CheckProxy;
 use App\Actions\Proxy\StartProxy;
+use App\Events\ServerValidated;
 use App\Models\Server;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class ValidateAndInstall extends Component
 {
+    use AuthorizesRequests;
+
     public Server $server;
 
     public int $number_of_tries = 0;
@@ -27,8 +31,6 @@ class ValidateAndInstall extends Component
 
     public $docker_version = null;
 
-    public $proxy_started = false;
-
     public $error = null;
 
     public bool $ask = false;
@@ -39,7 +41,6 @@ class ValidateAndInstall extends Component
         'validateOS',
         'validateDockerEngine',
         'validateDockerVersion',
-        'startProxy',
         'refresh' => '$refresh',
     ];
 
@@ -50,7 +51,6 @@ class ValidateAndInstall extends Component
         $this->docker_installed = null;
         $this->docker_version = null;
         $this->docker_compose_installed = null;
-        $this->proxy_started = null;
         $this->error = null;
         $this->number_of_tries = $data;
         if (! $this->ask) {
@@ -64,27 +64,22 @@ class ValidateAndInstall extends Component
         $this->init();
     }
 
-    public function startProxy()
+    public function retry()
     {
-        try {
-            $shouldStart = CheckProxy::run($this->server);
-            if ($shouldStart) {
-                $proxy = StartProxy::run($this->server, false);
-                if ($proxy === 'OK') {
-                    $this->proxy_started = true;
-                } else {
-                    throw new \Exception('Proxy could not be started.');
-                }
-            } else {
-                $this->proxy_started = true;
-            }
-        } catch (\Throwable $e) {
-            return handleError($e, $this);
-        }
+        $this->authorize('update', $this->server);
+        $this->uptime = null;
+        $this->supported_os_type = null;
+        $this->docker_installed = null;
+        $this->docker_compose_installed = null;
+        $this->docker_version = null;
+        $this->error = null;
+        $this->number_of_tries = 0;
+        $this->init();
     }
 
     public function validateConnection()
     {
+        $this->authorize('update', $this->server);
         ['uptime' => $this->uptime, 'error' => $error] = $this->server->validateConnection();
         if (! $this->uptime) {
             $this->error = 'Server is not reachable. Please validate your configuration and connection.<br>Check this <a target="_blank" class="text-black underline dark:text-white" href="https://coolify.io/docs/knowledge-base/server/openssh">documentation</a> for further help. <br><br><div class="text-error">Error: '.$error.'</div>';
@@ -128,7 +123,7 @@ class ValidateAndInstall extends Component
                     if ($this->number_of_tries <= $this->max_tries) {
                         $activity = $this->server->installDocker();
                         $this->number_of_tries++;
-                        $this->dispatch('newActivityMonitor', $activity->id, 'init', $this->number_of_tries);
+                        $this->dispatch('activityMonitor', $activity->id, 'init', $this->number_of_tries);
                     }
 
                     return;
@@ -155,12 +150,21 @@ class ValidateAndInstall extends Component
         } else {
             $this->docker_version = $this->server->validateDockerEngineVersion();
             if ($this->docker_version) {
+                // Mark validation as complete
+                $this->server->update(['is_validating' => false]);
+
                 $this->dispatch('refreshServerShow');
                 $this->dispatch('refreshBoardingIndex');
-                $this->dispatch('success', 'Server validated.');
+                ServerValidated::dispatch($this->server->team_id, $this->server->uuid);
+                $this->dispatch('success', 'Server validated, proxy is starting in a moment.');
+                $proxyShouldRun = CheckProxy::run($this->server, true);
+                if (! $proxyShouldRun) {
+                    return;
+                }
+                StartProxy::dispatch($this->server);
             } else {
                 $requiredDockerVersion = str(config('constants.docker.minimum_required_version'))->before('.');
-                $this->error = 'Minimum Docker Engine version '.$requiredDockerVersion.' is not instaled. Please install Docker manually before continuing: <a target="_blank" class="underline" href="https://docs.docker.com/engine/install/#server">documentation</a>.';
+                $this->error = 'Minimum Docker Engine version '.$requiredDockerVersion.' is not installed. Please install Docker manually before continuing: <a target="_blank" class="underline" href="https://docs.docker.com/engine/install/#server">documentation</a>.';
                 $this->server->update([
                     'validation_logs' => $this->error,
                 ]);
@@ -172,7 +176,6 @@ class ValidateAndInstall extends Component
         if ($this->server->isBuildServer()) {
             return;
         }
-        $this->dispatch('startProxy');
     }
 
     public function render()

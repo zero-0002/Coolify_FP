@@ -18,10 +18,9 @@ class Index extends Component
 
     public function mount()
     {
-        if (! auth()->user()->isAdmin()) {
-            abort(403);
-        }
-        $this->servers = Server::isReachable()->get();
+        $this->servers = Server::isReachable()->get()->filter(function ($server) {
+            return $server->isTerminalEnabled();
+        });
     }
 
     public function loadContainers()
@@ -57,11 +56,15 @@ class Index extends Component
 
                 return null;
             })->filter();
-        });
+        })->sortBy('name');
     }
 
     public function updatedSelectedUuid()
     {
+        if ($this->selected_uuid === 'default') {
+            // When cleared to default, do nothing (no error message)
+            return;
+        }
         $this->connectToContainer();
     }
 

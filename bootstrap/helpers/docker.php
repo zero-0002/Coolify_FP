@@ -256,12 +256,12 @@ function generateServiceSpecificFqdns(ServiceApplication|Application $resource)
 
             if (str($MINIO_BROWSER_REDIRECT_URL->value ?? '')->isEmpty()) {
                 $MINIO_BROWSER_REDIRECT_URL->update([
-                    'value' => generateFqdn($server, 'console-'.$uuid, true),
+                    'value' => generateUrl(server: $server, random: 'console-'.$uuid, forceHttps: true),
                 ]);
             }
             if (str($MINIO_SERVER_URL->value ?? '')->isEmpty()) {
                 $MINIO_SERVER_URL->update([
-                    'value' => generateFqdn($server, 'minio-'.$uuid, true),
+                    'value' => generateUrl(server: $server, random: 'minio-'.$uuid, forceHttps: true),
                 ]);
             }
             $payload = collect([
@@ -279,12 +279,12 @@ function generateServiceSpecificFqdns(ServiceApplication|Application $resource)
 
             if (str($LOGTO_ENDPOINT->value ?? '')->isEmpty()) {
                 $LOGTO_ENDPOINT->update([
-                    'value' => generateFqdn($server, 'logto-'.$uuid),
+                    'value' => generateUrl(server: $server, random: 'logto-'.$uuid),
                 ]);
             }
             if (str($LOGTO_ADMIN_ENDPOINT->value ?? '')->isEmpty()) {
                 $LOGTO_ADMIN_ENDPOINT->update([
-                    'value' => generateFqdn($server, 'logto-admin-'.$uuid),
+                    'value' => generateUrl(server: $server, random: 'logto-admin-'.$uuid),
                 ]);
             }
             $payload = collect([
@@ -359,7 +359,9 @@ function fqdnLabelsForTraefik(string $uuid, Collection $domains, bool $is_force_
 {
     $labels = collect([]);
     $labels->push('traefik.enable=true');
-    $labels->push('traefik.http.middlewares.gzip.compress=true');
+    if ($is_gzip_enabled) {
+        $labels->push('traefik.http.middlewares.gzip.compress=true');
+    }
     $labels->push('traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https');
 
     $is_http_basic_auth_enabled = $is_http_basic_auth_enabled && $http_basic_auth_username !== null && $http_basic_auth_password !== null;
@@ -376,6 +378,16 @@ function fqdnLabelsForTraefik(string $uuid, Collection $domains, bool $is_force_
 
     if ($serviceLabels) {
         $middlewares_from_labels = $serviceLabels->map(function ($item) {
+            // Handle array values from YAML parsing (e.g., "traefik.enable: true" becomes an array)
+            if (is_array($item)) {
+                // Convert array to string format "key=value"
+                $key = collect($item)->keys()->first();
+                $value = collect($item)->values()->first();
+                $item = "$key=$value";
+            }
+            if (! is_string($item)) {
+                return null;
+            }
             if (preg_match('/traefik\.http\.middlewares\.(.*?)(\.|$)/', $item, $matches)) {
                 return $matches[1];
             }
@@ -724,11 +736,12 @@ function generateLabelsApplication(Application $application, ?ApplicationPreview
     return $labels->all();
 }
 
-function isDatabaseImage(?string $image = null)
+function isDatabaseImage(?string $image = null, ?array $serviceConfig = null)
 {
     if (is_null($image)) {
         return false;
     }
+
     $image = str($image);
     if ($image->contains(':')) {
         $image = str($image);
@@ -736,13 +749,170 @@ function isDatabaseImage(?string $image = null)
         $image = str($image)->append(':latest');
     }
     $imageName = $image->before(':');
+
+    // First check if it's a known database image
+    $isKnownDatabase = false;
     foreach (DATABASE_DOCKER_IMAGES as $database_docker_image) {
         if (str($imageName)->contains($database_docker_image)) {
-            return true;
+            $isKnownDatabase = true;
+            break;
         }
     }
 
-    return false;
+    // If no database pattern found, it's definitely not a database
+    if (! $isKnownDatabase) {
+        return false;
+    }
+
+    // If we have service configuration, use additional context to make better decisions
+    if (! is_null($serviceConfig)) {
+        return isDatabaseImageWithContext($imageName, $serviceConfig);
+    }
+
+    // Fallback to original behavior for backward compatibility
+    return $isKnownDatabase;
+}
+
+function isDatabaseImageWithContext(string $imageName, array $serviceConfig): bool
+{
+    // Known application images that contain database names but are not databases
+    $knownApplicationPatterns = [
+        // SuperTokens authentication
+        'supertokens/supertokens-mysql',
+        'supertokens/supertokens-postgresql',
+        'supertokens/supertokens-mongodb',
+        'registry.supertokens.io/supertokens/supertokens-mysql',
+        'registry.supertokens.io/supertokens/supertokens-postgresql',
+        'registry.supertokens.io/supertokens/supertokens-mongodb',
+        'registry.supertokens.io/supertokens',
+
+        // Analytics and BI tools
+        'metabase/metabase', // Uses databases but is not a database
+        'amancevice/superset', // Uses databases but is not a database
+        'nocodb/nocodb', // Uses databases but is not a database
+        'ghcr.io/umami-software/umami', // Web analytics with postgresql variant
+
+        // Secret management
+        'infisical/infisical', // Secret management with postgres variant
+
+        // Development tools
+        'postgrest/postgrest', // REST API for PostgreSQL
+        'supabase/postgres-meta', // PostgreSQL metadata API
+        'bluewaveuptime/uptime_redis', // Uptime monitoring with Redis
+    ];
+
+    foreach ($knownApplicationPatterns as $pattern) {
+        if (str($imageName)->contains($pattern)) {
+            return false;
+        }
+    }
+
+    // Check for database-like ports (common database ports indicate it's likely a database)
+    $databasePorts = ['3306', '5432', '27017', '6379', '8086', '9200', '7687', '8123'];
+    $ports = data_get($serviceConfig, 'ports', []);
+    $hasStandardDbPort = false;
+
+    if (is_array($ports)) {
+        foreach ($ports as $port) {
+            $portStr = is_string($port) ? $port : (string) $port;
+            foreach ($databasePorts as $dbPort) {
+                if (str($portStr)->contains($dbPort)) {
+                    $hasStandardDbPort = true;
+                    break 2;
+                }
+            }
+        }
+    }
+
+    // Check environment variables for database-specific patterns
+    $environment = data_get($serviceConfig, 'environment', []);
+    $hasDbEnvVars = false;
+    $hasAppEnvVars = false;
+
+    if (is_array($environment)) {
+        foreach ($environment as $env) {
+            $envStr = is_string($env) ? $env : (string) $env;
+            $envUpper = strtoupper($envStr);
+
+            // Database-specific environment variables
+            if (str($envUpper)->contains(['MYSQL_ROOT_PASSWORD', 'POSTGRES_PASSWORD', 'MONGO_INITDB_ROOT_PASSWORD', 'REDIS_PASSWORD'])) {
+                $hasDbEnvVars = true;
+            }
+
+            // Application-specific environment variables
+            if (str($envUpper)->contains(['SERVICE_FQDN', 'API_KEYS', 'APP_', 'APPLICATION_'])) {
+                $hasAppEnvVars = true;
+            }
+        }
+    }
+
+    // Check healthcheck patterns
+    $healthcheck = data_get($serviceConfig, 'healthcheck.test', []);
+    $hasDbHealthcheck = false;
+    $hasAppHealthcheck = false;
+
+    if (is_array($healthcheck)) {
+        $healthcheckStr = implode(' ', $healthcheck);
+    } else {
+        $healthcheckStr = is_string($healthcheck) ? $healthcheck : '';
+    }
+
+    if (! empty($healthcheckStr)) {
+        $healthcheckUpper = strtoupper($healthcheckStr);
+
+        // Database-specific healthcheck patterns
+        if (str($healthcheckUpper)->contains(['PG_ISREADY', 'MYSQLADMIN PING', 'MONGO', 'REDIS-CLI PING'])) {
+            $hasDbHealthcheck = true;
+        }
+
+        // Application-specific healthcheck patterns (HTTP endpoints)
+        if (str($healthcheckUpper)->contains(['CURL', 'WGET', 'HTTP://', 'HTTPS://', '/HEALTH', '/API/', '/HELLO'])) {
+            $hasAppHealthcheck = true;
+        }
+    }
+
+    // Check if service depends on other database services
+    $dependsOn = data_get($serviceConfig, 'depends_on', []);
+    $dependsOnDatabases = false;
+
+    if (is_array($dependsOn)) {
+        foreach ($dependsOn as $serviceName => $config) {
+            $serviceNameStr = is_string($serviceName) ? $serviceName : (string) $serviceName;
+            if (str($serviceNameStr)->contains(['mysql', 'postgres', 'mongo', 'redis', 'mariadb'])) {
+                $dependsOnDatabases = true;
+                break;
+            }
+        }
+    }
+
+    // Decision logic:
+    // 1. If it has app-specific patterns and depends on databases, it's likely an application
+    if ($hasAppEnvVars && $dependsOnDatabases) {
+        return false;
+    }
+
+    // 2. If it has HTTP healthchecks, it's likely an application
+    if ($hasAppHealthcheck) {
+        return false;
+    }
+
+    // 3. If it has standard database ports AND database healthchecks, it's likely a database
+    if ($hasStandardDbPort && $hasDbHealthcheck) {
+        return true;
+    }
+
+    // 4. If it has database environment variables, it's likely a database
+    if ($hasDbEnvVars) {
+        return true;
+    }
+
+    // 5. Default: if it depends on databases but doesn't have database characteristics, it's an application
+    if ($dependsOnDatabases) {
+        return false;
+    }
+
+    // 6. Fallback: assume it's a database if we can't determine otherwise
+    return true;
 }
 
 function convertDockerRunToCompose(?string $custom_docker_run_options = null)
@@ -933,19 +1103,18 @@ function getContainerLogs(Server $server, string $container_id, int $lines = 100
 {
     if ($server->isSwarm()) {
         $output = instant_remote_process([
-            "docker service logs -n {$lines} {$container_id}",
+            "docker service logs -n {$lines} {$container_id} 2>&1",
         ], $server);
     } else {
         $output = instant_remote_process([
-            "docker logs -n {$lines} {$container_id}",
+            "docker logs -n {$lines} {$container_id} 2>&1",
         ], $server);
     }
 
-    $output .= removeAnsiColors($output);
+    $output = removeAnsiColors($output);
 
     return $output;
 }
-
 function escapeEnvVariables($value)
 {
     $search = ['\\', "\r", "\t", "\x0", '"', "'"];
@@ -959,4 +1128,124 @@ function escapeDollarSign($value)
     $replace = ['$$'];
 
     return str_replace($search, $replace, $value);
+}
+
+/**
+ * Escape a value for use in a bash .env file that will be sourced with 'source' command
+ * Wraps the value in single quotes and escapes any single quotes within the value
+ *
+ * @param  string|null  $value  The value to escape
+ * @return string The escaped value wrapped in single quotes
+ */
+function escapeBashEnvValue(?string $value): string
+{
+    // Handle null or empty values
+    if ($value === null || $value === '') {
+        return "''";
+    }
+
+    // Replace single quotes with '\'' (end quote, escaped quote, start quote)
+    // This is the standard way to escape single quotes in bash single-quoted strings
+    $escaped = str_replace("'", "'\\''", $value);
+
+    // Wrap in single quotes
+    return "'{$escaped}'";
+}
+
+/**
+ * Escape a value for bash double-quoted strings (allows $VAR expansion)
+ *
+ * This function wraps values in double quotes while escaping special characters,
+ * but preserves valid bash variable references like $VAR and ${VAR}.
+ *
+ * @param  string|null  $value  The value to escape
+ * @return string The escaped value wrapped in double quotes
+ */
+function escapeBashDoubleQuoted(?string $value): string
+{
+    // Handle null or empty values
+    if ($value === null || $value === '') {
+        return '""';
+    }
+
+    // Step 1: Escape backslashes first (must be done before other escaping)
+    $escaped = str_replace('\\', '\\\\', $value);
+
+    // Step 2: Escape double quotes
+    $escaped = str_replace('"', '\\"', $escaped);
+
+    // Step 3: Escape backticks (command substitution)
+    $escaped = str_replace('`', '\\`', $escaped);
+
+    // Step 4: Escape invalid $ patterns while preserving valid variable references
+    // Valid patterns to keep:
+    //   - $VAR_NAME (alphanumeric + underscore, starting with letter or _)
+    //   - ${VAR_NAME} (brace expansion)
+    //   - $0-$9 (positional parameters)
+    // Invalid patterns to escape: $&, $#, $$, $*, $@, $!, $(, etc.
+
+    // Match $ followed by anything that's NOT a valid variable start
+    // Valid variable starts: letter, underscore, digit (for $0-$9), or open brace
+    $escaped = preg_replace(
+        '/\$(?![a-zA-Z_0-9{])/',
+        '\\\$',
+        $escaped
+    );
+
+    // Preserve pre-escaped dollars inside double quotes: turn \\$ back into \$
+    // (keeps tests like "path\\to\\file" intact while restoring \$ semantics)
+    $escaped = preg_replace('/\\\\(?=\$)/', '\\\\', $escaped);
+
+    // Wrap in double quotes
+    return "\"{$escaped}\"";
+}
+
+/**
+ * Generate Docker build arguments from environment variables collection
+ * Returns only keys (no values) since values are sourced from environment via export
+ *
+ * @param  \Illuminate\Support\Collection|array  $variables  Collection of variables with 'key', 'value', and optionally 'is_multiline'
+ * @return \Illuminate\Support\Collection Collection of formatted --build-arg strings (keys only)
+ */
+function generateDockerBuildArgs($variables): \Illuminate\Support\Collection
+{
+    $variables = collect($variables);
+
+    return $variables->map(function ($var) {
+        $key = is_array($var) ? data_get($var, 'key') : $var->key;
+
+        // Only return the key - Docker will get the value from the environment
+        return "--build-arg {$key}";
+    });
+}
+
+/**
+ * Generate Docker environment flags from environment variables collection
+ *
+ * @param  \Illuminate\Support\Collection|array  $variables  Collection of variables with 'key', 'value', and optionally 'is_multiline'
+ * @return string Space-separated environment flags
+ */
+function generateDockerEnvFlags($variables): string
+{
+    $variables = collect($variables);
+
+    return $variables
+        ->map(function ($var) {
+            $key = is_array($var) ? data_get($var, 'key') : $var->key;
+            $value = is_array($var) ? data_get($var, 'value') : $var->value;
+            $isMultiline = is_array($var) ? data_get($var, 'is_multiline', false) : ($var->is_multiline ?? false);
+
+            if ($isMultiline) {
+                // For multiline variables, strip surrounding quotes and escape for bash
+                $raw_value = trim($value, "'");
+                $escaped_value = str_replace(['\\', '"', '$', '`'], ['\\\\', '\\"', '\\$', '\\`'], $raw_value);
+
+                return "-e {$key}=\"{$escaped_value}\"";
+            }
+
+            $escaped_value = escapeshellarg($value);
+
+            return "-e {$key}={$escaped_value}";
+        })
+        ->implode(' ');
 }
