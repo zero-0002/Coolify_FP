@@ -1064,18 +1064,24 @@ class Application extends BaseModel
             $source_html_url_scheme = $url['scheme'];
 
             if ($this->source->getMorphClass() == 'App\Models\GithubApp') {
+                $escapedCustomRepository = escapeshellarg($customRepository);
                 if ($this->source->is_public) {
+                    $escapedRepoUrl = escapeshellarg("{$this->source->html_url}/{$customRepository}");
                     $fullRepoUrl = "{$this->source->html_url}/{$customRepository}";
-                    $base_command = "{$base_command} {$this->source->html_url}/{$customRepository}";
+                    $base_command = "{$base_command} {$escapedRepoUrl}";
                 } else {
                     $github_access_token = generateGithubInstallationToken($this->source);
 
                     if ($exec_in_docker) {
-                        $base_command = "{$base_command} $source_html_url_scheme://x-access-token:$github_access_token@$source_html_url_host/{$customRepository}.git";
-                        $fullRepoUrl = "$source_html_url_scheme://x-access-token:$github_access_token@$source_html_url_host/{$customRepository}.git";
+                        $repoUrl = "$source_html_url_scheme://x-access-token:$github_access_token@$source_html_url_host/{$customRepository}.git";
+                        $escapedRepoUrl = escapeshellarg($repoUrl);
+                        $base_command = "{$base_command} {$escapedRepoUrl}";
+                        $fullRepoUrl = $repoUrl;
                     } else {
-                        $base_command = "{$base_command} $source_html_url_scheme://x-access-token:$github_access_token@$source_html_url_host/{$customRepository}";
-                        $fullRepoUrl = "$source_html_url_scheme://x-access-token:$github_access_token@$source_html_url_host/{$customRepository}";
+                        $repoUrl = "$source_html_url_scheme://x-access-token:$github_access_token@$source_html_url_host/{$customRepository}";
+                        $escapedRepoUrl = escapeshellarg($repoUrl);
+                        $base_command = "{$base_command} {$escapedRepoUrl}";
+                        $fullRepoUrl = $repoUrl;
                     }
                 }
 
@@ -1100,7 +1106,10 @@ class Application extends BaseModel
                 throw new RuntimeException('Private key not found. Please add a private key to the application and try again.');
             }
             $private_key = base64_encode($private_key);
-            $base_comamnd = "GIT_SSH_COMMAND=\"ssh -o ConnectTimeout=30 -p {$customPort} -o Port={$customPort} -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa\" {$base_command} {$customRepository}";
+            // When used with executeInDocker (which uses bash -c '...'), we need to escape for bash context
+            // Replace ' with '\'' to safely escape within single-quoted bash strings
+            $escapedCustomRepository = str_replace("'", "'\\''", $customRepository);
+            $base_command = "GIT_SSH_COMMAND=\"ssh -o ConnectTimeout=30 -p {$customPort} -o Port={$customPort} -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa\" {$base_command} '{$escapedCustomRepository}'";
 
             if ($exec_in_docker) {
                 $commands = collect([
@@ -1117,9 +1126,9 @@ class Application extends BaseModel
             }
 
             if ($exec_in_docker) {
-                $commands->push(executeInDocker($deployment_uuid, $base_comamnd));
+                $commands->push(executeInDocker($deployment_uuid, $base_command));
             } else {
-                $commands->push($base_comamnd);
+                $commands->push($base_command);
             }
 
             return [
@@ -1795,7 +1804,22 @@ class Application extends BaseModel
     public function parseHealthcheckFromDockerfile($dockerfile, bool $isInit = false)
     {
         $dockerfile = str($dockerfile)->trim()->explode("\n");
-        if (str($dockerfile)->contains('HEALTHCHECK') && ($this->isHealthcheckDisabled() || $isInit)) {
+        $hasHealthcheck = str($dockerfile)->contains('HEALTHCHECK');
+
+        // Always check if healthcheck was removed, regardless of health_check_enabled setting
+        if (! $hasHealthcheck && $this->custom_healthcheck_found) {
+            // HEALTHCHECK was removed from Dockerfile, reset to defaults
+            $this->custom_healthcheck_found = false;
+            $this->health_check_interval = 5;
+            $this->health_check_timeout = 5;
+            $this->health_check_retries = 10;
+            $this->health_check_start_period = 5;
+            $this->save();
+
+            return;
+        }
+
+        if ($hasHealthcheck && ($this->isHealthcheckDisabled() || $isInit)) {
             $healthcheckCommand = null;
             $lines = $dockerfile->toArray();
             foreach ($lines as $line) {

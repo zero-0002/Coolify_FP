@@ -290,7 +290,7 @@ class ByHetzner extends Component
         }
     }
 
-    private function getCpuVendorInfo(array $serverType): string|null
+    private function getCpuVendorInfo(array $serverType): ?string
     {
         $name = strtolower($serverType['name'] ?? '');
 
@@ -299,9 +299,9 @@ class ByHetzner extends Component
         } elseif (str_starts_with($name, 'cpx')) {
             return 'AMD EPYC™';
         } elseif (str_starts_with($name, 'cx')) {
-            return 'Intel® Xeon®';
+            return 'Intel®/AMD';
         } elseif (str_starts_with($name, 'cax')) {
-            return 'Ampere® Altra®';
+            return 'Ampere®';
         }
 
         return null;
