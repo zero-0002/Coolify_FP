@@ -1730,6 +1730,25 @@
         "minversion": "0.0.0",
         "port": "7575"
     },
+    "home-assistant": {
+        "documentation": "https://www.home-assistant.io/installation/linux#docker-compose?utm_source=coolify.io",
+        "slogan": "Open source home automation that puts local control and privacy first.",
+        "compose": "c2VydmljZXM6CiAgaG9tZWFzc2lzdGFudDoKICAgIGltYWdlOiAnZ2hjci5pby9ob21lLWFzc2lzdGFudC9ob21lLWFzc2lzdGFudDoyMDI1LjEwLjInCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBTRVJWSUNFX0ZRRE5fSE9NRUFTU0lTVEFOVF84MTIzCiAgICAgIC0gJ1RaPSR7VFo6LVVUQ30nCiAgICAgIC0gJ0RJU0FCTEVfSkVNQUxMT0M9JHtESVNBQkxFX0pFTUFMTE9DOi1mYWxzZX0nCiAgICB2b2x1bWVzOgogICAgICAtICdob21lYXNzaXN0YW50LWNvbmZpZzovY29uZmlnJwogICAgICAtICcvcnVuL2RidXM6L3J1bi9kYnVzOnJvJwogICAgICAtCiAgICAgICAgdHlwZTogYmluZAogICAgICAgIHNvdXJjZTogLi9jb25maWd1cmF0aW9uLnlhbWwKICAgICAgICB0YXJnZXQ6IC9jb25maWcvY29uZmlndXJhdGlvbi55YW1sCiAgICAgICAgY29udGVudDogIiMgTG9hZHMgZGVmYXVsdCBzZXQgb2YgaW50ZWdyYXRpb25zLiBEbyBub3QgcmVtb3ZlLlxuZGVmYXVsdF9jb25maWc6XG5cbiMgQ29uZmlndXJhdGlvbiBmb3IgcmV2ZXJzZSBwcm94eSBzdXBwb3J0IChyZXF1aXJlZCBmb3IgQ29vbGlmeSlcbmh0dHA6XG4gIHVzZV94X2ZvcndhcmRlZF9mb3I6IHRydWVcbiAgdHJ1c3RlZF9wcm94aWVzOlxuICAgIC0gMTAuMC4wLjAvOFxuICAgIC0gMTcyLjE2LjAuMC8xMlxuICAgIC0gMTkyLjE2OC4wLjAvMTZcbiAgaXBfYmFuX2VuYWJsZWQ6IHRydWVcbiAgbG9naW5fYXR0ZW1wdHNfdGhyZXNob2xkOiA1IgogICAgcHJpdmlsZWdlZDogdHJ1ZQogICAgaGVhbHRoY2hlY2s6CiAgICAgIHRlc3Q6CiAgICAgICAgLSBDTUQKICAgICAgICAtIGN1cmwKICAgICAgICAtICctZicKICAgICAgICAtICdodHRwOi8vbG9jYWxob3N0OjgxMjMnCiAgICAgIGludGVydmFsOiAzMHMKICAgICAgdGltZW91dDogMTBzCiAgICAgIHJldHJpZXM6IDMKICAgICAgc3RhcnRfcGVyaW9kOiA2MHMK",
+        "tags": [
+            "home-automation",
+            "iot",
+            "smart-home",
+            "automation",
+            "domotics",
+            "mqtt",
+            "zigbee",
+            "zwave"
+        ],
+        "category": "automation",
+        "logo": "svgs/home-assistant.svg",
+        "minversion": "0.0.0",
+        "port": "8123"
+    },
     "homebox": {
         "documentation": "https://github.com/sysadminsmedia/homebox?utm_source=coolify.io",
         "slogan": "Homebox is the inventory and organization system built for the Home User.",
@@ -2439,6 +2458,23 @@
         "logo": "svgs/metabase.svg",
         "minversion": "0.0.0",
         "port": "3000"
+    },
+    "metamcp": {
+        "documentation": "https://github.com/metatool-ai/metamcp?utm_source=coolify.io",
+        "slogan": "MCP Aggregator, Orchestrator, Middleware, Gateway in one app",
+        "compose": "c2VydmljZXM6CiAgYXBwOgogICAgaW1hZ2U6ICdnaGNyLmlvL21ldGF0b29sLWFpL21ldGFtY3A6Mi40JwogICAgZW52aXJvbm1lbnQ6CiAgICAgIC0gU0VSVklDRV9GUUROX01FVEFNQ1BfMTIwMDgKICAgICAgLSAnUE9TVEdSRVNfSE9TVD0ke1BPU1RHUkVTX0hPU1Q6LXBvc3RncmVzfScKICAgICAgLSAnUE9TVEdSRVNfUE9SVD0ke1BPU1RHUkVTX1BPUlQ6LTU0MzJ9JwogICAgICAtICdQT1NUR1JFU19VU0VSPSR7U0VSVklDRV9VU0VSX1BPU1RHUkVTfScKICAgICAgLSAnUE9TVEdSRVNfUEFTU1dPUkQ9JHtTRVJWSUNFX1BBU1NXT1JEX1BPU1RHUkVTfScKICAgICAgLSAnUE9TVEdSRVNfREI9JHtQT1NUR1JFU19EQjotbWV0YW1jcF9kYn0nCiAgICAgIC0gJ0RBVEFCQVNFX1VSTD1wb3N0Z3Jlc3FsOi8vJHtTRVJWSUNFX1VTRVJfUE9TVEdSRVN9OiR7U0VSVklDRV9QQVNTV09SRF9QT1NUR1JFU31AJHtQT1NUR1JFU19IT1NUOi1wb3N0Z3Jlc306JHtQT1NUR1JFU19QT1JUOi01NDMyfS8ke1BPU1RHUkVTX0RCOi1tZXRhbWNwX2RifScKICAgICAgLSAnQVBQX1VSTD0ke1NFUlZJQ0VfRlFETl9NRVRBTUNQfScKICAgICAgLSAnTkVYVF9QVUJMSUNfQVBQX1VSTD0ke1NFUlZJQ0VfRlFETl9NRVRBTUNQfScKICAgICAgLSAnQkVUVEVSX0FVVEhfU0VDUkVUPSR7U0VSVklDRV9QQVNTV09SRF9BVVRIfScKICAgICAgLSAnVFJBTlNGT1JNX0xPQ0FMSE9TVF9UT19ET0NLRVJfSU5URVJOQUw9JHtUUkFOU0ZPUk1fTE9DQUxIT1NUX1RPX0RPQ0tFUl9JTlRFUk5BTDotdHJ1ZX0nCiAgICBkZXBlbmRzX29uOgogICAgICBwb3N0Z3JlczoKICAgICAgICBjb25kaXRpb246IHNlcnZpY2VfaGVhbHRoeQogICAgaGVhbHRoY2hlY2s6CiAgICAgIHRlc3Q6CiAgICAgICAgLSBDTUQKICAgICAgICAtIGN1cmwKICAgICAgICAtICctZicKICAgICAgICAtICdodHRwOi8vbG9jYWxob3N0OjEyMDA4L2hlYWx0aCcKICAgICAgaW50ZXJ2YWw6IDEwcwogICAgICB0aW1lb3V0OiA1cwogICAgICByZXRyaWVzOiA1CiAgcG9zdGdyZXM6CiAgICBpbWFnZTogJ3Bvc3RncmVzOjE2LWFscGluZScKICAgIGVudmlyb25tZW50OgogICAgICAtICdQT1NUR1JFU19EQj0ke1BPU1RHUkVTX0RCOi1tZXRhbWNwX2RifScKICAgICAgLSAnUE9TVEdSRVNfVVNFUj0ke1NFUlZJQ0VfVVNFUl9QT1NUR1JFU30nCiAgICAgIC0gJ1BPU1RHUkVTX1BBU1NXT1JEPSR7U0VSVklDRV9QQVNTV09SRF9QT1NUR1JFU30nCiAgICB2b2x1bWVzOgogICAgICAtICdwb3N0Z3Jlc19kYXRhOi92YXIvbGliL3Bvc3RncmVzcWwvZGF0YScKICAgIGhlYWx0aGNoZWNrOgogICAgICB0ZXN0OgogICAgICAgIC0gQ01ELVNIRUxMCiAgICAgICAgLSAncGdfaXNyZWFkeSAtVSAke1NFUlZJQ0VfVVNFUl9QT1NUR1JFU30gLWQgJHtQT1NUR1JFU19EQjotbWV0YW1jcF9kYn0nCiAgICAgIGludGVydmFsOiAxMHMKICAgICAgdGltZW91dDogNXMKICAgICAgcmV0cmllczogNQo=",
+        "tags": [
+            "mcp",
+            "ai",
+            "sse",
+            "aggregator",
+            "orchestrator",
+            "middleware"
+        ],
+        "category": "mcp",
+        "logo": "svgs/metamcp.png",
+        "minversion": "0.0.0",
+        "port": "12008"
     },
     "metube": {
         "documentation": "https://github.com/alexta69/metube?utm_source=coolify.io",
@@ -3218,38 +3254,6 @@
         "minversion": "0.0.0",
         "port": "80"
     },
-    "pingvinshare-with-clamav": {
-        "documentation": "https://github.com/stonith404/pingvin-share?utm_source=coolify.io",
-        "slogan": "A self-hosted file sharing platform that combines lightness and beauty, perfect for seamless and efficient file sharing.",
-        "compose": "c2VydmljZXM6CiAgcGluZ3ZpbnNoYXJlOgogICAgaW1hZ2U6IGdoY3IuaW8vc3Rvbml0aDQwNC9waW5ndmluLXNoYXJlCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBTRVJWSUNFX0ZRRE5fUElOR1ZJTlNIQVJFXzMwMDAKICAgICAgLSAnVFJVU1RfUFJPWFk9JHtUUlVTVF9QUk9YWTotdHJ1ZX0nCiAgICB2b2x1bWVzOgogICAgICAtICdwaW5ndmluc2hhcmVfZGF0YTovb3B0L2FwcC9iYWNrZW5kL2RhdGEnCiAgICAgIC0gJ3Bpbmd2aW5zaGFyZV9pbWFnZXM6L29wdC9hcHAvZnJvbnRlbmQvcHVibGljL2ltZycKICAgIGhlYWx0aGNoZWNrOgogICAgICB0ZXN0OgogICAgICAgIC0gQ01ELVNIRUxMCiAgICAgICAgLSAnd2dldCAtLXF1aWV0IC0tdHJpZXM9MSAtLXNwaWRlciBodHRwOi8vbG9jYWxob3N0OjMwMDAvYXBpL2hlYWx0aCB8fCBleGl0IDEnCiAgICAgIGludGVydmFsOiA1cwogICAgICB0aW1lb3V0OiAyMHMKICAgICAgcmV0cmllczogMTAKICAgIGRlcGVuZHNfb246CiAgICAgIGNsYW1hdjoKICAgICAgICBjb25kaXRpb246IHNlcnZpY2VfaGVhbHRoeQogIGNsYW1hdjoKICAgIGltYWdlOiBjbGFtYXYvY2xhbWF2CiAgICBwbGF0Zm9ybTogbGludXgvYW1kNjQK",
-        "tags": [
-            "self-hosted",
-            "file-sharing",
-            "files",
-            "cloud",
-            "sharing"
-        ],
-        "category": "storage",
-        "logo": "svgs/pingvinshare.svg",
-        "minversion": "0.0.0",
-        "port": "3000"
-    },
-    "pingvinshare": {
-        "documentation": "https://github.com/stonith404/pingvin-share?utm_source=coolify.io",
-        "slogan": "A self-hosted file sharing platform that combines lightness and beauty, perfect for seamless and efficient file sharing.",
-        "compose": "c2VydmljZXM6CiAgcGluZ3ZpbnNoYXJlOgogICAgaW1hZ2U6IGdoY3IuaW8vc3Rvbml0aDQwNC9waW5ndmluLXNoYXJlCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBTRVJWSUNFX0ZRRE5fUElOR1ZJTlNIQVJFXzMwMDAKICAgICAgLSAnVFJVU1RfUFJPWFk9JHtUUlVTVF9QUk9YWTotdHJ1ZX0nCiAgICB2b2x1bWVzOgogICAgICAtICdwaW5ndmluc2hhcmVfZGF0YTovb3B0L2FwcC9iYWNrZW5kL2RhdGEnCiAgICAgIC0gJ3Bpbmd2aW5zaGFyZV9pbWFnZXM6L29wdC9hcHAvZnJvbnRlbmQvcHVibGljL2ltZycKICAgIGhlYWx0aGNoZWNrOgogICAgICB0ZXN0OgogICAgICAgIC0gQ01ELVNIRUxMCiAgICAgICAgLSAnd2dldCAtLXF1aWV0IC0tdHJpZXM9MSAtLXNwaWRlciBodHRwOi8vbG9jYWxob3N0OjMwMDAvYXBpL2hlYWx0aCB8fCBleGl0IDEnCiAgICAgIGludGVydmFsOiA1cwogICAgICB0aW1lb3V0OiAyMHMKICAgICAgcmV0cmllczogMTAK",
-        "tags": [
-            "self-hosted",
-            "file-sharing",
-            "files",
-            "cloud",
-            "sharing"
-        ],
-        "category": "storage",
-        "logo": "svgs/pingvinshare.svg",
-        "minversion": "0.0.0",
-        "port": "3000"
-    },
     "plane": {
         "documentation": "https://docs.plane.so/self-hosting/methods/docker-compose?utm_source=coolify.io",
         "slogan": "The open source project management tool",
@@ -3301,6 +3305,45 @@
         "logo": "svgs/plunk.svg",
         "minversion": "0.0.0",
         "port": "3000"
+    },
+    "pocket-id-with-postgresql": {
+        "documentation": "https://pocket-id.org/docs/setup/installation?utm_source=coolify.io",
+        "slogan": "A simple and secure OIDC provider with passkey authentication",
+        "compose": "c2VydmljZXM6CiAgcG9ja2V0LWlkOgogICAgaW1hZ2U6ICdnaGNyLmlvL3BvY2tldC1pZC9wb2NrZXQtaWQ6djEuMTMnCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBTRVJWSUNFX0ZRRE5fUE9DS0VUSURfMTQxMQogICAgICAtICdBUFBfVVJMPSR7U0VSVklDRV9GUUROX1BPQ0tFVElEfScKICAgICAgLSAnVFJVU1RfUFJPWFk9JHtUUlVTVF9QUk9YWTotdHJ1ZX0nCiAgICAgIC0gREJfUFJPVklERVI9cG9zdGdyZXMKICAgICAgLSAnREJfQ09OTkVDVElPTl9TVFJJTkc9cG9zdGdyZXNxbDovLyR7U0VSVklDRV9VU0VSX1BPU1RHUkVTUUx9OiR7U0VSVklDRV9QQVNTV09SRF9QT1NUR1JFU1FMfUBwb3N0Z3Jlc3FsOjU0MzIvJHtQT1NUR1JFU19EQjotcG9ja2V0aWR9JwogICAgICAtICdFTkNSWVBUSU9OX0tFWT0ke1NFUlZJQ0VfUEFTU1dPUkRfNjRfUE9DS0VUSUR9JwogICAgICAtICdLRVlTX1NUT1JBR0U9JHtLRVlTX1NUT1JBR0U6LWRhdGFiYXNlfScKICAgICAgLSAnTUFYTUlORF9MSUNFTlNFX0tFWT0ke01BWE1JTkRfTElDRU5TRV9LRVl9JwogICAgICAtICdTTVRQX0hPU1Q9JHtTTVRQX0hPU1R9JwogICAgICAtICdTTVRQX1BPUlQ9JHtTTVRQX1BPUlQ6LTU4N30nCiAgICAgIC0gJ1NNVFBfRlJPTT0ke1NNVFBfRlJPTX0nCiAgICAgIC0gJ1NNVFBfVVNFUj0ke1NNVFBfVVNFUn0nCiAgICAgIC0gJ1NNVFBfUEFTU1dPUkQ9JHtTTVRQX1BBU1NXT1JEfScKICAgICAgLSAnU01UUF9UTFM9JHtTTVRQX1RMUzotc3RhcnR0bHN9JwogICAgICAtICdTTVRQX1NLSVBfQ0VSVF9WRVJJRlk9JHtTTVRQX1NLSVBfQ0VSVF9WRVJJRlk6LWZhbHNlfScKICAgICAgLSAnRU1BSUxfTE9HSU5fTk9USUZJQ0FUSU9OX0VOQUJMRUQ9JHtFTUFJTF9MT0dJTl9OT1RJRklDQVRJT05fRU5BQkxFRDotZmFsc2V9JwogICAgICAtICdFTUFJTF9PTkVfVElNRV9BQ0NFU1NfQVNfQURNSU5fRU5BQkxFRD0ke0VNQUlMX09ORV9USU1FX0FDQ0VTU19BU19BRE1JTl9FTkFCTEVEOi1mYWxzZX0nCiAgICAgIC0gJ0VNQUlMX0FQSV9LRVlfRVhQSVJBVElPTl9FTkFCTEVEPSR7RU1BSUxfQVBJX0tFWV9FWFBJUkFUSU9OX0VOQUJMRUQ6LWZhbHNlfScKICAgICAgLSAnUFVJRD0ke1BVSUQ6LTEwMDB9JwogICAgICAtICdQR0lEPSR7UEdJRDotMTAwMH0nCiAgICB2b2x1bWVzOgogICAgICAtICdwb2NrZXQtaWQtZGF0YTovYXBwL2RhdGEnCiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gL2FwcC9wb2NrZXQtaWQKICAgICAgICAtIGhlYWx0aGNoZWNrCiAgICAgIGludGVydmFsOiAzMHMKICAgICAgdGltZW91dDogNXMKICAgICAgcmV0cmllczogMwogICAgICBzdGFydF9wZXJpb2Q6IDEwcwogICAgZGVwZW5kc19vbjoKICAgICAgcG9zdGdyZXNxbDoKICAgICAgICBjb25kaXRpb246IHNlcnZpY2VfaGVhbHRoeQogIHBvc3RncmVzcWw6CiAgICBpbWFnZTogJ3Bvc3RncmVzOjE2LWFscGluZScKICAgIHZvbHVtZXM6CiAgICAgIC0gJ3BvY2tldC1pZC1wb3N0Z3Jlc3FsLWRhdGE6L3Zhci9saWIvcG9zdGdyZXNxbC9kYXRhJwogICAgZW52aXJvbm1lbnQ6CiAgICAgIC0gJ1BPU1RHUkVTX1VTRVI9JHtTRVJWSUNFX1VTRVJfUE9TVEdSRVNRTH0nCiAgICAgIC0gJ1BPU1RHUkVTX1BBU1NXT1JEPSR7U0VSVklDRV9QQVNTV09SRF9QT1NUR1JFU1FMfScKICAgICAgLSAnUE9TVEdSRVNfREI9JHtQT1NUR1JFU19EQjotcG9ja2V0aWR9JwogICAgaGVhbHRoY2hlY2s6CiAgICAgIHRlc3Q6CiAgICAgICAgLSBDTUQtU0hFTEwKICAgICAgICAtICdwZ19pc3JlYWR5IC1VICQke1BPU1RHUkVTX1VTRVJ9IC1kICQke1BPU1RHUkVTX0RCfScKICAgICAgaW50ZXJ2YWw6IDVzCiAgICAgIHRpbWVvdXQ6IDIwcwogICAgICByZXRyaWVzOiAxMAo=",
+        "tags": [
+            "identity",
+            "oidc",
+            "oauth",
+            "passkey",
+            "webauthn",
+            "authentication",
+            "sso",
+            "openid",
+            "postgresql"
+        ],
+        "category": "auth",
+        "logo": "svgs/pocketid-logo.png",
+        "minversion": "0.0.0",
+        "port": "1411"
+    },
+    "pocket-id": {
+        "documentation": "https://pocket-id.org/docs/setup/installation?utm_source=coolify.io",
+        "slogan": "A simple and secure OIDC provider with passkey authentication",
+        "compose": "c2VydmljZXM6CiAgcG9ja2V0LWlkOgogICAgaW1hZ2U6ICdnaGNyLmlvL3BvY2tldC1pZC9wb2NrZXQtaWQ6djEuMTMnCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBTRVJWSUNFX0ZRRE5fUE9DS0VUSURfMTQxMQogICAgICAtICdBUFBfVVJMPSR7U0VSVklDRV9GUUROX1BPQ0tFVElEfScKICAgICAgLSAnVFJVU1RfUFJPWFk9JHtUUlVTVF9QUk9YWTotdHJ1ZX0nCiAgICAgIC0gJ01BWE1JTkRfTElDRU5TRV9LRVk9JHtNQVhNSU5EX0xJQ0VOU0VfS0VZfScKICAgICAgLSAnU01UUF9IT1NUPSR7U01UUF9IT1NUfScKICAgICAgLSAnU01UUF9QT1JUPSR7U01UUF9QT1JUOi01ODd9JwogICAgICAtICdTTVRQX0ZST009JHtTTVRQX0ZST019JwogICAgICAtICdTTVRQX1VTRVI9JHtTTVRQX1VTRVJ9JwogICAgICAtICdTTVRQX1BBU1NXT1JEPSR7U01UUF9QQVNTV09SRH0nCiAgICAgIC0gJ1NNVFBfVExTPSR7U01UUF9UTFM6LXN0YXJ0dGxzfScKICAgICAgLSAnU01UUF9TS0lQX0NFUlRfVkVSSUZZPSR7U01UUF9TS0lQX0NFUlRfVkVSSUZZOi1mYWxzZX0nCiAgICAgIC0gJ0VNQUlMX0xPR0lOX05PVElGSUNBVElPTl9FTkFCTEVEPSR7RU1BSUxfTE9HSU5fTk9USUZJQ0FUSU9OX0VOQUJMRUQ6LWZhbHNlfScKICAgICAgLSAnRU1BSUxfT05FX1RJTUVfQUNDRVNTX0FTX0FETUlOX0VOQUJMRUQ9JHtFTUFJTF9PTkVfVElNRV9BQ0NFU1NfQVNfQURNSU5fRU5BQkxFRDotZmFsc2V9JwogICAgICAtICdFTUFJTF9BUElfS0VZX0VYUElSQVRJT05fRU5BQkxFRD0ke0VNQUlMX0FQSV9LRVlfRVhQSVJBVElPTl9FTkFCTEVEOi1mYWxzZX0nCiAgICAgIC0gJ1BVSUQ9JHtQVUlEOi0xMDAwfScKICAgICAgLSAnUEdJRD0ke1BHSUQ6LTEwMDB9JwogICAgdm9sdW1lczoKICAgICAgLSAncG9ja2V0LWlkLWRhdGE6L2FwcC9kYXRhJwogICAgaGVhbHRoY2hlY2s6CiAgICAgIHRlc3Q6CiAgICAgICAgLSBDTUQKICAgICAgICAtIC9hcHAvcG9ja2V0LWlkCiAgICAgICAgLSBoZWFsdGhjaGVjawogICAgICBpbnRlcnZhbDogMzBzCiAgICAgIHRpbWVvdXQ6IDVzCiAgICAgIHJldHJpZXM6IDMKICAgICAgc3RhcnRfcGVyaW9kOiAxMHMK",
+        "tags": [
+            "identity",
+            "oidc",
+            "oauth",
+            "passkey",
+            "webauthn",
+            "authentication",
+            "sso",
+            "openid"
+        ],
+        "category": "auth",
+        "logo": "svgs/pocketid-logo.png",
+        "minversion": "0.0.0",
+        "port": "1411"
     },
     "pocketbase": {
         "documentation": "https://pocketbase.io/docs/?utm_source=coolify.io",
@@ -3554,6 +3597,22 @@
         "minversion": "0.0.0",
         "port": "8000"
     },
+    "redis-insight": {
+        "documentation": "https://redis.io/docs/latest/operate/redisinsight/?utm_source=coolify.io",
+        "slogan": "Redis Insight lets you do both GUI- and CLI-based interactions in a fully-featured desktop GUI client.",
+        "compose": "c2VydmljZXM6CiAgcmVkaXNpbnNpZ2h0OgogICAgaW1hZ2U6ICdyZWRpcy9yZWRpc2luc2lnaHQ6Mi43MCcKICAgIGVudmlyb25tZW50OgogICAgICAtIFNFUlZJQ0VfRlFETl9SRURJU0lOU0lHSFRfNTU0MAogICAgICAtIFJJX0FQUF9IT1NUPTAuMC4wLjAKICAgICAgLSBSSV9BUFBfUE9SVD01NTQwCiAgICAgIC0gJ1JJX0VOQ1JZUFRJT05fS0VZPSR7U0VSVklDRV9QQVNTV09SRF9SSV9FTkNSWVBUSU9OX0tFWX0nCiAgICAgIC0gJ1JJX0xPR19MRVZFTD0ke1JJX0xPR19MRVZFTDotaW5mb30nCiAgICAgIC0gJ1JJX0ZJTEVTX0xPR0dFUj0ke1JJX0ZJTEVTX0xPR0dFUjotdHJ1ZX0nCiAgICAgIC0gJ1JJX1NURE9VVF9MT0dHRVI9JHtSSV9TVERPVVRfTE9HR0VSOi10cnVlfScKICAgIHZvbHVtZXM6CiAgICAgIC0gJ3JlZGlzX2luc2lnaHRfZGF0YTovZGF0YScKICAgIGhlYWx0aGNoZWNrOgogICAgICB0ZXN0OgogICAgICAgIC0gQ01ECiAgICAgICAgLSB3Z2V0CiAgICAgICAgLSAnLS1zcGlkZXInCiAgICAgICAgLSAnaHR0cDovL2xvY2FsaG9zdDo1NTQwJwogICAgICBpbnRlcnZhbDogMTBzCiAgICAgIHJldHJpZXM6IDMKICAgICAgdGltZW91dDogMTBzCiAgICAgIHN0YXJ0X3BlcmlvZDogMTBzCg==",
+        "tags": [
+            "redis",
+            "gui",
+            "database",
+            "monitoring",
+            "analytics"
+        ],
+        "category": "database,observability,developer-tools",
+        "logo": "svgs/redisinsight.png",
+        "minversion": "0.0.0",
+        "port": "5540"
+    },
     "redlib": {
         "documentation": "https://github.com/redlib-org/redlib?utm_source=coolify.io",
         "slogan": "An alternative private front-end to Reddit, with its origins in Libreddit.",
@@ -3566,6 +3625,23 @@
         "logo": "svgs/redlib.svg",
         "minversion": "0.0.0",
         "port": "8080"
+    },
+    "rivet-engine": {
+        "documentation": "https://www.rivet.dev/docs?utm_source=coolify.io",
+        "slogan": "Build and scale stateful workloads with long-lived processes",
+        "compose": "c2VydmljZXM6CiAgcml2ZXQtZW5naW5lOgogICAgaW1hZ2U6ICdyaXZldGtpdC9lbmdpbmU6MjUuOC4wJwogICAgZW52aXJvbm1lbnQ6CiAgICAgIC0gU0VSVklDRV9GUUROX1JJVkVUXzY0MjAKICAgICAgLSAnUklWRVRfX0FVVEhfX0FETUlOX1RPS0VOPSR7U0VSVklDRV9QQVNTV09SRF9SSVZFVH0nCiAgICAgIC0gJ1JJVkVUX19QT1NUR1JFU19fVVJMPXBvc3RncmVzcWw6Ly8kU0VSVklDRV9VU0VSX1BPU1RHUkVTUUw6JFNFUlZJQ0VfUEFTU1dPUkRfUE9TVEdSRVNRTEBwb3N0Z3Jlc3FsOjU0MzIvJHtQT1NUR1JFU1FMX0RBVEFCQVNFLXJpdmV0fScKICAgIGRlcGVuZHNfb246CiAgICAgIHBvc3RncmVzcWw6CiAgICAgICAgY29uZGl0aW9uOiBzZXJ2aWNlX2hlYWx0aHkKICAgIGhlYWx0aGNoZWNrOgogICAgICB0ZXN0OgogICAgICAgIC0gQ01ECiAgICAgICAgLSBjdXJsCiAgICAgICAgLSAnLWYnCiAgICAgICAgLSAnaHR0cDovLzEyNy4wLjAuMTo2NDIwL2hlYWx0aCcKICAgICAgaW50ZXJ2YWw6IDJzCiAgICAgIHRpbWVvdXQ6IDEwcwogICAgICByZXRyaWVzOiAxMAogICAgICBzdGFydF9wZXJpb2Q6IDMwcwogIHBvc3RncmVzcWw6CiAgICBpbWFnZTogJ3Bvc3RncmVzOjE3LWFscGluZScKICAgIHZvbHVtZXM6CiAgICAgIC0gJ3JpdmV0LXBvc3RncmVzcWwtZGF0YTovdmFyL2xpYi9wb3N0Z3Jlc3FsL2RhdGEnCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSAnUE9TVEdSRVNfVVNFUj0ke1NFUlZJQ0VfVVNFUl9QT1NUR1JFU1FMfScKICAgICAgLSAnUE9TVEdSRVNfUEFTU1dPUkQ9JHtTRVJWSUNFX1BBU1NXT1JEX1BPU1RHUkVTUUx9JwogICAgICAtICdQT1NUR1JFU19EQj0ke1BPU1RHUkVTUUxfREFUQUJBU0Utcml2ZXR9JwogICAgaGVhbHRoY2hlY2s6CiAgICAgIHRlc3Q6CiAgICAgICAgLSBDTUQtU0hFTEwKICAgICAgICAtICdwZ19pc3JlYWR5IC1VICQke1BPU1RHUkVTX1VTRVJ9IC1kICQke1BPU1RHUkVTX0RCfScKICAgICAgaW50ZXJ2YWw6IDVzCiAgICAgIHRpbWVvdXQ6IDIwcwogICAgICByZXRyaWVzOiAxMAo=",
+        "tags": [
+            "stateful",
+            "actors",
+            "realtime",
+            "backend",
+            "serverless",
+            "postgresql"
+        ],
+        "category": "development",
+        "logo": "svgs/rivet.svg",
+        "minversion": "0.0.0",
+        "port": "6420"
     },
     "rocketchat": {
         "documentation": "https://github.com/RocketChat/Rocket.Chat?utm_source=coolify.io",
@@ -3706,6 +3782,20 @@
         "minversion": "0.0.0",
         "port": "8080"
     },
+    "siyuan": {
+        "documentation": "https://github.com/siyuan-note/siyuan?utm_source=coolify.io",
+        "slogan": "A privacy-first, self-hosted, fully open source personal knowledge management software, written in typescript and golang.",
+        "compose": "c2VydmljZXM6CiAgc2l5dWFuOgogICAgaW1hZ2U6ICdiM2xvZy9zaXl1YW46djMuMy41JwogICAgdm9sdW1lczoKICAgICAgLSAnc2l5dWFuX3dvcmtzcGFjZTovc2l5dWFuL3dvcmtzcGFjZScKICAgIGVudmlyb25tZW50OgogICAgICAtIFNFUlZJQ0VfRlFETl9TSVlVQU5fNjgwNgogICAgICAtICdUWj0ke1RaOi1VVEN9JwogICAgICAtIFBVSUQ9MTAwMAogICAgICAtIFBHSUQ9MTAwMAogICAgICAtICdTSVlVQU5fQUNDRVNTX0FVVEhfQ09ERT0ke1NFUlZJQ0VfUEFTU1dPUkRfU0lZVUFOfScKICAgIGhlYWx0aGNoZWNrOgogICAgICB0ZXN0OgogICAgICAgIC0gQ01ECiAgICAgICAgLSB3Z2V0CiAgICAgICAgLSAnLS1zcGlkZXInCiAgICAgICAgLSAnLS1xdWlldCcKICAgICAgICAtICdodHRwOi8vMTI3LjAuMC4xOjY4MDYvYXBpL3N5c3RlbS92ZXJzaW9uJwogICAgICBpbnRlcnZhbDogMTVzCiAgICAgIHRpbWVvdXQ6IDEwcwogICAgICByZXRyaWVzOiA1CiAgICAgIHN0YXJ0X3BlcmlvZDogMjBzCg==",
+        "tags": [
+            "note-taking",
+            "markdown",
+            "pkm"
+        ],
+        "category": null,
+        "logo": "svgs/siyuan.svg",
+        "minversion": "0.0.0",
+        "port": "6806"
+    },
     "slash": {
         "documentation": "https://github.com/yourselfhosted/slash?utm_source=coolify.io",
         "slogan": "An open source, self-hosted links shortener and sharing platform.",
@@ -3768,6 +3858,23 @@
         "logo": "svgs/sonarr.svg",
         "minversion": "0.0.0",
         "port": "8989"
+    },
+    "sparkyfitness": {
+        "documentation": "https://codewithcj.github.io/SparkyFitness/?utm_source=coolify.io",
+        "slogan": "SparkyFitness is a comprehensive fitness tracking and management application designed to help users monitor their nutrition, exercise, and body measurements. It provides tools for daily progress tracking, goal setting, and insightful reports to support a healthy lifestyle.",
+        "compose": "c2VydmljZXM6CiAgc3Bhcmt5Zml0bmVzcy1mcm9udGVuZDoKICAgIGltYWdlOiAnY29kZXdpdGhjai9zcGFya3lmaXRuZXNzOnYwLjE1LjcuMycKICAgIGVudmlyb25tZW50OgogICAgICAtIFNFUlZJQ0VfRlFETl9TUEFSS1lGSVRORVNTXzgwCiAgICBkZXBlbmRzX29uOgogICAgICAtIHNwYXJreWZpdG5lc3Mtc2VydmVyCiAgc3Bhcmt5Zml0bmVzcy1zZXJ2ZXI6CiAgICBpbWFnZTogJ2NvZGV3aXRoY2ovc3Bhcmt5Zml0bmVzc19zZXJ2ZXI6djAuMTUuNy4zJwogICAgZW52aXJvbm1lbnQ6CiAgICAgIC0gJ1NQQVJLWV9GSVRORVNTX0xPR19MRVZFTD0ke1NQQVJLWV9GSVRORVNTX0xPR19MRVZFTDotaW5mb30nCiAgICAgIC0gJ1NQQVJLWV9GSVRORVNTX0RCX1VTRVI9JHtTRVJWSUNFX1VTRVJfUE9TVEdSRVN9JwogICAgICAtIFNQQVJLWV9GSVRORVNTX0RCX0hPU1Q9c3Bhcmt5Zml0bmVzcy1kYgogICAgICAtICdTUEFSS1lfRklUTkVTU19EQl9OQU1FPSR7U1BBUktZX0ZJVE5FU1NfREJfTkFNRTotc3Bhcmt5Zml0bmVzc30nCiAgICAgIC0gJ1NQQVJLWV9GSVRORVNTX0RCX1BBU1NXT1JEPSR7U0VSVklDRV9QQVNTV09SRF9QT1NUR1JFU30nCiAgICAgIC0gJ1NQQVJLWV9GSVRORVNTX0RCX1BPUlQ9JHtTUEFSS1lfRklUTkVTU19EQl9QT1JUOi01NDMyfScKICAgICAgLSAnU1BBUktZX0ZJVE5FU1NfQVBJX0VOQ1JZUFRJT05fS0VZPSR7U0VSVklDRV9QQVNTV09SRF82NF9TRVJWRVJBUElFTkNSWVBUSU9OS0VZfScKICAgICAgLSAnSldUX1NFQ1JFVD0ke1NFUlZJQ0VfUEFTU1dPUkRfNjRfU0VSVkVSSldUU0VDUkVUfScKICAgICAgLSAnU1BBUktZX0ZJVE5FU1NfRlJPTlRFTkRfVVJMPSR7U0VSVklDRV9GUUROX1NQQVJLWUZJVE5FU1NfODB9JwogICAgICAtICdTUEFSS1lfRklUTkVTU19ESVNBQkxFX1NJR05VUD0ke1NQQVJLWV9GSVRORVNTX0RJU0FCTEVfU0lHTlVQOi1mYWxzZX0nCiAgICAgIC0gJ1NQQVJLWV9GSVRORVNTX0FETUlOX0VNQUlMPSR7U1BBUktZX0ZJVE5FU1NfQURNSU5fRU1BSUw6LWFkbWluQGV4YW1wbGUuY29tfScKICAgICAgLSAnU1BBUktZX0ZJVE5FU1NfRU1BSUxfSE9TVD0ke1NQQVJLWV9GSVRORVNTX0VNQUlMX0hPU1Q6LXNtdHAuZ21haWwuY29tfScKICAgICAgLSAnU1BBUktZX0ZJVE5FU1NfRU1BSUxfUE9SVD0ke1NQQVJLWV9GSVRORVNTX0VNQUlMX1BPUlQ6LTU4N30nCiAgICAgIC0gJ1NQQVJLWV9GSVRORVNTX0VNQUlMX1NFQ1VSRT0ke1NQQVJLWV9GSVRORVNTX0VNQUlMX1NFQ1VSRTotZmFsc2V9JwogICAgICAtICdTUEFSS1lfRklUTkVTU19FTUFJTF9VU0VSPSR7U1BBUktZX0ZJVE5FU1NfRU1BSUxfVVNFUn0nCiAgICAgIC0gJ1NQQVJLWV9GSVRORVNTX0VNQUlMX1BBU1M9JHtTUEFSS1lfRklUTkVTU19FTUFJTF9QQVNTfScKICAgICAgLSAnU1BBUktZX0ZJVE5FU1NfRU1BSUxfRlJPTT0ke1NQQVJLWV9GSVRORVNTX0VNQUlMX0ZST006LSJTcGFya3kgRml0bmVzcyA8bm9yZXBseUBzcGFya3lmaXRuZXNzLmNvbT4ifScKICAgIGRlcGVuZHNfb246CiAgICAgIC0gc3Bhcmt5Zml0bmVzcy1kYgogICAgdm9sdW1lczoKICAgICAgLSAnc3Bhcmt5Zml0bmVzcy1zZXJ2ZXItYmFja3VwOi9hcHAvU3Bhcmt5Rml0bmVzc1NlcnZlci9iYWNrdXAnCiAgICAgIC0gJ3NwYXJreWZpdG5lc3Mtc2VydmVyLXVwbG9hZHM6L2FwcC9TcGFya3lGaXRuZXNzU2VydmVyL3VwbG9hZHMnCiAgc3Bhcmt5Zml0bmVzcy1kYjoKICAgIGltYWdlOiAncG9zdGdyZXM6MTUtYWxwaW5lJwogICAgZW52aXJvbm1lbnQ6CiAgICAgIC0gJ1BPU1RHUkVTX0RCPSR7U1BBUktZX0ZJVE5FU1NfREJfTkFNRTotc3Bhcmt5Zml0bmVzc30nCiAgICAgIC0gJ1BPU1RHUkVTX1VTRVI9JHtTRVJWSUNFX1VTRVJfUE9TVEdSRVN9JwogICAgICAtICdQT1NUR1JFU19QQVNTV09SRD0ke1NFUlZJQ0VfUEFTU1dPUkRfUE9TVEdSRVN9JwogICAgICAtICdQT1NUR1JFU19QT1JUPSR7U1BBUktZX0ZJVE5FU1NfREJfUE9SVDotNTQzMn0nCiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRC1TSEVMTAogICAgICAgIC0gJ3BnX2lzcmVhZHkgLVUgJCR7UE9TVEdSRVNfVVNFUn0gLWQgJCR7UE9TVEdSRVNfREJ9JwogICAgICBpbnRlcnZhbDogNXMKICAgICAgdGltZW91dDogMjBzCiAgICAgIHJldHJpZXM6IDEwCiAgICB2b2x1bWVzOgogICAgICAtICdzcGFya3lmaXRuZXNzLWRiLXBvc3RncmVzcWw6L3Zhci9saWIvcG9zdGdyZXNxbC9kYXRhJwo=",
+        "tags": [
+            "sparkyfitness",
+            "fitness",
+            "health",
+            "nutrition",
+            "exercise",
+            "body measurements"
+        ],
+        "category": "health",
+        "logo": "svgs/sparkyfitness.svg",
+        "minversion": "0.0.0",
+        "port": "80"
     },
     "statusnook": {
         "documentation": "https://statusnook.com?utm_source=coolify.io",
