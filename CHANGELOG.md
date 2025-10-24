@@ -4,12 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
-### 📚 Documentation
-
-- Update changelog
-
-## [4.0.0-beta.436] - 2025-10-17
-
 ### 🚀 Features
 
 - Use tags in update
@@ -1032,6 +1026,8 @@ All notable changes to this project will be documented in this file.
 - *(templates)* Add sparkyfitness compose template and logo
 - *(servide)* Add siyuan template
 - Add onboarding guide link to global search no results state
+- Add category filter dropdown to service selection
+- Display service logos in original colors with consistent sizing
 
 ### 🐛 Bug Fixes
 
@@ -3881,6 +3877,7 @@ All notable changes to this project will be documented in this file.
 - Update metamcp image version and clean up environment variable syntax
 - *(service)* Update image version & healthcheck start period
 - Filter deprecated server types for Hetzner
+- Eliminate dark mode white screen flicker on page transitions
 
 ### 💼 Other
 
@@ -4292,6 +4289,7 @@ All notable changes to this project will be documented in this file.
 - Escape all shell directory paths in Git deployment commands
 - Remove content from docker_compose_raw to prevent file overwrites
 - *(templates)* Metamcp app
+- Preserve clean docker_compose_raw without Coolify additions
 
 ### 🚜 Refactor
 
@@ -4960,6 +4958,8 @@ All notable changes to this project will be documented in this file.
 - *(sync)* Create AI Instructions Synchronization Guide and update CLAUDE.md references
 - *(database-patterns)* Add critical note on mass assignment protection for new columns
 - Clarify cloud-init script compatibility
+- Update changelog
+- Update changelog
 - Update changelog
 - Update changelog
 - Update changelog
@@ -5656,6 +5656,8 @@ All notable changes to this project will be documented in this file.
 - *(signoz)* Remove unused ports
 - *(signoz)* Bump version to 0.77.0
 - *(signoz)* Bump version to 0.78.1
+- Add category field to siyuan.yaml
+- Update siyuan category in service templates
 
 ### ◀️ Revert
 
