@@ -3878,6 +3878,14 @@ All notable changes to this project will be documented in this file.
 - *(service)* Update image version & healthcheck start period
 - Filter deprecated server types for Hetzner
 - Eliminate dark mode white screen flicker on page transitions
+- Handle redis_password in API database creation
+- Make modals scrollable on small screens
+- Resolve Livewire wire:model binding error in domains input
+- Make environment variable forms responsive
+- Make proxy logs page responsive
+- Improve proxy logs form layout for better responsive behavior
+- Prevent horizontal overflow in log text
+- Use break-all to force line wrapping in logs
 
 ### 💼 Other
 
@@ -4958,6 +4966,7 @@ All notable changes to this project will be documented in this file.
 - *(sync)* Create AI Instructions Synchronization Guide and update CLAUDE.md references
 - *(database-patterns)* Add critical note on mass assignment protection for new columns
 - Clarify cloud-init script compatibility
+- Update changelog
 - Update changelog
 - Update changelog
 - Update changelog
