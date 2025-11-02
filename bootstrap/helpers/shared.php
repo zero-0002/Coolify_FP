@@ -3154,3 +3154,18 @@ function generateDockerComposeServiceName(mixed $services, int $pullRequestId = 
 
     return $collection;
 }
+
+function formatBytes(?int $bytes = 0, int $precision = 2): string
+{
+    if (is_null($bytes) || $bytes <= 0) {
+        return '0 B';
+    }
+
+    $units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+
+    $bytes /= (1024 ** $pow);
+
+    return round($bytes, $precision).' '.$units[$pow];
+}
