@@ -6,6 +6,39 @@ All notable changes to this project will be documented in this file.
 
 ### 🚀 Features
 
+- Add token validation functionality for Hetzner and DigitalOcean providers
+- Add dev_helper_version to instance settings and update related functionality
+
+### 🐛 Bug Fixes
+
+- Change SMTP port input type to number for better validation
+- Remove unnecessary step attribute from maximum storage input fields
+- Update boarding flow logic to complete onboarding when server is created
+- Convert network aliases to string for display
+- Improve custom_network_aliases handling and testing
+- Remove duplicate custom_labels from config hash calculation
+- Improve run script and enhance sticky header style
+
+### 🚜 Refactor
+
+- Improve handling of custom network aliases
+- Remove unused submodules
+- Update subproject commit hashes
+
+### 📚 Documentation
+
+- Update changelog
+- Add service & database deployment logging plan
+
+### ⚙️ Miscellaneous Tasks
+
+- Update version numbers to 4.0.0-beta.439 and 4.0.0-beta.440
+- Add .workspaces to .gitignore
+
+## [4.0.0-beta.438] - 2025-10-29
+
+### 🚀 Features
+
 - Display service logos in original colors with consistent sizing
 - Add warnings for system-wide GitHub Apps
 - Show message when no resources use GitHub App
