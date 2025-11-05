@@ -6,6 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ### 🐛 Bug Fixes
 
+- Update syncData method to use data_get for safer property access
+- Update version numbers to 4.0.0-beta.441 and 4.0.0-beta.442
+- Enhance menu item styles and update theme color meta tag
+- Clean up input attributes for PostgreSQL settings in general.blade.php
+- Update docker stop command to use --time instead of --timeout
+- Clean up utility classes and improve readability in Blade templates
+- Enhance styling for page width component in Blade template
+- Remove debugging output from StartPostgresql command handling
+
+### 📚 Documentation
+
+- Update changelog
+
+## [4.0.0-beta.440] - 2025-11-04
+
+### 🐛 Bug Fixes
+
 - Fix SPA toggle nginx regeneration and add confirmation modal
 
 ### 📚 Documentation
