@@ -3289,7 +3289,10 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
             }
 
             if ($envs->isNotEmpty()) {
-                $secrets_hash = $this->generate_secrets_hash($envs);
+                $envs_mapped = $envs->mapWithKeys(function ($env) {
+                    return [$env->key => $env->real_value];
+                });
+                $secrets_hash = $this->generate_secrets_hash($envs_mapped);
                 $dockerfile->splice(1, 0, ["ARG COOLIFY_BUILD_SECRETS_HASH={$secrets_hash}"]);
             }
 
