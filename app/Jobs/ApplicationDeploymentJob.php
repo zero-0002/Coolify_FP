@@ -459,7 +459,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     private function post_deployment()
     {
         GetContainersStatus::dispatch($this->server);
-        $this->next(ApplicationDeploymentStatus::FINISHED->value);
+        $this->completeDeployment();
         if ($this->pull_request_id !== 0) {
             if ($this->application->is_github_based()) {
                 ApplicationPullRequestUpdateJob::dispatch(application: $this->application, preview: $this->preview, deployment_uuid: $this->deployment_uuid, status: ProcessStatus::FINISHED);
@@ -517,6 +517,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->generate_image_names();
         $this->prepare_builder_image();
         $this->generate_compose_file();
+
+        // Save runtime environment variables (including empty .env file if no variables defined)
+        $this->save_runtime_environment_variables();
+
         $this->rolling_update();
     }
 
@@ -1004,7 +1008,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->generate_image_names();
         $this->check_image_locally_or_remotely();
         $this->should_skip_build();
-        $this->next(ApplicationDeploymentStatus::FINISHED->value);
+        $this->completeDeployment();
     }
 
     private function should_skip_build()
@@ -1222,9 +1226,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         // Handle empty environment variables
         if ($environment_variables->isEmpty()) {
-            // For Docker Compose, we need to create an empty .env file
+            // For Docker Compose and Docker Image, we need to create an empty .env file
             // because we always reference it in the compose file
-            if ($this->build_pack === 'dockercompose') {
+            if ($this->build_pack === 'dockercompose' || $this->build_pack === 'dockerimage') {
                 $this->application_deployment_queue->addLogEntry('Creating empty .env file (no environment variables defined).');
 
                 // Create empty .env file
@@ -1628,7 +1632,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 return;
             }
             if ($this->application->custom_healthcheck_found) {
-                $this->application_deployment_queue->addLogEntry('Custom healthcheck found, skipping default healthcheck.');
+                $this->application_deployment_queue->addLogEntry('Custom healthcheck found in Dockerfile.');
             }
             if ($this->container_name) {
                 $counter = 1;
@@ -1776,9 +1780,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     private function prepare_builder_image(bool $firstTry = true)
     {
         $this->checkForCancellation();
-        $settings = instanceSettings();
         $helperImage = config('constants.coolify.helper_image');
-        $helperImage = "{$helperImage}:{$settings->helper_version}";
+        $helperImage = "{$helperImage}:".getHelperVersion();
         // Get user home directory
         $this->serverUserHomeDir = instant_remote_process(['echo $HOME'], $this->server);
         $this->dockerConfigFileExists = instant_remote_process(["test -f {$this->serverUserHomeDir}/.docker/config.json && echo 'OK' || echo 'NOK'"], $this->server);
@@ -2318,8 +2321,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->application->parseHealthcheckFromDockerfile($this->saved_outputs->get('dockerfile_from_repo'));
         }
         $custom_network_aliases = [];
-        if (is_array($this->application->custom_network_aliases) && count($this->application->custom_network_aliases) > 0) {
-            $custom_network_aliases = $this->application->custom_network_aliases;
+        if (! empty($this->application->custom_network_aliases_array)) {
+            $custom_network_aliases = $this->application->custom_network_aliases_array;
         }
         $docker_compose = [
             'services' => [
@@ -2354,16 +2357,22 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         ];
         // Always use .env file
         $docker_compose['services'][$this->container_name]['env_file'] = ['.env'];
-        $docker_compose['services'][$this->container_name]['healthcheck'] = [
-            'test' => [
-                'CMD-SHELL',
-                $this->generate_healthcheck_commands(),
-            ],
-            'interval' => $this->application->health_check_interval.'s',
-            'timeout' => $this->application->health_check_timeout.'s',
-            'retries' => $this->application->health_check_retries,
-            'start_period' => $this->application->health_check_start_period.'s',
-        ];
+
+        // Only add Coolify healthcheck if no custom HEALTHCHECK found in Dockerfile
+        // If custom_healthcheck_found is true, the Dockerfile's HEALTHCHECK will be used
+        // If healthcheck is disabled, no healthcheck will be added
+        if (! $this->application->custom_healthcheck_found && ! $this->application->isHealthcheckDisabled()) {
+            $docker_compose['services'][$this->container_name]['healthcheck'] = [
+                'test' => [
+                    'CMD-SHELL',
+                    $this->generate_healthcheck_commands(),
+                ],
+                'interval' => $this->application->health_check_interval.'s',
+                'timeout' => $this->application->health_check_timeout.'s',
+                'retries' => $this->application->health_check_retries,
+                'start_period' => $this->application->health_check_start_period.'s',
+            ];
+        }
 
         if (! is_null($this->application->limits_cpuset)) {
             data_set($docker_compose, 'services.'.$this->container_name.'.cpuset', $this->application->limits_cpuset);
@@ -3013,9 +3022,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 $this->application_deployment_queue->addLogEntry('----------------------------------------');
             }
             $this->application_deployment_queue->addLogEntry('New container is not healthy, rolling back to the old container.');
-            $this->application_deployment_queue->update([
-                'status' => ApplicationDeploymentStatus::FAILED->value,
-            ]);
+            $this->failDeployment();
             $this->graceful_shutdown_container($this->container_name);
         }
     }
@@ -3219,6 +3226,20 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         return hash_hmac('sha256', $secrets_string, $this->secrets_hash_key);
     }
 
+    protected function findFromInstructionLines($dockerfile): array
+    {
+        $fromLines = [];
+        foreach ($dockerfile as $index => $line) {
+            $trimmedLine = trim($line);
+            // Check if line starts with FROM (case-insensitive)
+            if (preg_match('/^FROM\s+/i', $trimmedLine)) {
+                $fromLines[] = $index;
+            }
+        }
+
+        return $fromLines;
+    }
+
     private function add_build_env_variables_to_dockerfile()
     {
         if ($this->dockerBuildkitSupported) {
@@ -3231,6 +3252,18 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 'ignore_errors' => true,
             ]);
             $dockerfile = collect(str($this->saved_outputs->get('dockerfile'))->trim()->explode("\n"));
+
+            // Find all FROM instruction positions
+            $fromLines = $this->findFromInstructionLines($dockerfile);
+
+            // If no FROM instructions found, skip ARG insertion
+            if (empty($fromLines)) {
+                return;
+            }
+
+            // Collect all ARG statements to insert
+            $argsToInsert = collect();
+
             if ($this->pull_request_id === 0) {
                 // Only add environment variables that are available during build
                 $envs = $this->application->environment_variables()
@@ -3239,9 +3272,9 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                     ->get();
                 foreach ($envs as $env) {
                     if (data_get($env, 'is_multiline') === true) {
-                        $dockerfile->splice(1, 0, ["ARG {$env->key}"]);
+                        $argsToInsert->push("ARG {$env->key}");
                     } else {
-                        $dockerfile->splice(1, 0, ["ARG {$env->key}={$env->real_value}"]);
+                        $argsToInsert->push("ARG {$env->key}={$env->real_value}");
                     }
                 }
                 // Add Coolify variables as ARGs
@@ -3251,9 +3284,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                         ->map(function ($var) {
                             return "ARG {$var}";
                         });
-                    foreach ($coolify_vars as $arg) {
-                        $dockerfile->splice(1, 0, [$arg]);
-                    }
+                    $argsToInsert = $argsToInsert->merge($coolify_vars);
                 }
             } else {
                 // Only add preview environment variables that are available during build
@@ -3263,9 +3294,9 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                     ->get();
                 foreach ($envs as $env) {
                     if (data_get($env, 'is_multiline') === true) {
-                        $dockerfile->splice(1, 0, ["ARG {$env->key}"]);
+                        $argsToInsert->push("ARG {$env->key}");
                     } else {
-                        $dockerfile->splice(1, 0, ["ARG {$env->key}={$env->real_value}"]);
+                        $argsToInsert->push("ARG {$env->key}={$env->real_value}");
                     }
                 }
                 // Add Coolify variables as ARGs
@@ -3275,15 +3306,23 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                         ->map(function ($var) {
                             return "ARG {$var}";
                         });
-                    foreach ($coolify_vars as $arg) {
-                        $dockerfile->splice(1, 0, [$arg]);
-                    }
+                    $argsToInsert = $argsToInsert->merge($coolify_vars);
                 }
             }
 
-            if ($envs->isNotEmpty()) {
-                $secrets_hash = $this->generate_secrets_hash($envs);
-                $dockerfile->splice(1, 0, ["ARG COOLIFY_BUILD_SECRETS_HASH={$secrets_hash}"]);
+            // Insert ARGs after each FROM instruction (in reverse order to maintain correct line numbers)
+            if ($argsToInsert->isNotEmpty()) {
+                foreach (array_reverse($fromLines) as $fromLineIndex) {
+                    // Insert all ARGs after this FROM instruction
+                    foreach ($argsToInsert->reverse() as $arg) {
+                        $dockerfile->splice($fromLineIndex + 1, 0, [$arg]);
+                    }
+                }
+                $envs_mapped = $envs->mapWithKeys(function ($env) {
+                    return [$env->key => $env->real_value];
+                });
+                $secrets_hash = $this->generate_secrets_hash($envs_mapped);
+                $argsToInsert->push("ARG COOLIFY_BUILD_SECRETS_HASH={$secrets_hash}");
             }
 
             $dockerfile_base64 = base64_encode($dockerfile->implode("\n"));
@@ -3649,42 +3688,116 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         }
     }
 
-    private function next(string $status)
+    /**
+     * Transition deployment to a new status with proper validation and side effects.
+     * This is the single source of truth for status transitions.
+     */
+    private function transitionToStatus(ApplicationDeploymentStatus $status): void
     {
-        // Refresh to get latest status
-        $this->application_deployment_queue->refresh();
-
-        // Never allow changing status from FAILED or CANCELLED_BY_USER to anything else
-        if ($this->application_deployment_queue->status === ApplicationDeploymentStatus::FAILED->value) {
-            $this->application->environment->project->team?->notify(new DeploymentFailed($this->application, $this->deployment_uuid, $this->preview));
-
+        if ($this->isInTerminalState()) {
             return;
         }
+
+        $this->updateDeploymentStatus($status);
+        $this->handleStatusTransition($status);
+        queue_next_deployment($this->application);
+    }
+
+    /**
+     * Check if deployment is in a terminal state (FAILED or CANCELLED).
+     * Terminal states cannot be changed.
+     */
+    private function isInTerminalState(): bool
+    {
+        $this->application_deployment_queue->refresh();
+
+        if ($this->application_deployment_queue->status === ApplicationDeploymentStatus::FAILED->value) {
+            return true;
+        }
+
         if ($this->application_deployment_queue->status === ApplicationDeploymentStatus::CANCELLED_BY_USER->value) {
-            // Job was cancelled, stop execution
             $this->application_deployment_queue->addLogEntry('Deployment cancelled by user, stopping execution.');
             throw new \RuntimeException('Deployment cancelled by user', 69420);
         }
 
+        return false;
+    }
+
+    /**
+     * Update the deployment status in the database.
+     */
+    private function updateDeploymentStatus(ApplicationDeploymentStatus $status): void
+    {
         $this->application_deployment_queue->update([
-            'status' => $status,
+            'status' => $status->value,
         ]);
+    }
 
-        queue_next_deployment($this->application);
+    /**
+     * Execute status-specific side effects (events, notifications, additional deployments).
+     */
+    private function handleStatusTransition(ApplicationDeploymentStatus $status): void
+    {
+        match ($status) {
+            ApplicationDeploymentStatus::FINISHED => $this->handleSuccessfulDeployment(),
+            ApplicationDeploymentStatus::FAILED => $this->handleFailedDeployment(),
+            default => null,
+        };
+    }
 
-        if ($status === ApplicationDeploymentStatus::FINISHED->value) {
-            event(new ApplicationConfigurationChanged($this->application->team()->id));
+    /**
+     * Handle side effects when deployment succeeds.
+     */
+    private function handleSuccessfulDeployment(): void
+    {
+        event(new ApplicationConfigurationChanged($this->application->team()->id));
 
-            if (! $this->only_this_server) {
-                $this->deploy_to_additional_destinations();
-            }
-            $this->application->environment->project->team?->notify(new DeploymentSuccess($this->application, $this->deployment_uuid, $this->preview));
+        if (! $this->only_this_server) {
+            $this->deploy_to_additional_destinations();
         }
+
+        $this->sendDeploymentNotification(DeploymentSuccess::class);
+    }
+
+    /**
+     * Handle side effects when deployment fails.
+     */
+    private function handleFailedDeployment(): void
+    {
+        $this->sendDeploymentNotification(DeploymentFailed::class);
+    }
+
+    /**
+     * Send deployment status notification to the team.
+     */
+    private function sendDeploymentNotification(string $notificationClass): void
+    {
+        $this->application->environment->project->team?->notify(
+            new $notificationClass($this->application, $this->deployment_uuid, $this->preview)
+        );
+    }
+
+    /**
+     * Complete deployment successfully.
+     * Sends success notification and triggers additional deployments if needed.
+     */
+    private function completeDeployment(): void
+    {
+        $this->transitionToStatus(ApplicationDeploymentStatus::FINISHED);
+    }
+
+    /**
+     * Fail the deployment.
+     * Sends failure notification and queues next deployment.
+     */
+    private function failDeployment(): void
+    {
+        $this->transitionToStatus(ApplicationDeploymentStatus::FAILED);
     }
 
     public function failed(Throwable $exception): void
     {
-        $this->next(ApplicationDeploymentStatus::FAILED->value);
+        $this->failDeployment();
         $this->application_deployment_queue->addLogEntry('Oops something is not okay, are you okay? 😢', 'stderr');
         if (str($exception->getMessage())->isNotEmpty()) {
             $this->application_deployment_queue->addLogEntry($exception->getMessage(), 'stderr');
