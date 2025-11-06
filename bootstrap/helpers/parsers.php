@@ -1164,13 +1164,21 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
             $environment = $environment->filter(function ($value, $key) {
                 return ! str($key)->startsWith('SERVICE_FQDN_');
             })->map(function ($value, $key) use ($resource) {
-                // if value is empty, set it to null so if you set the environment variable in the .env file (Coolify's UI), it will used
-                if (str($value)->isEmpty()) {
-                    if ($resource->environment_variables()->where('key', $key)->exists()) {
-                        $value = $resource->environment_variables()->where('key', $key)->first()->value;
-                    } else {
-                        $value = null;
+                // Preserve empty strings and null values with correct Docker Compose semantics:
+                // - Empty string: Variable is set to "" (e.g., HTTP_PROXY="" means "no proxy")
+                // - Null: Variable is unset/removed from container environment (may inherit from host)
+                if ($value === null) {
+                    // User explicitly wants variable unset - respect that
+                    // NEVER override from database - null means "inherit from environment"
+                    // Keep as null (will be excluded from container environment)
+                } elseif ($value === '') {
+                    // Empty string - allow database override for backward compatibility
+                    $dbEnv = $resource->environment_variables()->where('key', $key)->first();
+                    // Only use database override if it exists AND has a non-empty value
+                    if ($dbEnv && str($dbEnv->value)->isNotEmpty()) {
+                        $value = $dbEnv->value;
                     }
+                    // Otherwise keep empty string as-is
                 }
 
                 return $value;
@@ -1297,6 +1305,18 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
 
     $topLevel = $topLevel->sortBy(function ($value, $key) use ($customOrder) {
         return array_search($key, $customOrder);
+    });
+
+    // Remove empty top-level sections (volumes, networks, configs, secrets)
+    // Keep only non-empty sections to match Docker Compose best practices
+    $topLevel = $topLevel->filter(function ($value, $key) {
+        // Always keep 'services' section
+        if ($key === 'services') {
+            return true;
+        }
+
+        // Keep section only if it has content
+        return $value instanceof Collection ? $value->isNotEmpty() : ! empty($value);
     });
 
     $cleanedCompose = Yaml::dump(convertToArray($topLevel), 10, 2);
@@ -1589,21 +1609,22 @@ function serviceParser(Service $resource): Collection
                     ]);
                 }
                 if (substr_count(str($key)->value(), '_') === 3) {
-                    $newKey = str($key)->beforeLast('_');
+                    // For port-specific variables (e.g., SERVICE_FQDN_UMAMI_3000),
+                    // keep the port suffix in the key and use the URL with port
                     $resource->environment_variables()->updateOrCreate([
-                        'key' => $newKey->value(),
+                        'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
                     ], [
-                        'value' => $fqdn,
+                        'value' => $fqdnWithPort,
                         'is_preview' => false,
                     ]);
                     $resource->environment_variables()->updateOrCreate([
-                        'key' => $newKey->value(),
+                        'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
                     ], [
-                        'value' => $url,
+                        'value' => $urlWithPort,
                         'is_preview' => false,
                     ]);
                 }
@@ -2122,13 +2143,21 @@ function serviceParser(Service $resource): Collection
             $environment = $environment->filter(function ($value, $key) {
                 return ! str($key)->startsWith('SERVICE_FQDN_');
             })->map(function ($value, $key) use ($resource) {
-                // if value is empty, set it to null so if you set the environment variable in the .env file (Coolify's UI), it will used
-                if (str($value)->isEmpty()) {
-                    if ($resource->environment_variables()->where('key', $key)->exists()) {
-                        $value = $resource->environment_variables()->where('key', $key)->first()->value;
-                    } else {
-                        $value = null;
+                // Preserve empty strings and null values with correct Docker Compose semantics:
+                // - Empty string: Variable is set to "" (e.g., HTTP_PROXY="" means "no proxy")
+                // - Null: Variable is unset/removed from container environment (may inherit from host)
+                if ($value === null) {
+                    // User explicitly wants variable unset - respect that
+                    // NEVER override from database - null means "inherit from environment"
+                    // Keep as null (will be excluded from container environment)
+                } elseif ($value === '') {
+                    // Empty string - allow database override for backward compatibility
+                    $dbEnv = $resource->environment_variables()->where('key', $key)->first();
+                    // Only use database override if it exists AND has a non-empty value
+                    if ($dbEnv && str($dbEnv->value)->isNotEmpty()) {
+                        $value = $dbEnv->value;
                     }
+                    // Otherwise keep empty string as-is
                 }
 
                 return $value;
@@ -2249,6 +2278,18 @@ function serviceParser(Service $resource): Collection
 
     $topLevel = $topLevel->sortBy(function ($value, $key) use ($customOrder) {
         return array_search($key, $customOrder);
+    });
+
+    // Remove empty top-level sections (volumes, networks, configs, secrets)
+    // Keep only non-empty sections to match Docker Compose best practices
+    $topLevel = $topLevel->filter(function ($value, $key) {
+        // Always keep 'services' section
+        if ($key === 'services') {
+            return true;
+        }
+
+        // Keep section only if it has content
+        return $value instanceof Collection ? $value->isNotEmpty() : ! empty($value);
     });
 
     $cleanedCompose = Yaml::dump(convertToArray($topLevel), 10, 2);
