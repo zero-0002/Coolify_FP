@@ -3310,12 +3310,6 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 }
             }
 
-            // Add secrets hash if we have environment variables
-            if ($envs->isNotEmpty()) {
-                $secrets_hash = $this->generate_secrets_hash($envs);
-                $argsToInsert->push("ARG COOLIFY_BUILD_SECRETS_HASH={$secrets_hash}");
-            }
-
             // Insert ARGs after each FROM instruction (in reverse order to maintain correct line numbers)
             if ($argsToInsert->isNotEmpty()) {
                 foreach (array_reverse($fromLines) as $fromLineIndex) {
@@ -3324,6 +3318,11 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                         $dockerfile->splice($fromLineIndex + 1, 0, [$arg]);
                     }
                 }
+                $envs_mapped = $envs->mapWithKeys(function ($env) {
+                    return [$env->key => $env->real_value];
+                });
+                $secrets_hash = $this->generate_secrets_hash($envs_mapped);
+                $argsToInsert->push("ARG COOLIFY_BUILD_SECRETS_HASH={$secrets_hash}");
             }
 
             $dockerfile_base64 = base64_encode($dockerfile->implode("\n"));
