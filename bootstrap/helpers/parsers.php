@@ -59,11 +59,13 @@ function validateDockerComposeForInjection(string $composeYaml): void
                     if (isset($volume['source'])) {
                         $source = $volume['source'];
                         if (is_string($source)) {
-                            // Allow simple env vars and env vars with defaults (validated in parseDockerVolumeString)
+                            // Allow env vars and env vars with defaults (validated in parseDockerVolumeString)
+                            // Also allow env vars followed by safe path concatenation (e.g., ${VAR}/path)
                             $isSimpleEnvVar = preg_match('/^\$\{[a-zA-Z_][a-zA-Z0-9_]*\}$/', $source);
                             $isEnvVarWithDefault = preg_match('/^\$\{[^}]+:-[^}]*\}$/', $source);
+                            $isEnvVarWithPath = preg_match('/^\$\{[a-zA-Z_][a-zA-Z0-9_]*\}[\/\w\.\-]*$/', $source);
 
-                            if (! $isSimpleEnvVar && ! $isEnvVarWithDefault) {
+                            if (! $isSimpleEnvVar && ! $isEnvVarWithDefault && ! $isEnvVarWithPath) {
                                 try {
                                     validateShellSafePath($source, 'volume source');
                                 } catch (\Exception $e) {
@@ -310,15 +312,17 @@ function parseDockerVolumeString(string $volumeString): array
     // Validate source path for command injection attempts
     // We validate the final source value after environment variable processing
     if ($source !== null) {
-        // Allow simple environment variables like ${VAR_NAME} or ${VAR}
-        // but validate everything else for shell metacharacters
+        // Allow environment variables like ${VAR_NAME} or ${VAR}
+        // Also allow env vars followed by safe path concatenation (e.g., ${VAR}/path)
         $sourceStr = is_string($source) ? $source : $source;
 
         // Skip validation for simple environment variable references
-        // Pattern: ${WORD_CHARS} with no special characters inside
+        // Pattern 1: ${WORD_CHARS} with no special characters inside
+        // Pattern 2: ${WORD_CHARS}/path/to/file (env var with path concatenation)
         $isSimpleEnvVar = preg_match('/^\$\{[a-zA-Z_][a-zA-Z0-9_]*\}$/', $sourceStr);
+        $isEnvVarWithPath = preg_match('/^\$\{[a-zA-Z_][a-zA-Z0-9_]*\}[\/\w\.\-]*$/', $sourceStr);
 
-        if (! $isSimpleEnvVar) {
+        if (! $isSimpleEnvVar && ! $isEnvVarWithPath) {
             try {
                 validateShellSafePath($sourceStr, 'volume source');
             } catch (\Exception $e) {
@@ -711,9 +715,12 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     // Validate source and target for command injection (array/long syntax)
                     if ($source !== null && ! empty($source->value())) {
                         $sourceValue = $source->value();
-                        // Allow simple environment variable references
+                        // Allow environment variable references and env vars with path concatenation
                         $isSimpleEnvVar = preg_match('/^\$\{[a-zA-Z_][a-zA-Z0-9_]*\}$/', $sourceValue);
-                        if (! $isSimpleEnvVar) {
+                        $isEnvVarWithDefault = preg_match('/^\$\{[^}]+:-[^}]*\}$/', $sourceValue);
+                        $isEnvVarWithPath = preg_match('/^\$\{[a-zA-Z_][a-zA-Z0-9_]*\}[\/\w\.\-]*$/', $sourceValue);
+
+                        if (! $isSimpleEnvVar && ! $isEnvVarWithDefault && ! $isEnvVarWithPath) {
                             try {
                                 validateShellSafePath($sourceValue, 'volume source');
                             } catch (\Exception $e) {
@@ -1164,13 +1171,21 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
             $environment = $environment->filter(function ($value, $key) {
                 return ! str($key)->startsWith('SERVICE_FQDN_');
             })->map(function ($value, $key) use ($resource) {
-                // if value is empty, set it to null so if you set the environment variable in the .env file (Coolify's UI), it will used
-                if (str($value)->isEmpty()) {
-                    if ($resource->environment_variables()->where('key', $key)->exists()) {
-                        $value = $resource->environment_variables()->where('key', $key)->first()->value;
-                    } else {
-                        $value = null;
+                // Preserve empty strings and null values with correct Docker Compose semantics:
+                // - Empty string: Variable is set to "" (e.g., HTTP_PROXY="" means "no proxy")
+                // - Null: Variable is unset/removed from container environment (may inherit from host)
+                if ($value === null) {
+                    // User explicitly wants variable unset - respect that
+                    // NEVER override from database - null means "inherit from environment"
+                    // Keep as null (will be excluded from container environment)
+                } elseif ($value === '') {
+                    // Empty string - allow database override for backward compatibility
+                    $dbEnv = $resource->environment_variables()->where('key', $key)->first();
+                    // Only use database override if it exists AND has a non-empty value
+                    if ($dbEnv && str($dbEnv->value)->isNotEmpty()) {
+                        $value = $dbEnv->value;
                     }
+                    // Otherwise keep empty string as-is
                 }
 
                 return $value;
@@ -1285,6 +1300,9 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
         if ($depends_on->count() > 0) {
             $payload['depends_on'] = $depends_on;
         }
+        // Auto-inject .env file so Coolify environment variables are available inside containers
+        // This makes Applications behave consistently with manual .env file usage
+        $payload['env_file'] = ['.env'];
         if ($isPullRequest) {
             $serviceName = addPreviewDeploymentSuffix($serviceName, $pullRequestId);
         }
@@ -1297,6 +1315,18 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
 
     $topLevel = $topLevel->sortBy(function ($value, $key) use ($customOrder) {
         return array_search($key, $customOrder);
+    });
+
+    // Remove empty top-level sections (volumes, networks, configs, secrets)
+    // Keep only non-empty sections to match Docker Compose best practices
+    $topLevel = $topLevel->filter(function ($value, $key) {
+        // Always keep 'services' section
+        if ($key === 'services') {
+            return true;
+        }
+
+        // Keep section only if it has content
+        return $value instanceof Collection ? $value->isNotEmpty() : ! empty($value);
     });
 
     $cleanedCompose = Yaml::dump(convertToArray($topLevel), 10, 2);
@@ -1589,21 +1619,22 @@ function serviceParser(Service $resource): Collection
                     ]);
                 }
                 if (substr_count(str($key)->value(), '_') === 3) {
-                    $newKey = str($key)->beforeLast('_');
+                    // For port-specific variables (e.g., SERVICE_FQDN_UMAMI_3000),
+                    // keep the port suffix in the key and use the URL with port
                     $resource->environment_variables()->updateOrCreate([
-                        'key' => $newKey->value(),
+                        'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
                     ], [
-                        'value' => $fqdn,
+                        'value' => $fqdnWithPort,
                         'is_preview' => false,
                     ]);
                     $resource->environment_variables()->updateOrCreate([
-                        'key' => $newKey->value(),
+                        'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
                     ], [
-                        'value' => $url,
+                        'value' => $urlWithPort,
                         'is_preview' => false,
                     ]);
                 }
@@ -1791,9 +1822,12 @@ function serviceParser(Service $resource): Collection
                     // Validate source and target for command injection (array/long syntax)
                     if ($source !== null && ! empty($source->value())) {
                         $sourceValue = $source->value();
-                        // Allow simple environment variable references
+                        // Allow environment variable references and env vars with path concatenation
                         $isSimpleEnvVar = preg_match('/^\$\{[a-zA-Z_][a-zA-Z0-9_]*\}$/', $sourceValue);
-                        if (! $isSimpleEnvVar) {
+                        $isEnvVarWithDefault = preg_match('/^\$\{[^}]+:-[^}]*\}$/', $sourceValue);
+                        $isEnvVarWithPath = preg_match('/^\$\{[a-zA-Z_][a-zA-Z0-9_]*\}[\/\w\.\-]*$/', $sourceValue);
+
+                        if (! $isSimpleEnvVar && ! $isEnvVarWithDefault && ! $isEnvVarWithPath) {
                             try {
                                 validateShellSafePath($sourceValue, 'volume source');
                             } catch (\Exception $e) {
@@ -2122,13 +2156,21 @@ function serviceParser(Service $resource): Collection
             $environment = $environment->filter(function ($value, $key) {
                 return ! str($key)->startsWith('SERVICE_FQDN_');
             })->map(function ($value, $key) use ($resource) {
-                // if value is empty, set it to null so if you set the environment variable in the .env file (Coolify's UI), it will used
-                if (str($value)->isEmpty()) {
-                    if ($resource->environment_variables()->where('key', $key)->exists()) {
-                        $value = $resource->environment_variables()->where('key', $key)->first()->value;
-                    } else {
-                        $value = null;
+                // Preserve empty strings and null values with correct Docker Compose semantics:
+                // - Empty string: Variable is set to "" (e.g., HTTP_PROXY="" means "no proxy")
+                // - Null: Variable is unset/removed from container environment (may inherit from host)
+                if ($value === null) {
+                    // User explicitly wants variable unset - respect that
+                    // NEVER override from database - null means "inherit from environment"
+                    // Keep as null (will be excluded from container environment)
+                } elseif ($value === '') {
+                    // Empty string - allow database override for backward compatibility
+                    $dbEnv = $resource->environment_variables()->where('key', $key)->first();
+                    // Only use database override if it exists AND has a non-empty value
+                    if ($dbEnv && str($dbEnv->value)->isNotEmpty()) {
+                        $value = $dbEnv->value;
                     }
+                    // Otherwise keep empty string as-is
                 }
 
                 return $value;
@@ -2240,6 +2282,9 @@ function serviceParser(Service $resource): Collection
         if ($depends_on->count() > 0) {
             $payload['depends_on'] = $depends_on;
         }
+        // Auto-inject .env file so Coolify environment variables are available inside containers
+        // This makes Services behave consistently with Applications
+        $payload['env_file'] = ['.env'];
 
         $parsedServices->put($serviceName, $payload);
     }
@@ -2249,6 +2294,18 @@ function serviceParser(Service $resource): Collection
 
     $topLevel = $topLevel->sortBy(function ($value, $key) use ($customOrder) {
         return array_search($key, $customOrder);
+    });
+
+    // Remove empty top-level sections (volumes, networks, configs, secrets)
+    // Keep only non-empty sections to match Docker Compose best practices
+    $topLevel = $topLevel->filter(function ($value, $key) {
+        // Always keep 'services' section
+        if ($key === 'services') {
+            return true;
+        }
+
+        // Keep section only if it has content
+        return $value instanceof Collection ? $value->isNotEmpty() : ! empty($value);
     });
 
     $cleanedCompose = Yaml::dump(convertToArray($topLevel), 10, 2);

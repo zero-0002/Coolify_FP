@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### 🐛 Bug Fixes
+
+- Update syncData method to use data_get for safer property access
+- Update version numbers to 4.0.0-beta.441 and 4.0.0-beta.442
+- Enhance menu item styles and update theme color meta tag
+- Clean up input attributes for PostgreSQL settings in general.blade.php
+- Update docker stop command to use --time instead of --timeout
+- Clean up utility classes and improve readability in Blade templates
+- Enhance styling for page width component in Blade template
+- Remove debugging output from StartPostgresql command handling
+
+### 📚 Documentation
+
+- Update changelog
+
+## [4.0.0-beta.440] - 2025-11-04
+
+### 🐛 Bug Fixes
+
+- Fix SPA toggle nginx regeneration and add confirmation modal
+
+### 📚 Documentation
+
+- Update changelog
+
+## [4.0.0-beta.439] - 2025-11-03
+
+### 📚 Documentation
+
+- Update changelog
+
+## [4.0.0-beta.438] - 2025-10-29
+
 ### 🚀 Features
 
 - Display service logos in original colors with consistent sizing
@@ -13,6 +46,12 @@ All notable changes to this project will be documented in this file.
 - Add funding information for Coollabs including sponsorship plans and channels
 - Update Evolution API slogan to better reflect its capabilities
 - *(templates)* Update plane compose to v1.0.0
+- Add token validation functionality for Hetzner and DigitalOcean providers
+- Add dev_helper_version to instance settings and update related functionality
+- Add RestoreDatabase command for PostgreSQL dump restoration
+- Update ApplicationSetting model to include additional boolean casts
+- Enhance General component with additional properties and validation rules
+- Update version numbers to 4.0.0-beta.440 and 4.0.0-beta.441
 
 ### 🐛 Bug Fixes
 
@@ -50,6 +89,13 @@ All notable changes to this project will be documented in this file.
 - *(templates)* Update minio image to use coollabsio fork in Plane
 - Prevent login rate limit bypass via spoofed headers
 - Correct login rate limiter key format to include IP address
+- Change SMTP port input type to number for better validation
+- Remove unnecessary step attribute from maximum storage input fields
+- Update boarding flow logic to complete onboarding when server is created
+- Convert network aliases to string for display
+- Improve custom_network_aliases handling and testing
+- Remove duplicate custom_labels from config hash calculation
+- Improve run script and enhance sticky header style
 
 ### 💼 Other
 
@@ -64,6 +110,10 @@ All notable changes to this project will be documented in this file.
 - Remove staging URL logic from ServerPatchCheck constructor
 - Streamline Docker build process with matrix strategy for multi-architecture support
 - Simplify project data retrieval and enhance OAuth settings handling
+- Improve handling of custom network aliases
+- Remove unused submodules
+- Update subproject commit hashes
+- Remove SynchronizesModelData trait and implement syncData method for model synchronization
 
 ### 📚 Documentation
 
@@ -74,6 +124,7 @@ All notable changes to this project will be documented in this file.
 - Update changelog
 - Update changelog
 - Update changelog
+- Add service & database deployment logging plan
 
 ### 🧪 Testing
 
@@ -85,6 +136,8 @@ All notable changes to this project will be documented in this file.
 - Add category field to siyuan.yaml
 - Update siyuan category in service templates
 - Add spacing and format callout text in modal
+- Update version numbers to 4.0.0-beta.439 and 4.0.0-beta.440
+- Add .workspaces to .gitignore
 
 ## [4.0.0-beta.437] - 2025-10-21
 

@@ -1780,9 +1780,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     private function prepare_builder_image(bool $firstTry = true)
     {
         $this->checkForCancellation();
-        $settings = instanceSettings();
         $helperImage = config('constants.coolify.helper_image');
-        $helperImage = "{$helperImage}:{$settings->helper_version}";
+        $helperImage = "{$helperImage}:".getHelperVersion();
         // Get user home directory
         $this->serverUserHomeDir = instant_remote_process(['echo $HOME'], $this->server);
         $this->dockerConfigFileExists = instant_remote_process(["test -f {$this->serverUserHomeDir}/.docker/config.json && echo 'OK' || echo 'NOK'"], $this->server);
@@ -2322,8 +2321,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->application->parseHealthcheckFromDockerfile($this->saved_outputs->get('dockerfile_from_repo'));
         }
         $custom_network_aliases = [];
-        if (is_array($this->application->custom_network_aliases) && count($this->application->custom_network_aliases) > 0) {
-            $custom_network_aliases = $this->application->custom_network_aliases;
+        if (! empty($this->application->custom_network_aliases_array)) {
+            $custom_network_aliases = $this->application->custom_network_aliases_array;
         }
         $docker_compose = [
             'services' => [
@@ -3030,6 +3029,12 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
     private function start_by_compose_file()
     {
+        // Ensure .env file exists before docker compose tries to load it (defensive programming)
+        $this->execute_remote_command(
+            ["touch {$this->workdir}/.env", 'hidden' => true],
+            ["touch {$this->configuration_dir}/.env", 'hidden' => true],
+        );
+
         if ($this->application->build_pack === 'dockerimage') {
             $this->application_deployment_queue->addLogEntry('Pulling latest images from the registry.');
             $this->execute_remote_command(
@@ -3227,6 +3232,20 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         return hash_hmac('sha256', $secrets_string, $this->secrets_hash_key);
     }
 
+    protected function findFromInstructionLines($dockerfile): array
+    {
+        $fromLines = [];
+        foreach ($dockerfile as $index => $line) {
+            $trimmedLine = trim($line);
+            // Check if line starts with FROM (case-insensitive)
+            if (preg_match('/^FROM\s+/i', $trimmedLine)) {
+                $fromLines[] = $index;
+            }
+        }
+
+        return $fromLines;
+    }
+
     private function add_build_env_variables_to_dockerfile()
     {
         if ($this->dockerBuildkitSupported) {
@@ -3239,6 +3258,18 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 'ignore_errors' => true,
             ]);
             $dockerfile = collect(str($this->saved_outputs->get('dockerfile'))->trim()->explode("\n"));
+
+            // Find all FROM instruction positions
+            $fromLines = $this->findFromInstructionLines($dockerfile);
+
+            // If no FROM instructions found, skip ARG insertion
+            if (empty($fromLines)) {
+                return;
+            }
+
+            // Collect all ARG statements to insert
+            $argsToInsert = collect();
+
             if ($this->pull_request_id === 0) {
                 // Only add environment variables that are available during build
                 $envs = $this->application->environment_variables()
@@ -3247,9 +3278,9 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                     ->get();
                 foreach ($envs as $env) {
                     if (data_get($env, 'is_multiline') === true) {
-                        $dockerfile->splice(1, 0, ["ARG {$env->key}"]);
+                        $argsToInsert->push("ARG {$env->key}");
                     } else {
-                        $dockerfile->splice(1, 0, ["ARG {$env->key}={$env->real_value}"]);
+                        $argsToInsert->push("ARG {$env->key}={$env->real_value}");
                     }
                 }
                 // Add Coolify variables as ARGs
@@ -3259,9 +3290,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                         ->map(function ($var) {
                             return "ARG {$var}";
                         });
-                    foreach ($coolify_vars as $arg) {
-                        $dockerfile->splice(1, 0, [$arg]);
-                    }
+                    $argsToInsert = $argsToInsert->merge($coolify_vars);
                 }
             } else {
                 // Only add preview environment variables that are available during build
@@ -3271,9 +3300,9 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                     ->get();
                 foreach ($envs as $env) {
                     if (data_get($env, 'is_multiline') === true) {
-                        $dockerfile->splice(1, 0, ["ARG {$env->key}"]);
+                        $argsToInsert->push("ARG {$env->key}");
                     } else {
-                        $dockerfile->splice(1, 0, ["ARG {$env->key}={$env->real_value}"]);
+                        $argsToInsert->push("ARG {$env->key}={$env->real_value}");
                     }
                 }
                 // Add Coolify variables as ARGs
@@ -3283,15 +3312,23 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                         ->map(function ($var) {
                             return "ARG {$var}";
                         });
-                    foreach ($coolify_vars as $arg) {
-                        $dockerfile->splice(1, 0, [$arg]);
-                    }
+                    $argsToInsert = $argsToInsert->merge($coolify_vars);
                 }
             }
 
-            if ($envs->isNotEmpty()) {
-                $secrets_hash = $this->generate_secrets_hash($envs);
-                $dockerfile->splice(1, 0, ["ARG COOLIFY_BUILD_SECRETS_HASH={$secrets_hash}"]);
+            // Insert ARGs after each FROM instruction (in reverse order to maintain correct line numbers)
+            if ($argsToInsert->isNotEmpty()) {
+                foreach (array_reverse($fromLines) as $fromLineIndex) {
+                    // Insert all ARGs after this FROM instruction
+                    foreach ($argsToInsert->reverse() as $arg) {
+                        $dockerfile->splice($fromLineIndex + 1, 0, [$arg]);
+                    }
+                }
+                $envs_mapped = $envs->mapWithKeys(function ($env) {
+                    return [$env->key => $env->real_value];
+                });
+                $secrets_hash = $this->generate_secrets_hash($envs_mapped);
+                $argsToInsert->push("ARG COOLIFY_BUILD_SECRETS_HASH={$secrets_hash}");
             }
 
             $dockerfile_base64 = base64_encode($dockerfile->implode("\n"));
