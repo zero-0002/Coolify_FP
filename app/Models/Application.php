@@ -121,6 +121,8 @@ class Application extends BaseModel
 
     protected $casts = [
         'http_basic_auth_password' => 'encrypted',
+        'restart_count' => 'integer',
+        'last_restart_at' => 'datetime',
     ];
 
     protected static function booted()
@@ -770,6 +772,24 @@ class Application extends BaseModel
     public function main_port()
     {
         return $this->settings->is_static ? [80] : $this->ports_exposes_array;
+    }
+
+    public function detectPortFromEnvironment(?bool $isPreview = false): ?int
+    {
+        $envVars = $isPreview
+            ? $this->environment_variables_preview
+            : $this->environment_variables;
+
+        $portVar = $envVars->firstWhere('key', 'PORT');
+
+        if ($portVar && $portVar->real_value) {
+            $portValue = trim($portVar->real_value);
+            if (is_numeric($portValue)) {
+                return (int) $portValue;
+            }
+        }
+
+        return null;
     }
 
     public function environment_variables()
