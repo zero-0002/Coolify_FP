@@ -22,9 +22,12 @@
                 @endcan
             </div>
             @can('update', $this->env)
-                <div class="w-full">
-                    <x-forms.input id="comment" label="Comment (Optional)"
-                        helper="Add a note to document what this environment variable is used for." maxlength="256" />
+                <div class="flex flex-col w-full gap-2 lg:flex-row lg:items-end">
+                    <div class="flex-1">
+                        <x-forms.input id="comment" label="Comment (Optional)"
+                            helper="Add a note to document what this environment variable is used for." maxlength="256" />
+                    </div>
+                    <x-forms.button type="submit">Update</x-forms.button>
                 </div>
                 <div class="flex flex-col w-full gap-3">
                     <div class="flex flex-wrap w-full items-center gap-4">
@@ -70,9 +73,6 @@
                             @endif
                         @endif
                     </div>
-                </div>
-                <div class="flex w-full justify-end gap-2">
-                    <x-forms.button type="submit">Update</x-forms.button>
                 </div>
             @else
                 <div class="flex flex-col w-full gap-3">
