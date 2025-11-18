@@ -10540,6 +10540,10 @@
                     "real_value": {
                         "type": "string"
                     },
+                    "comment": {
+                        "type": "string",
+                        "nullable": true
+                    },
                     "version": {
                         "type": "string"
                     },

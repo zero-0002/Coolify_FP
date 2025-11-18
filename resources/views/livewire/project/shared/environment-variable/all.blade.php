@@ -79,6 +79,13 @@
     @else
         <form wire:submit.prevent='submit' class="flex flex-col gap-2">
             @can('manageEnvironment', $resource)
+                <div class="flex items-center gap-2 p-3 mb-2 text-sm border rounded bg-warning/10 border-warning/50 dark:text-warning text-coollabs">
+                    <svg class="w-5 h-5" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="currentColor" d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24m-4 48a12 12 0 1 1-12 12a12 12 0 0 1 12-12m12 112a16 16 0 0 1-16-16v-40a8 8 0 0 1 0-16a16 16 0 0 1 16 16v40a8 8 0 0 1 0 16"/>
+                    </svg>
+                    <span><strong>Note:</strong> Inline comments with space before # (e.g., <code>KEY=value #comment</code>) are stripped. Values like <code>PASSWORD=pass#word</code> are preserved. Use the Comment field in Normal view to document variables.</span>
+                </div>
+
                 <x-forms.textarea rows="10" class="whitespace-pre-wrap" id="variables" wire:model="variables"
                     label="Production Environment Variables"></x-forms.textarea>
 

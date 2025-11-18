@@ -441,13 +441,71 @@ function parseEnvFormatToArray($env_file_contents)
         $equals_pos = strpos($line, '=');
         if ($equals_pos !== false) {
             $key = substr($line, 0, $equals_pos);
-            $value = substr($line, $equals_pos + 1);
-            if (substr($value, 0, 1) === '"' && substr($value, -1) === '"') {
-                $value = substr($value, 1, -1);
-            } elseif (substr($value, 0, 1) === "'" && substr($value, -1) === "'") {
-                $value = substr($value, 1, -1);
+            $value_and_comment = substr($line, $equals_pos + 1);
+            $comment = null;
+            $remainder = '';
+
+            // Check if value starts with quotes
+            $firstChar = isset($value_and_comment[0]) ? $value_and_comment[0] : '';
+            $isDoubleQuoted = $firstChar === '"';
+            $isSingleQuoted = $firstChar === "'";
+
+            if ($isDoubleQuoted) {
+                // Find the closing double quote
+                $closingPos = strpos($value_and_comment, '"', 1);
+                if ($closingPos !== false) {
+                    // Extract quoted value and remove quotes
+                    $value = substr($value_and_comment, 1, $closingPos - 1);
+                    // Everything after closing quote (including comments)
+                    $remainder = substr($value_and_comment, $closingPos + 1);
+                } else {
+                    // No closing quote - treat as unquoted
+                    $value = substr($value_and_comment, 1);
+                }
+            } elseif ($isSingleQuoted) {
+                // Find the closing single quote
+                $closingPos = strpos($value_and_comment, "'", 1);
+                if ($closingPos !== false) {
+                    // Extract quoted value and remove quotes
+                    $value = substr($value_and_comment, 1, $closingPos - 1);
+                    // Everything after closing quote (including comments)
+                    $remainder = substr($value_and_comment, $closingPos + 1);
+                } else {
+                    // No closing quote - treat as unquoted
+                    $value = substr($value_and_comment, 1);
+                }
+            } else {
+                // Unquoted value - strip inline comments
+                // Only treat # as comment if preceded by whitespace
+                if (preg_match('/\s+#/', $value_and_comment, $matches, PREG_OFFSET_CAPTURE)) {
+                    // Found whitespace followed by #, extract comment
+                    $remainder = substr($value_and_comment, $matches[0][1]);
+                    $value = substr($value_and_comment, 0, $matches[0][1]);
+                    $value = rtrim($value);
+                } else {
+                    $value = $value_and_comment;
+                }
             }
-            $env_array[$key] = $value;
+
+            // Extract comment from remainder (if any)
+            if ($remainder !== '') {
+                // Look for # in remainder
+                $hashPos = strpos($remainder, '#');
+                if ($hashPos !== false) {
+                    // Extract everything after the # and trim
+                    $comment = substr($remainder, $hashPos + 1);
+                    $comment = trim($comment);
+                    // Set to null if empty after trimming
+                    if ($comment === '') {
+                        $comment = null;
+                    }
+                }
+            }
+
+            $env_array[$key] = [
+                'value' => $value,
+                'comment' => $comment,
+            ];
         }
     }
 

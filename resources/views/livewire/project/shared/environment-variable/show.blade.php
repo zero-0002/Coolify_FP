@@ -37,23 +37,29 @@
                                     helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
                                     label="Is Literal?" />
                             @else
-                                @if ($isSharedVariable)
-                                    <x-forms.checkbox instantSave id="is_multiline" label="Is Multiline?" />
+                                @if ($is_shared)
+                                    <x-forms.checkbox instantSave id="is_literal"
+                                        helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
+                                        label="Is Literal?" />
                                 @else
-                                    @if (!$env->is_nixpacks)
-                                        <x-forms.checkbox instantSave id="is_buildtime"
-                                            helper="Make this variable available during Docker build process. Useful for build secrets and dependencies."
-                                            label="Available at Buildtime" />
-                                    @endif
-                                    <x-forms.checkbox instantSave id="is_runtime"
-                                        helper="Make this variable available in the running container at runtime."
-                                        label="Available at Runtime" />
-                                    @if (!$env->is_nixpacks)
+                                    @if ($isSharedVariable)
                                         <x-forms.checkbox instantSave id="is_multiline" label="Is Multiline?" />
-                                        @if ($is_multiline === false)
-                                            <x-forms.checkbox instantSave id="is_literal"
-                                                helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
-                                                label="Is Literal?" />
+                                    @else
+                                        @if (!$env->is_nixpacks)
+                                            <x-forms.checkbox instantSave id="is_buildtime"
+                                                helper="Make this variable available during Docker build process. Useful for build secrets and dependencies."
+                                                label="Available at Buildtime" />
+                                        @endif
+                                        <x-forms.checkbox instantSave id="is_runtime"
+                                            helper="Make this variable available in the running container at runtime."
+                                            label="Available at Runtime" />
+                                        @if (!$env->is_nixpacks)
+                                            <x-forms.checkbox instantSave id="is_multiline" label="Is Multiline?" />
+                                            @if ($is_multiline === false)
+                                                <x-forms.checkbox instantSave id="is_literal"
+                                                    helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
+                                                    label="Is Literal?" />
+                                            @endif
                                         @endif
                                     @endif
                                 @endif
@@ -77,22 +83,26 @@
                                     helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
                                     label="Is Literal?" />
                             @else
-                                @if ($isSharedVariable)
-                                    <x-forms.checkbox disabled id="is_multiline" label="Is Multiline?" />
+                                @if ($is_shared)
+                                    <x-forms.checkbox disabled id="is_literal"
+                                        helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
+                                        label="Is Literal?" />
                                 @else
-                                    @if (!$env->is_nixpacks)
+                                    @if ($isSharedVariable)
+                                        <x-forms.checkbox disabled id="is_multiline" label="Is Multiline?" />
+                                    @else
                                         <x-forms.checkbox disabled id="is_buildtime"
                                             helper="Make this variable available during Docker build process. Useful for build secrets and dependencies."
                                             label="Available at Buildtime" />
-                                    @endif
-                                    <x-forms.checkbox disabled id="is_runtime"
-                                        helper="Make this variable available in the running container at runtime."
-                                        label="Available at Runtime" />
-                                    <x-forms.checkbox disabled id="is_multiline" label="Is Multiline?" />
-                                    @if ($is_multiline === false)
-                                        <x-forms.checkbox disabled id="is_literal"
-                                            helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
-                                            label="Is Literal?" />
+                                        <x-forms.checkbox disabled id="is_runtime"
+                                            helper="Make this variable available in the running container at runtime."
+                                            label="Available at Runtime" />
+                                        <x-forms.checkbox disabled id="is_multiline" label="Is Multiline?" />
+                                        @if ($is_multiline === false)
+                                            <x-forms.checkbox disabled id="is_literal"
+                                                helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
+                                                label="Is Literal?" />
+                                        @endif
                                     @endif
                                 @endif
                             @endif
@@ -103,51 +113,43 @@
         @else
             @can('update', $this->env)
                 @if ($isDisabled)
+                    <div class="flex flex-col w-full gap-2">
+                        <div class="flex flex-col w-full gap-2 lg:flex-row">
+                            <x-forms.input disabled id="key" />
+                            <x-forms.input disabled type="password" id="value" />
+                            @if ($is_shared)
+                                <x-forms.input disabled type="password" id="real_value" />
+                            @endif
+                        </div>
+                    </div>
+                @else
+                    <div class="flex flex-col w-full gap-2">
+                        <div class="flex flex-col w-full gap-2 lg:flex-row">
+                            @if ($is_multiline)
+                                <x-forms.input :required="$is_redis_credential" isMultiline="{{ $is_multiline }}" id="key" />
+                                <x-forms.textarea :required="$is_redis_credential" type="password" id="value" />
+                            @else
+                                <x-forms.input :disabled="$is_redis_credential" :required="$is_redis_credential" id="key" />
+                                <x-forms.input :required="$is_redis_credential" type="password" id="value" />
+                            @endif
+                            @if ($is_shared)
+                                <x-forms.input :disabled="$is_redis_credential" :required="$is_redis_credential" disabled type="password" id="real_value" />
+                            @endif
+                        </div>
+                        <x-forms.input instantSave id="comment" label="Comment (Optional)" helper="Add a note to document what this environment variable is used for." />
+                    </div>
+                @endif
+            @else
+                <div class="flex flex-col w-full gap-2">
                     <div class="flex flex-col w-full gap-2 lg:flex-row">
                         <x-forms.input disabled id="key" />
-                        <x-forms.env-var-input
-                            disabled
-                            type="password"
-                            id="value"
-                            :availableVars="$this->availableSharedVariables"
-                            :projectUuid="data_get($parameters, 'project_uuid')"
-                            :environmentUuid="data_get($parameters, 'environment_uuid')" />
+                        <x-forms.input disabled type="password" id="value" />
                         @if ($is_shared)
                             <x-forms.input disabled type="password" id="real_value" />
                         @endif
                     </div>
-                @else
-                    <div class="flex flex-col w-full gap-2 lg:flex-row">
-                        @if ($is_multiline)
-                            <x-forms.input :required="$is_redis_credential" isMultiline="{{ $is_multiline }}" id="key" />
-                            <x-forms.textarea :required="$is_redis_credential" type="password" id="value" />
-                        @else
-                            <x-forms.input :disabled="$is_redis_credential" :required="$is_redis_credential" id="key" />
-                            <x-forms.env-var-input
-                                :required="$is_redis_credential"
-                                type="password"
-                                id="value"
-                                :availableVars="$this->availableSharedVariables"
-                                :projectUuid="data_get($parameters, 'project_uuid')"
-                                :environmentUuid="data_get($parameters, 'environment_uuid')" />
-                        @endif
-                        @if ($is_shared)
-                            <x-forms.input :disabled="$is_redis_credential" :required="$is_redis_credential" disabled type="password" id="real_value" />
-                        @endif
-                    </div>
-                @endif
-            @else
-                <div class="flex flex-col w-full gap-2 lg:flex-row">
-                    <x-forms.input disabled id="key" />
-                    <x-forms.env-var-input
-                        disabled
-                        type="password"
-                        id="value"
-                        :availableVars="$this->availableSharedVariables"
-                        :projectUuid="data_get($parameters, 'project_uuid')"
-                        :environmentUuid="data_get($parameters, 'environment_uuid')" />
-                    @if ($is_shared)
-                        <x-forms.input disabled type="password" id="real_value" />
+                    @if (!$isDisabled)
+                        <x-forms.input disabled id="comment" label="Comment (Optional)" helper="Add a note to document what this environment variable is used for." />
                     @endif
                 </div>
             @endcan
@@ -167,23 +169,29 @@
                                     helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
                                     label="Is Literal?" />
                             @else
-                                @if ($isSharedVariable)
-                                    <x-forms.checkbox instantSave id="is_multiline" label="Is Multiline?" />
+                                @if ($is_shared)
+                                    <x-forms.checkbox instantSave id="is_literal"
+                                        helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
+                                        label="Is Literal?" />
                                 @else
-                                    @if (!$env->is_nixpacks)
-                                        <x-forms.checkbox instantSave id="is_buildtime"
-                                            helper="Make this variable available during Docker build process. Useful for build secrets and dependencies."
-                                            label="Available at Buildtime" />
-                                    @endif
-                                    <x-forms.checkbox instantSave id="is_runtime"
-                                        helper="Make this variable available in the running container at runtime."
-                                        label="Available at Runtime" />
-                                    @if (!$env->is_nixpacks)
+                                    @if ($isSharedVariable)
                                         <x-forms.checkbox instantSave id="is_multiline" label="Is Multiline?" />
-                                        @if ($is_multiline === false)
-                                            <x-forms.checkbox instantSave id="is_literal"
-                                                helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
-                                                label="Is Literal?" />
+                                    @else
+                                        @if (!$env->is_nixpacks)
+                                            <x-forms.checkbox instantSave id="is_buildtime"
+                                                helper="Make this variable available during Docker build process. Useful for build secrets and dependencies."
+                                                label="Available at Buildtime" />
+                                        @endif
+                                        <x-forms.checkbox instantSave id="is_runtime"
+                                            helper="Make this variable available in the running container at runtime."
+                                            label="Available at Runtime" />
+                                        @if (!$env->is_nixpacks)
+                                            <x-forms.checkbox instantSave id="is_multiline" label="Is Multiline?" />
+                                            @if ($is_multiline === false)
+                                                <x-forms.checkbox instantSave id="is_literal"
+                                                    helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
+                                                    label="Is Literal?" />
+                                            @endif
                                         @endif
                                     @endif
                                 @endif
@@ -229,22 +237,26 @@
                                     helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
                                     label="Is Literal?" />
                             @else
-                                @if ($isSharedVariable)
-                                    <x-forms.checkbox disabled id="is_multiline" label="Is Multiline?" />
+                                @if ($is_shared)
+                                    <x-forms.checkbox disabled id="is_literal"
+                                        helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
+                                        label="Is Literal?" />
                                 @else
-                                    @if (!$env->is_nixpacks)
+                                    @if ($isSharedVariable)
+                                        <x-forms.checkbox disabled id="is_multiline" label="Is Multiline?" />
+                                    @else
                                         <x-forms.checkbox disabled id="is_buildtime"
                                             helper="Make this variable available during Docker build process. Useful for build secrets and dependencies."
                                             label="Available at Buildtime" />
-                                    @endif
-                                    <x-forms.checkbox disabled id="is_runtime"
-                                        helper="Make this variable available in the running container at runtime."
-                                        label="Available at Runtime" />
-                                    <x-forms.checkbox disabled id="is_multiline" label="Is Multiline?" />
-                                    @if ($is_multiline === false)
-                                        <x-forms.checkbox disabled id="is_literal"
-                                            helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
-                                            label="Is Literal?" />
+                                        <x-forms.checkbox disabled id="is_runtime"
+                                            helper="Make this variable available in the running container at runtime."
+                                            label="Available at Runtime" />
+                                        <x-forms.checkbox disabled id="is_multiline" label="Is Multiline?" />
+                                        @if ($is_multiline === false)
+                                            <x-forms.checkbox disabled id="is_literal"
+                                                helper="This means that when you use $VARIABLES in a value, it should be interpreted as the actual characters '$VARIABLES' and not as the value of a variable named VARIABLE.<br><br>Useful if you have $ sign in your value and there are some characters after it, but you would not like to interpolate it from another value. In this case, you should set this to true."
+                                                label="Is Literal?" />
+                                        @endif
                                     @endif
                                 @endif
                             @endif

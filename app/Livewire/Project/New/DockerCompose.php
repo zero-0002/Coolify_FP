@@ -63,10 +63,15 @@ class DockerCompose extends Component
             ]);
 
             $variables = parseEnvFormatToArray($this->envFile);
-            foreach ($variables as $key => $variable) {
+            foreach ($variables as $key => $data) {
+                // Extract value and comment from parsed data
+                $value = $data['value'] ?? $data;
+                $comment = $data['comment'] ?? null;
+
                 EnvironmentVariable::create([
                     'key' => $key,
-                    'value' => $variable,
+                    'value' => $value,
+                    'comment' => $comment,
                     'is_preview' => false,
                     'resourceable_id' => $service->id,
                     'resourceable_type' => $service->getMorphClass(),

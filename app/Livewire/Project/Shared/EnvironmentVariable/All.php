@@ -270,18 +270,36 @@ class All extends Component
     private function updateOrCreateVariables($isPreview, $variables)
     {
         $count = 0;
-        foreach ($variables as $key => $value) {
+        foreach ($variables as $key => $data) {
             if (str($key)->startsWith('SERVICE_FQDN') || str($key)->startsWith('SERVICE_URL') || str($key)->startsWith('SERVICE_NAME')) {
                 continue;
             }
+
+            // Extract value and comment from parsed data
+            $value = $data['value'] ?? $data;
+            $comment = $data['comment'] ?? null;
+
             $method = $isPreview ? 'environment_variables_preview' : 'environment_variables';
             $found = $this->resource->$method()->where('key', $key)->first();
 
             if ($found) {
                 if (! $found->is_shown_once && ! $found->is_multiline) {
-                    // Only count as a change if the value actually changed
+                    $changed = false;
+
+                    // Update value if it changed
                     if ($found->value !== $value) {
                         $found->value = $value;
+                        $changed = true;
+                    }
+
+                    // Always update comment from inline comment (overwrites existing)
+                    // Set to comment if provided, otherwise set to null if no comment
+                    if ($found->comment !== $comment) {
+                        $found->comment = $comment;
+                        $changed = true;
+                    }
+
+                    if ($changed) {
                         $found->save();
                         $count++;
                     }
@@ -290,6 +308,7 @@ class All extends Component
                 $environment = new EnvironmentVariable;
                 $environment->key = $key;
                 $environment->value = $value;
+                $environment->comment = $comment; // Set comment from inline comment
                 $environment->is_multiline = false;
                 $environment->is_preview = $isPreview;
                 $environment->resourceable_id = $this->resource->id;
