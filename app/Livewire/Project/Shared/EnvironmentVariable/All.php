@@ -230,6 +230,7 @@ class All extends Component
         $environment->is_runtime = $data['is_runtime'] ?? true;
         $environment->is_buildtime = $data['is_buildtime'] ?? true;
         $environment->is_preview = $data['is_preview'] ?? false;
+        $environment->comment = $data['comment'] ?? null;
         $environment->resourceable_id = $this->resource->id;
         $environment->resourceable_type = $this->resource->getMorphClass();
 
