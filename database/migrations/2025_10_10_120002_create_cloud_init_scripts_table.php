@@ -17,8 +17,6 @@ return new class extends Migration
             $table->string('name');
             $table->text('script'); // Encrypted in the model
             $table->timestamps();
-
-            $table->index('team_id');
         });
     }
 
