@@ -23,7 +23,7 @@
             </div>
             @can('update', $this->env)
                 <div class="w-full">
-                    <x-forms.input instantSave id="comment" label="Comment (Optional)"
+                    <x-forms.input id="comment" label="Comment (Optional)"
                         helper="Add a note to document what this environment variable is used for." maxlength="256" />
                 </div>
                 <div class="flex flex-col w-full gap-3">
@@ -70,6 +70,17 @@
                             @endif
                         @endif
                     </div>
+                </div>
+                <div class="flex w-full justify-end gap-2">
+                    <x-forms.button type="submit">Update</x-forms.button>
+                    @can('delete', $this->env)
+                        <x-modal-confirmation title="Confirm Environment Variable Deletion?" isErrorButton
+                            buttonTitle="Delete" submitAction="delete" :actions="['The selected environment variable will be permanently deleted.']"
+                            confirmationText="{{ $env->key }}" buttonFullWidth="true"
+                            confirmationLabel="Please confirm the execution of the actions by entering the Environment Variable Name below"
+                            shortConfirmationLabel="Environment Variable Name" :confirmWithPassword="false"
+                            step2ButtonText="Permanently Delete" />
+                    @endcan
                 </div>
             @else
                 <div class="flex flex-col w-full gap-3">
