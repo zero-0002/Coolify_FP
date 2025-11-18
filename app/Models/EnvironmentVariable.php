@@ -32,7 +32,29 @@ use OpenApi\Attributes as OA;
 )]
 class EnvironmentVariable extends BaseModel
 {
-    protected $guarded = [];
+    protected $fillable = [
+        // Core identification
+        'key',
+        'value',
+        'comment',
+
+        // Polymorphic relationship
+        'resourceable_type',
+        'resourceable_id',
+
+        // Boolean flags
+        'is_preview',
+        'is_multiline',
+        'is_literal',
+        'is_runtime',
+        'is_buildtime',
+        'is_shown_once',
+        'is_shared',
+
+        // Metadata
+        'version',
+        'order',
+    ];
 
     protected $casts = [
         'key' => 'string',
