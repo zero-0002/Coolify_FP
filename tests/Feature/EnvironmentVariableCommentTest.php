@@ -85,7 +85,7 @@ test('environment variable comment is copied to preview environment', function (
         'resourceable_id' => $this->application->id,
     ]);
 
-    // The model's booted() method should create a preview version
+    // The model's created() event listener automatically creates a preview version
     $previewEnv = EnvironmentVariable::where('key', 'TEST_VAR')
         ->where('resourceable_id', $this->application->id)
         ->where('is_preview', true)
@@ -117,4 +117,34 @@ test('developer view format does not break with comment-like values', function (
 
     expect($env1->value)->toBe('value_with_#_in_it');
     expect($env1->comment)->toBe('Contains hash symbol');
+});
+
+test('environment variable comment can store up to 256 characters', function () {
+    $comment = str_repeat('a', 256);
+    $env = EnvironmentVariable::create([
+        'key' => 'TEST_VAR',
+        'value' => 'test_value',
+        'comment' => $comment,
+        'resourceable_type' => Application::class,
+        'resourceable_id' => $this->application->id,
+    ]);
+
+    expect($env->comment)->toBe($comment);
+    expect(strlen($env->comment))->toBe(256);
+});
+
+test('environment variable comment cannot exceed 256 characters via Livewire', function () {
+    $env = EnvironmentVariable::create([
+        'key' => 'TEST_VAR',
+        'value' => 'test_value',
+        'resourceable_type' => Application::class,
+        'resourceable_id' => $this->application->id,
+    ]);
+
+    $longComment = str_repeat('a', 257);
+
+    Livewire::test(\App\Livewire\Project\Shared\EnvironmentVariable\Show::class, ['env' => $env, 'type' => 'application'])
+        ->set('comment', $longComment)
+        ->call('submit')
+        ->assertHasErrors(['comment' => 'max']);
 });

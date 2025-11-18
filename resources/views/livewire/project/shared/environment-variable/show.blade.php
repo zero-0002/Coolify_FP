@@ -121,6 +121,7 @@
                                 <x-forms.input disabled type="password" id="real_value" />
                             @endif
                         </div>
+                        <x-forms.input disabled id="comment" label="Comment (Optional)" helper="Add a note to document what this environment variable is used for." maxlength="256" />
                     </div>
                 @else
                     <div class="flex flex-col w-full gap-2">
@@ -136,7 +137,7 @@
                                 <x-forms.input :disabled="$is_redis_credential" :required="$is_redis_credential" disabled type="password" id="real_value" />
                             @endif
                         </div>
-                        <x-forms.input instantSave id="comment" label="Comment (Optional)" helper="Add a note to document what this environment variable is used for." />
+                        <x-forms.input instantSave id="comment" label="Comment (Optional)" helper="Add a note to document what this environment variable is used for." maxlength="256" />
                     </div>
                 @endif
             @else
@@ -148,9 +149,7 @@
                             <x-forms.input disabled type="password" id="real_value" />
                         @endif
                     </div>
-                    @if (!$isDisabled)
-                        <x-forms.input disabled id="comment" label="Comment (Optional)" helper="Add a note to document what this environment variable is used for." />
-                    @endif
+                    <x-forms.input disabled id="comment" label="Comment (Optional)" helper="Add a note to document what this environment variable is used for." maxlength="256" />
                 </div>
             @endcan
             @can('update', $this->env)

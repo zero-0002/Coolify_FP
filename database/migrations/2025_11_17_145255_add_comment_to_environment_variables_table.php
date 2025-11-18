@@ -12,11 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('environment_variables', function (Blueprint $table) {
-            $table->text('comment')->nullable();
+            $table->string('comment', 256)->nullable();
         });
 
         Schema::table('shared_environment_variables', function (Blueprint $table) {
-            $table->text('comment')->nullable();
+            $table->string('comment', 256)->nullable();
         });
     }
 

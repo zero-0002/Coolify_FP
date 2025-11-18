@@ -65,7 +65,7 @@ class Show extends Component
     protected $rules = [
         'key' => 'required|string',
         'value' => 'nullable',
-        'comment' => 'nullable|string|max:1000',
+        'comment' => 'nullable|string|max:256',
         'is_multiline' => 'required|boolean',
         'is_literal' => 'required|boolean',
         'is_shown_once' => 'required|boolean',
@@ -107,7 +107,7 @@ class Show extends Component
                 $this->validate([
                     'key' => 'required|string',
                     'value' => 'nullable',
-                    'comment' => 'nullable|string|max:1000',
+                    'comment' => 'nullable|string|max:256',
                     'is_multiline' => 'required|boolean',
                     'is_literal' => 'required|boolean',
                     'is_shown_once' => 'required|boolean',
