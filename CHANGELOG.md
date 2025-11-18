@@ -4,80 +4,164 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### 🐛 Bug Fixes
+
+- Update syncData method to use data_get for safer property access
+- Update version numbers to 4.0.0-beta.441 and 4.0.0-beta.442
+- Enhance menu item styles and update theme color meta tag
+- Clean up input attributes for PostgreSQL settings in general.blade.php
+- Update docker stop command to use --time instead of --timeout
+- Clean up utility classes and improve readability in Blade templates
+- Enhance styling for page width component in Blade template
+- Remove debugging output from StartPostgresql command handling
+
 ### 📚 Documentation
 
 - Update changelog
 
-## [4.0.0-beta.436] - 2025-10-17
-
-### 🚀 Features
-
-- Implement TrustHosts middleware to handle FQDN and IP address trust logic
-- Implement TrustHosts middleware to handle FQDN and IP address trust logic
-- Allow safe environment variable defaults in array-format volumes
-- Add signoz template
-- *(signoz)* Replace png icon by svg icon
-- *(signoz)* Remove explicit 'networks' setting
-- *(signoz)* Add predefined environment variables to configure Telemetry, SMTP and email sending for Alert Manager
-- *(signoz)* Generate URLs for `otel-collector` service
-- *(signoz)* Update documentation link
-- *(signoz)* Add healthcheck to otel-collector service
-- *(signoz)* Use latest tag instead of hardcoded versions
-- *(signoz)* Remove redundant users.xml volume from clickhouse container
-- *(signoz)* Replace clickhouse' config.xml volume with simpler configuration
-- *(signoz)* Remove deprecated parameters of signoz container
-- *(signoz)* Remove volumes from signoz.yaml
-- *(signoz)* Assume there is a single zookeeper container
-- *(signoz)* Update Clickhouse config to include all settings required by Signoz
-- *(signoz)* Update config.xml and users.xml to ensure clickhouse boots correctly
-- *(signoz)* Update otel-collector configuration to match upstream
-- *(signoz)* Fix otel-collector config for version v0.128.0
-- *(signoz)* Remove unecessary port mapping for otel-collector
-- *(signoz)* Add SIGNOZ_JWT_SECRET env var generation
-- *(signoz)* Upgrade clickhouse image to 25.5.6
-- *(signoz)* Use latest tag for signoz/zookeeper
-- *(signoz)* Update variables for SMTP configuration
-- *(signoz)* Replace deprecated `TELEMETRY_ENABLED` by `SIGNOZ_STATSREPORTER_ENABLED`
-- *(signoz)* Pin service image tags and `exclude_from_hc` flag to services excluded from health checks
-- *(templates)* Add SMTP configuration to ente-photos compose templates
-- *(templates)* Add SMTP encryption configuration to ente-photos compose templates
+## [4.0.0-beta.440] - 2025-11-04
 
 ### 🐛 Bug Fixes
 
-- Use wasChanged() instead of isDirty() in updated hooks
-- Prevent command injection in git ls-remote operations
-- Handle null environment variable values in bash escaping
-- Critical privilege escalation in team invitation system
-- Add authentication context to TeamPolicyTest
-- Ensure negative cache results are stored in TrustHosts middleware
-- Use wasChanged() instead of isDirty() in updated hook
-- Prevent command injection in Docker Compose parsing - add pre-save validation
-- Use canonical parser for Windows path validation
-- Correct variable name typo in generateGitLsRemoteCommands method
-- Update version numbers to 4.0.0-beta.436 and 4.0.0-beta.437
-- Ensure authorization checks are in place for viewing and updating the application
-- Ensure authorization check is performed during component mount
-- *(signoz)* Remove example secrets to avoid triggering GitGuardian
-- *(signoz)* Remove hardcoded container names
-- *(signoz)* Remove HTTP collector FQDN in otel-collector
-- *(n8n)* Add DB_SQLITE_POOL_SIZE environment variable for configuration
+- Fix SPA toggle nginx regeneration and add confirmation modal
+
+### 📚 Documentation
+
+- Update changelog
+
+## [4.0.0-beta.439] - 2025-11-03
+
+### 📚 Documentation
+
+- Update changelog
+
+## [4.0.0-beta.438] - 2025-10-29
+
+### 🚀 Features
+
+- Display service logos in original colors with consistent sizing
+- Add warnings for system-wide GitHub Apps
+- Show message when no resources use GitHub App
+- Add dynamic viewport-based height for compose editor
+- Add funding information for Coollabs including sponsorship plans and channels
+- Update Evolution API slogan to better reflect its capabilities
+- *(templates)* Update plane compose to v1.0.0
+- Add token validation functionality for Hetzner and DigitalOcean providers
+- Add dev_helper_version to instance settings and update related functionality
+- Add RestoreDatabase command for PostgreSQL dump restoration
+- Update ApplicationSetting model to include additional boolean casts
+- Enhance General component with additional properties and validation rules
+- Update version numbers to 4.0.0-beta.440 and 4.0.0-beta.441
+
+### 🐛 Bug Fixes
+
+- Handle redis_password in API database creation
+- Make modals scrollable on small screens
+- Resolve Livewire wire:model binding error in domains input
+- Make environment variable forms responsive
+- Make proxy logs page responsive
+- Improve proxy logs form layout for better responsive behavior
+- Prevent horizontal overflow in log text
+- Use break-all to force line wrapping in logs
+- Ensure deployment failure notifications are sent reliably
+- GitHub source creation and configuration issues
+- Make system-wide warning reactive in Create view
+- Prevent system-wide warning callout from making modal too wide
+- Constrain callout width with max-w-2xl and wrap text properly
+- Center system-wide warning callout in modal
+- Left-align callout on regular view, keep centered in modal
+- Allow callout to take full width in regular view
+- Change app_id and installation_id to integer values in createGithubAppManually method
+- Use x-cloak instead of inline style to prevent FOUC
+- Clarify warning message for allowed IPs configuration
+- Server URL generation in ServerPatchCheck notification
+- Monaco editor empty for docker compose applications
+- Update sponsor link from Darweb to Dade2 in README
+- *(database)* Prevent malformed URLs when server IP is empty
+- Optimize caching in Dockerfile and GitHub Actions workflow
+- Remove wire:ignore from modal and add wire:key to EditCompose component
+- Add wire:ignore directive to modal component for improved functionality
+- Clean up formatting and remove unnecessary key binding in stack form component
+- Add null checks and validation to OAuth bulk update method
+- *(docs)* Update documentation URL to version 2 in evolution-api.yaml
+- *(templates)* Remove volumes from Plane's compose
+- *(templates)* Add redis env to live service in Plane
+- *(templates)* Update minio image to use coollabsio fork in Plane
+- Prevent login rate limit bypass via spoofed headers
+- Correct login rate limiter key format to include IP address
+- Change SMTP port input type to number for better validation
+- Remove unnecessary step attribute from maximum storage input fields
+- Update boarding flow logic to complete onboarding when server is created
+- Convert network aliases to string for display
+- Improve custom_network_aliases handling and testing
+- Remove duplicate custom_labels from config hash calculation
+- Improve run script and enhance sticky header style
+
+### 💼 Other
+
+- *(deps-dev)* Bump vite from 6.3.6 to 6.4.1
 
 ### 🚜 Refactor
 
-- Improve validation error handling and coding standards
-- Preserve exception chain in validation error handling
-- Harden and deduplicate validateShellSafePath
-- Replace random ID generation with Cuid2 for unique HTML IDs in form components
+- Remove deprecated next() method
+- Replace allowed IPs validation logic with regex
+- Remove redundant
+- Streamline allowed IPs validation and enhance UI warnings for API access
+- Remove staging URL logic from ServerPatchCheck constructor
+- Streamline Docker build process with matrix strategy for multi-architecture support
+- Simplify project data retrieval and enhance OAuth settings handling
+- Improve handling of custom network aliases
+- Remove unused submodules
+- Update subproject commit hashes
+- Remove SynchronizesModelData trait and implement syncData method for model synchronization
+
+### 📚 Documentation
+
+- Update changelog
+- Update changelog
+- Update changelog
+- Update changelog
+- Update changelog
+- Update changelog
+- Update changelog
+- Add service & database deployment logging plan
 
 ### 🧪 Testing
 
-- Add coverage for newline and tab rejection in volume strings
+- Add unit tests for ServerPatchCheck notification URL generation
+- Fix ServerPatchCheckNotification tests to avoid global state pollution
 
 ### ⚙️ Miscellaneous Tasks
 
-- *(signoz)* Remove unused ports
-- *(signoz)* Bump version to 0.77.0
-- *(signoz)* Bump version to 0.78.1
+- Add category field to siyuan.yaml
+- Update siyuan category in service templates
+- Add spacing and format callout text in modal
+- Update version numbers to 4.0.0-beta.439 and 4.0.0-beta.440
+- Add .workspaces to .gitignore
+
+## [4.0.0-beta.437] - 2025-10-21
+
+### 🚀 Features
+
+- *(templates)* Add sparkyfitness compose template and logo
+- *(servide)* Add siyuan template
+- Add onboarding guide link to global search no results state
+- Add category filter dropdown to service selection
+
+### 🐛 Bug Fixes
+
+- *(service)* Update image version & healthcheck start period
+- Filter deprecated server types for Hetzner
+- Eliminate dark mode white screen flicker on page transitions
+
+### 💼 Other
+
+- Preserve clean docker_compose_raw without Coolify additions
+
+### 📚 Documentation
+
+- Update changelog
+- Update changelog
 
 ## [4.0.0-beta.435] - 2025-10-15
 
@@ -143,6 +227,35 @@ All notable changes to this project will be documented in this file.
 - Add Hetzner affiliate link to token form
 - Update Hetzner affiliate link text and URL
 - Add CPU vendor information to server types in Hetzner integration
+- Implement TrustHosts middleware to handle FQDN and IP address trust logic
+- Implement TrustHosts middleware to handle FQDN and IP address trust logic
+- Allow safe environment variable defaults in array-format volumes
+- Add signoz template
+- *(signoz)* Replace png icon by svg icon
+- *(signoz)* Remove explicit 'networks' setting
+- *(signoz)* Add predefined environment variables to configure Telemetry, SMTP and email sending for Alert Manager
+- *(signoz)* Generate URLs for `otel-collector` service
+- *(signoz)* Update documentation link
+- *(signoz)* Add healthcheck to otel-collector service
+- *(signoz)* Use latest tag instead of hardcoded versions
+- *(signoz)* Remove redundant users.xml volume from clickhouse container
+- *(signoz)* Replace clickhouse' config.xml volume with simpler configuration
+- *(signoz)* Remove deprecated parameters of signoz container
+- *(signoz)* Remove volumes from signoz.yaml
+- *(signoz)* Assume there is a single zookeeper container
+- *(signoz)* Update Clickhouse config to include all settings required by Signoz
+- *(signoz)* Update config.xml and users.xml to ensure clickhouse boots correctly
+- *(signoz)* Update otel-collector configuration to match upstream
+- *(signoz)* Fix otel-collector config for version v0.128.0
+- *(signoz)* Remove unecessary port mapping for otel-collector
+- *(signoz)* Add SIGNOZ_JWT_SECRET env var generation
+- *(signoz)* Upgrade clickhouse image to 25.5.6
+- *(signoz)* Use latest tag for signoz/zookeeper
+- *(signoz)* Update variables for SMTP configuration
+- *(signoz)* Replace deprecated `TELEMETRY_ENABLED` by `SIGNOZ_STATSREPORTER_ENABLED`
+- *(signoz)* Pin service image tags and `exclude_from_hc` flag to services excluded from health checks
+- *(templates)* Add SMTP configuration to ente-photos compose templates
+- *(templates)* Add SMTP encryption configuration to ente-photos compose templates
 
 ### 🐛 Bug Fixes
 
@@ -230,6 +343,25 @@ All notable changes to this project will be documented in this file.
 - Use computed imageTag variable for digest-based Docker images
 - Improve Docker image digest handling and add auto-parse feature
 - 'new image' quick action not progressing to resource selection
+- Use wasChanged() instead of isDirty() in updated hooks
+- Prevent command injection in git ls-remote operations
+- Handle null environment variable values in bash escaping
+- Critical privilege escalation in team invitation system
+- Add authentication context to TeamPolicyTest
+- Ensure negative cache results are stored in TrustHosts middleware
+- Use wasChanged() instead of isDirty() in updated hook
+- Prevent command injection in Docker Compose parsing - add pre-save validation
+- Use canonical parser for Windows path validation
+- Correct variable name typo in generateGitLsRemoteCommands method
+- Update version numbers to 4.0.0-beta.436 and 4.0.0-beta.437
+- Ensure authorization checks are in place for viewing and updating the application
+- Ensure authorization check is performed during component mount
+- *(signoz)* Remove example secrets to avoid triggering GitGuardian
+- *(signoz)* Remove hardcoded container names
+- *(signoz)* Remove HTTP collector FQDN in otel-collector
+- *(n8n)* Add DB_SQLITE_POOL_SIZE environment variable for configuration
+- *(template)* Remove default values for environment variables
+- Update metamcp image version and clean up environment variable syntax
 
 ### 💼 Other
 
@@ -242,6 +374,8 @@ All notable changes to this project will be documented in this file.
 - Remove volumes
 - Add ray logging for Hetzner createServer API request/response
 - Escape all shell directory paths in Git deployment commands
+- Remove content from docker_compose_raw to prevent file overwrites
+- *(templates)* Metamcp app
 
 ### 🚜 Refactor
 
@@ -269,6 +403,10 @@ All notable changes to this project will be documented in this file.
 - Migrate database components from legacy model binding to explicit properties
 - Volumes set back to ./pds-data:/pds
 - *(campfire)* Streamline environment variable definitions in Docker Compose file
+- Improve validation error handling and coding standards
+- Preserve exception chain in validation error handling
+- Harden and deduplicate validateShellSafePath
+- Replace random ID generation with Cuid2 for unique HTML IDs in form components
 
 ### 📚 Documentation
 
@@ -292,12 +430,16 @@ All notable changes to this project will be documented in this file.
 ### 🧪 Testing
 
 - Improve Git ls-remote parsing tests with uppercase SHA and negative cases
+- Add coverage for newline and tab rejection in volume strings
 
 ### ⚙️ Miscellaneous Tasks
 
 - *(versions)* Update Coolify version numbers to 4.0.0-beta.435 and 4.0.0-beta.436
 - Update package-lock.json
 - *(service)* Update convex template and image
+- *(signoz)* Remove unused ports
+- *(signoz)* Bump version to 0.77.0
+- *(signoz)* Bump version to 0.78.1
 
 ## [4.0.0-beta.434] - 2025-10-03
 

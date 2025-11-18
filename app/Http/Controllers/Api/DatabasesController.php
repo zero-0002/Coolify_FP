@@ -1619,6 +1619,18 @@ class DatabasesController extends Controller
             return response()->json(['message' => 'Server has multiple destinations and you do not set destination_uuid.'], 400);
         }
         $destination = $destinations->first();
+        if ($destinations->count() > 1 && $request->has('destination_uuid')) {
+            $destination = $destinations->where('uuid', $request->destination_uuid)->first();
+            if (! $destination) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => [
+                        'destination_uuid' => 'Provided destination_uuid does not belong to the specified server.',
+                    ],
+                ], 422);
+            }
+        }
+
         if ($request->has('public_port') && $request->is_public) {
             if (isPublicPortAlreadyUsed($server, $request->public_port)) {
                 return response()->json(['message' => 'Public port already used by another database.'], 400);
@@ -2133,7 +2145,6 @@ class DatabasesController extends Controller
     public function delete_by_uuid(Request $request)
     {
         $teamId = getTeamIdFromToken();
-        $cleanup = filter_var($request->query->get('cleanup', true), FILTER_VALIDATE_BOOLEAN);
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
@@ -2149,10 +2160,10 @@ class DatabasesController extends Controller
 
         DeleteResourceJob::dispatch(
             resource: $database,
-            deleteVolumes: $request->query->get('delete_volumes', true),
-            deleteConnectedNetworks: $request->query->get('delete_connected_networks', true),
-            deleteConfigurations: $request->query->get('delete_configurations', true),
-            dockerCleanup: $request->query->get('docker_cleanup', true)
+            deleteVolumes: $request->boolean('delete_volumes', true),
+            deleteConnectedNetworks: $request->boolean('delete_connected_networks', true),
+            deleteConfigurations: $request->boolean('delete_configurations', true),
+            dockerCleanup: $request->boolean('docker_cleanup', true)
         );
 
         return response()->json([
@@ -2243,7 +2254,7 @@ class DatabasesController extends Controller
             return response()->json(['message' => 'Backup configuration not found.'], 404);
         }
 
-        $deleteS3 = filter_var($request->query->get('delete_s3', false), FILTER_VALIDATE_BOOLEAN);
+        $deleteS3 = $request->boolean('delete_s3', false);
 
         try {
             DB::beginTransaction();
@@ -2376,7 +2387,7 @@ class DatabasesController extends Controller
             return response()->json(['message' => 'Backup execution not found.'], 404);
         }
 
-        $deleteS3 = filter_var($request->query->get('delete_s3', false), FILTER_VALIDATE_BOOLEAN);
+        $deleteS3 = $request->boolean('delete_s3', false);
 
         try {
             if ($execution->filename) {
