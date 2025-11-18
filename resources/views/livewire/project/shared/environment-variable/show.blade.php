@@ -21,13 +21,11 @@
                         step2ButtonText="Permanently Delete" />
                 @endcan
             </div>
-            @if ($comment)
-                <div class="w-full">
-                    <x-forms.input disabled id="comment" label="Comment"
-                        helper="Documentation for this environment variable." maxlength="256" />
-                </div>
-            @endif
             @can('update', $this->env)
+                <div class="w-full">
+                    <x-forms.input instantSave id="comment" label="Comment (Optional)"
+                        helper="Add a note to document what this environment variable is used for." maxlength="256" />
+                </div>
                 <div class="flex flex-col w-full gap-3">
                     <div class="flex flex-wrap w-full items-center gap-4">
                         @if (!$is_redis_credential)
@@ -114,6 +112,10 @@
                             @endif
                         @endif
                     </div>
+                </div>
+                <div class="w-full">
+                    <x-forms.input disabled id="comment" label="Comment"
+                        helper="Documentation for this environment variable." maxlength="256" />
                 </div>
             @endcan
         @else
