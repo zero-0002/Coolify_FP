@@ -65,8 +65,9 @@ class DockerCompose extends Component
             $variables = parseEnvFormatToArray($this->envFile);
             foreach ($variables as $key => $data) {
                 // Extract value and comment from parsed data
-                $value = $data['value'] ?? $data;
-                $comment = $data['comment'] ?? null;
+                // Handle both array format ['value' => ..., 'comment' => ...] and plain string values
+                $value = is_array($data) ? ($data['value'] ?? '') : $data;
+                $comment = is_array($data) ? ($data['comment'] ?? null) : null;
 
                 EnvironmentVariable::create([
                     'key' => $key,

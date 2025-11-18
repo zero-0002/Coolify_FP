@@ -276,8 +276,9 @@ class All extends Component
             }
 
             // Extract value and comment from parsed data
-            $value = $data['value'] ?? $data;
-            $comment = $data['comment'] ?? null;
+            // Handle both array format ['value' => ..., 'comment' => ...] and plain string values
+            $value = is_array($data) ? ($data['value'] ?? '') : $data;
+            $comment = is_array($data) ? ($data['comment'] ?? null) : null;
 
             $method = $isPreview ? 'environment_variables_preview' : 'environment_variables';
             $found = $this->resource->$method()->where('key', $key)->first();
