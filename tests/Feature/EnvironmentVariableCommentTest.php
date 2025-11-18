@@ -148,3 +148,136 @@ test('environment variable comment cannot exceed 256 characters via Livewire', f
         ->call('submit')
         ->assertHasErrors(['comment' => 'max']);
 });
+
+test('bulk update preserves existing comments when no inline comment provided', function () {
+    // Create existing variable with a manually-entered comment
+    $env = EnvironmentVariable::create([
+        'key' => 'DATABASE_URL',
+        'value' => 'postgres://old-host',
+        'comment' => 'Production database',
+        'resourceable_type' => Application::class,
+        'resourceable_id' => $this->application->id,
+    ]);
+
+    // User switches to Developer view and pastes new value without inline comment
+    $bulkContent = "DATABASE_URL=postgres://new-host\nOTHER_VAR=value";
+
+    Livewire::test(\App\Livewire\Project\Shared\EnvironmentVariable\All::class, [
+        'resource' => $this->application,
+        'type' => 'application',
+    ])
+        ->set('variablesInput', $bulkContent)
+        ->call('saveVariables');
+
+    // Refresh the environment variable
+    $env->refresh();
+
+    // The value should be updated
+    expect($env->value)->toBe('postgres://new-host');
+
+    // The manually-entered comment should be PRESERVED
+    expect($env->comment)->toBe('Production database');
+});
+
+test('bulk update overwrites existing comments when inline comment provided', function () {
+    // Create existing variable with a comment
+    $env = EnvironmentVariable::create([
+        'key' => 'API_KEY',
+        'value' => 'old-key',
+        'comment' => 'Old comment',
+        'resourceable_type' => Application::class,
+        'resourceable_id' => $this->application->id,
+    ]);
+
+    // User pastes new value WITH inline comment
+    $bulkContent = 'API_KEY=new-key #Updated production key';
+
+    Livewire::test(\App\Livewire\Project\Shared\EnvironmentVariable\All::class, [
+        'resource' => $this->application,
+        'type' => 'application',
+    ])
+        ->set('variablesInput', $bulkContent)
+        ->call('saveVariables');
+
+    // Refresh the environment variable
+    $env->refresh();
+
+    // The value should be updated
+    expect($env->value)->toBe('new-key');
+
+    // The comment should be OVERWRITTEN with the inline comment
+    expect($env->comment)->toBe('Updated production key');
+});
+
+test('bulk update handles mixed inline and stored comments correctly', function () {
+    // Create two variables with comments
+    $env1 = EnvironmentVariable::create([
+        'key' => 'VAR_WITH_COMMENT',
+        'value' => 'value1',
+        'comment' => 'Existing comment 1',
+        'resourceable_type' => Application::class,
+        'resourceable_id' => $this->application->id,
+    ]);
+
+    $env2 = EnvironmentVariable::create([
+        'key' => 'VAR_WITHOUT_COMMENT',
+        'value' => 'value2',
+        'comment' => 'Existing comment 2',
+        'resourceable_type' => Application::class,
+        'resourceable_id' => $this->application->id,
+    ]);
+
+    // Bulk paste: one with inline comment, one without
+    $bulkContent = "VAR_WITH_COMMENT=new_value1 #New inline comment\nVAR_WITHOUT_COMMENT=new_value2";
+
+    Livewire::test(\App\Livewire\Project\Shared\EnvironmentVariable\All::class, [
+        'resource' => $this->application,
+        'type' => 'application',
+    ])
+        ->set('variablesInput', $bulkContent)
+        ->call('saveVariables');
+
+    // Refresh both variables
+    $env1->refresh();
+    $env2->refresh();
+
+    // First variable: comment should be overwritten with inline comment
+    expect($env1->value)->toBe('new_value1');
+    expect($env1->comment)->toBe('New inline comment');
+
+    // Second variable: comment should be preserved
+    expect($env2->value)->toBe('new_value2');
+    expect($env2->comment)->toBe('Existing comment 2');
+});
+
+test('bulk update creates new variables with inline comments', function () {
+    // Bulk paste creates new variables, some with inline comments
+    $bulkContent = "NEW_VAR1=value1 #Comment for var1\nNEW_VAR2=value2\nNEW_VAR3=value3 #Comment for var3";
+
+    Livewire::test(\App\Livewire\Project\Shared\EnvironmentVariable\All::class, [
+        'resource' => $this->application,
+        'type' => 'application',
+    ])
+        ->set('variablesInput', $bulkContent)
+        ->call('saveVariables');
+
+    // Check that variables were created with correct comments
+    $var1 = EnvironmentVariable::where('key', 'NEW_VAR1')
+        ->where('resourceable_id', $this->application->id)
+        ->first();
+    $var2 = EnvironmentVariable::where('key', 'NEW_VAR2')
+        ->where('resourceable_id', $this->application->id)
+        ->first();
+    $var3 = EnvironmentVariable::where('key', 'NEW_VAR3')
+        ->where('resourceable_id', $this->application->id)
+        ->first();
+
+    expect($var1->value)->toBe('value1');
+    expect($var1->comment)->toBe('Comment for var1');
+
+    expect($var2->value)->toBe('value2');
+    expect($var2->comment)->toBeNull();
+
+    expect($var3->value)->toBe('value3');
+    expect($var3->comment)->toBe('Comment for var3');
+});

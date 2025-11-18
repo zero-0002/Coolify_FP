@@ -193,8 +193,8 @@ class All extends Component
             }
         }
 
-        // Only show success message if changes were actually made and no errors occurred
-        if ($changesMade && ! $errorOccurred) {
+        // Always show success message unless an error occurred
+        if (! $errorOccurred) {
             $this->dispatch('success', 'Environment variables updated.');
         }
     }
@@ -294,9 +294,9 @@ class All extends Component
                         $changed = true;
                     }
 
-                    // Always update comment from inline comment (overwrites existing)
-                    // Set to comment if provided, otherwise set to null if no comment
-                    if ($found->comment !== $comment) {
+                    // Only update comment from inline comment if one is provided (overwrites existing)
+                    // If $comment is null, don't touch existing comment field to preserve it
+                    if ($comment !== null && $found->comment !== $comment) {
                         $found->comment = $comment;
                         $changed = true;
                     }
