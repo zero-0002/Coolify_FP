@@ -361,3 +361,244 @@ tests/
 - **Queue Workers**: Horizon-managed job processing
 - **Job Batching**: Related job grouping
 - **Failed Job Handling**: Automatic retry logic
+
+## Container Status Monitoring System
+
+### **Overview**
+
+Container health status is monitored and updated through **multiple independent paths**. When modifying status logic, **ALL paths must be updated** to ensure consistency.
+
+### **Critical Implementation Locations**
+
+#### **1. SSH-Based Status Updates (Scheduled)**
+**File**: [app/Actions/Docker/GetContainersStatus.php](mdc:app/Actions/Docker/GetContainersStatus.php)
+**Method**: `aggregateApplicationStatus()` (lines 487-540)
+**Trigger**: Scheduled job or manual refresh
+**Frequency**: Every minute (via `ServerCheckJob`)
+
+**Status Aggregation Logic**:
+```php
+// Tracks multiple status flags
+$hasRunning = false;
+$hasRestarting = false;
+$hasUnhealthy = false;
+$hasUnknown = false;  // ⚠️ CRITICAL: Must track unknown
+$hasExited = false;
+// ... more states
+
+// Priority: restarting > degraded > running (unhealthy > unknown > healthy)
+if ($hasRunning) {
+    if ($hasUnhealthy) return 'running (unhealthy)';
+    elseif ($hasUnknown) return 'running (unknown)';
+    else return 'running (healthy)';
+}
+```
+
+#### **2. Sentinel-Based Status Updates (Real-time)**
+**File**: [app/Jobs/PushServerUpdateJob.php](mdc:app/Jobs/PushServerUpdateJob.php)
+**Method**: `aggregateMultiContainerStatuses()` (lines 269-298)
+**Trigger**: Sentinel push updates from remote servers
+**Frequency**: Every ~30 seconds (real-time)
+
+**Status Aggregation Logic**:
+```php
+// ⚠️ MUST match GetContainersStatus logic
+$hasRunning = false;
+$hasUnhealthy = false;
+$hasUnknown = false;  // ⚠️ CRITICAL: Added to fix bug
+
+foreach ($relevantStatuses as $status) {
+    if (str($status)->contains('running')) {
+        $hasRunning = true;
+        if (str($status)->contains('unhealthy')) $hasUnhealthy = true;
+        if (str($status)->contains('unknown')) $hasUnknown = true;  // ⚠️ CRITICAL
+    }
+}
+
+// Priority: unhealthy > unknown > healthy
+if ($hasRunning) {
+    if ($hasUnhealthy) $aggregatedStatus = 'running (unhealthy)';
+    elseif ($hasUnknown) $aggregatedStatus = 'running (unknown)';
+    else $aggregatedStatus = 'running (healthy)';
+}
+```
+
+#### **3. Multi-Server Status Aggregation**
+**File**: [app/Actions/Shared/ComplexStatusCheck.php](mdc:app/Actions/Shared/ComplexStatusCheck.php)
+**Method**: `resource()` (lines 48-210)
+**Purpose**: Aggregates status across multiple servers for applications
+**Used by**: Applications with multiple destinations
+
+**Key Features**:
+- Aggregates statuses from main + additional servers
+- Handles excluded containers (`:excluded` suffix)
+- Calculates overall application health from all containers
+
+**Status Format with Excluded Containers**:
+```php
+// When all containers excluded from health checks:
+return 'running:unhealthy:excluded';  // Container running but unhealthy, monitoring disabled
+return 'running:unknown:excluded';     // Container running, health unknown, monitoring disabled
+return 'running:healthy:excluded';     // Container running and healthy, monitoring disabled
+return 'degraded:excluded';            // Some containers down, monitoring disabled
+return 'exited:excluded';              // All containers stopped, monitoring disabled
+```
+
+#### **4. Service-Level Status Aggregation**
+**File**: [app/Models/Service.php](mdc:app/Models/Service.php)
+**Method**: `complexStatus()` (lines 176-288)
+**Purpose**: Aggregates status for multi-container services
+**Used by**: Docker Compose services
+
+**Status Calculation**:
+```php
+// Aggregates status from all service applications and databases
+// Handles excluded containers separately
+// Returns status with :excluded suffix when all containers excluded
+if (!$hasNonExcluded && $complexStatus === null && $complexHealth === null) {
+    // All services excluded - calculate from excluded containers
+    return "{$excludedStatus}:excluded";
+}
+```
+
+### **Status Flow Diagram**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Container Status Sources                  │
+└─────────────────────────────────────────────────────────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+        ▼                    ▼                    ▼
+┌───────────────┐   ┌─────────────────┐   ┌──────────────┐
+│ SSH-Based     │   │ Sentinel-Based  │   │ Multi-Server │
+│ (Scheduled)   │   │ (Real-time)     │   │ Aggregation  │
+├───────────────┤   ├─────────────────┤   ├──────────────┤
+│ ServerCheck   │   │ PushServerUp-   │   │ ComplexStatus│
+│ Job           │   │ dateJob         │   │ Check        │
+│               │   │                 │   │              │
+│ Every ~1min   │   │ Every ~30sec    │   │ On demand    │
+└───────┬───────┘   └────────┬────────┘   └──────┬───────┘
+        │                    │                    │
+        └────────────────────┼────────────────────┘
+                             │
+                             ▼
+                 ┌───────────────────────┐
+                 │ Application/Service   │
+                 │ Status Property       │
+                 └───────────────────────┘
+                             │
+                             ▼
+                 ┌───────────────────────┐
+                 │ UI Display (Livewire) │
+                 └───────────────────────┘
+```
+
+### **Status Priority System**
+
+All status aggregation locations **MUST** follow the same priority:
+
+**For Running Containers**:
+1. **unhealthy** - Container has failing health checks
+2. **unknown** - Container health status cannot be determined
+3. **healthy** - Container is healthy
+
+**For Non-Running States**:
+1. **restarting** → `degraded (unhealthy)`
+2. **running + exited** → `degraded (unhealthy)`
+3. **dead/removing** → `degraded (unhealthy)`
+4. **paused** → `paused`
+5. **created/starting** → `starting`
+6. **exited** → `exited (unhealthy)`
+
+### **Excluded Containers**
+
+When containers have `exclude_from_hc: true` flag or `restart: no`:
+
+**Behavior**:
+- Status is still calculated from container state
+- `:excluded` suffix is appended to indicate monitoring disabled
+- UI shows "(Monitoring Disabled)" badge
+- Action buttons respect the actual container state
+
+**Format**: `{actual-status}:excluded`
+**Examples**: `running:unknown:excluded`, `degraded:excluded`, `exited:excluded`
+
+**All-Excluded Scenario**:
+When ALL containers are excluded from health checks:
+- All three status update paths (PushServerUpdateJob, GetContainersStatus, ComplexStatusCheck) **MUST** calculate status from excluded containers
+- Status is returned with `:excluded` suffix (e.g., `running:healthy:excluded`)
+- **NEVER** skip status updates - always calculate from excluded containers
+- This ensures consistent status regardless of which update mechanism runs
+- Shared logic is in `app/Traits/CalculatesExcludedStatus.php`
+
+### **Important Notes for Developers**
+
+✅ **Container Status Aggregation Service**:
+
+The container status aggregation logic is centralized in `App\Services\ContainerStatusAggregator`.
+
+**Status Format Standard**:
+- **Backend/Storage**: Colon format (`running:healthy`, `degraded:unhealthy`)
+- **UI/Display**: Transform to human format (`Running (Healthy)`, `Degraded (Unhealthy)`)
+
+1. **Using the ContainerStatusAggregator Service**:
+   - Import `App\Services\ContainerStatusAggregator` in any class needing status aggregation
+   - Two methods available:
+     - `aggregateFromStrings(Collection $statusStrings, int $maxRestartCount = 0)` - For pre-formatted status strings
+     - `aggregateFromContainers(Collection $containers, int $maxRestartCount = 0)` - For raw Docker container objects
+   - Returns colon format: `running:healthy`, `degraded:unhealthy`, etc.
+   - Automatically handles crash loop detection via `$maxRestartCount` parameter
+
+2. **State Machine Priority** (handled by service):
+   - Restarting → `degraded:unhealthy` (highest priority)
+   - Crash loop (exited with restarts) → `degraded:unhealthy`
+   - Mixed state (running + exited) → `degraded:unhealthy`
+   - Running → `running:unhealthy` / `running:unknown` / `running:healthy`
+   - Dead/Removing → `degraded:unhealthy`
+   - Paused → `paused:unknown`
+   - Starting/Created → `starting:unknown`
+   - Exited → `exited:unhealthy` (lowest priority)
+
+3. **Test both update paths**:
+   - Run unit tests: `./vendor/bin/pest tests/Unit/ContainerStatusAggregatorTest.php`
+   - Run integration tests: `./vendor/bin/pest tests/Unit/`
+   - Test SSH updates (manual refresh)
+   - Test Sentinel updates (wait 30 seconds)
+
+4. **Handle excluded containers**:
+   - All containers excluded (`exclude_from_hc: true`) - Use `CalculatesExcludedStatus` trait
+   - Mixed excluded/non-excluded containers - Filter then use `ContainerStatusAggregator`
+   - Containers with `restart: no` - Treated same as `exclude_from_hc: true`
+
+5. **Use shared trait for excluded containers**:
+   - Import `App\Traits\CalculatesExcludedStatus` in status calculation classes
+   - Use `getExcludedContainersFromDockerCompose()` to parse exclusions
+   - Use `calculateExcludedStatus()` for full Docker inspect objects (ComplexStatusCheck)
+   - Use `calculateExcludedStatusFromStrings()` for status strings (PushServerUpdateJob, GetContainersStatus)
+
+### **Related Tests**
+
+- **[tests/Unit/ContainerStatusAggregatorTest.php](mdc:tests/Unit/ContainerStatusAggregatorTest.php)**: Core state machine logic (42 comprehensive tests)
+- **[tests/Unit/ContainerHealthStatusTest.php](mdc:tests/Unit/ContainerHealthStatusTest.php)**: Health status aggregation integration
+- **[tests/Unit/PushServerUpdateJobStatusAggregationTest.php](mdc:tests/Unit/PushServerUpdateJobStatusAggregationTest.php)**: Sentinel update logic
+- **[tests/Unit/ExcludeFromHealthCheckTest.php](mdc:tests/Unit/ExcludeFromHealthCheckTest.php)**: Excluded container handling
+
+### **Common Bugs to Avoid**
+
+✅ **Prevented by ContainerStatusAggregator Service**:
+- ❌ **Old Bug**: Forgetting to track `$hasUnknown` flag → ✅ Now centralized in service
+- ❌ **Old Bug**: Inconsistent priority across paths → ✅ Single source of truth
+- ❌ **Old Bug**: Forgetting to update all 4 locations → ✅ Only one location to update
+
+**Still Relevant**:
+
+❌ **Bug**: Forgetting to filter excluded containers before aggregation
+✅ **Fix**: Always use `CalculatesExcludedStatus` trait to filter before calling `ContainerStatusAggregator`
+
+❌ **Bug**: Not passing `$maxRestartCount` for crash loop detection
+✅ **Fix**: Calculate max restart count from containers and pass to `aggregateFromStrings()`/`aggregateFromContainers()`
+
+❌ **Bug**: Not handling excluded containers with `:excluded` suffix
+✅ **Fix**: Check for `:excluded` suffix in UI logic and button visibility
