@@ -1624,12 +1624,19 @@ function serviceParser(Service $resource): Collection
                 $port = $parsed['port'];
                 $fqdnFor = $parsed['service_name'];
 
-                if (blank($savedService->fqdn)) {
+                // Only ServiceApplication has fqdn column, ServiceDatabase does not
+                $isServiceApplication = $savedService instanceof ServiceApplication;
+
+                if ($isServiceApplication && blank($savedService->fqdn)) {
                     $fqdn = generateFqdn(server: $server, random: "$fqdnFor-$uuid", parserVersion: $resource->compose_parsing_version);
                     $url = generateUrl($server, "$fqdnFor-$uuid");
-                } else {
+                } elseif ($isServiceApplication) {
                     $fqdn = str($savedService->fqdn)->after('://')->before(':')->prepend(str($savedService->fqdn)->before('://')->append('://'))->value();
                     $url = str($savedService->fqdn)->after('://')->before(':')->prepend(str($savedService->fqdn)->before('://')->append('://'))->value();
+                } else {
+                    // For ServiceDatabase, generate fqdn/url without saving to the model
+                    $fqdn = generateFqdn(server: $server, random: "$fqdnFor-$uuid", parserVersion: $resource->compose_parsing_version);
+                    $url = generateUrl($server, "$fqdnFor-$uuid");
                 }
 
                 // IMPORTANT: SERVICE_FQDN env vars should NOT contain scheme (host only)
@@ -1657,7 +1664,8 @@ function serviceParser(Service $resource): Collection
                     $urlWithPort = "$url:$port";
                 }
 
-                if (is_null($savedService->fqdn)) {
+                // Only save fqdn to ServiceApplication, not ServiceDatabase
+                if ($isServiceApplication && is_null($savedService->fqdn)) {
                     // Save URL (with scheme) to database, not FQDN
                     if ((int) $resource->compose_parsing_version >= 5 && version_compare(config('constants.coolify.version'), '4.0.0-beta.420.7', '>=')) {
                         $savedService->fqdn = $urlWithPort;
