@@ -41,19 +41,6 @@
                 </div>
             </div>
         @endif
-        @if ($resource->type() === 'service' || $resource?->build_pack === 'dockercompose')
-            <div class="flex items-center gap-1 pt-4 dark:text-warning text-coollabs">
-                <svg class="hidden w-4 h-4 dark:text-warning lg:block" viewBox="0 0 256 256"
-                    xmlns="http://www.w3.org/2000/svg">
-                    <path fill="currentColor"
-                        d="M240.26 186.1L152.81 34.23a28.74 28.74 0 0 0-49.62 0L15.74 186.1a27.45 27.45 0 0 0 0 27.71A28.31 28.31 0 0 0 40.55 228h174.9a28.31 28.31 0 0 0 24.79-14.19a27.45 27.45 0 0 0 .02-27.71m-20.8 15.7a4.46 4.46 0 0 1-4 2.2H40.55a4.46 4.46 0 0 1-4-2.2a3.56 3.56 0 0 1 0-3.73L124 46.2a4.77 4.77 0 0 1 8 0l87.44 151.87a3.56 3.56 0 0 1 .02 3.73M116 136v-32a12 12 0 0 1 24 0v32a12 12 0 0 1-24 0m28 40a16 16 0 1 1-16-16a16 16 0 0 1 16 16">
-                    </path>
-                </svg>
-                Hardcoded variables are not shown here.
-            </div>
-            {{-- <div class="pb-4 dark:text-warning text-coollabs">If you would like to add a variable, you must add it to
-                your compose file.</div> --}}
-        @endif
     </div>
     @if ($view === 'normal')
         <div>
@@ -66,6 +53,13 @@
         @empty
             <div>No environment variables found.</div>
         @endforelse
+        @if (($resource->type() === 'service' || $resource?->build_pack === 'dockercompose') && $this->hardcodedEnvironmentVariables->isNotEmpty())
+            @foreach ($this->hardcodedEnvironmentVariables as $index => $env)
+                <livewire:project.shared.environment-variable.show-hardcoded
+                    wire:key="hardcoded-prod-{{ $env['key'] }}-{{ $env['service_name'] ?? 'default' }}-{{ $index }}"
+                    :env="$env" />
+            @endforeach
+        @endif
         @if ($resource->type() === 'application' && $resource->environment_variables_preview->count() > 0 && $showPreview)
             <div>
                 <h3>Preview Deployments Environment Variables</h3>
@@ -75,6 +69,13 @@
                 <livewire:project.shared.environment-variable.show wire:key="environment-{{ $env->id }}" :env="$env"
                     :type="$resource->type()" />
             @endforeach
+            @if (($resource->type() === 'service' || $resource?->build_pack === 'dockercompose') && $this->hardcodedEnvironmentVariablesPreview->isNotEmpty())
+                @foreach ($this->hardcodedEnvironmentVariablesPreview as $index => $env)
+                    <livewire:project.shared.environment-variable.show-hardcoded
+                        wire:key="hardcoded-preview-{{ $env['key'] }}-{{ $env['service_name'] ?? 'default' }}-{{ $index }}"
+                        :env="$env" />
+                @endforeach
+            @endif
         @endif
     @else
         <form wire:submit.prevent='submit' class="flex flex-col gap-2">

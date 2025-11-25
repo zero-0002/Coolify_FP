@@ -79,6 +79,62 @@ class All extends Component
         return $this->resource->environment_variables_preview;
     }
 
+    public function getHardcodedEnvironmentVariablesProperty()
+    {
+        return $this->getHardcodedVariables(false);
+    }
+
+    public function getHardcodedEnvironmentVariablesPreviewProperty()
+    {
+        return $this->getHardcodedVariables(true);
+    }
+
+    protected function getHardcodedVariables(bool $isPreview)
+    {
+        // Only for services and docker-compose applications
+        if ($this->resource->type() !== 'service' &&
+            ($this->resourceClass !== 'App\Models\Application' ||
+             ($this->resourceClass === 'App\Models\Application' && $this->resource->build_pack !== 'dockercompose'))) {
+            return collect([]);
+        }
+
+        $dockerComposeRaw = $this->resource->docker_compose_raw ?? $this->resource->docker_compose;
+
+        if (blank($dockerComposeRaw)) {
+            return collect([]);
+        }
+
+        // Extract all hard-coded variables
+        $hardcodedVars = extractHardcodedEnvironmentVariables($dockerComposeRaw);
+
+        // Filter out magic variables (SERVICE_FQDN_*, SERVICE_URL_*, SERVICE_NAME_*)
+        $hardcodedVars = $hardcodedVars->filter(function ($var) {
+            $key = $var['key'];
+
+            return ! str($key)->startsWith(['SERVICE_FQDN_', 'SERVICE_URL_', 'SERVICE_NAME_']);
+        });
+
+        // Filter out variables that exist in database (user has overridden/managed them)
+        // For preview, check against preview variables; for production, check against production variables
+        if ($isPreview) {
+            $managedKeys = $this->resource->environment_variables_preview()->pluck('key')->toArray();
+        } else {
+            $managedKeys = $this->resource->environment_variables()->where('is_preview', false)->pluck('key')->toArray();
+        }
+
+        $hardcodedVars = $hardcodedVars->filter(function ($var) use ($managedKeys) {
+            return ! in_array($var['key'], $managedKeys);
+        });
+
+        // Apply sorting based on is_env_sorting_enabled
+        if ($this->is_env_sorting_enabled) {
+            $hardcodedVars = $hardcodedVars->sortBy('key')->values();
+        }
+        // Otherwise keep order from docker-compose file
+
+        return $hardcodedVars;
+    }
+
     public function getDevView()
     {
         $this->variables = $this->formatEnvironmentVariables($this->environmentVariables);
