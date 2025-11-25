@@ -1411,6 +1411,9 @@ function serviceParser(Service $resource): Collection
         return collect([]);
     }
 
+    // Extract inline comments from raw YAML before Symfony parser discards them
+    $envComments = extractYamlEnvironmentComments($compose);
+
     $server = data_get($resource, 'server');
     $allServices = get_service_templates();
 
@@ -1694,51 +1697,60 @@ function serviceParser(Service $resource): Collection
                 }
 
                 // ALWAYS create BOTH base SERVICE_URL and SERVICE_FQDN pairs (without port)
+                $fqdnKey = "SERVICE_FQDN_{$serviceName}";
                 $resource->environment_variables()->updateOrCreate([
-                    'key' => "SERVICE_FQDN_{$serviceName}",
+                    'key' => $fqdnKey,
                     'resourceable_type' => get_class($resource),
                     'resourceable_id' => $resource->id,
                 ], [
                     'value' => $fqdnValueForEnv,
                     'is_preview' => false,
+                    'comment' => $envComments[$fqdnKey] ?? null,
                 ]);
 
+                $urlKey = "SERVICE_URL_{$serviceName}";
                 $resource->environment_variables()->updateOrCreate([
-                    'key' => "SERVICE_URL_{$serviceName}",
+                    'key' => $urlKey,
                     'resourceable_type' => get_class($resource),
                     'resourceable_id' => $resource->id,
                 ], [
                     'value' => $url,
                     'is_preview' => false,
+                    'comment' => $envComments[$urlKey] ?? null,
                 ]);
 
                 // For port-specific variables, ALSO create port-specific pairs
                 // If template variable has port, create both URL and FQDN with port suffix
                 if ($parsed['has_port'] && $port) {
+                    $fqdnPortKey = "SERVICE_FQDN_{$serviceName}_{$port}";
                     $resource->environment_variables()->updateOrCreate([
-                        'key' => "SERVICE_FQDN_{$serviceName}_{$port}",
+                        'key' => $fqdnPortKey,
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $fqdnValueForEnvWithPort,
                         'is_preview' => false,
+                        'comment' => $envComments[$fqdnPortKey] ?? null,
                     ]);
 
+                    $urlPortKey = "SERVICE_URL_{$serviceName}_{$port}";
                     $resource->environment_variables()->updateOrCreate([
-                        'key' => "SERVICE_URL_{$serviceName}_{$port}",
+                        'key' => $urlPortKey,
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $urlWithPort,
                         'is_preview' => false,
+                        'comment' => $envComments[$urlPortKey] ?? null,
                     ]);
                 }
             }
         }
         $allMagicEnvironments = $allMagicEnvironments->merge($magicEnvironments);
         if ($magicEnvironments->count() > 0) {
-            foreach ($magicEnvironments as $key => $value) {
-                $key = str($key);
+            foreach ($magicEnvironments as $magicKey => $value) {
+                $originalMagicKey = $magicKey; // Preserve original key for comment lookup
+                $key = str($magicKey);
                 $value = replaceVariables($value);
                 $command = parseCommandFromMagicEnvVariable($key);
                 if ($command->value() === 'FQDN') {
@@ -1762,13 +1774,14 @@ function serviceParser(Service $resource): Collection
                         $serviceExists->fqdn = $url;
                         $serviceExists->save();
                     }
-                    $resource->environment_variables()->firstOrCreate([
+                    $resource->environment_variables()->updateOrCreate([
                         'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $fqdn,
                         'is_preview' => false,
+                        'comment' => $envComments[$originalMagicKey] ?? null,
                     ]);
 
                 } elseif ($command->value() === 'URL') {
@@ -1790,24 +1803,26 @@ function serviceParser(Service $resource): Collection
                         $serviceExists->fqdn = $url;
                         $serviceExists->save();
                     }
-                    $resource->environment_variables()->firstOrCreate([
+                    $resource->environment_variables()->updateOrCreate([
                         'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $url,
                         'is_preview' => false,
+                        'comment' => $envComments[$originalMagicKey] ?? null,
                     ]);
 
                 } else {
                     $value = generateEnvValue($command, $resource);
-                    $resource->environment_variables()->firstOrCreate([
+                    $resource->environment_variables()->updateOrCreate([
                         'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
                     ], [
                         'value' => $value,
                         'is_preview' => false,
+                        'comment' => $envComments[$originalMagicKey] ?? null,
                     ]);
                 }
             }
@@ -2163,18 +2178,20 @@ function serviceParser(Service $resource): Collection
             return ! str($value)->startsWith('SERVICE_');
         });
         foreach ($normalEnvironments as $key => $value) {
+            $originalKey = $key; // Preserve original key for comment lookup
             $key = str($key);
             $value = str($value);
             $originalValue = $value;
             $parsedValue = replaceVariables($value);
             if ($parsedValue->startsWith('SERVICE_')) {
-                $resource->environment_variables()->firstOrCreate([
+                $resource->environment_variables()->updateOrCreate([
                     'key' => $key,
                     'resourceable_type' => get_class($resource),
                     'resourceable_id' => $resource->id,
                 ], [
                     'value' => $value,
                     'is_preview' => false,
+                    'comment' => $envComments[$originalKey] ?? null,
                 ]);
 
                 continue;
@@ -2184,13 +2201,14 @@ function serviceParser(Service $resource): Collection
             }
             if ($key->value() === $parsedValue->value()) {
                 $value = null;
-                $resource->environment_variables()->firstOrCreate([
+                $resource->environment_variables()->updateOrCreate([
                     'key' => $key,
                     'resourceable_type' => get_class($resource),
                     'resourceable_id' => $resource->id,
                 ], [
                     'value' => $value,
                     'is_preview' => false,
+                    'comment' => $envComments[$originalKey] ?? null,
                 ]);
             } else {
                 if ($value->startsWith('$')) {
@@ -2220,20 +2238,21 @@ function serviceParser(Service $resource): Collection
                     if ($originalValue->value() === $value->value()) {
                         // This means the variable does not have a default value, so it needs to be created in Coolify
                         $parsedKeyValue = replaceVariables($value);
-                        $resource->environment_variables()->firstOrCreate([
+                        $resource->environment_variables()->updateOrCreate([
                             'key' => $parsedKeyValue,
                             'resourceable_type' => get_class($resource),
                             'resourceable_id' => $resource->id,
                         ], [
                             'is_preview' => false,
                             'is_required' => $isRequired,
+                            'comment' => $envComments[$originalKey] ?? null,
                         ]);
                         // Add the variable to the environment so it will be shown in the deployable compose file
                         $environment[$parsedKeyValue->value()] = $value;
 
                         continue;
                     }
-                    $resource->environment_variables()->firstOrCreate([
+                    $resource->environment_variables()->updateOrCreate([
                         'key' => $key,
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
@@ -2241,6 +2260,7 @@ function serviceParser(Service $resource): Collection
                         'value' => $value,
                         'is_preview' => false,
                         'is_required' => $isRequired,
+                        'comment' => $envComments[$originalKey] ?? null,
                     ]);
                 }
             }
