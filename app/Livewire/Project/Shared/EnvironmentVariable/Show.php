@@ -24,6 +24,8 @@ class Show extends Component
 
     public bool $isLocked = false;
 
+    public bool $isMagicVariable = false;
+
     public bool $isSharedVariable = false;
 
     public string $type;
@@ -146,9 +148,13 @@ class Show extends Component
     public function checkEnvs()
     {
         $this->isDisabled = false;
+        $this->isMagicVariable = false;
+
         if (str($this->env->key)->startsWith('SERVICE_FQDN') || str($this->env->key)->startsWith('SERVICE_URL') || str($this->env->key)->startsWith('SERVICE_NAME')) {
             $this->isDisabled = true;
+            $this->isMagicVariable = true;
         }
+
         if ($this->env->is_shown_once) {
             $this->isLocked = true;
         }
