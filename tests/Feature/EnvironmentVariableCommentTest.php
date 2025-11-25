@@ -166,8 +166,8 @@ test('bulk update preserves existing comments when no inline comment provided', 
         'resource' => $this->application,
         'type' => 'application',
     ])
-        ->set('variablesInput', $bulkContent)
-        ->call('saveVariables');
+        ->set('variables', $bulkContent)
+        ->call('submit');
 
     // Refresh the environment variable
     $env->refresh();
@@ -196,8 +196,8 @@ test('bulk update overwrites existing comments when inline comment provided', fu
         'resource' => $this->application,
         'type' => 'application',
     ])
-        ->set('variablesInput', $bulkContent)
-        ->call('saveVariables');
+        ->set('variables', $bulkContent)
+        ->call('submit');
 
     // Refresh the environment variable
     $env->refresh();
@@ -234,8 +234,8 @@ test('bulk update handles mixed inline and stored comments correctly', function 
         'resource' => $this->application,
         'type' => 'application',
     ])
-        ->set('variablesInput', $bulkContent)
-        ->call('saveVariables');
+        ->set('variables', $bulkContent)
+        ->call('submit');
 
     // Refresh both variables
     $env1->refresh();
@@ -258,8 +258,8 @@ test('bulk update creates new variables with inline comments', function () {
         'resource' => $this->application,
         'type' => 'application',
     ])
-        ->set('variablesInput', $bulkContent)
-        ->call('saveVariables');
+        ->set('variables', $bulkContent)
+        ->call('submit');
 
     // Check that variables were created with correct comments
     $var1 = EnvironmentVariable::where('key', 'NEW_VAR1')
