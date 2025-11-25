@@ -15,7 +15,8 @@
                 </svg>
                 @can('delete', $this->env)
                     <x-modal-confirmation title="Confirm Environment Variable Deletion?" isErrorButton buttonTitle="Delete"
-                        submitAction="delete" :actions="['The selected environment variable will be permanently deleted.']" confirmationText="{{ $env->key }}"
+                        submitAction="delete" :actions="['The selected environment variable will be permanently deleted.']"
+                        confirmationText="{{ $env->key }}"
                         confirmationLabel="Please confirm the execution of the actions by entering the Environment Variable Name below"
                         shortConfirmationLabel="Environment Variable Name" :confirmWithPassword="false"
                         step2ButtonText="Permanently Delete" />
@@ -24,7 +25,7 @@
             @can('update', $this->env)
                 <div class="flex flex-col w-full gap-2 lg:flex-row lg:items-end">
                     <div class="flex-1">
-                        <x-forms.input id="comment" label="Comment (Optional)"
+                        <x-forms.input id="comment" label="Comment"
                             helper="Add a note to document what this environment variable is used for." maxlength="256" />
                     </div>
                     <x-forms.button type="submit">Update</x-forms.button>
@@ -117,8 +118,8 @@
                     </div>
                 </div>
                 <div class="w-full">
-                    <x-forms.input disabled id="comment" label="Comment"
-                        helper="Documentation for this environment variable." maxlength="256" />
+                    <x-forms.input disabled id="comment" label="Comment" helper="Documentation for this environment variable."
+                        maxlength="256" />
                 </div>
             @endcan
         @else
@@ -132,7 +133,8 @@
                                 <x-forms.input disabled type="password" id="real_value" />
                             @endif
                         </div>
-                        <x-forms.input disabled id="comment" label="Comment (Optional)" helper="Add a note to document what this environment variable is used for." maxlength="256" />
+                        <x-forms.input disabled id="comment" label="Comment"
+                            helper="Add a note to document what this environment variable is used for." maxlength="256" />
                     </div>
                 @else
                     <div class="flex flex-col w-full gap-2">
@@ -145,10 +147,12 @@
                                 <x-forms.input :required="$is_redis_credential" type="password" id="value" />
                             @endif
                             @if ($is_shared)
-                                <x-forms.input :disabled="$is_redis_credential" :required="$is_redis_credential" disabled type="password" id="real_value" />
+                                <x-forms.input :disabled="$is_redis_credential" :required="$is_redis_credential" disabled
+                                    type="password" id="real_value" />
                             @endif
                         </div>
-                        <x-forms.input instantSave id="comment" label="Comment (Optional)" helper="Add a note to document what this environment variable is used for." maxlength="256" />
+                        <x-forms.input instantSave id="comment" label="Comment"
+                            helper="Add a note to document what this environment variable is used for." maxlength="256" />
                     </div>
                 @endif
             @else
@@ -160,7 +164,8 @@
                             <x-forms.input disabled type="password" id="real_value" />
                         @endif
                     </div>
-                    <x-forms.input disabled id="comment" label="Comment (Optional)" helper="Add a note to document what this environment variable is used for." maxlength="256" />
+                    <x-forms.input disabled id="comment" label="Comment"
+                        helper="Add a note to document what this environment variable is used for." maxlength="256" />
                 </div>
             @endcan
             @can('update', $this->env)
@@ -213,8 +218,8 @@
                         @if ($isDisabled)
                             <x-forms.button disabled type="submit">Update</x-forms.button>
                             <x-forms.button wire:click='lock'>Lock</x-forms.button>
-                            <x-modal-confirmation title="Confirm Environment Variable Deletion?" isErrorButton
-                                buttonTitle="Delete" submitAction="delete" :actions="['The selected environment variable will be permanently deleted.']"
+                            <x-modal-confirmation title="Confirm Environment Variable Deletion?" isErrorButton buttonTitle="Delete"
+                                submitAction="delete" :actions="['The selected environment variable will be permanently deleted.']"
                                 confirmationText="{{ $key }}" buttonFullWidth="true"
                                 confirmationLabel="Please confirm the execution of the actions by entering the Environment Variable Name below"
                                 shortConfirmationLabel="Environment Variable Name" :confirmWithPassword="false"
@@ -222,8 +227,8 @@
                         @else
                             <x-forms.button type="submit">Update</x-forms.button>
                             <x-forms.button wire:click='lock'>Lock</x-forms.button>
-                            <x-modal-confirmation title="Confirm Environment Variable Deletion?" isErrorButton
-                                buttonTitle="Delete" submitAction="delete" :actions="['The selected environment variable will be permanently deleted.']"
+                            <x-modal-confirmation title="Confirm Environment Variable Deletion?" isErrorButton buttonTitle="Delete"
+                                submitAction="delete" :actions="['The selected environment variable will be permanently deleted.']"
                                 confirmationText="{{ $key }}" buttonFullWidth="true"
                                 confirmationLabel="Please confirm the execution of the actions by entering the Environment Variable Name below"
                                 shortConfirmationLabel="Environment Variable Name" :confirmWithPassword="false"

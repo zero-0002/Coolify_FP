@@ -446,7 +446,7 @@ function parseEnvFormatToArray($env_file_contents)
             $remainder = '';
 
             // Check if value starts with quotes
-            $firstChar = isset($value_and_comment[0]) ? $value_and_comment[0] : '';
+            $firstChar = $value_and_comment[0] ?? '';
             $isDoubleQuoted = $firstChar === '"';
             $isSingleQuoted = $firstChar === "'";
 

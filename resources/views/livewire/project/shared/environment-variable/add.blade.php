@@ -16,7 +16,7 @@
         </div>
     @endif
 
-    <x-forms.input id="comment" label="Comment (Optional)"
+    <x-forms.input id="comment" label="Comment"
         helper="Add a note to document what this environment variable is used for." maxlength="256" />
 
     @if (!$shared)
