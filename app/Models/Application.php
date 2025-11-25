@@ -669,21 +669,23 @@ class Application extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                if (! $this->relationLoaded('additional_servers') || $this->additional_servers->count() === 0) {
-                    return $this->destination?->server?->isFunctional() ?? false;
+                // Check main server infrastructure health
+                $main_server_functional = $this->destination?->server?->isFunctional() ?? false;
+
+                if (! $main_server_functional) {
+                    return false;
                 }
 
-                $additional_servers_status = $this->additional_servers->pluck('pivot.status');
-                $main_server_status = $this->destination?->server?->isFunctional() ?? false;
-
-                foreach ($additional_servers_status as $status) {
-                    $server_status = str($status)->before(':')->value();
-                    if ($server_status !== 'running') {
-                        return false;
+                // Check additional servers infrastructure health (not container status!)
+                if ($this->relationLoaded('additional_servers') && $this->additional_servers->count() > 0) {
+                    foreach ($this->additional_servers as $server) {
+                        if (! $server->isFunctional()) {
+                            return false;  // Real server infrastructure problem
+                        }
                     }
                 }
 
-                return $main_server_status;
+                return true;
             }
         );
     }

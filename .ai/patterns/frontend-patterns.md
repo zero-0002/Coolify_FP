@@ -1,8 +1,3 @@
----
-description: Livewire components, Alpine.js patterns, Tailwind CSS, and enhanced form components
-globs: app/Livewire/**/*.php, resources/views/**/*.blade.php, resources/js/**/*.js, resources/css/**/*.css
-alwaysApply: false
----
 # Coolify Frontend Architecture & Patterns
 
 ## Frontend Philosophy
@@ -263,7 +258,7 @@ public bool $autoDisable = true;       // Automatically disable if no permission
 - **Automatic disabling** for unauthorized users
 - **Smart behavior** (disables instantSave on checkboxes for unauthorized users)
 
-For complete documentation, see **[form-components.mdc](mdc:.cursor/rules/form-components.mdc)**
+For complete documentation, see **[form-components.md](.ai/patterns/form-components.md)**
 
 ## Form Handling Patterns
 
