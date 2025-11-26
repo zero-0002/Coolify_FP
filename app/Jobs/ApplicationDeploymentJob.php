@@ -1957,7 +1957,12 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private function set_coolify_variables()
     {
-        $this->coolify_variables = "SOURCE_COMMIT={$this->commit} ";
+        $this->coolify_variables = '';
+
+        // Only include SOURCE_COMMIT in build context if enabled in settings
+        if ($this->application->settings->include_source_commit_in_build) {
+            $this->coolify_variables .= "SOURCE_COMMIT={$this->commit} ";
+        }
         if ($this->pull_request_id === 0) {
             $fqdn = $this->application->fqdn;
         } else {
@@ -2242,12 +2247,15 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $coolify_envs = collect([]);
         $local_branch = $this->branch;
         if ($this->pull_request_id !== 0) {
-            // Add SOURCE_COMMIT if not exists
-            if ($this->application->environment_variables_preview->where('key', 'SOURCE_COMMIT')->isEmpty()) {
-                if (! is_null($this->commit)) {
-                    $coolify_envs->put('SOURCE_COMMIT', $this->commit);
-                } else {
-                    $coolify_envs->put('SOURCE_COMMIT', 'unknown');
+            // Only add SOURCE_COMMIT for runtime OR when explicitly enabled for build-time
+            // SOURCE_COMMIT changes with each commit and breaks Docker cache if included in build
+            if (! $forBuildTime || $this->application->settings->include_source_commit_in_build) {
+                if ($this->application->environment_variables_preview->where('key', 'SOURCE_COMMIT')->isEmpty()) {
+                    if (! is_null($this->commit)) {
+                        $coolify_envs->put('SOURCE_COMMIT', $this->commit);
+                    } else {
+                        $coolify_envs->put('SOURCE_COMMIT', 'unknown');
+                    }
                 }
             }
             if ($this->application->environment_variables_preview->where('key', 'COOLIFY_FQDN')->isEmpty()) {
@@ -2283,12 +2291,15 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             add_coolify_default_environment_variables($this->application, $coolify_envs, $this->application->environment_variables_preview);
 
         } else {
-            // Add SOURCE_COMMIT if not exists
-            if ($this->application->environment_variables->where('key', 'SOURCE_COMMIT')->isEmpty()) {
-                if (! is_null($this->commit)) {
-                    $coolify_envs->put('SOURCE_COMMIT', $this->commit);
-                } else {
-                    $coolify_envs->put('SOURCE_COMMIT', 'unknown');
+            // Only add SOURCE_COMMIT for runtime OR when explicitly enabled for build-time
+            // SOURCE_COMMIT changes with each commit and breaks Docker cache if included in build
+            if (! $forBuildTime || $this->application->settings->include_source_commit_in_build) {
+                if ($this->application->environment_variables->where('key', 'SOURCE_COMMIT')->isEmpty()) {
+                    if (! is_null($this->commit)) {
+                        $coolify_envs->put('SOURCE_COMMIT', $this->commit);
+                    } else {
+                        $coolify_envs->put('SOURCE_COMMIT', 'unknown');
+                    }
                 }
             }
             if ($this->application->environment_variables->where('key', 'COOLIFY_FQDN')->isEmpty()) {
@@ -2331,7 +2342,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     private function generate_env_variables()
     {
         $this->env_args = collect([]);
-        $this->env_args->put('SOURCE_COMMIT', $this->commit);
+
+        // Only include SOURCE_COMMIT in build args if enabled in settings
+        if ($this->application->settings->include_source_commit_in_build) {
+            $this->env_args->put('SOURCE_COMMIT', $this->commit);
+        }
 
         $coolify_envs = $this->generate_coolify_env_variables(forBuildTime: true);
         $coolify_envs->each(function ($value, $key) {
@@ -3344,100 +3359,121 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
     {
         if ($this->dockerBuildkitSupported) {
             // We dont need to add build secrets to dockerfile for buildkit, as we already added them with --secret flag in function generate_docker_env_flags_for_secrets
+            return;
+        }
+
+        // Skip ARG injection if disabled by user - preserves Docker build cache
+        if ($this->application->settings->inject_build_args_to_dockerfile === false) {
+            $this->application_deployment_queue->addLogEntry('Skipping Dockerfile ARG injection (disabled in settings).', hidden: true);
+
+            return;
+        }
+
+        $this->execute_remote_command([
+            executeInDocker($this->deployment_uuid, "cat {$this->workdir}{$this->dockerfile_location}"),
+            'hidden' => true,
+            'save' => 'dockerfile',
+            'ignore_errors' => true,
+        ]);
+        $dockerfile = collect(str($this->saved_outputs->get('dockerfile'))->trim()->explode("\n"));
+
+        // Find all FROM instruction positions
+        $fromLines = $this->findFromInstructionLines($dockerfile);
+
+        // If no FROM instructions found, skip ARG insertion
+        if (empty($fromLines)) {
+            return;
+        }
+
+        // Collect all ARG statements to insert
+        $argsToInsert = collect();
+
+        if ($this->pull_request_id === 0) {
+            // Only add environment variables that are available during build
+            $envs = $this->application->environment_variables()
+                ->where('key', 'not like', 'NIXPACKS_%')
+                ->where('is_buildtime', true)
+                ->get();
+            foreach ($envs as $env) {
+                if (data_get($env, 'is_multiline') === true) {
+                    $argsToInsert->push("ARG {$env->key}");
+                } else {
+                    $argsToInsert->push("ARG {$env->key}={$env->real_value}");
+                }
+            }
+            // Add Coolify variables as ARGs
+            if ($this->coolify_variables) {
+                $coolify_vars = collect(explode(' ', trim($this->coolify_variables)))
+                    ->filter()
+                    ->map(function ($var) {
+                        return "ARG {$var}";
+                    });
+                $argsToInsert = $argsToInsert->merge($coolify_vars);
+            }
         } else {
-            $this->execute_remote_command([
+            // Only add preview environment variables that are available during build
+            $envs = $this->application->environment_variables_preview()
+                ->where('key', 'not like', 'NIXPACKS_%')
+                ->where('is_buildtime', true)
+                ->get();
+            foreach ($envs as $env) {
+                if (data_get($env, 'is_multiline') === true) {
+                    $argsToInsert->push("ARG {$env->key}");
+                } else {
+                    $argsToInsert->push("ARG {$env->key}={$env->real_value}");
+                }
+            }
+            // Add Coolify variables as ARGs
+            if ($this->coolify_variables) {
+                $coolify_vars = collect(explode(' ', trim($this->coolify_variables)))
+                    ->filter()
+                    ->map(function ($var) {
+                        return "ARG {$var}";
+                    });
+                $argsToInsert = $argsToInsert->merge($coolify_vars);
+            }
+        }
+
+        // Development logging to show what ARGs are being injected
+        if (isDev()) {
+            $this->application_deployment_queue->addLogEntry('[DEBUG] ========================================');
+            $this->application_deployment_queue->addLogEntry('[DEBUG] Dockerfile ARG Injection');
+            $this->application_deployment_queue->addLogEntry('[DEBUG] ========================================');
+            $this->application_deployment_queue->addLogEntry('[DEBUG] ARGs to inject: '.$argsToInsert->count());
+            foreach ($argsToInsert as $arg) {
+                // Only show ARG key, not the value (for security)
+                $argKey = str($arg)->after('ARG ')->before('=')->toString();
+                $this->application_deployment_queue->addLogEntry("[DEBUG]   - {$argKey}");
+            }
+        }
+
+        // Insert ARGs after each FROM instruction (in reverse order to maintain correct line numbers)
+        if ($argsToInsert->isNotEmpty()) {
+            foreach (array_reverse($fromLines) as $fromLineIndex) {
+                // Insert all ARGs after this FROM instruction
+                foreach ($argsToInsert->reverse() as $arg) {
+                    $dockerfile->splice($fromLineIndex + 1, 0, [$arg]);
+                }
+            }
+            $envs_mapped = $envs->mapWithKeys(function ($env) {
+                return [$env->key => $env->real_value];
+            });
+            $secrets_hash = $this->generate_secrets_hash($envs_mapped);
+            $argsToInsert->push("ARG COOLIFY_BUILD_SECRETS_HASH={$secrets_hash}");
+        }
+
+        $dockerfile_base64 = base64_encode($dockerfile->implode("\n"));
+        $this->application_deployment_queue->addLogEntry('Final Dockerfile:', type: 'info', hidden: true);
+        $this->execute_remote_command(
+            [
+                executeInDocker($this->deployment_uuid, "echo '{$dockerfile_base64}' | base64 -d | tee {$this->workdir}{$this->dockerfile_location} > /dev/null"),
+                'hidden' => true,
+            ],
+            [
                 executeInDocker($this->deployment_uuid, "cat {$this->workdir}{$this->dockerfile_location}"),
                 'hidden' => true,
-                'save' => 'dockerfile',
                 'ignore_errors' => true,
             ]);
-            $dockerfile = collect(str($this->saved_outputs->get('dockerfile'))->trim()->explode("\n"));
-
-            // Find all FROM instruction positions
-            $fromLines = $this->findFromInstructionLines($dockerfile);
-
-            // If no FROM instructions found, skip ARG insertion
-            if (empty($fromLines)) {
-                return;
-            }
-
-            // Collect all ARG statements to insert
-            $argsToInsert = collect();
-
-            if ($this->pull_request_id === 0) {
-                // Only add environment variables that are available during build
-                $envs = $this->application->environment_variables()
-                    ->where('key', 'not like', 'NIXPACKS_%')
-                    ->where('is_buildtime', true)
-                    ->get();
-                foreach ($envs as $env) {
-                    if (data_get($env, 'is_multiline') === true) {
-                        $argsToInsert->push("ARG {$env->key}");
-                    } else {
-                        $argsToInsert->push("ARG {$env->key}={$env->real_value}");
-                    }
-                }
-                // Add Coolify variables as ARGs
-                if ($this->coolify_variables) {
-                    $coolify_vars = collect(explode(' ', trim($this->coolify_variables)))
-                        ->filter()
-                        ->map(function ($var) {
-                            return "ARG {$var}";
-                        });
-                    $argsToInsert = $argsToInsert->merge($coolify_vars);
-                }
-            } else {
-                // Only add preview environment variables that are available during build
-                $envs = $this->application->environment_variables_preview()
-                    ->where('key', 'not like', 'NIXPACKS_%')
-                    ->where('is_buildtime', true)
-                    ->get();
-                foreach ($envs as $env) {
-                    if (data_get($env, 'is_multiline') === true) {
-                        $argsToInsert->push("ARG {$env->key}");
-                    } else {
-                        $argsToInsert->push("ARG {$env->key}={$env->real_value}");
-                    }
-                }
-                // Add Coolify variables as ARGs
-                if ($this->coolify_variables) {
-                    $coolify_vars = collect(explode(' ', trim($this->coolify_variables)))
-                        ->filter()
-                        ->map(function ($var) {
-                            return "ARG {$var}";
-                        });
-                    $argsToInsert = $argsToInsert->merge($coolify_vars);
-                }
-            }
-
-            // Insert ARGs after each FROM instruction (in reverse order to maintain correct line numbers)
-            if ($argsToInsert->isNotEmpty()) {
-                foreach (array_reverse($fromLines) as $fromLineIndex) {
-                    // Insert all ARGs after this FROM instruction
-                    foreach ($argsToInsert->reverse() as $arg) {
-                        $dockerfile->splice($fromLineIndex + 1, 0, [$arg]);
-                    }
-                }
-                $envs_mapped = $envs->mapWithKeys(function ($env) {
-                    return [$env->key => $env->real_value];
-                });
-                $secrets_hash = $this->generate_secrets_hash($envs_mapped);
-                $argsToInsert->push("ARG COOLIFY_BUILD_SECRETS_HASH={$secrets_hash}");
-            }
-
-            $dockerfile_base64 = base64_encode($dockerfile->implode("\n"));
-            $this->application_deployment_queue->addLogEntry('Final Dockerfile:', type: 'info', hidden: true);
-            $this->execute_remote_command(
-                [
-                    executeInDocker($this->deployment_uuid, "echo '{$dockerfile_base64}' | base64 -d | tee {$this->workdir}{$this->dockerfile_location} > /dev/null"),
-                    'hidden' => true,
-                ],
-                [
-                    executeInDocker($this->deployment_uuid, "cat {$this->workdir}{$this->dockerfile_location}"),
-                    'hidden' => true,
-                    'ignore_errors' => true,
-                ]);
-        }
     }
 
     private function modify_dockerfile_for_secrets($dockerfile_path)
@@ -3507,6 +3543,13 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
     private function modify_dockerfiles_for_compose($composeFile)
     {
         if ($this->application->build_pack !== 'dockercompose') {
+            return;
+        }
+
+        // Skip ARG injection if disabled by user - preserves Docker build cache
+        if ($this->application->settings->inject_build_args_to_dockerfile === false) {
+            $this->application_deployment_queue->addLogEntry('Skipping Docker Compose Dockerfile ARG injection (disabled in settings).', hidden: true);
+
             return;
         }
 
@@ -3598,6 +3641,18 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 $this->application_deployment_queue->addLogEntry("Service {$serviceName}: No build-time variables to add.");
 
                 continue;
+            }
+
+            // Development logging to show what ARGs are being injected for Docker Compose
+            if (isDev()) {
+                $this->application_deployment_queue->addLogEntry('[DEBUG] ========================================');
+                $this->application_deployment_queue->addLogEntry("[DEBUG] Docker Compose ARG Injection - Service: {$serviceName}");
+                $this->application_deployment_queue->addLogEntry('[DEBUG] ========================================');
+                $this->application_deployment_queue->addLogEntry('[DEBUG] ARGs to inject: '.$argsToAdd->count());
+                foreach ($argsToAdd as $arg) {
+                    $argKey = str($arg)->after('ARG ')->toString();
+                    $this->application_deployment_queue->addLogEntry("[DEBUG]   - {$argKey}");
+                }
             }
 
             $totalAdded = 0;
