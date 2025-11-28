@@ -104,6 +104,14 @@ class Create extends Component
                     }
                      $service->parse(isNew: true);
 
+                     // For Beszel service disable gzip (fixes realtime not working issue)
+                     if ($oneClickServiceName === 'beszel') {
+                         $appService = $service->applications()->whereName('beszel')->first();
+                         if ($appService) {
+                             $appService->is_gzip_enabled = false;
+                             $appService->save();
+                         }
+                     }
                      // For Appwrite services, disable strip prefix for services that handle domain requests
                      if ($oneClickServiceName === 'appwrite') {
                          $servicesToDisableStripPrefix = ['appwrite', 'appwrite-console', 'appwrite-realtime'];
