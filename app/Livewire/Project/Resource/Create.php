@@ -81,7 +81,7 @@ class Create extends Component
                         'destination_id' => $destination->id,
                         'destination_type' => $destination->getMorphClass(),
                     ];
-                    if ($oneClickServiceName === 'cloudflared' || $oneClickServiceName === 'pgadmin') {
+                    if (in_array($oneClickServiceName, NEEDS_TO_CONNECT_TO_PREDEFINED_NETWORK)) {
                         data_set($service_payload, 'connect_to_docker_network', true);
                     }
                     $service = Service::create($service_payload);
@@ -110,6 +110,17 @@ class Create extends Component
                          if ($appService) {
                              $appService->is_gzip_enabled = false;
                              $appService->save();
+                         }
+                     }
+                     // For Appwrite services, disable strip prefix for services that handle domain requests
+                     if ($oneClickServiceName === 'appwrite') {
+                         $servicesToDisableStripPrefix = ['appwrite', 'appwrite-console', 'appwrite-realtime'];
+                         foreach ($servicesToDisableStripPrefix as $serviceName) {
+                             $appService = $service->applications()->whereName($serviceName)->first();
+                             if ($appService) {
+                                 $appService->is_stripprefix_enabled = false;
+                                 $appService->save();
+                             }
                          }
                      }
 
