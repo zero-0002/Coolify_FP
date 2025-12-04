@@ -146,6 +146,15 @@ class ServerManagerJob implements ShouldQueue
             ServerPatchCheckJob::dispatch($server);
         }
 
+        // Check for sentinel updates hourly (independent of user-configurable update_check_frequency)
+        if ($server->isSentinelEnabled()) {
+            $shouldCheckSentinel = $this->shouldRunNow('0 * * * *', $serverTimezone);
+
+            if ($shouldCheckSentinel) {
+                CheckAndStartSentinelJob::dispatch($server);
+            }
+        }
+
         // Dispatch Sentinel restart if due (daily for Sentinel-enabled servers)
         $isSentinelEnabled = $server->isSentinelEnabled();
         $shouldRestartSentinel = $isSentinelEnabled && $this->shouldRunNow('0 0 * * *', $serverTimezone);
