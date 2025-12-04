@@ -39,9 +39,11 @@ class GetLogs extends Component
 
     public ?bool $streamLogs = false;
 
-    public ?bool $showTimeStamps = false;
+    public ?bool $showTimeStamps = true;
 
     public ?int $numberOfLines = 100;
+
+    public bool $expandByDefault = false;
 
     public function mount()
     {
@@ -90,6 +92,27 @@ class GetLogs extends Component
                 }
             }
         }
+    }
+
+    public function toggleTimestamps()
+    {
+        $previousValue = $this->showTimeStamps;
+        $this->showTimeStamps = ! $this->showTimeStamps;
+
+        try {
+            $this->instantSave();
+            $this->getLogs(true);
+        } catch (\Throwable $e) {
+            // Revert the flag to its previous value on failure
+            $this->showTimeStamps = $previousValue;
+
+            return handleError($e, $this);
+        }
+    }
+
+    public function toggleStreamLogs()
+    {
+        $this->streamLogs = ! $this->streamLogs;
     }
 
     public function getLogs($refresh = false)
