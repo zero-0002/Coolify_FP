@@ -181,6 +181,7 @@
                         }
                     });
                     $wire.$on('restartEvent', () => {
+                        if ($wire.restartInitiated) return;
                         window.dispatchEvent(new CustomEvent('startproxy'))
                         $wire.$call('restart');
                     });
