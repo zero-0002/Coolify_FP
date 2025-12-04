@@ -136,7 +136,9 @@ class Github extends Controller
                                     commit: data_get($payload, 'after', 'HEAD'),
                                     is_webhook: true,
                                 );
-                                if ($result['status'] === 'skipped') {
+                                if ($result['status'] === 'queue_full') {
+                                    return response($result['message'], 429);
+                                } elseif ($result['status'] === 'skipped') {
                                     $return_payloads->push([
                                         'application' => $application->name,
                                         'status' => 'skipped',
@@ -222,7 +224,9 @@ class Github extends Controller
                                     is_webhook: true,
                                     git_type: 'github'
                                 );
-                                if ($result['status'] === 'skipped') {
+                                if ($result['status'] === 'queue_full') {
+                                    return response($result['message'], 429);
+                                } elseif ($result['status'] === 'skipped') {
                                     $return_payloads->push([
                                         'application' => $application->name,
                                         'status' => 'skipped',
@@ -427,12 +431,15 @@ class Github extends Controller
                                     force_rebuild: false,
                                     is_webhook: true,
                                 );
+                                if ($result['status'] === 'queue_full') {
+                                    return response($result['message'], 429);
+                                }
                                 $return_payloads->push([
                                     'status' => $result['status'],
                                     'message' => $result['message'],
                                     'application_uuid' => $application->uuid,
                                     'application_name' => $application->name,
-                                    'deployment_uuid' => $result['deployment_uuid'],
+                                    'deployment_uuid' => $result['deployment_uuid'] ?? null,
                                 ]);
                             } else {
                                 $paths = str($application->watch_paths)->explode("\n");
@@ -491,7 +498,9 @@ class Github extends Controller
                                     is_webhook: true,
                                     git_type: 'github'
                                 );
-                                if ($result['status'] === 'skipped') {
+                                if ($result['status'] === 'queue_full') {
+                                    return response($result['message'], 429);
+                                } elseif ($result['status'] === 'skipped') {
                                     $return_payloads->push([
                                         'application' => $application->name,
                                         'status' => 'skipped',
