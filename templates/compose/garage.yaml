@@ -35,8 +35,7 @@ services:
           compression_level = 1
           block_size = "1M"
 
-          [rpc]
-          bind_addr = "[::]:3901"
+          rpc_bind_addr = "[::]:3901"
           rpc_secret_file = "env:GARAGE_RPC_SECRET"
           bootstrap_peers = []
 
@@ -54,7 +53,7 @@ services:
           admin_token_file = "env:GARAGE_ADMIN_TOKEN"
           metrics_token_file = "env:GARAGE_METRICS_TOKEN"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3903/health"]
+      test: ["CMD", "/garage", "stats", "-a"]
       interval: 10s
       timeout: 5s
       retries: 5
