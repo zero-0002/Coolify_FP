@@ -18,10 +18,12 @@
                 href="{{ route('project.service.logs', $parameters) }}">
                 <button>Logs</button>
             </a>
-            <a class="{{ request()->routeIs('project.service.command') ? 'dark:text-white' : '' }}"
-                href="{{ route('project.service.command', $parameters) }}">
-                <button>Terminal</button>
-            </a>
+            @can('canAccessTerminal')
+                <a class="{{ request()->routeIs('project.service.command') ? 'dark:text-white' : '' }}"
+                    href="{{ route('project.service.command', $parameters) }}">
+                    <button>Terminal</button>
+                </a>
+            @endcan
             <x-services.links :service="$service" />
         </nav>
         @if ($service->isDeployable)
@@ -32,7 +34,7 @@
                         <svg class="w-5 h-5 dark:text-warning" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
                                 stroke-width="2">
-                                <path d="M19.933 13.041a8 8 0 1 1-9.925-8.788c3.899-1 7.935 1.007 9.425 4.747" />
+                                <path d="M19.933 13.041 a8 8 0 1 1-9.925-8.788c3.899-1 7.935 1.007 9.425 4.747" />
                                 <path d="M20 4v5h-5" />
                             </g>
                         </svg>

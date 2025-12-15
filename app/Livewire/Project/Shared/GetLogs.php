@@ -33,6 +33,8 @@ class GetLogs extends Component
 
     public ?string $container = null;
 
+    public ?string $displayName = null;
+
     public ?string $pull_request = null;
 
     public ?bool $streamLogs = false;
@@ -40,6 +42,10 @@ class GetLogs extends Component
     public ?bool $showTimeStamps = true;
 
     public ?int $numberOfLines = 100;
+
+    public bool $expandByDefault = false;
+
+    public bool $collapsible = true;
 
     public function mount()
     {
@@ -90,12 +96,33 @@ class GetLogs extends Component
         }
     }
 
+    public function toggleTimestamps()
+    {
+        $previousValue = $this->showTimeStamps;
+        $this->showTimeStamps = ! $this->showTimeStamps;
+
+        try {
+            $this->instantSave();
+            $this->getLogs(true);
+        } catch (\Throwable $e) {
+            // Revert the flag to its previous value on failure
+            $this->showTimeStamps = $previousValue;
+
+            return handleError($e, $this);
+        }
+    }
+
+    public function toggleStreamLogs()
+    {
+        $this->streamLogs = ! $this->streamLogs;
+    }
+
     public function getLogs($refresh = false)
     {
         if (! $this->server->isFunctional()) {
             return;
         }
-        if (! $refresh && ($this->resource?->getMorphClass() === \App\Models\Service::class || str($this->container)->contains('-pr-'))) {
+        if (! $refresh && ! $this->expandByDefault && ($this->resource?->getMorphClass() === \App\Models\Service::class || str($this->container)->contains('-pr-'))) {
             return;
         }
         if ($this->numberOfLines <= 0 || is_null($this->numberOfLines)) {

@@ -1,11 +1,12 @@
 #!/bin/bash
 ## Do not modify this file. You will lose the ability to autoupdate!
 
-VERSION="15"
 CDN="https://cdn.coollabs.io/coolify-nightly"
 LATEST_IMAGE=${1:-latest}
 LATEST_HELPER_VERSION=${2:-latest}
 REGISTRY_URL=${3:-ghcr.io}
+SKIP_BACKUP=${4:-false}
+ENV_FILE="/data/coolify/source/.env"
 
 DATE=$(date +%Y-%m-%d-%H-%M-%S)
 LOGFILE="/data/coolify/source/upgrade-${DATE}.log"
@@ -14,20 +15,39 @@ curl -fsSL $CDN/docker-compose.yml -o /data/coolify/source/docker-compose.yml
 curl -fsSL $CDN/docker-compose.prod.yml -o /data/coolify/source/docker-compose.prod.yml
 curl -fsSL $CDN/.env.production -o /data/coolify/source/.env.production
 
-# Merge .env and .env.production. New values will be added to .env
-awk -F '=' '!seen[$1]++' /data/coolify/source/.env /data/coolify/source/.env.production >/data/coolify/source/.env.tmp && mv /data/coolify/source/.env.tmp /data/coolify/source/.env
-# Check if PUSHER_APP_ID or PUSHER_APP_KEY or PUSHER_APP_SECRET is empty in /data/coolify/source/.env
-if grep -q "PUSHER_APP_ID=$" /data/coolify/source/.env; then
-    sed -i "s|PUSHER_APP_ID=.*|PUSHER_APP_ID=$(openssl rand -hex 32)|g" /data/coolify/source/.env
+# Backup existing .env file before making any changes
+if [ "$SKIP_BACKUP" != "true" ]; then
+    if [ -f "$ENV_FILE" ]; then
+        echo "Creating backup of existing .env file to .env-$DATE" >>"$LOGFILE"
+        cp "$ENV_FILE" "$ENV_FILE-$DATE"
+    else
+        echo "No existing .env file found to backup" >>"$LOGFILE"
+    fi
 fi
 
-if grep -q "PUSHER_APP_KEY=$" /data/coolify/source/.env; then
-    sed -i "s|PUSHER_APP_KEY=.*|PUSHER_APP_KEY=$(openssl rand -hex 32)|g" /data/coolify/source/.env
-fi
+echo "Merging .env.production values into .env" >>"$LOGFILE"
+awk -F '=' '!seen[$1]++' "$ENV_FILE" /data/coolify/source/.env.production > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
+echo ".env file merged successfully" >>"$LOGFILE"
 
-if grep -q "PUSHER_APP_SECRET=$" /data/coolify/source/.env; then
-    sed -i "s|PUSHER_APP_SECRET=.*|PUSHER_APP_SECRET=$(openssl rand -hex 32)|g" /data/coolify/source/.env
-fi
+update_env_var() {
+    local key="$1"
+    local value="$2"
+
+    # If variable "key=" exists but has no value, update the value of the existing line
+    if grep -q "^${key}=$" "$ENV_FILE"; then
+        sed -i "s|^${key}=$|${key}=${value}|" "$ENV_FILE"
+        echo " - Updated value of ${key} as the current value was empty" >>"$LOGFILE"
+    # If variable "key=" doesn't exist, append it to the file with value
+    elif ! grep -q "^${key}=" "$ENV_FILE"; then
+        printf '%s=%s\n' "$key" "$value" >>"$ENV_FILE"
+        echo " - Added ${key} with default value as the variable was missing" >>"$LOGFILE"
+    fi
+}
+
+echo "Checking and updating environment variables if necessary..." >>"$LOGFILE"
+update_env_var "PUSHER_APP_ID" "$(openssl rand -hex 32)"
+update_env_var "PUSHER_APP_KEY" "$(openssl rand -hex 32)"
+update_env_var "PUSHER_APP_SECRET" "$(openssl rand -hex 32)"
 
 # Make sure coolify network exists
 # It is created when starting Coolify with docker compose
@@ -37,11 +57,52 @@ if ! docker network inspect coolify >/dev/null 2>&1; then
         docker network create --attachable coolify 2>/dev/null
     fi
 fi
-# docker network create --attachable --driver=overlay coolify-overlay 2>/dev/null
 
-if [ -f /data/coolify/source/docker-compose.custom.yml ]; then
-    echo "docker-compose.custom.yml detected." >>$LOGFILE
-    docker run -v /data/coolify/source:/data/coolify/source -v /var/run/docker.sock:/var/run/docker.sock --rm ${REGISTRY_URL:-ghcr.io}/coollabsio/coolify-helper:${LATEST_HELPER_VERSION} bash -c "LATEST_IMAGE=${LATEST_IMAGE} docker compose --env-file /data/coolify/source/.env -f /data/coolify/source/docker-compose.yml -f /data/coolify/source/docker-compose.prod.yml -f /data/coolify/source/docker-compose.custom.yml up -d --remove-orphans --force-recreate --wait --wait-timeout 60" >>$LOGFILE 2>&1
-else
-    docker run -v /data/coolify/source:/data/coolify/source -v /var/run/docker.sock:/var/run/docker.sock --rm ${REGISTRY_URL:-ghcr.io}/coollabsio/coolify-helper:${LATEST_HELPER_VERSION} bash -c "LATEST_IMAGE=${LATEST_IMAGE} docker compose --env-file /data/coolify/source/.env -f /data/coolify/source/docker-compose.yml -f /data/coolify/source/docker-compose.prod.yml up -d --remove-orphans --force-recreate --wait --wait-timeout 60" >>$LOGFILE 2>&1
+# Check if Docker config file exists
+DOCKER_CONFIG_MOUNT=""
+if [ -f /root/.docker/config.json ]; then
+    DOCKER_CONFIG_MOUNT="-v /root/.docker/config.json:/root/.docker/config.json"
 fi
+
+# Pull all required images before stopping containers
+# This ensures we don't take down the system if image pull fails (rate limits, network issues, etc.)
+echo "Pulling required Docker images..." >>"$LOGFILE"
+docker pull "${REGISTRY_URL:-ghcr.io}/coollabsio/coolify:${LATEST_IMAGE}" >>"$LOGFILE" 2>&1 || { echo "Failed to pull Coolify image. Aborting upgrade." >>"$LOGFILE"; exit 1; }
+docker pull "${REGISTRY_URL:-ghcr.io}/coollabsio/coolify-helper:${LATEST_HELPER_VERSION}" >>"$LOGFILE" 2>&1 || { echo "Failed to pull Coolify helper image. Aborting upgrade." >>"$LOGFILE"; exit 1; }
+docker pull postgres:15-alpine >>"$LOGFILE" 2>&1 || { echo "Failed to pull PostgreSQL image. Aborting upgrade." >>"$LOGFILE"; exit 1; }
+docker pull redis:7-alpine >>"$LOGFILE" 2>&1 || { echo "Failed to pull Redis image. Aborting upgrade." >>"$LOGFILE"; exit 1; }
+# Pull realtime image - version is hardcoded in docker-compose.prod.yml, extract it or use a known version
+docker pull "${REGISTRY_URL:-ghcr.io}/coollabsio/coolify-realtime:1.0.10" >>"$LOGFILE" 2>&1 || { echo "Failed to pull Coolify realtime image. Aborting upgrade." >>"$LOGFILE"; exit 1; }
+echo "All images pulled successfully." >>"$LOGFILE"
+
+# Stop and remove existing Coolify containers to prevent conflicts
+# This handles both old installations (project "source") and new ones (project "coolify")
+# Use nohup to ensure the script continues even if SSH connection is lost
+echo "Starting container restart sequence (detached)..." >>"$LOGFILE"
+
+nohup bash -c "
+    LOGFILE='$LOGFILE'
+    DOCKER_CONFIG_MOUNT='$DOCKER_CONFIG_MOUNT'
+    REGISTRY_URL='$REGISTRY_URL'
+    LATEST_HELPER_VERSION='$LATEST_HELPER_VERSION'
+    LATEST_IMAGE='$LATEST_IMAGE'
+
+    # Stop and remove containers
+    echo 'Stopping existing Coolify containers...' >>\"\$LOGFILE\"
+    for container in coolify coolify-db coolify-redis coolify-realtime; do
+        if docker ps -a --format '{{.Names}}' | grep -q \"^\${container}\$\"; then
+            docker stop \"\$container\" >>\"\$LOGFILE\" 2>&1 || true
+            docker rm \"\$container\" >>\"\$LOGFILE\" 2>&1 || true
+            echo \" - Removed container: \$container\" >>\"\$LOGFILE\"
+        fi
+    done
+
+    # Start new containers
+    if [ -f /data/coolify/source/docker-compose.custom.yml ]; then
+        echo 'docker-compose.custom.yml detected.' >>\"\$LOGFILE\"
+        docker run -v /data/coolify/source:/data/coolify/source -v /var/run/docker.sock:/var/run/docker.sock \${DOCKER_CONFIG_MOUNT} --rm \${REGISTRY_URL:-ghcr.io}/coollabsio/coolify-helper:\${LATEST_HELPER_VERSION} bash -c \"LATEST_IMAGE=\${LATEST_IMAGE} docker compose --project-name coolify --env-file /data/coolify/source/.env -f /data/coolify/source/docker-compose.yml -f /data/coolify/source/docker-compose.prod.yml -f /data/coolify/source/docker-compose.custom.yml up -d --remove-orphans --wait --wait-timeout 60\" >>\"\$LOGFILE\" 2>&1
+    else
+        docker run -v /data/coolify/source:/data/coolify/source -v /var/run/docker.sock:/var/run/docker.sock \${DOCKER_CONFIG_MOUNT} --rm \${REGISTRY_URL:-ghcr.io}/coollabsio/coolify-helper:\${LATEST_HELPER_VERSION} bash -c \"LATEST_IMAGE=\${LATEST_IMAGE} docker compose --project-name coolify --env-file /data/coolify/source/.env -f /data/coolify/source/docker-compose.yml -f /data/coolify/source/docker-compose.prod.yml up -d --remove-orphans --wait --wait-timeout 60\" >>\"\$LOGFILE\" 2>&1
+    fi
+    echo 'Upgrade completed.' >>\"\$LOGFILE\"
+" >>"$LOGFILE" 2>&1 &

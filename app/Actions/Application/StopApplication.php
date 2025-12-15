@@ -39,7 +39,7 @@ class StopApplication
 
                 foreach ($containersToStop as $containerName) {
                     instant_remote_process(command: [
-                        "docker stop --time=30 $containerName",
+                        "docker stop -t 30 $containerName",
                         "docker rm -f $containerName",
                     ], server: $server, throwError: false);
                 }
@@ -49,7 +49,7 @@ class StopApplication
                 }
 
                 if ($dockerCleanup) {
-                    CleanupDocker::dispatch($server, true);
+                    CleanupDocker::dispatch($server, false, false);
                 }
             } catch (\Exception $e) {
                 return $e->getMessage();

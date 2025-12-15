@@ -3,7 +3,9 @@
     <x-slide-over @startdatabase.window="slideOverOpen = true" closeWithX fullScreen>
         <x-slot:title>Database Startup</x-slot:title>
         <x-slot:content>
-            <livewire:activity-monitor header="Logs" fullHeight />
+            <div wire:ignore>
+                <livewire:activity-monitor header="Logs" fullHeight />
+            </div>
         </x-slot:content>
     </x-slide-over>
     <div class="navbar-main">
@@ -18,10 +20,12 @@
                 href="{{ route('project.database.logs', $parameters) }}">
                 Logs
             </a>
-            <a class="{{ request()->routeIs('project.database.command') ? 'dark:text-white' : '' }}"
-                href="{{ route('project.database.command', $parameters) }}">
-                Terminal
-            </a>
+            @can('canAccessTerminal')
+                <a class="{{ request()->routeIs('project.database.command') ? 'dark:text-white' : '' }}"
+                    href="{{ route('project.database.command', $parameters) }}">
+                    Terminal
+                </a>
+            @endcan
             @if (
                 $database->getMorphClass() === 'App\Models\StandalonePostgresql' ||
                     $database->getMorphClass() === 'App\Models\StandaloneMongodb' ||
