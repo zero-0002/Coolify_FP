@@ -18,6 +18,11 @@
                 clearInterval(this.intervalId);
             }
         },
+        handleKeyDown(event) {
+            if (event.key === 'Escape' && this.fullscreen) {
+                this.makeFullscreen();
+            }
+        },
         isScrolling: false,
         toggleScroll() {
             this.alwaysScroll = !this.alwaysScroll;
@@ -199,7 +204,7 @@
                 });
             });
         }
-    }">
+    }" @keydown.window="handleKeyDown($event)">
         @if ($collapsible)
             <div class="flex gap-2 items-center p-4 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-coolgray-200"
                 x-on:click="expanded = !expanded; if (expanded && !logsLoaded) { $wire.getLogs(true); logsLoaded = true; }">
