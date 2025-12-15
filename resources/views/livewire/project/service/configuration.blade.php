@@ -37,6 +37,16 @@
                 <livewire:project.service.stack-form :service="$service" />
                 <h3>Services</h3>
                 <div class="grid grid-cols-1 gap-2 pt-4 xl:grid-cols-1">
+                    @if ($applications->isEmpty() && $databases->isEmpty())
+                        <div class="p-4 text-sm text-neutral-500">
+                            No services defined in this Docker Compose file.
+                        </div>
+                    @elseif($applications->isEmpty())
+                        <div class="p-4 text-sm text-neutral-500">
+                            No applications with domains defined. Only database services are available.
+                        </div>
+                    @endif
+
                     @foreach ($applications as $application)
                         <div @class([
                             'border-l border-dashed border-red-500' => str(
@@ -66,7 +76,8 @@
                                     @if ($application->fqdn)
                                         <span class="flex gap-1 text-xs">{{ Str::limit($application->fqdn, 60) }}
                                             @can('update', $service)
-                                                <x-modal-input title="Edit Domains" :closeOutside="false" minWidth="32rem" maxWidth="40rem">
+                                                <x-modal-input title="Edit Domains" :closeOutside="false" minWidth="32rem"
+                                                    maxWidth="40rem">
                                                     <x-slot:content>
                                                         <span class="cursor-pointer">
                                                             <svg xmlns="http://www.w3.org/2000/svg"
@@ -90,7 +101,7 @@
                                             @endcan
                                         </span>
                                     @endif
-                                        <div class="pt-2 text-xs">{{ formatContainerStatus($application->status) }}</div>
+                                    <div class="pt-2 text-xs">{{ formatContainerStatus($application->status) }}</div>
                                 </div>
                                 <div class="flex items-center px-4">
                                     <a class="mx-4 text-xs font-bold hover:underline"
@@ -139,7 +150,7 @@
                                     @if ($database->description)
                                         <span class="text-xs">{{ Str::limit($database->description, 60) }}</span>
                                     @endif
-                                        <div class="text-xs">{{ formatContainerStatus($database->status) }}</div>
+                                    <div class="text-xs">{{ formatContainerStatus($database->status) }}</div>
                                 </div>
                                 <div class="flex items-center px-4">
                                     @if ($database->isBackupSolutionAvailable() || $database->is_migrated)
@@ -175,10 +186,6 @@
                     <h2>Storages</h2>
                 </div>
                 <div class="pb-4">Persistent storage to preserve data between deployments.</div>
-                <div class="pb-4 dark:text-warning text-coollabs">If you would like to add a volume, you must add it to
-                    your compose file (<a class="underline"
-                        href="{{ route('project.service.configuration', ['project_uuid' => $project->uuid, 'environment_uuid' => $environment->uuid, 'service_uuid' => $service->uuid]) }}">General
-                        tab</a>).</div>
                 @foreach ($applications as $application)
                     <livewire:project.service.storage wire:key="application-{{ $application->id }}"
                         :resource="$application" />
