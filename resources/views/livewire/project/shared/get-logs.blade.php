@@ -9,12 +9,18 @@
         scrollDebounce: null,
         colorLogs: localStorage.getItem('coolify-color-logs') === 'true',
         searchQuery: '',
+        renderTrigger: 0,
         containerName: '{{ $container ?? "logs" }}',
         makeFullscreen() {
             this.fullscreen = !this.fullscreen;
             if (this.fullscreen === false) {
                 this.alwaysScroll = false;
                 clearInterval(this.intervalId);
+            }
+        },
+        handleKeyDown(event) {
+            if (event.key === 'Escape' && this.fullscreen) {
+                this.makeFullscreen();
             }
         },
         isScrolling: false,
@@ -80,6 +86,18 @@
             if (!this.searchQuery.trim()) return true;
             return line.toLowerCase().includes(this.searchQuery.toLowerCase());
         },
+        hasActiveLogSelection() {
+            const selection = window.getSelection();
+            if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+                return false;
+            }
+            const logsContainer = document.getElementById('logs');
+            if (!logsContainer) return false;
+
+            // Check if selection is within the logs container
+            const range = selection.getRangeAt(0);
+            return logsContainer.contains(range.commonAncestorContainer);
+        },
         decodeHtml(text) {
             // Decode HTML entities, handling double-encoding with max iteration limit to prevent DoS
             let decoded = text;
@@ -96,6 +114,12 @@
             return decoded;
         },
         renderHighlightedLog(el, text) {
+            // Skip re-render if user has text selected in logs (preserves copy ability)
+            // But always render if the element is empty (initial render)
+            if (el.textContent && this.hasActiveLogSelection()) {
+                return;
+            }
+
             const decoded = this.decodeHtml(text);
             el.textContent = '';
 
@@ -167,8 +191,20 @@
                 this.$wire.getLogs(true);
                 this.logsLoaded = true;
             }
+            // Prevent Livewire from morphing logs container when text is selected
+            Livewire.hook('morph.updating', ({ el, component, toEl, skip }) => {
+                if (el.id === 'logs' && this.hasActiveLogSelection()) {
+                    skip();
+                }
+            });
+            // Re-render logs after Livewire updates
+            Livewire.hook('commit', ({ succeed }) => {
+                succeed(() => {
+                    this.$nextTick(() => { this.renderTrigger++; });
+                });
+            });
         }
-    }">
+    }" @keydown.window="handleKeyDown($event)">
         @if ($collapsible)
             <div class="flex gap-2 items-center p-4 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-coolgray-200"
                 x-on:click="expanded = !expanded; if (expanded && !logsLoaded) { $wire.getLogs(true); logsLoaded = true; }">
@@ -250,6 +286,23 @@
                                     d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
                             </svg>
                         </button>
+                        <button wire:click="toggleStreamLogs"
+                            title="{{ $streamLogs ? 'Stop Streaming' : 'Stream Logs' }}"
+                            class="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 {{ $streamLogs ? '!text-warning' : '' }}">
+                            @if ($streamLogs)
+                                {{-- Pause icon --}}
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+                                    fill="currentColor">
+                                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                                </svg>
+                            @else
+                                {{-- Play icon --}}
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+                                    fill="currentColor">
+                                    <path d="M8 5v14l11-7L8 5z" />
+                                </svg>
+                            @endif
+                        </button>
                         <button x-on:click="downloadLogs()" title="Download Logs"
                             class="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                             <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
@@ -274,23 +327,6 @@
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
                             </svg>
-                        </button>
-                        <button wire:click="toggleStreamLogs"
-                            title="{{ $streamLogs ? 'Stop Streaming' : 'Stream Logs' }}"
-                            class="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 {{ $streamLogs ? '!text-warning' : '' }}">
-                            @if ($streamLogs)
-                                {{-- Pause icon --}}
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
-                                    fill="currentColor">
-                                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                                </svg>
-                            @else
-                                {{-- Play icon --}}
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
-                                    fill="currentColor">
-                                    <path d="M8 5v14l11-7L8 5z" />
-                                </svg>
-                            @endif
                         </button>
                         <button title="Follow Logs" :class="alwaysScroll ? '!text-warning' : ''"
                             x-on:click="toggleScroll"
@@ -365,8 +401,8 @@
 
                                 @endphp
                                 <div data-log-line data-log-content="{{ $line }}"
+                                    x-effect="renderTrigger; searchQuery; $el.classList.toggle('hidden', !matchesSearch($el.dataset.logContent))"
                                     x-bind:class="{
-                                        'hidden': !matchesSearch($el.dataset.logContent),
                                         'bg-red-500/10 dark:bg-red-500/15': colorLogs && getLogLevel($el.dataset.logContent) === 'error',
                                         'bg-yellow-500/10 dark:bg-yellow-500/15': colorLogs && getLogLevel($el.dataset.logContent) === 'warning',
                                         'bg-purple-500/10 dark:bg-purple-500/15': colorLogs && getLogLevel($el.dataset.logContent) === 'debug',
@@ -377,7 +413,7 @@
                                         <span class="shrink-0 text-gray-500">{{ $timestamp }}</span>
                                     @endif
                                     <span data-line-text="{{ $logContent }}"
-                                        x-effect="searchQuery; renderHighlightedLog($el, $el.dataset.lineText)"
+                                        x-effect="renderTrigger; searchQuery; renderHighlightedLog($el, $el.dataset.lineText)"
                                         class="whitespace-pre-wrap break-all"></span>
                                 </div>
                             @endforeach
