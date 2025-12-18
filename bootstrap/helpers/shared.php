@@ -672,6 +672,12 @@ function removeAnsiColors($text)
     return preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $text);
 }
 
+function sanitizeLogsForExport(string $text): string
+{
+    // All sanitization is now handled by remove_iip()
+    return remove_iip($text);
+}
+
 function getTopLevelNetworks(Service|Application $resource)
 {
     if ($resource->getMorphClass() === \App\Models\Service::class) {
@@ -2914,6 +2920,18 @@ function convertToKeyValueCollection($environment)
 function instanceSettings()
 {
     return InstanceSettings::get();
+}
+
+function wireNavigate(): string
+{
+    try {
+        $settings = instanceSettings();
+
+        // Return wire:navigate.hover for SPA navigation with prefetching, or empty string if disabled
+        return ($settings->is_wire_navigate_enabled ?? true) ? 'wire:navigate.hover' : '';
+    } catch (\Exception $e) {
+        return 'wire:navigate.hover';
+    }
 }
 
 function getHelperVersion(): string
