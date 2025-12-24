@@ -1234,7 +1234,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             });
 
             foreach ($runtime_environment_variables as $env) {
-                $envs->push($env->key.'='.$env->real_value);
+                $envs->push($env->key.'='.$env->getResolvedValueWithServer($this->server));
             }
 
             // Check for PORT environment variable mismatch with ports_exposes
@@ -1300,7 +1300,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             });
 
             foreach ($runtime_environment_variables_preview as $env) {
-                $envs->push($env->key.'='.$env->real_value);
+                $envs->push($env->key.'='.$env->getResolvedValueWithServer($this->server));
             }
             // Add PORT if not exists, use the first port as default
             if ($this->build_pack !== 'dockercompose') {
@@ -2304,14 +2304,16 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->env_nixpacks_args = collect([]);
         if ($this->pull_request_id === 0) {
             foreach ($this->application->nixpacks_environment_variables as $env) {
-                if (! is_null($env->real_value) && $env->real_value !== '') {
-                    $this->env_nixpacks_args->push("--env {$env->key}={$env->real_value}");
+                $resolvedValue = $env->getResolvedValueWithServer($this->server);
+                if (! is_null($resolvedValue) && $resolvedValue !== '') {
+                    $this->env_nixpacks_args->push("--env {$env->key}={$resolvedValue}");
                 }
             }
         } else {
             foreach ($this->application->nixpacks_environment_variables_preview as $env) {
-                if (! is_null($env->real_value) && $env->real_value !== '') {
-                    $this->env_nixpacks_args->push("--env {$env->key}={$env->real_value}");
+                $resolvedValue = $env->getResolvedValueWithServer($this->server);
+                if (! is_null($resolvedValue) && $resolvedValue !== '') {
+                    $this->env_nixpacks_args->push("--env {$env->key}={$resolvedValue}");
                 }
             }
         }
@@ -2447,8 +2449,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ->get();
 
             foreach ($envs as $env) {
-                if (! is_null($env->real_value)) {
-                    $this->env_args->put($env->key, $env->real_value);
+                $resolvedValue = $env->getResolvedValueWithServer($this->server);
+                if (! is_null($resolvedValue)) {
+                    $this->env_args->put($env->key, $resolvedValue);
                 }
             }
         } else {
@@ -2458,8 +2461,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ->get();
 
             foreach ($envs as $env) {
-                if (! is_null($env->real_value)) {
-                    $this->env_args->put($env->key, $env->real_value);
+                $resolvedValue = $env->getResolvedValueWithServer($this->server);
+                if (! is_null($resolvedValue)) {
+                    $this->env_args->put($env->key, $resolvedValue);
                 }
             }
         }

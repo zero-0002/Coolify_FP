@@ -1016,6 +1016,11 @@ $schema://$host {
         return $this->belongsTo(Team::class);
     }
 
+    public function environment_variables()
+    {
+        return $this->hasMany(SharedEnvironmentVariable::class)->where('type', 'server');
+    }
+
     public function isProxyShouldRun()
     {
         // TODO: Do we need "|| $this->proxy->force_stop" here?

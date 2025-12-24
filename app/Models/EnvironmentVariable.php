@@ -122,6 +122,17 @@ class EnvironmentVariable extends BaseModel
                     return null;
                 }
 
+                // Load relationships needed for shared variable resolution
+                if (! $resource->relationLoaded('environment')) {
+                    $resource->load('environment');
+                }
+                if (! $resource->relationLoaded('server') && method_exists($resource, 'server')) {
+                    $resource->load('server');
+                }
+                if (! $resource->relationLoaded('destination') && method_exists($resource, 'destination')) {
+                    $resource->load('destination.server');
+                }
+
                 $real_value = $this->get_real_environment_variables($this->value, $resource);
                 if ($this->is_literal || $this->is_multiline) {
                     $real_value = '\''.$real_value.'\'';
@@ -181,7 +192,43 @@ class EnvironmentVariable extends BaseModel
         );
     }
 
-    private function get_real_environment_variables(?string $environment_variable = null, $resource = null)
+    public function get_real_environment_variables_with_server(?string $environment_variable = null, $resource = null, $server = null)
+    {
+        return $this->get_real_environment_variables_internal($environment_variable, $resource, $server);
+    }
+
+    public function getResolvedValueWithServer($server = null)
+    {
+        if (! $this->relationLoaded('resourceable')) {
+            $this->load('resourceable');
+        }
+        $resource = $this->resourceable;
+        if (! $resource) {
+            return null;
+        }
+
+        // Load relationships needed for shared variable resolution
+        if (! $resource->relationLoaded('environment')) {
+            $resource->load('environment');
+        }
+        if (! $resource->relationLoaded('server') && method_exists($resource, 'server')) {
+            $resource->load('server');
+        }
+        if (! $resource->relationLoaded('destination') && method_exists($resource, 'destination')) {
+            $resource->load('destination.server');
+        }
+
+        $real_value = $this->get_real_environment_variables_internal($this->value, $resource, $server);
+        if ($this->is_literal || $this->is_multiline) {
+            $real_value = '\''.$real_value.'\'';
+        } else {
+            $real_value = escapeEnvVariables($real_value);
+        }
+
+        return $real_value;
+    }
+
+    private function get_real_environment_variables_internal(?string $environment_variable = null, $resource = null, $serverOverride = null)
     {
         if ((is_null($environment_variable) && $environment_variable === '') || is_null($resource)) {
             return null;
@@ -203,6 +250,17 @@ class EnvironmentVariable extends BaseModel
                 $id = $resource->environment->project->id;
             } elseif ($type->value() === 'team') {
                 $id = $resource->team()->id;
+            } elseif ($type->value() === 'server') {
+                // Use server override if provided (for deployment context), otherwise use resource's server
+                if ($serverOverride) {
+                    $id = $serverOverride->id;
+                } elseif (isset($resource->server) && $resource->server) {
+                    $id = $resource->server->id;
+                } elseif (isset($resource->destination) && $resource->destination && isset($resource->destination->server)) {
+                    $id = $resource->destination->server->id;
+                } else {
+                    $id = null;
+                }
             }
             if (is_null($id)) {
                 continue;
@@ -214,6 +272,11 @@ class EnvironmentVariable extends BaseModel
         }
 
         return str($environment_variable)->value();
+    }
+
+    private function get_real_environment_variables(?string $environment_variable = null, $resource = null)
+    {
+        return $this->get_real_environment_variables_internal($environment_variable, $resource);
     }
 
     private function get_environment_variables(?string $environment_variable = null): ?string
