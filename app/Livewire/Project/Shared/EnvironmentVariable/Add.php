@@ -67,6 +67,7 @@ class Add extends Component
             'team' => [],
             'project' => [],
             'environment' => [],
+            'server' => [],
         ];
 
         // Early return if no team
@@ -118,6 +119,46 @@ class Add extends Component
                     }
                 } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
                     // User not authorized to view project variables
+                }
+            }
+        }
+
+        // Get server variables
+        $serverUuid = data_get($this->parameters, 'server_uuid');
+        if ($serverUuid) {
+            // If we have a specific server_uuid, show variables for that server
+            $server = \App\Models\Server::where('team_id', $team->id)
+                ->where('uuid', $serverUuid)
+                ->first();
+
+            if ($server) {
+                try {
+                    $this->authorize('view', $server);
+                    $result['server'] = $server->environment_variables()
+                        ->pluck('key')
+                        ->toArray();
+                } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+                    // User not authorized to view server variables
+                }
+            }
+        } else {
+            // For application environment variables, try to use the application's destination server
+            $applicationUuid = data_get($this->parameters, 'application_uuid');
+            if ($applicationUuid) {
+                $application = \App\Models\Application::whereRelation('environment.project.team', 'id', $team->id)
+                    ->where('uuid', $applicationUuid)
+                    ->with('destination.server')
+                    ->first();
+
+                if ($application && $application->destination && $application->destination->server) {
+                    try {
+                        $this->authorize('view', $application->destination->server);
+                        $result['server'] = $application->destination->server->environment_variables()
+                            ->pluck('key')
+                            ->toArray();
+                    } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+                        // User not authorized to view server variables
+                    }
                 }
             }
         }
