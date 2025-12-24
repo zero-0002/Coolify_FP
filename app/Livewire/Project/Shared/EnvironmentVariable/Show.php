@@ -297,6 +297,26 @@ class Show extends Component
                         // User not authorized to view server variables
                     }
                 }
+            } else {
+                // For service environment variables, try to use the service's server
+                $serviceUuid = data_get($this->parameters, 'service_uuid');
+                if ($serviceUuid) {
+                    $service = \App\Models\Service::whereRelation('environment.project.team', 'id', $team->id)
+                        ->where('uuid', $serviceUuid)
+                        ->with('server')
+                        ->first();
+
+                    if ($service && $service->server) {
+                        try {
+                            $this->authorize('view', $service->server);
+                            $result['server'] = $service->server->environment_variables()
+                                ->pluck('key')
+                                ->toArray();
+                        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+                            // User not authorized to view server variables
+                        }
+                    }
+                }
             }
         }
 
