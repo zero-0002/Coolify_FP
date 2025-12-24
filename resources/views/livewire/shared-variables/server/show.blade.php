@@ -19,7 +19,7 @@
     </div>
     @if ($view === 'normal')
         <div class="flex flex-col gap-2">
-            @forelse ($server->environment_variables->sort()->sortBy('key') as $env)
+            @forelse ($server->environment_variables->whereNotIn('key', ['COOLIFY_SERVER_UUID', 'COOLIFY_SERVER_NAME'])->sort()->sortBy('key') as $env)
                 <livewire:project.shared.environment-variable.show wire:key="environment-{{ $env->id }}"
                     :env="$env" type="server" />
             @empty

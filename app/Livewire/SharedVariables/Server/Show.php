@@ -24,6 +24,10 @@ class Show extends Component
         try {
             $this->authorize('update', $this->server);
 
+            if (in_array($data['key'], ['COOLIFY_SERVER_UUID', 'COOLIFY_SERVER_NAME'])) {
+                throw new \Exception('Cannot create predefined variable.');
+            }
+
             $found = $this->server->environment_variables()->where('key', $data['key'])->first();
             if ($found) {
                 throw new \Exception('Variable already exists.');
@@ -64,7 +68,7 @@ class Show extends Component
 
     public function getDevView()
     {
-        $this->variables = $this->formatEnvironmentVariables($this->server->environment_variables->sortBy('key'));
+        $this->variables = $this->formatEnvironmentVariables($this->server->environment_variables->whereNotIn('key', ['COOLIFY_SERVER_UUID', 'COOLIFY_SERVER_NAME'])->sortBy('key'));
     }
 
     private function formatEnvironmentVariables($variables)
@@ -115,13 +119,19 @@ class Show extends Component
 
     private function deleteRemovedVariables($variables)
     {
-        $variablesToDelete = $this->server->environment_variables()->whereNotIn('key', array_keys($variables))->get();
+        $variablesToDelete = $this->server->environment_variables()
+            ->whereNotIn('key', array_keys($variables))
+            ->whereNotIn('key', ['COOLIFY_SERVER_UUID', 'COOLIFY_SERVER_NAME'])
+            ->get();
 
         if ($variablesToDelete->isEmpty()) {
             return 0;
         }
 
-        $this->server->environment_variables()->whereNotIn('key', array_keys($variables))->delete();
+        $this->server->environment_variables()
+            ->whereNotIn('key', array_keys($variables))
+            ->whereNotIn('key', ['COOLIFY_SERVER_UUID', 'COOLIFY_SERVER_NAME'])
+            ->delete();
 
         return $variablesToDelete->count();
     }
@@ -130,6 +140,10 @@ class Show extends Component
     {
         $count = 0;
         foreach ($variables as $key => $value) {
+            // Skip predefined variables
+            if (in_array($key, ['COOLIFY_SERVER_UUID', 'COOLIFY_SERVER_NAME'])) {
+                continue;
+            }
             $found = $this->server->environment_variables()->where('key', $key)->first();
 
             if ($found) {
