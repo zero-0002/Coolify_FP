@@ -20,25 +20,48 @@
                 <p>A custom health check has been detected. If you enable this health check, it will disable the custom one and use this instead.</p>
             </x-callout>
         @endif
+
+        {{-- Healthcheck Type Selector --}}
         <div class="flex gap-2">
-            <x-forms.select canGate="update" :canResource="$resource" id="healthCheckMethod" label="Method" required>
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
+            <x-forms.select canGate="update" :canResource="$resource" id="healthCheckType" label="Type" required wire:model.live="healthCheckType">
+                <option value="http">HTTP</option>
+                <option value="cmd">CMD</option>
             </x-forms.select>
-            <x-forms.select canGate="update" :canResource="$resource" id="healthCheckScheme" label="Scheme" required>
-                <option value="http">http</option>
-                <option value="https">https</option>
-            </x-forms.select>
-            <x-forms.input canGate="update" :canResource="$resource" id="healthCheckHost" placeholder="localhost" label="Host" required />
-            <x-forms.input canGate="update" :canResource="$resource" type="number" id="healthCheckPort"
-                helper="If no port is defined, the first exposed port will be used." placeholder="80" label="Port" />
-            <x-forms.input canGate="update" :canResource="$resource" id="healthCheckPath" placeholder="/health" label="Path" required />
         </div>
-        <div class="flex gap-2">
-            <x-forms.input canGate="update" :canResource="$resource" type="number" id="healthCheckReturnCode" placeholder="200" label="Return Code"
-                required />
-            <x-forms.input canGate="update" :canResource="$resource" id="healthCheckResponseText" placeholder="OK" label="Response Text" />
-        </div>
+
+        @if ($healthCheckType === 'http')
+            {{-- HTTP Healthcheck Fields --}}
+            <div class="flex gap-2">
+                <x-forms.select canGate="update" :canResource="$resource" id="healthCheckMethod" label="Method" required>
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                </x-forms.select>
+                <x-forms.select canGate="update" :canResource="$resource" id="healthCheckScheme" label="Scheme" required>
+                    <option value="http">http</option>
+                    <option value="https">https</option>
+                </x-forms.select>
+                <x-forms.input canGate="update" :canResource="$resource" id="healthCheckHost" placeholder="localhost" label="Host" required />
+                <x-forms.input canGate="update" :canResource="$resource" type="number" id="healthCheckPort"
+                    helper="If no port is defined, the first exposed port will be used." placeholder="80" label="Port" />
+                <x-forms.input canGate="update" :canResource="$resource" id="healthCheckPath" placeholder="/health" label="Path" required />
+            </div>
+            <div class="flex gap-2">
+                <x-forms.input canGate="update" :canResource="$resource" type="number" id="healthCheckReturnCode" placeholder="200" label="Return Code"
+                    required />
+                <x-forms.input canGate="update" :canResource="$resource" id="healthCheckResponseText" placeholder="OK" label="Response Text" />
+            </div>
+        @else
+            {{-- CMD Healthcheck Fields --}}
+            <div class="flex flex-col gap-2">
+                <x-forms.textarea canGate="update" :canResource="$resource" id="healthCheckCommand"
+                    label="Command"
+                    placeholder="Example: pg_isready -U postgres&#10;Example: redis-cli ping&#10;Example: curl -f http://localhost:8080/health"
+                    helper="The command to run inside the container. It should exit with code 0 on success and non-zero on failure."
+                    required />
+            </div>
+        @endif
+
+        {{-- Common timing fields (used by both types) --}}
         <div class="flex gap-2">
             <x-forms.input canGate="update" :canResource="$resource" min="1" type="number" id="healthCheckInterval" placeholder="30"
                 label="Interval (s)" required />
