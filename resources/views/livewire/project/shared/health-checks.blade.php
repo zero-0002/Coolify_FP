@@ -57,7 +57,7 @@
                     label="Command"
                     placeholder="Example: pg_isready -U postgres&#10;Example: redis-cli ping&#10;Example: curl -f http://localhost:8080/health"
                     helper="The command to run inside the container. It should exit with code 0 on success and non-zero on failure."
-                    required />
+                    :required="$healthCheckType === 'cmd'" />
             </div>
         @endif
 

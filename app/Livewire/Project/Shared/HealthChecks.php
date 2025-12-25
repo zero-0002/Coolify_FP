@@ -19,7 +19,7 @@ class HealthChecks extends Component
     #[Validate(['string', 'in:http,cmd'])]
     public string $healthCheckType = 'http';
 
-    #[Validate(['nullable', 'string'])]
+    #[Validate(['nullable', 'required_if:healthCheckType,cmd', 'string'])]
     public ?string $healthCheckCommand = null;
 
     #[Validate(['string'])]
@@ -128,6 +128,7 @@ class HealthChecks extends Component
     public function instantSave()
     {
         $this->authorize('update', $this->resource);
+        $this->validate();
 
         // Sync component properties to model
         $this->resource->health_check_enabled = $this->healthCheckEnabled;
