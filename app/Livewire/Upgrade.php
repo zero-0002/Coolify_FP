@@ -24,6 +24,7 @@ class Upgrade extends Component
     public function mount()
     {
         $this->currentVersion = config('constants.coolify.version');
+        $this->latestVersion = get_latest_version_of_coolify();
         $this->devMode = isDev();
     }
 
