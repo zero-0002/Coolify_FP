@@ -3250,6 +3250,15 @@ class ApplicationsController extends Controller
                     format: 'uuid',
                 )
             ),
+            new OA\Parameter(
+                name: 'docker_cleanup',
+                in: 'query',
+                description: 'Perform docker cleanup (prune networks, volumes, etc.).',
+                schema: new OA\Schema(
+                    type: 'boolean',
+                    default: true,
+                )
+            ),
         ],
         responses: [
             new OA\Response(
@@ -3298,7 +3307,8 @@ class ApplicationsController extends Controller
 
         $this->authorize('deploy', $application);
 
-        StopApplication::dispatch($application);
+        $dockerCleanup = $request->boolean('docker_cleanup', true);
+        StopApplication::dispatch($application, false, $dockerCleanup);
 
         return response()->json(
             [
