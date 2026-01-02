@@ -10,7 +10,7 @@ class SharedEnvironmentVariable extends Model
 
     protected $casts = [
         'key' => 'string',
-        'value' => 'string',
+        'value' => 'encrypted',
     ];
 
     public function team()
