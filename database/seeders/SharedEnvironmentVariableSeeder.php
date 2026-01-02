@@ -44,6 +44,7 @@ class SharedEnvironmentVariableSeeder extends Seeder
                 'team_id' => $server->team_id,
             ], [
                 'value' => $server->uuid,
+                'is_literal' => true,
             ]);
 
             SharedEnvironmentVariable::firstOrCreate([
@@ -53,6 +54,7 @@ class SharedEnvironmentVariableSeeder extends Seeder
                 'team_id' => $server->team_id,
             ], [
                 'value' => $server->name,
+                'is_literal' => true,
             ]);
         }
     }

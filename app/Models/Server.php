@@ -19,7 +19,6 @@ use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
@@ -169,7 +168,7 @@ class Server extends BaseModel
                     $standaloneDocker->saveQuietly();
                 }
             }
-             if (! isset($server->proxy->redirect_enabled)) {
+            if (! isset($server->proxy->redirect_enabled)) {
                 $server->proxy->redirect_enabled = true;
             }
 
@@ -180,6 +179,7 @@ class Server extends BaseModel
                 'type' => 'server',
                 'server_id' => $server->id,
                 'team_id' => $server->team_id,
+                'is_literal' => true,
             ]);
             SharedEnvironmentVariable::create([
                 'key' => 'COOLIFY_SERVER_NAME',
@@ -187,6 +187,7 @@ class Server extends BaseModel
                 'type' => 'server',
                 'server_id' => $server->id,
                 'team_id' => $server->team_id,
+                'is_literal' => true,
             ]);
         });
         static::retrieved(function ($server) {

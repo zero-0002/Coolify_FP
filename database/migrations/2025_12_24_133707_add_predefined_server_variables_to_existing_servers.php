@@ -21,13 +21,14 @@ return new class extends Migration
                 ->where('key', 'COOLIFY_SERVER_UUID')
                 ->exists();
 
-            if (!$uuidExists) {
+            if (! $uuidExists) {
                 DB::table('shared_environment_variables')->insert([
                     'key' => 'COOLIFY_SERVER_UUID',
                     'value' => $server->uuid,
                     'type' => 'server',
                     'server_id' => $server->id,
                     'team_id' => $server->team_id,
+                    'is_literal' => true,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -40,13 +41,14 @@ return new class extends Migration
                 ->where('key', 'COOLIFY_SERVER_NAME')
                 ->exists();
 
-            if (!$nameExists) {
+            if (! $nameExists) {
                 DB::table('shared_environment_variables')->insert([
                     'key' => 'COOLIFY_SERVER_NAME',
                     'value' => $server->name,
                     'type' => 'server',
                     'server_id' => $server->id,
                     'team_id' => $server->team_id,
+                    'is_literal' => true,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
