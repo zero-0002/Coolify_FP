@@ -371,7 +371,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
             try {
                 $this->application_deployment_queue->addLogEntry("Gracefully shutting down build container: {$this->deployment_uuid}");
-                $this->graceful_shutdown_container($this->deployment_uuid);
+                $this->graceful_shutdown_container($this->deployment_uuid, skipRemove: true);
             } catch (Exception $e) {
                 // Log but don't fail - container cleanup errors are expected when container is already gone
                 \Log::warning('Failed to shutdown container '.$this->deployment_uuid.': '.$e->getMessage());
@@ -486,15 +486,38 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private function post_deployment()
     {
-        GetContainersStatus::dispatch($this->server);
+        // Mark deployment as complete FIRST, before any other operations
+        // This ensures the deployment status is FINISHED even if subsequent operations fail
         $this->completeDeployment();
+
+        // Then handle side effects - these should not fail the deployment
+        try {
+            GetContainersStatus::dispatch($this->server);
+        } catch (\Exception $e) {
+            \Log::warning('Failed to dispatch GetContainersStatus for deployment '.$this->deployment_uuid.': '.$e->getMessage());
+        }
+
         if ($this->pull_request_id !== 0) {
             if ($this->application->is_github_based()) {
-                ApplicationPullRequestUpdateJob::dispatch(application: $this->application, preview: $this->preview, deployment_uuid: $this->deployment_uuid, status: ProcessStatus::FINISHED);
+                try {
+                    ApplicationPullRequestUpdateJob::dispatch(application: $this->application, preview: $this->preview, deployment_uuid: $this->deployment_uuid, status: ProcessStatus::FINISHED);
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to dispatch PR update for deployment '.$this->deployment_uuid.': '.$e->getMessage());
+                }
             }
         }
-        $this->run_post_deployment_command();
-        $this->application->isConfigurationChanged(true);
+
+        try {
+            $this->run_post_deployment_command();
+        } catch (\Exception $e) {
+            \Log::warning('Post deployment command failed for '.$this->deployment_uuid.': '.$e->getMessage());
+        }
+
+        try {
+            $this->application->isConfigurationChanged(true);
+        } catch (\Exception $e) {
+            \Log::warning('Failed to mark configuration as changed for deployment '.$this->deployment_uuid.': '.$e->getMessage());
+        }
     }
 
     private function deploy_simple_dockerfile()
@@ -1945,7 +1968,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->application_deployment_queue->addLogEntry('Preparing container with helper image with updated envs.');
         }
 
-        $this->graceful_shutdown_container($this->deployment_uuid);
+        $this->graceful_shutdown_container($this->deployment_uuid, skipRemove: true);
         $this->execute_remote_command(
             [
                 $runCommand,
@@ -1960,8 +1983,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private function restart_builder_container_with_actual_commit()
     {
-        // Stop and remove the current helper container
-        $this->graceful_shutdown_container($this->deployment_uuid);
+        // Stop the current helper container (no need for rm -f as it was started with --rm)
+        $this->graceful_shutdown_container($this->deployment_uuid, skipRemove: true);
 
         // Clear cached env_args to force regeneration with actual SOURCE_COMMIT value
         $this->env_args = null;
@@ -3148,14 +3171,20 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         $this->application_deployment_queue->addLogEntry('Building docker image completed.');
     }
 
-    private function graceful_shutdown_container(string $containerName)
+    private function graceful_shutdown_container(string $containerName, bool $skipRemove = false)
     {
         try {
             $timeout = isDev() ? 1 : 30;
-            $this->execute_remote_command(
-                ["docker stop -t $timeout $containerName", 'hidden' => true, 'ignore_errors' => true],
-                ["docker rm -f $containerName", 'hidden' => true, 'ignore_errors' => true]
-            );
+            if ($skipRemove) {
+                $this->execute_remote_command(
+                    ["docker stop -t $timeout $containerName", 'hidden' => true, 'ignore_errors' => true]
+                );
+            } else {
+                $this->execute_remote_command(
+                    ["docker stop -t $timeout $containerName", 'hidden' => true, 'ignore_errors' => true],
+                    ["docker rm -f $containerName", 'hidden' => true, 'ignore_errors' => true]
+                );
+            }
         } catch (Exception $error) {
             $this->application_deployment_queue->addLogEntry("Error stopping container $containerName: ".$error->getMessage(), 'stderr');
         }
@@ -3934,12 +3963,16 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
     }
 
     /**
-     * Check if deployment is in a terminal state (FAILED or CANCELLED).
+     * Check if deployment is in a terminal state (FINISHED, FAILED or CANCELLED).
      * Terminal states cannot be changed.
      */
     private function isInTerminalState(): bool
     {
         $this->application_deployment_queue->refresh();
+
+        if ($this->application_deployment_queue->status === ApplicationDeploymentStatus::FINISHED->value) {
+            return true;
+        }
 
         if ($this->application_deployment_queue->status === ApplicationDeploymentStatus::FAILED->value) {
             return true;
@@ -3980,6 +4013,15 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
      */
     private function handleSuccessfulDeployment(): void
     {
+        // Reset restart count after successful deployment
+        // This is done here (not in Livewire) to avoid race conditions
+        // with GetContainersStatus reading old container restart counts
+        $this->application->update([
+            'restart_count' => 0,
+            'last_restart_at' => null,
+            'last_restart_type' => null,
+        ]);
+
         event(new ApplicationConfigurationChanged($this->application->team()->id));
 
         if (! $this->only_this_server) {

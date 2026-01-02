@@ -4,12 +4,9 @@ namespace App\Livewire\Project\Service;
 
 use App\Actions\Database\StartDatabaseProxy;
 use App\Actions\Database\StopDatabaseProxy;
-use App\Models\InstanceSettings;
 use App\Models\ServiceDatabase;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Livewire\Component;
 
 class Database extends Component
@@ -96,18 +93,14 @@ class Database extends Component
         try {
             $this->authorize('delete', $this->database);
 
-            if (! data_get(InstanceSettings::get(), 'disable_two_step_confirmation')) {
-                if (! Hash::check($password, Auth::user()->password)) {
-                    $this->addError('password', 'The provided password is incorrect.');
-
-                    return;
-                }
+            if (! verifyPasswordConfirmation($password, $this)) {
+                return;
             }
 
             $this->database->delete();
             $this->dispatch('success', 'Database deleted.');
 
-            return redirect()->route('project.service.configuration', $this->parameters);
+            return redirectRoute($this, 'project.service.configuration', $this->parameters);
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
@@ -171,7 +164,7 @@ class Database extends Component
                 $serviceDatabase->delete();
             });
 
-            return redirect()->route('project.service.configuration', $redirectParams);
+            return redirectRoute($this, 'project.service.configuration', $redirectParams);
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }

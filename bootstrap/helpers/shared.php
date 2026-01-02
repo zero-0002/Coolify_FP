@@ -33,6 +33,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\RateLimiter;
@@ -181,8 +182,11 @@ function refreshSession(?Team $team = null): void
             $team = User::find(Auth::id())->teams->first();
         }
     }
+    // Clear old cache key format for backwards compatibility
     Cache::forget('team:'.Auth::id());
-    Cache::remember('team:'.Auth::id(), 3600, function () use ($team) {
+    // Use new cache key format that includes team ID
+    Cache::forget('user:'.Auth::id().':team:'.$team->id);
+    Cache::remember('user:'.Auth::id().':team:'.$team->id, 3600, function () use ($team) {
         return $team;
     });
     session(['currentTeam' => $team]);
@@ -300,6 +304,24 @@ function generate_application_name(string $git_repository, string $git_branch, ?
     return Str::kebab("$git_repository:$git_branch-$cuid");
 }
 
+/**
+ * Sort branches by priority: main first, master second, then alphabetically.
+ *
+ * @param  Collection  $branches  Collection of branch objects with 'name' key
+ */
+function sortBranchesByPriority(Collection $branches): Collection
+{
+    return $branches->sortBy(function ($branch) {
+        $name = data_get($branch, 'name');
+
+        return match ($name) {
+            'main' => '0_main',
+            'master' => '1_master',
+            default => '2_'.$name,
+        };
+    })->values();
+}
+
 function base_ip(): string
 {
     if (isDev()) {
@@ -365,7 +387,7 @@ function base_url(bool $withPort = true): string
 
 function isSubscribed()
 {
-    return isSubscriptionActive() || auth()->user()->isInstanceAdmin();
+    return isSubscriptionActive();
 }
 
 function isProduction(): bool
@@ -651,6 +673,12 @@ function generateGitManualWebhook($resource, $type)
 function removeAnsiColors($text)
 {
     return preg_replace('/\e[[][A-Za-z0-9];?[0-9]*m?/', '', $text);
+}
+
+function sanitizeLogsForExport(string $text): string
+{
+    // All sanitization is now handled by remove_iip()
+    return remove_iip($text);
 }
 
 function getTopLevelNetworks(Service|Application $resource)
@@ -2897,6 +2925,35 @@ function instanceSettings()
     return InstanceSettings::get();
 }
 
+function wireNavigate(): string
+{
+    try {
+        $settings = instanceSettings();
+
+        // Return wire:navigate.hover for SPA navigation with prefetching, or empty string if disabled
+        return ($settings->is_wire_navigate_enabled ?? true) ? 'wire:navigate.hover' : '';
+    } catch (\Exception $e) {
+        return 'wire:navigate.hover';
+    }
+}
+
+/**
+ * Redirect to a named route with SPA navigation support.
+ * Automatically uses wire:navigate when is_wire_navigate_enabled is true.
+ */
+function redirectRoute(Livewire\Component $component, string $name, array $parameters = []): mixed
+{
+    $navigate = true;
+
+    try {
+        $navigate = instanceSettings()->is_wire_navigate_enabled ?? true;
+    } catch (\Exception $e) {
+        $navigate = true;
+    }
+
+    return $component->redirectRoute($name, $parameters, navigate: $navigate);
+}
+
 function getHelperVersion(): string
 {
     $settings = instanceSettings();
@@ -3307,4 +3364,136 @@ function formatContainerStatus(string $status): string
         // Simple status: running → Running
         return str($status)->headline()->value();
     }
+}
+
+/**
+ * Check if password confirmation should be skipped.
+ * Returns true if:
+ * - Two-step confirmation is globally disabled
+ * - User has no password (OAuth users)
+ *
+ * Used by modal-confirmation.blade.php to determine if password step should be shown.
+ *
+ * @return bool True if password confirmation should be skipped
+ */
+function shouldSkipPasswordConfirmation(): bool
+{
+    // Skip if two-step confirmation is globally disabled
+    if (data_get(InstanceSettings::get(), 'disable_two_step_confirmation')) {
+        return true;
+    }
+
+    // Skip if user has no password (OAuth users)
+    if (! Auth::user()?->hasPassword()) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Verify password for two-step confirmation.
+ * Skips verification if:
+ * - Two-step confirmation is globally disabled
+ * - User has no password (OAuth users)
+ *
+ * @param  mixed  $password  The password to verify (may be array if skipped by frontend)
+ * @param  \Livewire\Component|null  $component  Optional Livewire component to add errors to
+ * @return bool True if verification passed (or skipped), false if password is incorrect
+ */
+function verifyPasswordConfirmation(mixed $password, ?Livewire\Component $component = null): bool
+{
+    // Skip if password confirmation should be skipped
+    if (shouldSkipPasswordConfirmation()) {
+        return true;
+    }
+
+    // Verify the password
+    if (! Hash::check($password, Auth::user()->password)) {
+        if ($component) {
+            $component->addError('password', 'The provided password is incorrect.');
+        }
+
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Downsample metrics using the Largest-Triangle-Three-Buckets (LTTB) algorithm.
+ * This preserves the visual shape of the data better than simple averaging.
+ *
+ * @param  array  $data  Array of [timestamp, value] pairs
+ * @param  int  $threshold  Target number of points
+ * @return array Downsampled data
+ */
+function downsampleLTTB(array $data, int $threshold): array
+{
+    $dataLength = count($data);
+
+    // Return unchanged if threshold >= data length, or if threshold <= 2
+    // (threshold <= 2 would cause division by zero in bucket calculation)
+    if ($threshold >= $dataLength || $threshold <= 2) {
+        return $data;
+    }
+
+    $sampled = [];
+    $sampled[] = $data[0]; // Always keep first point
+
+    $bucketSize = ($dataLength - 2) / ($threshold - 2);
+
+    $a = 0; // Index of previous selected point
+
+    for ($i = 0; $i < $threshold - 2; $i++) {
+        // Calculate bucket range
+        $bucketStart = (int) floor(($i + 1) * $bucketSize) + 1;
+        $bucketEnd = (int) floor(($i + 2) * $bucketSize) + 1;
+        $bucketEnd = min($bucketEnd, $dataLength - 1);
+
+        // Calculate average point for next bucket (used as reference)
+        $nextBucketStart = (int) floor(($i + 2) * $bucketSize) + 1;
+        $nextBucketEnd = (int) floor(($i + 3) * $bucketSize) + 1;
+        $nextBucketEnd = min($nextBucketEnd, $dataLength - 1);
+
+        $avgX = 0;
+        $avgY = 0;
+        $nextBucketCount = $nextBucketEnd - $nextBucketStart + 1;
+
+        if ($nextBucketCount > 0) {
+            for ($j = $nextBucketStart; $j <= $nextBucketEnd; $j++) {
+                $avgX += $data[$j][0];
+                $avgY += $data[$j][1];
+            }
+            $avgX /= $nextBucketCount;
+            $avgY /= $nextBucketCount;
+        }
+
+        // Find point in current bucket with largest triangle area
+        $maxArea = -1;
+        $maxAreaIndex = $bucketStart;
+
+        $pointAX = $data[$a][0];
+        $pointAY = $data[$a][1];
+
+        for ($j = $bucketStart; $j <= $bucketEnd; $j++) {
+            // Triangle area calculation
+            $area = abs(
+                ($pointAX - $avgX) * ($data[$j][1] - $pointAY) -
+                ($pointAX - $data[$j][0]) * ($avgY - $pointAY)
+            ) * 0.5;
+
+            if ($area > $maxArea) {
+                $maxArea = $area;
+                $maxAreaIndex = $j;
+            }
+        }
+
+        $sampled[] = $data[$maxAreaIndex];
+        $a = $maxAreaIndex;
+    }
+
+    $sampled[] = $data[$dataLength - 1]; // Always keep last point
+
+    return $sampled;
 }
