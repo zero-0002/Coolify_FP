@@ -109,7 +109,7 @@
                             disabled
                             type="password"
                             id="value"
-                            :availableVars="$this->availableSharedVariables"
+                            :availableVars="$isSharedVariable ? [] : $this->availableSharedVariables"
                             :projectUuid="data_get($parameters, 'project_uuid')"
                             :environmentUuid="data_get($parameters, 'environment_uuid')"
                             :serverUuid="data_get($parameters, 'server_uuid')" />
@@ -128,7 +128,7 @@
                                 :required="$is_redis_credential"
                                 type="password"
                                 id="value"
-                                :availableVars="$this->availableSharedVariables"
+                                :availableVars="$isSharedVariable ? [] : $this->availableSharedVariables"
                                 :projectUuid="data_get($parameters, 'project_uuid')"
                                 :environmentUuid="data_get($parameters, 'environment_uuid')"
                                 :serverUuid="data_get($parameters, 'server_uuid')" />
@@ -145,7 +145,7 @@
                         disabled
                         type="password"
                         id="value"
-                        :availableVars="$this->availableSharedVariables"
+                        :availableVars="$isSharedVariable ? [] : $this->availableSharedVariables"
                         :projectUuid="data_get($parameters, 'project_uuid')"
                         :environmentUuid="data_get($parameters, 'environment_uuid')"
                         :serverUuid="data_get($parameters, 'server_uuid')" />
