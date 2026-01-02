@@ -52,9 +52,10 @@ class Show extends Component
         $serverUuid = request()->route('server_uuid');
         $teamId = currentTeam()->id;
         $server = Server::where('team_id', $teamId)->where('uuid', $serverUuid)->first();
-        if (!$server) {
+        if (! $server) {
             return redirect()->route('dashboard');
         }
+        $this->authorize('view', $server);
         $this->server = $server;
         $this->getDevView();
     }
