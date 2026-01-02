@@ -21,6 +21,8 @@ use Livewire\Component;
 
 class GetLogs extends Component
 {
+    public const MAX_LOG_LINES = 50000;
+
     public string $outputs = '';
 
     public string $errors = '';
@@ -123,6 +125,9 @@ class GetLogs extends Component
         if ($this->numberOfLines <= 0 || is_null($this->numberOfLines)) {
             $this->numberOfLines = 1000;
         }
+        if ($this->numberOfLines > self::MAX_LOG_LINES) {
+            $this->numberOfLines = self::MAX_LOG_LINES;
+        }
         if ($this->container) {
             if ($this->showTimeStamps) {
                 if ($this->server->isSwarm()) {
@@ -181,6 +186,50 @@ class GetLogs extends Component
     public function copyLogs(): string
     {
         return sanitizeLogsForExport($this->outputs);
+    }
+
+    public function downloadAllLogs(): string
+    {
+        if (! $this->server->isFunctional() || ! $this->container) {
+            return '';
+        }
+
+        if ($this->showTimeStamps) {
+            if ($this->server->isSwarm()) {
+                $command = "docker service logs -t {$this->container}";
+            } else {
+                $command = "docker logs -t {$this->container}";
+            }
+        } else {
+            if ($this->server->isSwarm()) {
+                $command = "docker service logs {$this->container}";
+            } else {
+                $command = "docker logs {$this->container}";
+            }
+        }
+
+        if ($this->server->isNonRoot()) {
+            $command = parseCommandsByLineForSudo(collect($command), $this->server);
+            $command = $command[0];
+        }
+
+        $sshCommand = SshMultiplexingHelper::generateSshCommand($this->server, $command);
+
+        $allLogs = '';
+        Process::run($sshCommand, function (string $type, string $output) use (&$allLogs) {
+            $allLogs .= removeAnsiColors($output);
+        });
+
+        if ($this->showTimeStamps) {
+            $allLogs = str($allLogs)->split('/\n/')->sort(function ($a, $b) {
+                $a = explode(' ', $a);
+                $b = explode(' ', $b);
+
+                return $a[0] <=> $b[0];
+            })->join("\n");
+        }
+
+        return sanitizeLogsForExport($allLogs);
     }
 
     public function render()
