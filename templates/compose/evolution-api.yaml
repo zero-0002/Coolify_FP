@@ -5,19 +5,12 @@
 # logo: svgs/evolution-api.svg
 # port: 8080
 
-version: '3.8'
 services:
   api:
-    image: 'evoapicloud/evolution-api:v2.3.4'
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    image: evoapicloud/evolution-api:v2.3.7
     environment:
       - SERVICE_URL_EVO_8080
       - SERVER_URL=${SERVICE_URL_EVO}
-
       - DB_TYPE=${DB_TYPE:-postgresdb}
       - 'DB_POSTGRESDB_DATABASE=${POSTGRES_DB:-postgres}'
       - DB_POSTGRESDB_HOST=${DB_POSTGRESDB_HOST:-postgres}
@@ -141,7 +134,6 @@ services:
     expose:
       - "8080"
     healthcheck:
-      # Internal healthcheck: success if "/" returns 2xx (sin curl/wget)
       test:
         - CMD-SHELL
         - >
@@ -152,10 +144,15 @@ services:
       timeout: 5s
       retries: 30
       start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   redis:
-    image: 'redis:7-alpine'
-    command: "redis-server --port 6379 --appendonly yes\n"
+    image: redis:7-alpine
+    command: redis-server --port 6379 --appendonly yes
     volumes:
       - 'evolution_redis:/data'
     healthcheck:
@@ -166,7 +163,7 @@ services:
       start_period: 5s
 
   postgres:
-    image: 'postgres:16-alpine'
+    image: postgres:16-alpine
     command:
       - postgres
       - '-c'
@@ -186,8 +183,3 @@ services:
       timeout: 3s
       retries: 20
       start_period: 10s
-
-volumes:
-  evolution_instances:
-  evolution_redis:
-  postgres_data:
