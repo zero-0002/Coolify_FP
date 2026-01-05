@@ -10566,13 +10566,6 @@
                     },
                     "description": {
                         "type": "string"
-                    },
-                    "environments": {
-                        "description": "The environments of the project.",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#\/components\/schemas\/Environment"
-                        }
                     }
                 },
                 "type": "object"
