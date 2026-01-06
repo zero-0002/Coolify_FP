@@ -1458,15 +1458,7 @@ class Service extends BaseModel
 
     public function environment_variables()
     {
-        return $this->morphMany(EnvironmentVariable::class, 'resourceable')
-            ->orderByRaw("
-                CASE
-                    WHEN is_required = true THEN 1
-                    WHEN LOWER(key) LIKE 'service_%' THEN 2
-                    ELSE 3
-                END,
-                LOWER(key) ASC
-            ");
+        return $this->morphMany(EnvironmentVariable::class, 'resourceable');
     }
 
     public function workdir()
