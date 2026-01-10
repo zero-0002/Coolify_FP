@@ -847,11 +847,15 @@ class ApplicationsController extends Controller
         return $this->create_application($request, 'dockerimage');
     }
 
+    /**
+     * @deprecated Use POST /api/v1/services instead. This endpoint creates a Service, not an Application and is an unstable duplicate of POST /api/v1/services.
+     */
     #[OA\Post(
-        summary: 'Create (Docker Compose)',
-        description: 'Create new application based on a docker-compose file.',
+        summary: 'Create (Docker Compose) (Deprecated)',
+        description: 'Create new application based on a docker-compose file (without git).',
         path: '/applications/dockercompose',
         operationId: 'create-dockercompose-application',
+        deprecated: true,
         security: [
             ['bearerAuth' => []],
         ],
