@@ -114,7 +114,7 @@ class ServicesController extends Controller
                         'server_uuid' => ['type' => 'string', 'description' => 'Server UUID.'],
                         'destination_uuid' => ['type' => 'string', 'description' => 'Destination UUID. Required if server has multiple destinations.'],
                         'instant_deploy' => ['type' => 'boolean', 'default' => false, 'description' => 'Start the service immediately after creation.'],
-                        'docker_compose_raw' => ['type' => 'string', 'description' => 'The Docker Compose raw content.'],
+                        'docker_compose_raw' => ['type' => 'string', 'description' => 'The base64 encoded Docker Compose content.'],
                     ],
                 ),
             ),
@@ -621,7 +621,7 @@ class ServicesController extends Controller
                             'destination_uuid' => ['type' => 'string', 'description' => 'The destination UUID.'],
                             'instant_deploy' => ['type' => 'boolean', 'description' => 'The flag to indicate if the service should be deployed instantly.'],
                             'connect_to_docker_network' => ['type' => 'boolean', 'default' => false, 'description' => 'Connect the service to the predefined docker network.'],
-                            'docker_compose_raw' => ['type' => 'string', 'description' => 'The Docker Compose raw content.'],
+                            'docker_compose_raw' => ['type' => 'string', 'description' => 'The base64 encoded Docker Compose content.'],
                         ],
                     )
                 ),
