@@ -8887,6 +8887,23 @@
                                     "docker_compose_raw": {
                                         "type": "string",
                                         "description": "The base64 encoded Docker Compose content."
+                                    },
+                                    "urls": {
+                                        "type": "array",
+                                        "description": "Array of URLs to be applied to containers of a service.",
+                                        "items": {
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "description": "The service name as defined in docker-compose."
+                                                },
+                                                "url": {
+                                                    "type": "string",
+                                                    "description": "Comma-separated list of domains (e.g. \"http:\/\/app.coolify.io,https:\/\/app2.coolify.io\")."
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
                                     }
                                 },
                                 "type": "object"
@@ -9137,6 +9154,23 @@
                                     "docker_compose_raw": {
                                         "type": "string",
                                         "description": "The base64 encoded Docker Compose content."
+                                    },
+                                    "urls": {
+                                        "type": "array",
+                                        "description": "Array of URLs to be applied to containers of a service.",
+                                        "items": {
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "description": "The service name as defined in docker-compose."
+                                                },
+                                                "url": {
+                                                    "type": "string",
+                                                    "description": "Comma-separated list of domains (e.g. \"http:\/\/app.coolify.io,https:\/\/app2.coolify.io\")."
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
                                     }
                                 },
                                 "type": "object"

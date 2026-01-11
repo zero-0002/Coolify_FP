@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\Server;
 use App\Models\Service;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Yaml\Yaml;
 
@@ -35,6 +36,67 @@ class ServicesController extends Controller
         }
 
         return serializeApiResponse($service);
+    }
+
+    private function applyServiceUrls(Service $service, array $urls, string $teamId): ?array
+    {
+        $errors = [];
+
+        foreach ($urls as $item) {
+            $name = data_get($item, 'name');
+            $urls = data_get($item, 'url');
+
+            if (blank($name)) {
+                $errors[] = 'Service container name is required to apply URLs.';
+
+                continue;
+            }
+
+            $application = $service->applications()->where('name', $name)->first();
+            if (! $application) {
+                $errors[] = "Service container with '{$name}' not found.";
+
+                continue;
+            }
+
+            if (filled($urls)) {
+                $urls = str($urls)->replaceStart(',', '')->replaceEnd(',', '')->trim();
+                $urls = str($urls)->explode(',')->map(function ($url) use (&$errors) {
+                    $url = trim($url);
+                    if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                        $errors[] = 'Invalid URL: '.$url;
+
+                        return str($url)->lower();
+                    }
+                    $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                    if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                        $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                    }
+
+                    return str($url)->lower();
+                })->filter(fn ($u) => $u->isNotEmpty())->unique()->implode(',');
+
+                if ($urls && empty($errors)) {
+                    $result = checkIfDomainIsAlreadyUsedViaAPI(collect(explode(',', $urls)), $teamId, $application->uuid);
+                    if ($result['hasConflicts']) {
+                        foreach ($result['conflicts'] as $conflict) {
+                            $errors[] = $conflict['message'];
+                        }
+                    }
+                }
+            } else {
+                $urls = null;
+            }
+
+            $application->fqdn = $urls;
+            $application->save();
+        }
+
+        if (! empty($errors)) {
+            return ['errors' => $errors];
+        }
+
+        return null;
     }
 
     #[OA\Get(
@@ -115,6 +177,17 @@ class ServicesController extends Controller
                         'destination_uuid' => ['type' => 'string', 'description' => 'Destination UUID. Required if server has multiple destinations.'],
                         'instant_deploy' => ['type' => 'boolean', 'default' => false, 'description' => 'Start the service immediately after creation.'],
                         'docker_compose_raw' => ['type' => 'string', 'description' => 'The base64 encoded Docker Compose content.'],
+                        'urls' => [
+                            'type' => 'array',
+                            'description' => 'Array of URLs to be applied to containers of a service.',
+                            'items' => new OA\Schema(
+                                type: 'object',
+                                properties: [
+                                    'name' => ['type' => 'string', 'description' => 'The service name as defined in docker-compose.'],
+                                    'url' => ['type' => 'string', 'description' => 'Comma-separated list of domains (e.g. "http://app.coolify.io,https://app2.coolify.io").'],
+                                ],
+                            ),
+                        ],
                     ],
                 ),
             ),
@@ -152,7 +225,7 @@ class ServicesController extends Controller
     )]
     public function create_service(Request $request)
     {
-        $allowedFields = ['type', 'name', 'description', 'project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'instant_deploy', 'docker_compose_raw'];
+        $allowedFields = ['type', 'name', 'description', 'project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'instant_deploy', 'docker_compose_raw', 'urls'];
 
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -165,7 +238,7 @@ class ServicesController extends Controller
         if ($return instanceof \Illuminate\Http\JsonResponse) {
             return $return;
         }
-        $validator = customApiValidator($request->all(), [
+        $validationRules = [
             'type' => 'string|required_without:docker_compose_raw',
             'docker_compose_raw' => 'string|required_without:type',
             'project_uuid' => 'string|required',
@@ -176,7 +249,15 @@ class ServicesController extends Controller
             'name' => 'string|max:255',
             'description' => 'string|nullable',
             'instant_deploy' => 'boolean',
-        ]);
+            'urls' => 'array|nullable',
+            'urls.*' => 'array:name,url',
+            'urls.*.name' => 'string|required',
+            'urls.*.url' => 'string|nullable',
+        ];
+        $validationMessages = [
+            'urls.*.array' => 'An item in the urls array has invalid fields. Only name and url fields are supported.',
+        ];
+        $validator = Validator::make($request->all(), $validationRules, $validationMessages);
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
         if ($validator->fails() || ! empty($extraFields)) {
@@ -296,29 +377,31 @@ class ServicesController extends Controller
                 // Apply service-specific application prerequisites
                 applyServiceApplicationPrerequisites($service);
 
+                if ($request->has('urls') && is_array($request->urls)) {
+                    $urlResult = $this->applyServiceUrls($service, $request->urls, $teamId);
+                    if ($urlResult !== null) {
+                        return response()->json([
+                            'message' => 'Validation failed.',
+                            'errors' => $urlResult['errors'],
+                        ], 422);
+                    }
+                }
+
                 if ($instantDeploy) {
                     StartService::dispatch($service);
                 }
-                $domains = $service->applications()->get()->pluck('fqdn')->sort();
-                $domains = $domains->map(function ($domain) {
-                    if (count(explode(':', $domain)) > 2) {
-                        return str($domain)->beforeLast(':')->value();
-                    }
-
-                    return $domain;
-                });
 
                 return response()->json([
                     'uuid' => $service->uuid,
-                    'domains' => $domains,
-                ]);
+                    'domains' => $service->applications()->pluck('fqdn')->filter()->sort()->values(),
+                ])->setStatusCode(201);
             }
 
             return response()->json(['message' => 'Service not found.', 'valid_service_types' => $serviceKeys], 404);
         } elseif (filled($request->docker_compose_raw)) {
-            $allowedFields = ['name', 'description', 'project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'instant_deploy', 'docker_compose_raw', 'connect_to_docker_network'];
+            $allowedFields = ['name', 'description', 'project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'instant_deploy', 'docker_compose_raw', 'connect_to_docker_network', 'urls'];
 
-            $validator = customApiValidator($request->all(), [
+            $validationRules = [
                 'project_uuid' => 'string|required',
                 'environment_name' => 'string|nullable',
                 'environment_uuid' => 'string|nullable',
@@ -329,7 +412,15 @@ class ServicesController extends Controller
                 'instant_deploy' => 'boolean',
                 'connect_to_docker_network' => 'boolean',
                 'docker_compose_raw' => 'string|required',
-            ]);
+                'urls' => 'array|nullable',
+                'urls.*' => 'array:name,url',
+                'urls.*.name' => 'string|required',
+                'urls.*.url' => 'string|nullable',
+            ];
+            $validationMessages = [
+                'urls.*.array' => 'An item in the urls array has invalid fields. Only name and url fields are supported.',
+            ];
+            $validator = Validator::make($request->all(), $validationRules, $validationMessages);
 
             $extraFields = array_diff(array_keys($request->all()), $allowedFields);
             if ($validator->fails() || ! empty($extraFields)) {
@@ -423,22 +514,24 @@ class ServicesController extends Controller
             $service->save();
 
             $service->parse(isNew: true);
+
+            if ($request->has('urls') && is_array($request->urls)) {
+                $urlResult = $this->applyServiceUrls($service, $request->urls, $teamId);
+                if ($urlResult !== null) {
+                    return response()->json([
+                        'message' => 'Validation failed.',
+                        'errors' => $urlResult['errors'],
+                    ], 422);
+                }
+            }
+
             if ($instantDeploy) {
                 StartService::dispatch($service);
             }
 
-            $domains = $service->applications()->get()->pluck('fqdn')->sort();
-            $domains = $domains->map(function ($domain) {
-                if (count(explode(':', $domain)) > 2) {
-                    return str($domain)->beforeLast(':')->value();
-                }
-
-                return $domain;
-            })->values();
-
             return response()->json([
                 'uuid' => $service->uuid,
-                'domains' => $domains,
+                'domains' => $service->applications()->pluck('fqdn')->filter()->sort()->values(),
             ])->setStatusCode(201);
         } elseif (filled($request->type)) {
             return response()->json([
@@ -622,6 +715,17 @@ class ServicesController extends Controller
                             'instant_deploy' => ['type' => 'boolean', 'description' => 'The flag to indicate if the service should be deployed instantly.'],
                             'connect_to_docker_network' => ['type' => 'boolean', 'default' => false, 'description' => 'Connect the service to the predefined docker network.'],
                             'docker_compose_raw' => ['type' => 'string', 'description' => 'The base64 encoded Docker Compose content.'],
+                            'urls' => [
+                                'type' => 'array',
+                                'description' => 'Array of URLs to be applied to containers of a service.',
+                                'items' => new OA\Schema(
+                                    type: 'object',
+                                    properties: [
+                                        'name' => ['type' => 'string', 'description' => 'The service name as defined in docker-compose.'],
+                                        'url' => ['type' => 'string', 'description' => 'Comma-separated list of domains (e.g. "http://app.coolify.io,https://app2.coolify.io").'],
+                                    ],
+                                ),
+                            ],
                         ],
                     )
                 ),
@@ -681,15 +785,23 @@ class ServicesController extends Controller
 
         $this->authorize('update', $service);
 
-        $allowedFields = ['name', 'description', 'instant_deploy', 'docker_compose_raw', 'connect_to_docker_network'];
+        $allowedFields = ['name', 'description', 'instant_deploy', 'docker_compose_raw', 'connect_to_docker_network', 'urls'];
 
-        $validator = customApiValidator($request->all(), [
+        $validationRules = [
             'name' => 'string|max:255',
             'description' => 'string|nullable',
             'instant_deploy' => 'boolean',
             'connect_to_docker_network' => 'boolean',
             'docker_compose_raw' => 'string|nullable',
-        ]);
+            'urls' => 'array|nullable',
+            'urls.*' => 'array:name,url',
+            'urls.*.name' => 'string|required',
+            'urls.*.url' => 'string|nullable',
+        ];
+        $validationMessages = [
+            'urls.*.array' => 'An item in the urls array has invalid fields. Only name and url fields are supported.',
+        ];
+        $validator = Validator::make($request->all(), $validationRules, $validationMessages);
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
         if ($validator->fails() || ! empty($extraFields)) {
@@ -753,22 +865,24 @@ class ServicesController extends Controller
         $service->save();
 
         $service->parse();
+
+        if ($request->has('urls') && is_array($request->urls)) {
+            $urlResult = $this->applyServiceUrls($service, $request->urls, $teamId);
+            if ($urlResult !== null) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => $urlResult['errors'],
+                ], 422);
+            }
+        }
+
         if ($request->instant_deploy) {
             StartService::dispatch($service);
         }
 
-        $domains = $service->applications()->get()->pluck('fqdn')->sort();
-        $domains = $domains->map(function ($domain) {
-            if (count(explode(':', $domain)) > 2) {
-                return str($domain)->beforeLast(':')->value();
-            }
-
-            return $domain;
-        })->values();
-
         return response()->json([
             'uuid' => $service->uuid,
-            'domains' => $domains,
+            'domains' => $service->applications()->pluck('fqdn')->filter()->sort()->values(),
         ])->setStatusCode(200);
     }
 
