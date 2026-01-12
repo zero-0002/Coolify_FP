@@ -326,10 +326,6 @@
                                         "type": "string",
                                         "description": "The Docker Compose location."
                                     },
-                                    "docker_compose_raw": {
-                                        "type": "string",
-                                        "description": "The Docker Compose raw content."
-                                    },
                                     "docker_compose_custom_start_command": {
                                         "type": "string",
                                         "description": "The Docker Compose custom start command."
@@ -340,7 +336,20 @@
                                     },
                                     "docker_compose_domains": {
                                         "type": "array",
-                                        "description": "The Docker Compose domains."
+                                        "description": "Array of URLs to be applied to containers of a dockercompose application.",
+                                        "items": {
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "description": "The service name as defined in docker-compose."
+                                                },
+                                                "domain": {
+                                                    "type": "string",
+                                                    "description": "Comma-separated list of URLs (e.g. \"http:\/\/app.coolify.io,https:\/\/app2.coolify.io\")"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
                                     },
                                     "watch_paths": {
                                         "type": "string",
@@ -746,10 +755,6 @@
                                         "type": "string",
                                         "description": "The Docker Compose location."
                                     },
-                                    "docker_compose_raw": {
-                                        "type": "string",
-                                        "description": "The Docker Compose raw content."
-                                    },
                                     "docker_compose_custom_start_command": {
                                         "type": "string",
                                         "description": "The Docker Compose custom start command."
@@ -760,7 +765,20 @@
                                     },
                                     "docker_compose_domains": {
                                         "type": "array",
-                                        "description": "The Docker Compose domains."
+                                        "description": "Array of URLs to be applied to containers of a dockercompose application.",
+                                        "items": {
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "description": "The service name as defined in docker-compose."
+                                                },
+                                                "domain": {
+                                                    "type": "string",
+                                                    "description": "Comma-separated list of URLs (e.g. \"http:\/\/app.coolify.io,https:\/\/app2.coolify.io\")"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
                                     },
                                     "watch_paths": {
                                         "type": "string",
@@ -1166,10 +1184,6 @@
                                         "type": "string",
                                         "description": "The Docker Compose location."
                                     },
-                                    "docker_compose_raw": {
-                                        "type": "string",
-                                        "description": "The Docker Compose raw content."
-                                    },
                                     "docker_compose_custom_start_command": {
                                         "type": "string",
                                         "description": "The Docker Compose custom start command."
@@ -1180,7 +1194,20 @@
                                     },
                                     "docker_compose_domains": {
                                         "type": "array",
-                                        "description": "The Docker Compose domains."
+                                        "description": "Array of URLs to be applied to containers of a dockercompose application.",
+                                        "items": {
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "description": "The service name as defined in docker-compose."
+                                                },
+                                                "domain": {
+                                                    "type": "string",
+                                                    "description": "Comma-separated list of URLs (e.g. \"http:\/\/app.coolify.io,https:\/\/app2.coolify.io\")"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
                                     },
                                     "watch_paths": {
                                         "type": "string",
@@ -1318,8 +1345,8 @@
                 "tags": [
                     "Applications"
                 ],
-                "summary": "Create (Dockerfile)",
-                "description": "Create new application based on a simple Dockerfile.",
+                "summary": "Create (Dockerfile without git)",
+                "description": "Create new application based on a simple Dockerfile (without git).",
                 "operationId": "create-dockerfile-application",
                 "requestBody": {
                     "description": "Application object that needs to be created.",
@@ -1667,8 +1694,8 @@
                 "tags": [
                     "Applications"
                 ],
-                "summary": "Create (Docker Image)",
-                "description": "Create new application based on a prebuilt docker image",
+                "summary": "Create (Docker Image without git)",
+                "description": "Create new application based on a prebuilt docker image (without git).",
                 "operationId": "create-dockerimage-application",
                 "requestBody": {
                     "description": "Application object that needs to be created.",
@@ -1999,8 +2026,8 @@
                 "tags": [
                     "Applications"
                 ],
-                "summary": "Create (Docker Compose)",
-                "description": "Create new application based on a docker-compose file.",
+                "summary": "Create (Docker Compose) (Deprecated)",
+                "description": "Create new application based on a docker-compose file (without git).",
                 "operationId": "create-dockercompose-application",
                 "requestBody": {
                     "description": "Application object that needs to be created.",
@@ -2153,6 +2180,7 @@
                         }
                     }
                 },
+                "deprecated": true,
                 "security": [
                     {
                         "bearerAuth": []
@@ -2558,10 +2586,6 @@
                                         "type": "string",
                                         "description": "The Docker Compose location."
                                     },
-                                    "docker_compose_raw": {
-                                        "type": "string",
-                                        "description": "The Docker Compose raw content."
-                                    },
                                     "docker_compose_custom_start_command": {
                                         "type": "string",
                                         "description": "The Docker Compose custom start command."
@@ -2572,7 +2596,20 @@
                                     },
                                     "docker_compose_domains": {
                                         "type": "array",
-                                        "description": "The Docker Compose domains."
+                                        "description": "Array of URLs to be applied to containers of a dockercompose application.",
+                                        "items": {
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "description": "The service name as defined in docker-compose."
+                                                },
+                                                "domain": {
+                                                    "type": "string",
+                                                    "description": "Comma-separated list of URLs (e.g. \"http:\/\/app.coolify.io,https:\/\/app2.coolify.io\")"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
                                     },
                                     "watch_paths": {
                                         "type": "string",
