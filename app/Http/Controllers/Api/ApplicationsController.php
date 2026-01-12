@@ -19,6 +19,7 @@ use App\Rules\ValidGitBranch;
 use App\Rules\ValidGitRepositoryUrl;
 use App\Services\DockerImageParser;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use OpenApi\Attributes as OA;
 use Spatie\Url\Url;
@@ -198,10 +199,19 @@ class ApplicationsController extends Controller
                             'instant_deploy' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application should be deployed instantly.'],
                             'dockerfile' => ['type' => 'string', 'description' => 'The Dockerfile content.'],
                             'docker_compose_location' => ['type' => 'string', 'description' => 'The Docker Compose location.'],
-                            'docker_compose_raw' => ['type' => 'string', 'description' => 'The Docker Compose raw content.'],
                             'docker_compose_custom_start_command' => ['type' => 'string', 'description' => 'The Docker Compose custom start command.'],
                             'docker_compose_custom_build_command' => ['type' => 'string', 'description' => 'The Docker Compose custom build command.'],
-                            'docker_compose_domains' => ['type' => 'array', 'description' => 'The Docker Compose domains.'],
+                            'docker_compose_domains' => [
+                                'type' => 'array',
+                                'description' => 'Array of URLs to be applied to containers of a dockercompose application.',
+                                'items' => new OA\Schema(
+                                    type: 'object',
+                                    properties: [
+                                        'name' => ['type' => 'string', 'description' => 'The service name as defined in docker-compose.'],
+                                        'domain' => ['type' => 'string', 'description' => 'Comma-separated list of URLs (e.g. "http://app.coolify.io,https://app2.coolify.io")'],
+                                    ],
+                                ),
+                            ],
                             'watch_paths' => ['type' => 'string', 'description' => 'The watch paths.'],
                             'use_build_server' => ['type' => 'boolean', 'nullable' => true, 'description' => 'Use build server.'],
                             'is_http_basic_auth_enabled' => ['type' => 'boolean', 'description' => 'HTTP Basic Authentication enabled.'],
@@ -350,10 +360,19 @@ class ApplicationsController extends Controller
                             'instant_deploy' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application should be deployed instantly.'],
                             'dockerfile' => ['type' => 'string', 'description' => 'The Dockerfile content.'],
                             'docker_compose_location' => ['type' => 'string', 'description' => 'The Docker Compose location.'],
-                            'docker_compose_raw' => ['type' => 'string', 'description' => 'The Docker Compose raw content.'],
                             'docker_compose_custom_start_command' => ['type' => 'string', 'description' => 'The Docker Compose custom start command.'],
                             'docker_compose_custom_build_command' => ['type' => 'string', 'description' => 'The Docker Compose custom build command.'],
-                            'docker_compose_domains' => ['type' => 'array', 'description' => 'The Docker Compose domains.'],
+                            'docker_compose_domains' => [
+                                'type' => 'array',
+                                'description' => 'Array of URLs to be applied to containers of a dockercompose application.',
+                                'items' => new OA\Schema(
+                                    type: 'object',
+                                    properties: [
+                                        'name' => ['type' => 'string', 'description' => 'The service name as defined in docker-compose.'],
+                                        'domain' => ['type' => 'string', 'description' => 'Comma-separated list of URLs (e.g. "http://app.coolify.io,https://app2.coolify.io")'],
+                                    ],
+                                ),
+                            ],
                             'watch_paths' => ['type' => 'string', 'description' => 'The watch paths.'],
                             'use_build_server' => ['type' => 'boolean', 'nullable' => true, 'description' => 'Use build server.'],
                             'is_http_basic_auth_enabled' => ['type' => 'boolean', 'description' => 'HTTP Basic Authentication enabled.'],
@@ -502,10 +521,19 @@ class ApplicationsController extends Controller
                             'instant_deploy' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application should be deployed instantly.'],
                             'dockerfile' => ['type' => 'string', 'description' => 'The Dockerfile content.'],
                             'docker_compose_location' => ['type' => 'string', 'description' => 'The Docker Compose location.'],
-                            'docker_compose_raw' => ['type' => 'string', 'description' => 'The Docker Compose raw content.'],
                             'docker_compose_custom_start_command' => ['type' => 'string', 'description' => 'The Docker Compose custom start command.'],
                             'docker_compose_custom_build_command' => ['type' => 'string', 'description' => 'The Docker Compose custom build command.'],
-                            'docker_compose_domains' => ['type' => 'array', 'description' => 'The Docker Compose domains.'],
+                            'docker_compose_domains' => [
+                                'type' => 'array',
+                                'description' => 'Array of URLs to be applied to containers of a dockercompose application.',
+                                'items' => new OA\Schema(
+                                    type: 'object',
+                                    properties: [
+                                        'name' => ['type' => 'string', 'description' => 'The service name as defined in docker-compose.'],
+                                        'domain' => ['type' => 'string', 'description' => 'Comma-separated list of URLs (e.g. "http://app.coolify.io,https://app2.coolify.io")'],
+                                    ],
+                                ),
+                            ],
                             'watch_paths' => ['type' => 'string', 'description' => 'The watch paths.'],
                             'use_build_server' => ['type' => 'boolean', 'nullable' => true, 'description' => 'Use build server.'],
                             'is_http_basic_auth_enabled' => ['type' => 'boolean', 'description' => 'HTTP Basic Authentication enabled.'],
@@ -1056,8 +1084,10 @@ class ApplicationsController extends Controller
                 'build_pack' => ['required', Rule::enum(BuildPackTypes::class)],
                 'ports_exposes' => 'string|regex:/^(\d+)(,\d+)*$/|required',
                 'docker_compose_location' => 'string',
-                'docker_compose_raw' => 'string|nullable',
                 'docker_compose_domains' => 'array|nullable',
+                'docker_compose_domains.*' => 'array:name,domain',
+                'docker_compose_domains.*.name' => 'string|required',
+                'docker_compose_domains.*.domain' => 'string|nullable',
             ];
             // ports_exposes is not required for dockercompose
             if ($request->build_pack === 'dockercompose') {
@@ -1065,11 +1095,24 @@ class ApplicationsController extends Controller
                 $request->offsetSet('ports_exposes', '80');
             }
             $validationRules = array_merge(sharedDataApplications(), $validationRules);
-            $validator = customApiValidator($request->all(), $validationRules);
+            $validationMessages = [
+                'docker_compose_domains.*.array' => 'An item in the docker_compose_domains array has invalid fields. Only a name and domain field are supported.',
+            ];
+            $validator = Validator::make($request->all(), $validationRules, $validationMessages);
             if ($validator->fails()) {
                 return response()->json([
                     'message' => 'Validation failed.',
                     'errors' => $validator->errors(),
+                ], 422);
+            }
+            // For dockercompose applications, domains (fqdn) field should not be used
+            // Only docker_compose_domains should be used to set domains for individual services
+            if ($request->build_pack === 'dockercompose' && $request->has('domains')) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => [
+                        'domains' => 'The domains field cannot be used for dockercompose applications. Use docker_compose_domains instead to set domains for individual services.',
+                    ],
                 ], 422);
             }
             if (! $request->has('name')) {
@@ -1087,11 +1130,42 @@ class ApplicationsController extends Controller
             $dockerComposeDomainsJson = collect();
             if ($request->has('docker_compose_domains')) {
                 $dockerComposeDomains = collect($request->docker_compose_domains);
-                if ($dockerComposeDomains->count() > 0) {
-                    $dockerComposeDomains->each(function ($domain, $key) use ($dockerComposeDomainsJson) {
-                        $dockerComposeDomainsJson->put(data_get($domain, 'name'), ['domain' => data_get($domain, 'domain')]);
-                    });
+                $domainErrors = [];
+
+                foreach ($dockerComposeDomains as $index => $item) {
+                    $domainValue = data_get($item, 'domain');
+                    if (filled($domainValue)) {
+                        $urls = str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim();
+                        str($urls)->explode(',')->each(function ($url) use (&$domainErrors) {
+                            $url = trim($url);
+                            if (empty($url)) {
+                                return;
+                            }
+                            if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                                $domainErrors[] = "Invalid URL: {$url}";
+
+                                return;
+                            }
+                            $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                            if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                                $domainErrors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                            }
+                        });
+                    }
                 }
+
+                if (! empty($domainErrors)) {
+                    return response()->json([
+                        'message' => 'Validation failed.',
+                        'errors' => [
+                            'docker_compose_domains' => $domainErrors,
+                        ],
+                    ], 422);
+                }
+
+                $dockerComposeDomains->each(function ($domain) use ($dockerComposeDomainsJson) {
+                    $dockerComposeDomainsJson->put(data_get($domain, 'name'), ['domain' => data_get($domain, 'domain')]);
+                });
                 $request->offsetUnset('docker_compose_domains');
             }
             if ($dockerComposeDomainsJson->count() > 0) {
@@ -1170,15 +1244,30 @@ class ApplicationsController extends Controller
                 'github_app_uuid' => 'string|required',
                 'watch_paths' => 'string|nullable',
                 'docker_compose_location' => 'string',
-                'docker_compose_raw' => 'string|nullable',
+                'docker_compose_domains' => 'array|nullable',
+                'docker_compose_domains.*' => 'array:name,domain',
+                'docker_compose_domains.*.name' => 'string|required',
+                'docker_compose_domains.*.domain' => 'string|nullable',
             ];
             $validationRules = array_merge(sharedDataApplications(), $validationRules);
-
-            $validator = customApiValidator($request->all(), $validationRules);
+            $validationMessages = [
+                'docker_compose_domains.*.array' => 'An item in the docker_compose_domains array has invalid fields. Only a name and domain field are supported.',
+            ];
+            $validator = Validator::make($request->all(), $validationRules, $validationMessages);
             if ($validator->fails()) {
                 return response()->json([
                     'message' => 'Validation failed.',
                     'errors' => $validator->errors(),
+                ], 422);
+            }
+            // For dockercompose applications, domains (fqdn) field should not be used
+            // Only docker_compose_domains should be used to set domains for individual services
+            if ($request->build_pack === 'dockercompose' && $request->has('domains')) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => [
+                        'domains' => 'The domains field cannot be used for dockercompose applications. Use docker_compose_domains instead to set domains for individual services.',
+                    ],
                 ], 422);
             }
 
@@ -1229,43 +1318,43 @@ class ApplicationsController extends Controller
 
             $dockerComposeDomainsJson = collect();
             if ($request->has('docker_compose_domains')) {
-                if (! $request->has('docker_compose_raw')) {
+                $dockerComposeDomains = collect($request->docker_compose_domains);
+                $domainErrors = [];
+
+                foreach ($dockerComposeDomains as $index => $item) {
+                    $domainValue = data_get($item, 'domain');
+                    if (filled($domainValue)) {
+                        $urls = str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim();
+                        str($urls)->explode(',')->each(function ($url) use (&$domainErrors) {
+                            $url = trim($url);
+                            if (empty($url)) {
+                                return;
+                            }
+                            if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                                $domainErrors[] = "Invalid URL: {$url}";
+
+                                return;
+                            }
+                            $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                            if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                                $domainErrors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                            }
+                        });
+                    }
+                }
+
+                if (! empty($domainErrors)) {
                     return response()->json([
                         'message' => 'Validation failed.',
                         'errors' => [
-                            'docker_compose_raw' => 'The base64 encoded docker_compose_raw is required.',
+                            'docker_compose_domains' => $domainErrors,
                         ],
                     ], 422);
                 }
 
-                if (! isBase64Encoded($request->docker_compose_raw)) {
-                    return response()->json([
-                        'message' => 'Validation failed.',
-                        'errors' => [
-                            'docker_compose_raw' => 'The docker_compose_raw should be base64 encoded.',
-                        ],
-                    ], 422);
-                }
-                $dockerComposeRaw = base64_decode($request->docker_compose_raw);
-                if (mb_detect_encoding($dockerComposeRaw, 'ASCII', true) === false) {
-                    return response()->json([
-                        'message' => 'Validation failed.',
-                        'errors' => [
-                            'docker_compose_raw' => 'The docker_compose_raw should be base64 encoded.',
-                        ],
-                    ], 422);
-                }
-                $yaml = Yaml::parse($dockerComposeRaw);
-                $services = data_get($yaml, 'services');
-                $dockerComposeDomains = collect($request->docker_compose_domains);
-                if ($dockerComposeDomains->count() > 0) {
-                    $dockerComposeDomains->each(function ($domain, $key) use ($services, $dockerComposeDomainsJson) {
-                        $name = data_get($domain, 'name');
-                        if (data_get($services, $name)) {
-                            $dockerComposeDomainsJson->put($name, ['domain' => data_get($domain, 'domain')]);
-                        }
-                    });
-                }
+                $dockerComposeDomains->each(function ($domain) use ($dockerComposeDomainsJson) {
+                    $dockerComposeDomainsJson->put(data_get($domain, 'name'), ['domain' => data_get($domain, 'domain')]);
+                });
                 $request->offsetUnset('docker_compose_domains');
             }
             if ($dockerComposeDomainsJson->count() > 0) {
@@ -1335,16 +1424,32 @@ class ApplicationsController extends Controller
                 'private_key_uuid' => 'string|required',
                 'watch_paths' => 'string|nullable',
                 'docker_compose_location' => 'string',
-                'docker_compose_raw' => 'string|nullable',
+                'docker_compose_domains' => 'array|nullable',
+                'docker_compose_domains.*' => 'array:name,domain',
+                'docker_compose_domains.*.name' => 'string|required',
+                'docker_compose_domains.*.domain' => 'string|nullable',
             ];
 
             $validationRules = array_merge(sharedDataApplications(), $validationRules);
-            $validator = customApiValidator($request->all(), $validationRules);
+            $validationMessages = [
+                'docker_compose_domains.*.array' => 'An item in the docker_compose_domains array has invalid fields. Only a name and domain field are supported.',
+            ];
+            $validator = Validator::make($request->all(), $validationRules, $validationMessages);
 
             if ($validator->fails()) {
                 return response()->json([
                     'message' => 'Validation failed.',
                     'errors' => $validator->errors(),
+                ], 422);
+            }
+            // For dockercompose applications, domains (fqdn) field should not be used
+            // Only docker_compose_domains should be used to set domains for individual services
+            if ($request->build_pack === 'dockercompose' && $request->has('domains')) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => [
+                        'domains' => 'The domains field cannot be used for dockercompose applications. Use docker_compose_domains instead to set domains for individual services.',
+                    ],
                 ], 422);
             }
             if (! $request->has('name')) {
@@ -1370,44 +1475,43 @@ class ApplicationsController extends Controller
 
             $dockerComposeDomainsJson = collect();
             if ($request->has('docker_compose_domains')) {
-                if (! $request->has('docker_compose_raw')) {
+                $dockerComposeDomains = collect($request->docker_compose_domains);
+                $domainErrors = [];
+
+                foreach ($dockerComposeDomains as $index => $item) {
+                    $domainValue = data_get($item, 'domain');
+                    if (filled($domainValue)) {
+                        $urls = str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim();
+                        str($urls)->explode(',')->each(function ($url) use (&$domainErrors) {
+                            $url = trim($url);
+                            if (empty($url)) {
+                                return;
+                            }
+                            if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                                $domainErrors[] = "Invalid URL: {$url}";
+
+                                return;
+                            }
+                            $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                            if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                                $domainErrors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                            }
+                        });
+                    }
+                }
+
+                if (! empty($domainErrors)) {
                     return response()->json([
                         'message' => 'Validation failed.',
                         'errors' => [
-                            'docker_compose_raw' => 'The base64 encoded docker_compose_raw is required.',
+                            'docker_compose_domains' => $domainErrors,
                         ],
                     ], 422);
                 }
 
-                if (! isBase64Encoded($request->docker_compose_raw)) {
-                    return response()->json([
-                        'message' => 'Validation failed.',
-                        'errors' => [
-                            'docker_compose_raw' => 'The docker_compose_raw should be base64 encoded.',
-                        ],
-                    ], 422);
-                }
-                $dockerComposeRaw = base64_decode($request->docker_compose_raw);
-                if (mb_detect_encoding($dockerComposeRaw, 'ASCII', true) === false) {
-                    return response()->json([
-                        'message' => 'Validation failed.',
-                        'errors' => [
-                            'docker_compose_raw' => 'The docker_compose_raw should be base64 encoded.',
-                        ],
-                    ], 422);
-                }
-                $dockerComposeRaw = base64_decode($request->docker_compose_raw);
-                $yaml = Yaml::parse($dockerComposeRaw);
-                $services = data_get($yaml, 'services');
-                $dockerComposeDomains = collect($request->docker_compose_domains);
-                if ($dockerComposeDomains->count() > 0) {
-                    $dockerComposeDomains->each(function ($domain, $key) use ($services, $dockerComposeDomainsJson) {
-                        $name = data_get($domain, 'name');
-                        if (data_get($services, $name)) {
-                            $dockerComposeDomainsJson->put($name, ['domain' => data_get($domain, 'domain')]);
-                        }
-                    });
-                }
+                $dockerComposeDomains->each(function ($domain) use ($dockerComposeDomainsJson) {
+                    $dockerComposeDomainsJson->put(data_get($domain, 'name'), ['domain' => data_get($domain, 'domain')]);
+                });
                 $request->offsetUnset('docker_compose_domains');
             }
             if ($dockerComposeDomainsJson->count() > 0) {
@@ -2090,10 +2194,19 @@ class ApplicationsController extends Controller
                             'instant_deploy' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application should be deployed instantly.'],
                             'dockerfile' => ['type' => 'string', 'description' => 'The Dockerfile content.'],
                             'docker_compose_location' => ['type' => 'string', 'description' => 'The Docker Compose location.'],
-                            'docker_compose_raw' => ['type' => 'string', 'description' => 'The Docker Compose raw content.'],
                             'docker_compose_custom_start_command' => ['type' => 'string', 'description' => 'The Docker Compose custom start command.'],
                             'docker_compose_custom_build_command' => ['type' => 'string', 'description' => 'The Docker Compose custom build command.'],
-                            'docker_compose_domains' => ['type' => 'array', 'description' => 'The Docker Compose domains.'],
+                            'docker_compose_domains' => [
+                                'type' => 'array',
+                                'description' => 'Array of URLs to be applied to containers of a dockercompose application.',
+                                'items' => new OA\Schema(
+                                    type: 'object',
+                                    properties: [
+                                        'name' => ['type' => 'string', 'description' => 'The service name as defined in docker-compose.'],
+                                        'domain' => ['type' => 'string', 'description' => 'Comma-separated list of URLs (e.g. "http://app.coolify.io,https://app2.coolify.io")'],
+                                    ],
+                                ),
+                            ],
                             'watch_paths' => ['type' => 'string', 'description' => 'The watch paths.'],
                             'use_build_server' => ['type' => 'boolean', 'nullable' => true, 'description' => 'Use build server.'],
                             'connect_to_docker_network' => ['type' => 'boolean', 'description' => 'The flag to connect the service to the predefined Docker network.'],
@@ -2192,8 +2305,10 @@ class ApplicationsController extends Controller
             'static_image' => 'string',
             'watch_paths' => 'string|nullable',
             'docker_compose_location' => 'string',
-            'docker_compose_raw' => 'string|nullable',
             'docker_compose_domains' => 'array|nullable',
+            'docker_compose_domains.*' => 'array:name,domain',
+            'docker_compose_domains.*.name' => 'string|required',
+            'docker_compose_domains.*.domain' => 'string|nullable',
             'docker_compose_custom_start_command' => 'string|nullable',
             'docker_compose_custom_build_command' => 'string|nullable',
             'custom_nginx_configuration' => 'string|nullable',
@@ -2202,7 +2317,10 @@ class ApplicationsController extends Controller
             'http_basic_auth_password' => 'string',
         ];
         $validationRules = array_merge(sharedDataApplications(), $validationRules);
-        $validator = customApiValidator($request->all(), $validationRules);
+        $validationMessages = [
+            'docker_compose_domains.*.array' => 'An item in the docker_compose_domains array has invalid fields. Only a name and domain field are supported.',
+        ];
+        $validator = Validator::make($request->all(), $validationRules, $validationMessages);
 
         // Validate ports_exposes
         if ($request->has('ports_exposes')) {
@@ -2278,6 +2396,17 @@ class ApplicationsController extends Controller
             $application->save();
         }
 
+        // For dockercompose applications, domains (fqdn) field should not be used
+        // Only docker_compose_domains should be used to set domains for individual services
+        if ($application->build_pack === 'dockercompose' && $request->has('domains')) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => [
+                    'domains' => 'The domains field cannot be used for dockercompose applications. Use docker_compose_domains instead to set domains for individual services.',
+                ],
+            ], 422);
+        }
+
         $domains = $request->domains;
         $requestHasDomains = $request->has('domains');
         if ($requestHasDomains && $server->isProxyShouldRun()) {
@@ -2321,44 +2450,57 @@ class ApplicationsController extends Controller
 
         $dockerComposeDomainsJson = collect();
         if ($request->has('docker_compose_domains')) {
-            if (! $request->has('docker_compose_raw')) {
+            if (empty($application->docker_compose_raw)) {
                 return response()->json([
                     'message' => 'Validation failed.',
                     'errors' => [
-                        'docker_compose_raw' => 'The base64 encoded docker_compose_raw is required.',
+                        'docker_compose_domains' => 'Cannot set docker_compose_domains without docker_compose_raw. Reload the compose file from the git repository first.',
                     ],
                 ], 422);
             }
 
-            if (! isBase64Encoded($request->docker_compose_raw)) {
-                return response()->json([
-                    'message' => 'Validation failed.',
-                    'errors' => [
-                        'docker_compose_raw' => 'The docker_compose_raw should be base64 encoded.',
-                    ],
-                ], 422);
-            }
-            $dockerComposeRaw = base64_decode($request->docker_compose_raw);
-            if (mb_detect_encoding($dockerComposeRaw, 'ASCII', true) === false) {
-                return response()->json([
-                    'message' => 'Validation failed.',
-                    'errors' => [
-                        'docker_compose_raw' => 'The docker_compose_raw should be base64 encoded.',
-                    ],
-                ], 422);
-            }
-            $dockerComposeRaw = base64_decode($request->docker_compose_raw);
-            $yaml = Yaml::parse($dockerComposeRaw);
-            $services = data_get($yaml, 'services');
             $dockerComposeDomains = collect($request->docker_compose_domains);
-            if ($dockerComposeDomains->count() > 0) {
-                $dockerComposeDomains->each(function ($domain, $key) use ($services, $dockerComposeDomainsJson) {
-                    $name = data_get($domain, 'name');
-                    if (data_get($services, $name)) {
-                        $dockerComposeDomainsJson->put($name, ['domain' => data_get($domain, 'domain')]);
-                    }
-                });
+            $domainErrors = [];
+
+            foreach ($dockerComposeDomains as $item) {
+                $domainValue = data_get($item, 'domain');
+                if (filled($domainValue)) {
+                    $urls = str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim();
+                    str($urls)->explode(',')->each(function ($url) use (&$domainErrors) {
+                        $url = trim($url);
+                        if (empty($url)) {
+                            return;
+                        }
+                        if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                            $domainErrors[] = "Invalid URL: {$url}";
+
+                            return;
+                        }
+                        $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                        if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                            $domainErrors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                        }
+                    });
+                }
             }
+
+            if (! empty($domainErrors)) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => [
+                        'docker_compose_domains' => $domainErrors,
+                    ],
+                ], 422);
+            }
+
+            $yaml = Yaml::parse($application->docker_compose_raw);
+            $services = data_get($yaml, 'services', []);
+            $dockerComposeDomains->each(function ($domain) use ($services, $dockerComposeDomainsJson) {
+                $name = data_get($domain, 'name');
+                if ($name && is_array($services) && isset($services[$name])) {
+                    $dockerComposeDomainsJson->put($name, ['domain' => data_get($domain, 'domain')]);
+                }
+            });
             $request->offsetUnset('docker_compose_domains');
         }
         $instantDeploy = $request->instant_deploy;
