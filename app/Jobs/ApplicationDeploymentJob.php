@@ -1390,13 +1390,17 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->execute_remote_command(
             [
                 executeInDocker($this->deployment_uuid, "echo '$envs_base64' | base64 -d | tee $this->workdir/.env > /dev/null"),
-            ],
-            [
-                executeInDocker($this->deployment_uuid, "cat $this->workdir/.env"),
-                'hidden' => true,
-
             ]
         );
+
+        if (isDev()) {
+            $this->execute_remote_command(
+                [
+                    executeInDocker($this->deployment_uuid, "cat $this->workdir/.env"),
+                    'hidden' => true,
+                ]
+            );
+        }
 
         // Write .env file to configuration directory
         if ($this->use_build_server) {
@@ -1649,12 +1653,17 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->execute_remote_command(
                 [
                     executeInDocker($this->deployment_uuid, "echo '$envs_base64' | base64 -d | tee ".self::BUILD_TIME_ENV_PATH.' > /dev/null'),
-                ],
-                [
-                    executeInDocker($this->deployment_uuid, 'cat '.self::BUILD_TIME_ENV_PATH),
-                    'hidden' => true,
-                ],
+                ]
             );
+
+            if (isDev()) {
+                $this->execute_remote_command(
+                    [
+                        executeInDocker($this->deployment_uuid, 'cat '.self::BUILD_TIME_ENV_PATH),
+                        'hidden' => true,
+                    ]
+                );
+            }
         } elseif ($this->build_pack === 'dockercompose' || $this->build_pack === 'dockerfile') {
             // For Docker Compose and Dockerfile, create an empty .env file even if there are no build-time variables
             // This ensures the file exists when referenced in build commands
