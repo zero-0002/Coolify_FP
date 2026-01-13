@@ -38,13 +38,14 @@ class ServicesController extends Controller
         return serializeApiResponse($service);
     }
 
-    private function applyServiceUrls(Service $service, array $urls, string $teamId): ?array
+    private function applyServiceUrls(Service $service, array $urls, string $teamId, bool $forceDomainOverride = false): ?array
     {
         $errors = [];
+        $conflicts = [];
 
-        foreach ($urls as $item) {
-            $name = data_get($item, 'name');
-            $urls = data_get($item, 'url');
+        foreach ($urls as $url) {
+            $name = data_get($url, 'name');
+            $urls = data_get($url, 'url');
 
             if (blank($name)) {
                 $errors[] = 'Service container name is required to apply URLs.';
@@ -66,7 +67,7 @@ class ServicesController extends Controller
                     if (! filter_var($url, FILTER_VALIDATE_URL)) {
                         $errors[] = 'Invalid URL: '.$url;
 
-                        return str($url)->lower();
+                        return $url;
                     }
                     $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
                     if (! in_array(strtolower($scheme), ['http', 'https'])) {
@@ -74,16 +75,26 @@ class ServicesController extends Controller
                     }
 
                     return str($url)->lower();
-                })->filter(fn ($u) => $u->isNotEmpty())->unique()->implode(',');
+                });
 
-                if ($urls && empty($errors)) {
-                    $result = checkIfDomainIsAlreadyUsedViaAPI(collect(explode(',', $urls)), $teamId, $application->uuid);
-                    if ($result['hasConflicts']) {
-                        foreach ($result['conflicts'] as $conflict) {
-                            $errors[] = $conflict['message'];
-                        }
-                    }
+                if (count($errors) > 0) {
+                    continue;
                 }
+
+                $result = checkIfDomainIsAlreadyUsedViaAPI($urls, $teamId, $application->uuid);
+                if (isset($result['error'])) {
+                    $errors[] = $result['error'];
+
+                    continue;
+                }
+
+                if ($result['hasConflicts'] && ! $forceDomainOverride) {
+                    $conflicts = array_merge($conflicts, $result['conflicts']);
+
+                    continue;
+                }
+
+                $urls = $urls->filter(fn ($u) => filled($u))->unique()->implode(',');
             } else {
                 $urls = null;
             }
@@ -94,6 +105,13 @@ class ServicesController extends Controller
 
         if (! empty($errors)) {
             return ['errors' => $errors];
+        }
+
+        if (! empty($conflicts)) {
+            return [
+                'conflicts' => $conflicts,
+                'warning' => 'Using the same domain for multiple resources can cause routing conflicts and unpredictable behavior.',
+            ];
         }
 
         return null;
@@ -188,6 +206,7 @@ class ServicesController extends Controller
                                 ],
                             ),
                         ],
+                        'force_domain_override' => ['type' => 'boolean', 'default' => false, 'description' => 'Force domain override even if conflicts are detected.'],
                     ],
                 ),
             ),
@@ -218,6 +237,35 @@ class ServicesController extends Controller
                 ref: '#/components/responses/400',
             ),
             new OA\Response(
+                response: 409,
+                description: 'Domain conflicts detected.',
+                content: [
+                    new OA\MediaType(
+                        mediaType: 'application/json',
+                        schema: new OA\Schema(
+                            type: 'object',
+                            properties: [
+                                'message' => ['type' => 'string', 'example' => 'Domain conflicts detected. Use force_domain_override=true to proceed.'],
+                                'warning' => ['type' => 'string', 'example' => 'Using the same domain for multiple resources can cause routing conflicts and unpredictable behavior.'],
+                                'conflicts' => [
+                                    'type' => 'array',
+                                    'items' => new OA\Schema(
+                                        type: 'object',
+                                        properties: [
+                                            'domain' => ['type' => 'string', 'example' => 'example.com'],
+                                            'resource_name' => ['type' => 'string', 'example' => 'My Application'],
+                                            'resource_uuid' => ['type' => 'string', 'nullable' => true, 'example' => 'abc123-def456'],
+                                            'resource_type' => ['type' => 'string', 'enum' => ['application', 'service', 'instance'], 'example' => 'application'],
+                                            'message' => ['type' => 'string', 'example' => 'Domain example.com is already in use by application \'My Application\''],
+                                        ]
+                                    ),
+                                ],
+                            ]
+                        )
+                    ),
+                ]
+            ),
+            new OA\Response(
                 response: 422,
                 ref: '#/components/responses/422',
             ),
@@ -225,7 +273,7 @@ class ServicesController extends Controller
     )]
     public function create_service(Request $request)
     {
-        $allowedFields = ['type', 'name', 'description', 'project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'instant_deploy', 'docker_compose_raw', 'urls'];
+        $allowedFields = ['type', 'name', 'description', 'project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'instant_deploy', 'docker_compose_raw', 'urls', 'force_domain_override'];
 
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -253,6 +301,7 @@ class ServicesController extends Controller
             'urls.*' => 'array:name,url',
             'urls.*.name' => 'string|required',
             'urls.*.url' => 'string|nullable',
+            'force_domain_override' => 'boolean',
         ];
         $validationMessages = [
             'urls.*.array' => 'An item in the urls array has invalid fields. Only name and url fields are supported.',
@@ -378,12 +427,22 @@ class ServicesController extends Controller
                 applyServiceApplicationPrerequisites($service);
 
                 if ($request->has('urls') && is_array($request->urls)) {
-                    $urlResult = $this->applyServiceUrls($service, $request->urls, $teamId);
+                    $urlResult = $this->applyServiceUrls($service, $request->urls, $teamId, $request->boolean('force_domain_override'));
                     if ($urlResult !== null) {
-                        return response()->json([
-                            'message' => 'Validation failed.',
-                            'errors' => $urlResult['errors'],
-                        ], 422);
+                        $service->delete();
+                        if (isset($urlResult['errors'])) {
+                            return response()->json([
+                                'message' => 'Validation failed.',
+                                'errors' => $urlResult['errors'],
+                            ], 422);
+                        }
+                        if (isset($urlResult['conflicts'])) {
+                            return response()->json([
+                                'message' => 'Domain conflicts detected. Use force_domain_override=true to proceed.',
+                                'conflicts' => $urlResult['conflicts'],
+                                'warning' => $urlResult['warning'],
+                            ], 409);
+                        }
                     }
                 }
 
@@ -399,7 +458,7 @@ class ServicesController extends Controller
 
             return response()->json(['message' => 'Service not found.', 'valid_service_types' => $serviceKeys], 404);
         } elseif (filled($request->docker_compose_raw)) {
-            $allowedFields = ['name', 'description', 'project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'instant_deploy', 'docker_compose_raw', 'connect_to_docker_network', 'urls'];
+            $allowedFields = ['name', 'description', 'project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'instant_deploy', 'docker_compose_raw', 'connect_to_docker_network', 'urls', 'force_domain_override'];
 
             $validationRules = [
                 'project_uuid' => 'string|required',
@@ -416,6 +475,7 @@ class ServicesController extends Controller
                 'urls.*' => 'array:name,url',
                 'urls.*.name' => 'string|required',
                 'urls.*.url' => 'string|nullable',
+                'force_domain_override' => 'boolean',
             ];
             $validationMessages = [
                 'urls.*.array' => 'An item in the urls array has invalid fields. Only name and url fields are supported.',
@@ -516,12 +576,22 @@ class ServicesController extends Controller
             $service->parse(isNew: true);
 
             if ($request->has('urls') && is_array($request->urls)) {
-                $urlResult = $this->applyServiceUrls($service, $request->urls, $teamId);
+                $urlResult = $this->applyServiceUrls($service, $request->urls, $teamId, $request->boolean('force_domain_override'));
                 if ($urlResult !== null) {
-                    return response()->json([
-                        'message' => 'Validation failed.',
-                        'errors' => $urlResult['errors'],
-                    ], 422);
+                    $service->delete();
+                    if (isset($urlResult['errors'])) {
+                        return response()->json([
+                            'message' => 'Validation failed.',
+                            'errors' => $urlResult['errors'],
+                        ], 422);
+                    }
+                    if (isset($urlResult['conflicts'])) {
+                        return response()->json([
+                            'message' => 'Domain conflicts detected. Use force_domain_override=true to proceed.',
+                            'conflicts' => $urlResult['conflicts'],
+                            'warning' => $urlResult['warning'],
+                        ], 409);
+                    }
                 }
             }
 
@@ -726,6 +796,7 @@ class ServicesController extends Controller
                                     ],
                                 ),
                             ],
+                            'force_domain_override' => ['type' => 'boolean', 'default' => false, 'description' => 'Force domain override even if conflicts are detected.'],
                         ],
                     )
                 ),
@@ -761,6 +832,35 @@ class ServicesController extends Controller
                 ref: '#/components/responses/404',
             ),
             new OA\Response(
+                response: 409,
+                description: 'Domain conflicts detected.',
+                content: [
+                    new OA\MediaType(
+                        mediaType: 'application/json',
+                        schema: new OA\Schema(
+                            type: 'object',
+                            properties: [
+                                'message' => ['type' => 'string', 'example' => 'Domain conflicts detected. Use force_domain_override=true to proceed.'],
+                                'warning' => ['type' => 'string', 'example' => 'Using the same domain for multiple resources can cause routing conflicts and unpredictable behavior.'],
+                                'conflicts' => [
+                                    'type' => 'array',
+                                    'items' => new OA\Schema(
+                                        type: 'object',
+                                        properties: [
+                                            'domain' => ['type' => 'string', 'example' => 'example.com'],
+                                            'resource_name' => ['type' => 'string', 'example' => 'My Application'],
+                                            'resource_uuid' => ['type' => 'string', 'nullable' => true, 'example' => 'abc123-def456'],
+                                            'resource_type' => ['type' => 'string', 'enum' => ['application', 'service', 'instance'], 'example' => 'application'],
+                                            'message' => ['type' => 'string', 'example' => 'Domain example.com is already in use by application \'My Application\''],
+                                        ]
+                                    ),
+                                ],
+                            ]
+                        )
+                    ),
+                ]
+            ),
+            new OA\Response(
                 response: 422,
                 ref: '#/components/responses/422',
             ),
@@ -785,7 +885,7 @@ class ServicesController extends Controller
 
         $this->authorize('update', $service);
 
-        $allowedFields = ['name', 'description', 'instant_deploy', 'docker_compose_raw', 'connect_to_docker_network', 'urls'];
+        $allowedFields = ['name', 'description', 'instant_deploy', 'docker_compose_raw', 'connect_to_docker_network', 'urls', 'force_domain_override'];
 
         $validationRules = [
             'name' => 'string|max:255',
@@ -797,6 +897,7 @@ class ServicesController extends Controller
             'urls.*' => 'array:name,url',
             'urls.*.name' => 'string|required',
             'urls.*.url' => 'string|nullable',
+            'force_domain_override' => 'boolean',
         ];
         $validationMessages = [
             'urls.*.array' => 'An item in the urls array has invalid fields. Only name and url fields are supported.',
@@ -867,12 +968,21 @@ class ServicesController extends Controller
         $service->parse();
 
         if ($request->has('urls') && is_array($request->urls)) {
-            $urlResult = $this->applyServiceUrls($service, $request->urls, $teamId);
+            $urlResult = $this->applyServiceUrls($service, $request->urls, $teamId, $request->boolean('force_domain_override'));
             if ($urlResult !== null) {
-                return response()->json([
-                    'message' => 'Validation failed.',
-                    'errors' => $urlResult['errors'],
-                ], 422);
+                if (isset($urlResult['errors'])) {
+                    return response()->json([
+                        'message' => 'Validation failed.',
+                        'errors' => $urlResult['errors'],
+                    ], 422);
+                }
+                if (isset($urlResult['conflicts'])) {
+                    return response()->json([
+                        'message' => 'Domain conflicts detected. Use force_domain_override=true to proceed.',
+                        'conflicts' => $urlResult['conflicts'],
+                        'warning' => $urlResult['warning'],
+                    ], 409);
+                }
             }
         }
 
