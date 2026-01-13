@@ -2411,18 +2411,24 @@ class ApplicationsController extends Controller
         $requestHasDomains = $request->has('domains');
         if ($requestHasDomains && $server->isProxyShouldRun()) {
             $uuid = $request->uuid;
-            $fqdn = $request->domains;
-            $fqdn = str($fqdn)->replaceEnd(',', '')->trim();
-            $fqdn = str($fqdn)->replaceStart(',', '')->trim();
+            $urls = $request->domains;
+            $urls = str($urls)->replaceStart(',', '')->replaceEnd(',', '')->trim();
             $errors = [];
-            $fqdn = str($fqdn)->trim()->explode(',')->map(function ($domain) use (&$errors) {
-                $domain = trim($domain);
-                if (filter_var($domain, FILTER_VALIDATE_URL) === false || ! preg_match('/^https?:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}/', $domain)) {
-                    $errors[] = 'Invalid domain: '.$domain;
+            $urls = str($urls)->trim()->explode(',')->map(function ($url) use (&$errors) {
+                $url = trim($url);
+                if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                    $errors[] = 'Invalid URL: '.$url;
+
+                    return $url;
+                }
+                $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                    $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
                 }
 
-                return $domain;
+                return str($url)->lower();
             });
+
             if (count($errors) > 0) {
                 return response()->json([
                     'message' => 'Validation failed.',
@@ -2430,7 +2436,7 @@ class ApplicationsController extends Controller
                 ], 422);
             }
             // Check for domain conflicts
-            $result = checkIfDomainIsAlreadyUsedViaAPI($fqdn, $teamId, $uuid);
+            $result = checkIfDomainIsAlreadyUsedViaAPI($urls, $teamId, $uuid);
             if (isset($result['error'])) {
                 return response()->json([
                     'message' => 'Validation failed.',
@@ -3626,17 +3632,23 @@ class ApplicationsController extends Controller
         }
         if ($request->has('domains') && $server->isProxyShouldRun()) {
             $uuid = $request->uuid;
-            $fqdn = $request->domains;
-            $fqdn = str($fqdn)->replaceEnd(',', '')->trim();
-            $fqdn = str($fqdn)->replaceStart(',', '')->trim();
+            $urls = $request->domains;
+            $urls = str($urls)->replaceEnd(',', '')->trim();
+            $urls = str($urls)->replaceStart(',', '')->trim();
             $errors = [];
-            $fqdn = str($fqdn)->trim()->explode(',')->map(function ($domain) use (&$errors) {
-                $domain = trim($domain);
-                if (filter_var($domain, FILTER_VALIDATE_URL) === false) {
-                    $errors[] = 'Invalid domain: '.$domain;
+            $urls = str($urls)->trim()->explode(',')->map(function ($url) use (&$errors) {
+                $url = trim($url);
+                if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                    $errors[] = 'Invalid URL: '.$url;
+
+                    return str($url)->lower();
+                }
+                $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                    $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
                 }
 
-                return str($domain)->lower();
+                return str($url)->lower();
             });
             if (count($errors) > 0) {
                 return response()->json([
@@ -3645,7 +3657,7 @@ class ApplicationsController extends Controller
                 ], 422);
             }
             // Check for domain conflicts
-            $result = checkIfDomainIsAlreadyUsedViaAPI($fqdn, $teamId, $uuid);
+            $result = checkIfDomainIsAlreadyUsedViaAPI($urls, $teamId, $uuid);
             if (isset($result['error'])) {
                 return response()->json([
                     'message' => 'Validation failed.',
