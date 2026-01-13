@@ -271,7 +271,8 @@ class ServicesController extends Controller
                     data_set($servicePayload, 'connect_to_docker_network', true);
                 }
                 $service = Service::create($servicePayload);
-                $service->name = "$oneClickServiceName-".$service->uuid;
+                $service->name = $request->name ?? "$oneClickServiceName-".$service->uuid;
+                $service->description = $request->description;
                 $service->save();
                 if ($oneClickDotEnvs?->count() > 0) {
                     $oneClickDotEnvs->each(function ($value) use ($service) {
