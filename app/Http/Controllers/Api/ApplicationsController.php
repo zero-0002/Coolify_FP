@@ -1156,6 +1156,11 @@ class ApplicationsController extends Controller
                     return $url;
                 });
 
+                $duplicates = $urls->duplicates()->unique()->values();
+                if ($duplicates->isNotEmpty() && ! $request->boolean('force_domain_override')) {
+                    $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray());
+                }
+
                 if (count($errors) > 0) {
                     return response()->json([
                         'message' => 'Validation failed.',
@@ -1364,6 +1369,11 @@ class ApplicationsController extends Controller
                     return $url;
                 });
 
+                $duplicates = $urls->duplicates()->unique()->values();
+                if ($duplicates->isNotEmpty() && ! $request->boolean('force_domain_override')) {
+                    $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray());
+                }
+
                 if (count($errors) > 0) {
                     return response()->json([
                         'message' => 'Validation failed.',
@@ -1539,6 +1549,11 @@ class ApplicationsController extends Controller
 
                     return $url;
                 });
+
+                $duplicates = $urls->duplicates()->unique()->values();
+                if ($duplicates->isNotEmpty() && ! $request->boolean('force_domain_override')) {
+                    $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray());
+                }
 
                 if (count($errors) > 0) {
                     return response()->json([
@@ -2548,6 +2563,11 @@ class ApplicationsController extends Controller
 
                 return $url;
             });
+
+            $duplicates = $urls->duplicates()->unique()->values();
+            if ($duplicates->isNotEmpty() && ! $request->boolean('force_domain_override')) {
+                $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray());
+            }
 
             if (count($errors) > 0) {
                 return response()->json([
