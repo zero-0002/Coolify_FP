@@ -1130,37 +1130,56 @@ class ApplicationsController extends Controller
             $dockerComposeDomainsJson = collect();
             if ($request->has('docker_compose_domains')) {
                 $dockerComposeDomains = collect($request->docker_compose_domains);
-                $domainErrors = [];
 
-                foreach ($dockerComposeDomains as $index => $item) {
+                // Collect all URLs from all docker_compose_domains items
+                $urls = $dockerComposeDomains->flatMap(function ($item) {
                     $domainValue = data_get($item, 'domain');
-                    if (filled($domainValue)) {
-                        $urls = str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim();
-                        str($urls)->explode(',')->each(function ($url) use (&$domainErrors) {
-                            $url = trim($url);
-                            if (empty($url)) {
-                                return;
-                            }
-                            if (! filter_var($url, FILTER_VALIDATE_URL)) {
-                                $domainErrors[] = "Invalid URL: {$url}";
-
-                                return;
-                            }
-                            $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
-                            if (! in_array(strtolower($scheme), ['http', 'https'])) {
-                                $domainErrors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
-                            }
-                        });
+                    if (blank($domainValue)) {
+                        return [];
                     }
-                }
 
-                if (! empty($domainErrors)) {
+                    return str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim()->explode(',')->map(fn ($url) => trim($url))->filter();
+                });
+
+                $errors = [];
+                $urls = $urls->map(function ($url) use (&$errors) {
+                    if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                        $errors[] = "Invalid URL: {$url}";
+
+                        return $url;
+                    }
+                    $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                    if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                        $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                    }
+
+                    return $url;
+                });
+
+                if (count($errors) > 0) {
                     return response()->json([
                         'message' => 'Validation failed.',
-                        'errors' => [
-                            'docker_compose_domains' => $domainErrors,
-                        ],
+                        'errors' => ['docker_compose_domains' => $errors],
                     ], 422);
+                }
+
+                // Check for domain conflicts
+                if ($urls->isNotEmpty()) {
+                    $result = checkIfDomainIsAlreadyUsedViaAPI($urls, $teamId);
+                    if (isset($result['error'])) {
+                        return response()->json([
+                            'message' => 'Validation failed.',
+                            'errors' => ['docker_compose_domains' => $result['error']],
+                        ], 422);
+                    }
+
+                    if ($result['hasConflicts'] && ! $request->boolean('force_domain_override')) {
+                        return response()->json([
+                            'message' => 'Domain conflicts detected. Use force_domain_override=true to proceed.',
+                            'conflicts' => $result['conflicts'],
+                            'warning' => 'Using the same domain for multiple resources can cause routing conflicts and unpredictable behavior.',
+                        ], 409);
+                    }
                 }
 
                 $dockerComposeDomains->each(function ($domain) use ($dockerComposeDomainsJson) {
@@ -1319,37 +1338,56 @@ class ApplicationsController extends Controller
             $dockerComposeDomainsJson = collect();
             if ($request->has('docker_compose_domains')) {
                 $dockerComposeDomains = collect($request->docker_compose_domains);
-                $domainErrors = [];
 
-                foreach ($dockerComposeDomains as $index => $item) {
+                // Collect all URLs from all docker_compose_domains items
+                $urls = $dockerComposeDomains->flatMap(function ($item) {
                     $domainValue = data_get($item, 'domain');
-                    if (filled($domainValue)) {
-                        $urls = str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim();
-                        str($urls)->explode(',')->each(function ($url) use (&$domainErrors) {
-                            $url = trim($url);
-                            if (empty($url)) {
-                                return;
-                            }
-                            if (! filter_var($url, FILTER_VALIDATE_URL)) {
-                                $domainErrors[] = "Invalid URL: {$url}";
-
-                                return;
-                            }
-                            $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
-                            if (! in_array(strtolower($scheme), ['http', 'https'])) {
-                                $domainErrors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
-                            }
-                        });
+                    if (blank($domainValue)) {
+                        return [];
                     }
-                }
 
-                if (! empty($domainErrors)) {
+                    return str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim()->explode(',')->map(fn ($url) => trim($url))->filter();
+                });
+
+                $errors = [];
+                $urls = $urls->map(function ($url) use (&$errors) {
+                    if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                        $errors[] = "Invalid URL: {$url}";
+
+                        return $url;
+                    }
+                    $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                    if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                        $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                    }
+
+                    return $url;
+                });
+
+                if (count($errors) > 0) {
                     return response()->json([
                         'message' => 'Validation failed.',
-                        'errors' => [
-                            'docker_compose_domains' => $domainErrors,
-                        ],
+                        'errors' => ['docker_compose_domains' => $errors],
                     ], 422);
+                }
+
+                // Check for domain conflicts
+                if ($urls->isNotEmpty()) {
+                    $result = checkIfDomainIsAlreadyUsedViaAPI($urls, $teamId);
+                    if (isset($result['error'])) {
+                        return response()->json([
+                            'message' => 'Validation failed.',
+                            'errors' => ['docker_compose_domains' => $result['error']],
+                        ], 422);
+                    }
+
+                    if ($result['hasConflicts'] && ! $request->boolean('force_domain_override')) {
+                        return response()->json([
+                            'message' => 'Domain conflicts detected. Use force_domain_override=true to proceed.',
+                            'conflicts' => $result['conflicts'],
+                            'warning' => 'Using the same domain for multiple resources can cause routing conflicts and unpredictable behavior.',
+                        ], 409);
+                    }
                 }
 
                 $dockerComposeDomains->each(function ($domain) use ($dockerComposeDomainsJson) {
@@ -1476,37 +1514,56 @@ class ApplicationsController extends Controller
             $dockerComposeDomainsJson = collect();
             if ($request->has('docker_compose_domains')) {
                 $dockerComposeDomains = collect($request->docker_compose_domains);
-                $domainErrors = [];
 
-                foreach ($dockerComposeDomains as $index => $item) {
+                // Collect all URLs from all docker_compose_domains items
+                $urls = $dockerComposeDomains->flatMap(function ($item) {
                     $domainValue = data_get($item, 'domain');
-                    if (filled($domainValue)) {
-                        $urls = str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim();
-                        str($urls)->explode(',')->each(function ($url) use (&$domainErrors) {
-                            $url = trim($url);
-                            if (empty($url)) {
-                                return;
-                            }
-                            if (! filter_var($url, FILTER_VALIDATE_URL)) {
-                                $domainErrors[] = "Invalid URL: {$url}";
-
-                                return;
-                            }
-                            $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
-                            if (! in_array(strtolower($scheme), ['http', 'https'])) {
-                                $domainErrors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
-                            }
-                        });
+                    if (blank($domainValue)) {
+                        return [];
                     }
-                }
 
-                if (! empty($domainErrors)) {
+                    return str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim()->explode(',')->map(fn ($url) => trim($url))->filter();
+                });
+
+                $errors = [];
+                $urls = $urls->map(function ($url) use (&$errors) {
+                    if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                        $errors[] = "Invalid URL: {$url}";
+
+                        return $url;
+                    }
+                    $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                    if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                        $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                    }
+
+                    return $url;
+                });
+
+                if (count($errors) > 0) {
                     return response()->json([
                         'message' => 'Validation failed.',
-                        'errors' => [
-                            'docker_compose_domains' => $domainErrors,
-                        ],
+                        'errors' => ['docker_compose_domains' => $errors],
                     ], 422);
+                }
+
+                // Check for domain conflicts
+                if ($urls->isNotEmpty()) {
+                    $result = checkIfDomainIsAlreadyUsedViaAPI($urls, $teamId);
+                    if (isset($result['error'])) {
+                        return response()->json([
+                            'message' => 'Validation failed.',
+                            'errors' => ['docker_compose_domains' => $result['error']],
+                        ], 422);
+                    }
+
+                    if ($result['hasConflicts'] && ! $request->boolean('force_domain_override')) {
+                        return response()->json([
+                            'message' => 'Domain conflicts detected. Use force_domain_override=true to proceed.',
+                            'conflicts' => $result['conflicts'],
+                            'warning' => 'Using the same domain for multiple resources can cause routing conflicts and unpredictable behavior.',
+                        ], 409);
+                    }
                 }
 
                 $dockerComposeDomains->each(function ($domain) use ($dockerComposeDomainsJson) {
@@ -2466,37 +2523,56 @@ class ApplicationsController extends Controller
             }
 
             $dockerComposeDomains = collect($request->docker_compose_domains);
-            $domainErrors = [];
 
-            foreach ($dockerComposeDomains as $item) {
+            // Collect all URLs from all docker_compose_domains items
+            $urls = $dockerComposeDomains->flatMap(function ($item) {
                 $domainValue = data_get($item, 'domain');
-                if (filled($domainValue)) {
-                    $urls = str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim();
-                    str($urls)->explode(',')->each(function ($url) use (&$domainErrors) {
-                        $url = trim($url);
-                        if (empty($url)) {
-                            return;
-                        }
-                        if (! filter_var($url, FILTER_VALIDATE_URL)) {
-                            $domainErrors[] = "Invalid URL: {$url}";
-
-                            return;
-                        }
-                        $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
-                        if (! in_array(strtolower($scheme), ['http', 'https'])) {
-                            $domainErrors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
-                        }
-                    });
+                if (blank($domainValue)) {
+                    return [];
                 }
-            }
 
-            if (! empty($domainErrors)) {
+                return str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim()->explode(',')->map(fn ($url) => trim($url))->filter();
+            });
+
+            $errors = [];
+            $urls = $urls->map(function ($url) use (&$errors) {
+                if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                    $errors[] = "Invalid URL: {$url}";
+
+                    return $url;
+                }
+                $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                    $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                }
+
+                return $url;
+            });
+
+            if (count($errors) > 0) {
                 return response()->json([
                     'message' => 'Validation failed.',
-                    'errors' => [
-                        'docker_compose_domains' => $domainErrors,
-                    ],
+                    'errors' => ['docker_compose_domains' => $errors],
                 ], 422);
+            }
+
+            // Check for domain conflicts
+            if ($urls->isNotEmpty()) {
+                $result = checkIfDomainIsAlreadyUsedViaAPI($urls, $teamId, $request->uuid);
+                if (isset($result['error'])) {
+                    return response()->json([
+                        'message' => 'Validation failed.',
+                        'errors' => ['docker_compose_domains' => $result['error']],
+                    ], 422);
+                }
+
+                if ($result['hasConflicts'] && ! $request->boolean('force_domain_override')) {
+                    return response()->json([
+                        'message' => 'Domain conflicts detected. Use force_domain_override=true to proceed.',
+                        'conflicts' => $result['conflicts'],
+                        'warning' => 'Using the same domain for multiple resources can cause routing conflicts and unpredictable behavior.',
+                    ], 409);
+                }
             }
 
             $yaml = Yaml::parse($application->docker_compose_raw);
