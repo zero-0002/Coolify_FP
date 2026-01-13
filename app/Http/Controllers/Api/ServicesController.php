@@ -38,70 +38,85 @@ class ServicesController extends Controller
         return serializeApiResponse($service);
     }
 
-    private function applyServiceUrls(Service $service, array $urls, string $teamId, bool $forceDomainOverride = false): ?array
+    private function applyServiceUrls(Service $service, array $urlsArray, string $teamId, bool $forceDomainOverride = false): ?array
     {
         $errors = [];
         $conflicts = [];
 
-        foreach ($urls as $url) {
-            $name = data_get($url, 'name');
-            $urls = data_get($url, 'url');
+        $urls = collect($urlsArray)->flatMap(function ($item) {
+            $urlValue = data_get($item, 'url');
+            if (blank($urlValue)) {
+                return [];
+            }
+
+            return str($urlValue)->replaceStart(',', '')->replaceEnd(',', '')->trim()->explode(',')->map(fn ($url) => trim($url))->filter();
+        });
+
+        $urls = $urls->map(function ($url) use (&$errors) {
+            if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                $errors[] = "Invalid URL: {$url}";
+
+                return $url;
+            }
+            $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+            if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+            }
+
+            return $url;
+        });
+
+        $duplicates = $urls->duplicates()->unique()->values();
+        if ($duplicates->isNotEmpty() && ! $forceDomainOverride) {
+            $errors[] = 'The current request contains conflicting URLs across containers: '.implode(', ', $duplicates->toArray());
+        }
+
+        if (count($errors) > 0) {
+            return ['errors' => $errors];
+        }
+
+        collect($urlsArray)->each(function ($item) use ($service, $teamId, $forceDomainOverride, &$errors, &$conflicts) {
+            $name = data_get($item, 'name');
+            $containerUrls = data_get($item, 'url');
 
             if (blank($name)) {
                 $errors[] = 'Service container name is required to apply URLs.';
 
-                continue;
+                return;
             }
 
             $application = $service->applications()->where('name', $name)->first();
             if (! $application) {
                 $errors[] = "Service container with '{$name}' not found.";
 
-                continue;
+                return;
             }
 
-            if (filled($urls)) {
-                $urls = str($urls)->replaceStart(',', '')->replaceEnd(',', '')->trim();
-                $urls = str($urls)->explode(',')->map(function ($url) use (&$errors) {
-                    $url = trim($url);
-                    if (! filter_var($url, FILTER_VALIDATE_URL)) {
-                        $errors[] = 'Invalid URL: '.$url;
+            if (filled($containerUrls)) {
+                $containerUrls = str($containerUrls)->replaceStart(',', '')->replaceEnd(',', '')->trim();
+                $containerUrls = str($containerUrls)->explode(',')->map(fn ($url) => str(trim($url))->lower());
 
-                        return $url;
-                    }
-                    $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
-                    if (! in_array(strtolower($scheme), ['http', 'https'])) {
-                        $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
-                    }
-
-                    return str($url)->lower();
-                });
-
-                if (count($errors) > 0) {
-                    continue;
-                }
-
-                $result = checkIfDomainIsAlreadyUsedViaAPI($urls, $teamId, $application->uuid);
+                $result = checkIfDomainIsAlreadyUsedViaAPI($containerUrls, $teamId, $application->uuid);
                 if (isset($result['error'])) {
                     $errors[] = $result['error'];
 
-                    continue;
+                    return;
                 }
 
                 if ($result['hasConflicts'] && ! $forceDomainOverride) {
                     $conflicts = array_merge($conflicts, $result['conflicts']);
 
-                    continue;
+                    return;
                 }
 
-                $urls = $urls->filter(fn ($u) => filled($u))->unique()->implode(',');
+                $containerUrls = $containerUrls->filter(fn ($u) => filled($u))->unique()->implode(',');
             } else {
-                $urls = null;
+                $containerUrls = null;
             }
 
-            $application->fqdn = $urls;
+            $application->fqdn = $containerUrls;
             $application->save();
-        }
+        });
 
         if (! empty($errors)) {
             return ['errors' => $errors];
