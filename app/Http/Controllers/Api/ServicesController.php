@@ -68,7 +68,7 @@ class ServicesController extends Controller
 
         $duplicates = $urls->duplicates()->unique()->values();
         if ($duplicates->isNotEmpty() && ! $forceDomainOverride) {
-            $errors[] = 'The current request contains conflicting URLs across containers: '.implode(', ', $duplicates->toArray());
+            $errors[] = 'The current request contains conflicting URLs across containers: '.implode(', ', $duplicates->toArray()).'. Use force_domain_override=true to proceed.';
         }
 
         if (count($errors) > 0) {
