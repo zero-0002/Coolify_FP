@@ -1175,7 +1175,7 @@ class ApplicationsController extends Controller
 
                 $duplicates = $urls->duplicates()->unique()->values();
                 if ($duplicates->isNotEmpty() && ! $request->boolean('force_domain_override')) {
-                    $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray());
+                    $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray()).' Use force_domain_override=true to proceed.';
                 }
 
                 if (count($errors) > 0) {
@@ -1400,7 +1400,7 @@ class ApplicationsController extends Controller
 
                 $duplicates = $urls->duplicates()->unique()->values();
                 if ($duplicates->isNotEmpty() && ! $request->boolean('force_domain_override')) {
-                    $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray());
+                    $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray()).' Use force_domain_override=true to proceed. ';
                 }
 
                 if (count($errors) > 0) {
@@ -1601,7 +1601,7 @@ class ApplicationsController extends Controller
 
                 $duplicates = $urls->duplicates()->unique()->values();
                 if ($duplicates->isNotEmpty() && ! $request->boolean('force_domain_override')) {
-                    $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray());
+                    $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray()).' Use force_domain_override=true to proceed.';
                 }
 
                 if (count($errors) > 0) {
@@ -2655,7 +2655,7 @@ class ApplicationsController extends Controller
 
             $duplicates = $urls->duplicates()->unique()->values();
             if ($duplicates->isNotEmpty() && ! $request->boolean('force_domain_override')) {
-                $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray());
+                $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray()).' Use force_domain_override=true to proceed.';
             }
 
             if (count($errors) > 0) {
