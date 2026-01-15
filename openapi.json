@@ -135,7 +135,7 @@
                                     },
                                     "domains": {
                                         "type": "string",
-                                        "description": "The application domains."
+                                        "description": "The application URLs in a comma-separated list."
                                     },
                                     "git_commit_sha": {
                                         "type": "string",
@@ -152,6 +152,18 @@
                                     "is_static": {
                                         "type": "boolean",
                                         "description": "The flag to indicate if the application is static."
+                                    },
+                                    "is_spa": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the application is a single-page application (SPA). Only relevant when is_static is true."
+                                    },
+                                    "is_auto_deploy_enabled": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if auto-deploy is enabled on git push. Defaults to true."
+                                    },
+                                    "is_force_https_enabled": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if HTTPS is forced. Defaults to true."
                                     },
                                     "static_image": {
                                         "type": "string",
@@ -321,6 +333,10 @@
                                     "dockerfile": {
                                         "type": "string",
                                         "description": "The Dockerfile content."
+                                    },
+                                    "dockerfile_location": {
+                                        "type": "string",
+                                        "description": "The Dockerfile location in the repository."
                                     },
                                     "docker_compose_location": {
                                         "type": "string",
@@ -564,7 +580,7 @@
                                     },
                                     "domains": {
                                         "type": "string",
-                                        "description": "The application domains."
+                                        "description": "The application URLs in a comma-separated list."
                                     },
                                     "git_commit_sha": {
                                         "type": "string",
@@ -581,6 +597,18 @@
                                     "is_static": {
                                         "type": "boolean",
                                         "description": "The flag to indicate if the application is static."
+                                    },
+                                    "is_spa": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the application is a single-page application (SPA). Only relevant when is_static is true."
+                                    },
+                                    "is_auto_deploy_enabled": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if auto-deploy is enabled on git push. Defaults to true."
+                                    },
+                                    "is_force_https_enabled": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if HTTPS is forced. Defaults to true."
                                     },
                                     "static_image": {
                                         "type": "string",
@@ -750,6 +778,10 @@
                                     "dockerfile": {
                                         "type": "string",
                                         "description": "The Dockerfile content."
+                                    },
+                                    "dockerfile_location": {
+                                        "type": "string",
+                                        "description": "The Dockerfile location in the repository"
                                     },
                                     "docker_compose_location": {
                                         "type": "string",
@@ -993,7 +1025,7 @@
                                     },
                                     "domains": {
                                         "type": "string",
-                                        "description": "The application domains."
+                                        "description": "The application URLs in a comma-separated list."
                                     },
                                     "git_commit_sha": {
                                         "type": "string",
@@ -1010,6 +1042,18 @@
                                     "is_static": {
                                         "type": "boolean",
                                         "description": "The flag to indicate if the application is static."
+                                    },
+                                    "is_spa": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the application is a single-page application (SPA). Only relevant when is_static is true."
+                                    },
+                                    "is_auto_deploy_enabled": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if auto-deploy is enabled on git push. Defaults to true."
+                                    },
+                                    "is_force_https_enabled": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if HTTPS is forced. Defaults to true."
                                     },
                                     "static_image": {
                                         "type": "string",
@@ -1179,6 +1223,10 @@
                                     "dockerfile": {
                                         "type": "string",
                                         "description": "The Dockerfile content."
+                                    },
+                                    "dockerfile_location": {
+                                        "type": "string",
+                                        "description": "The Dockerfile location in the repository."
                                     },
                                     "docker_compose_location": {
                                         "type": "string",
@@ -1410,7 +1458,7 @@
                                     },
                                     "domains": {
                                         "type": "string",
-                                        "description": "The application domains."
+                                        "description": "The application URLs in a comma-separated list."
                                     },
                                     "docker_registry_image_name": {
                                         "type": "string",
@@ -1561,6 +1609,10 @@
                                     "instant_deploy": {
                                         "type": "boolean",
                                         "description": "The flag to indicate if the application should be deployed instantly."
+                                    },
+                                    "is_force_https_enabled": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if HTTPS is forced. Defaults to true."
                                     },
                                     "use_build_server": {
                                         "type": "boolean",
@@ -1754,7 +1806,7 @@
                                     },
                                     "domains": {
                                         "type": "string",
-                                        "description": "The application domains."
+                                        "description": "The application URLs in a comma-separated list."
                                     },
                                     "ports_mappings": {
                                         "type": "string",
@@ -1893,6 +1945,10 @@
                                     "instant_deploy": {
                                         "type": "boolean",
                                         "description": "The flag to indicate if the application should be deployed instantly."
+                                    },
+                                    "is_force_https_enabled": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if HTTPS is forced. Defaults to true."
                                     },
                                     "use_build_server": {
                                         "type": "boolean",
@@ -2402,7 +2458,7 @@
                                     },
                                     "domains": {
                                         "type": "string",
-                                        "description": "The application domains."
+                                        "description": "The application URLs in a comma-separated list."
                                     },
                                     "git_commit_sha": {
                                         "type": "string",
@@ -2419,6 +2475,18 @@
                                     "is_static": {
                                         "type": "boolean",
                                         "description": "The flag to indicate if the application is static."
+                                    },
+                                    "is_spa": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the application is a single-page application (SPA). Only relevant when is_static is true."
+                                    },
+                                    "is_auto_deploy_enabled": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if auto-deploy is enabled on git push. Defaults to true."
+                                    },
+                                    "is_force_https_enabled": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if HTTPS is forced. Defaults to true."
                                     },
                                     "install_command": {
                                         "type": "string",
@@ -2581,6 +2649,10 @@
                                     "dockerfile": {
                                         "type": "string",
                                         "description": "The Dockerfile content."
+                                    },
+                                    "dockerfile_location": {
+                                        "type": "string",
+                                        "description": "The Dockerfile location in the repository."
                                     },
                                     "docker_compose_location": {
                                         "type": "string",

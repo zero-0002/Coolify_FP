@@ -97,7 +97,7 @@ paths:
                   description: 'The application description.'
                 domains:
                   type: string
-                  description: 'The application domains.'
+                  description: 'The application URLs in a comma-separated list.'
                 git_commit_sha:
                   type: string
                   description: 'The git commit SHA.'
@@ -110,6 +110,15 @@ paths:
                 is_static:
                   type: boolean
                   description: 'The flag to indicate if the application is static.'
+                is_spa:
+                  type: boolean
+                  description: 'The flag to indicate if the application is a single-page application (SPA). Only relevant when is_static is true.'
+                is_auto_deploy_enabled:
+                  type: boolean
+                  description: 'The flag to indicate if auto-deploy is enabled on git push. Defaults to true.'
+                is_force_https_enabled:
+                  type: boolean
+                  description: 'The flag to indicate if HTTPS is forced. Defaults to true.'
                 static_image:
                   type: string
                   enum: ['nginx:alpine']
@@ -234,6 +243,9 @@ paths:
                 dockerfile:
                   type: string
                   description: 'The Dockerfile content.'
+                dockerfile_location:
+                  type: string
+                  description: 'The Dockerfile location in the repository.'
                 docker_compose_location:
                   type: string
                   description: 'The Docker Compose location.'
@@ -369,7 +381,7 @@ paths:
                   description: 'The application description.'
                 domains:
                   type: string
-                  description: 'The application domains.'
+                  description: 'The application URLs in a comma-separated list.'
                 git_commit_sha:
                   type: string
                   description: 'The git commit SHA.'
@@ -382,6 +394,15 @@ paths:
                 is_static:
                   type: boolean
                   description: 'The flag to indicate if the application is static.'
+                is_spa:
+                  type: boolean
+                  description: 'The flag to indicate if the application is a single-page application (SPA). Only relevant when is_static is true.'
+                is_auto_deploy_enabled:
+                  type: boolean
+                  description: 'The flag to indicate if auto-deploy is enabled on git push. Defaults to true.'
+                is_force_https_enabled:
+                  type: boolean
+                  description: 'The flag to indicate if HTTPS is forced. Defaults to true.'
                 static_image:
                   type: string
                   enum: ['nginx:alpine']
@@ -506,6 +527,9 @@ paths:
                 dockerfile:
                   type: string
                   description: 'The Dockerfile content.'
+                dockerfile_location:
+                  type: string
+                  description: 'The Dockerfile location in the repository'
                 docker_compose_location:
                   type: string
                   description: 'The Docker Compose location.'
@@ -641,7 +665,7 @@ paths:
                   description: 'The application description.'
                 domains:
                   type: string
-                  description: 'The application domains.'
+                  description: 'The application URLs in a comma-separated list.'
                 git_commit_sha:
                   type: string
                   description: 'The git commit SHA.'
@@ -654,6 +678,15 @@ paths:
                 is_static:
                   type: boolean
                   description: 'The flag to indicate if the application is static.'
+                is_spa:
+                  type: boolean
+                  description: 'The flag to indicate if the application is a single-page application (SPA). Only relevant when is_static is true.'
+                is_auto_deploy_enabled:
+                  type: boolean
+                  description: 'The flag to indicate if auto-deploy is enabled on git push. Defaults to true.'
+                is_force_https_enabled:
+                  type: boolean
+                  description: 'The flag to indicate if HTTPS is forced. Defaults to true.'
                 static_image:
                   type: string
                   enum: ['nginx:alpine']
@@ -778,6 +811,9 @@ paths:
                 dockerfile:
                   type: string
                   description: 'The Dockerfile content.'
+                dockerfile_location:
+                  type: string
+                  description: 'The Dockerfile location in the repository.'
                 docker_compose_location:
                   type: string
                   description: 'The Docker Compose location.'
@@ -903,7 +939,7 @@ paths:
                   description: 'The application description.'
                 domains:
                   type: string
-                  description: 'The application domains.'
+                  description: 'The application URLs in a comma-separated list.'
                 docker_registry_image_name:
                   type: string
                   description: 'The docker registry image name.'
@@ -1015,6 +1051,9 @@ paths:
                 instant_deploy:
                   type: boolean
                   description: 'The flag to indicate if the application should be deployed instantly.'
+                is_force_https_enabled:
+                  type: boolean
+                  description: 'The flag to indicate if HTTPS is forced. Defaults to true.'
                 use_build_server:
                   type: boolean
                   nullable: true
@@ -1124,7 +1163,7 @@ paths:
                   description: 'The application description.'
                 domains:
                   type: string
-                  description: 'The application domains.'
+                  description: 'The application URLs in a comma-separated list.'
                 ports_mappings:
                   type: string
                   description: 'The ports mappings.'
@@ -1227,6 +1266,9 @@ paths:
                 instant_deploy:
                   type: boolean
                   description: 'The flag to indicate if the application should be deployed instantly.'
+                is_force_https_enabled:
+                  type: boolean
+                  description: 'The flag to indicate if HTTPS is forced. Defaults to true.'
                 use_build_server:
                   type: boolean
                   nullable: true
@@ -1524,7 +1566,7 @@ paths:
                   description: 'The application description.'
                 domains:
                   type: string
-                  description: 'The application domains.'
+                  description: 'The application URLs in a comma-separated list.'
                 git_commit_sha:
                   type: string
                   description: 'The git commit SHA.'
@@ -1537,6 +1579,15 @@ paths:
                 is_static:
                   type: boolean
                   description: 'The flag to indicate if the application is static.'
+                is_spa:
+                  type: boolean
+                  description: 'The flag to indicate if the application is a single-page application (SPA). Only relevant when is_static is true.'
+                is_auto_deploy_enabled:
+                  type: boolean
+                  description: 'The flag to indicate if auto-deploy is enabled on git push. Defaults to true.'
+                is_force_https_enabled:
+                  type: boolean
+                  description: 'The flag to indicate if HTTPS is forced. Defaults to true.'
                 install_command:
                   type: string
                   description: 'The install command.'
@@ -1657,6 +1708,9 @@ paths:
                 dockerfile:
                   type: string
                   description: 'The Dockerfile content.'
+                dockerfile_location:
+                  type: string
+                  description: 'The Dockerfile location in the repository.'
                 docker_compose_location:
                   type: string
                   description: 'The Docker Compose location.'
