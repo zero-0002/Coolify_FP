@@ -2577,6 +2577,12 @@ class ApplicationsController extends Controller
             $errors = [];
             $urls = str($urls)->trim()->explode(',')->map(function ($url) use (&$errors) {
                 $url = trim($url);
+
+                // If "domains" is empty clear all URLs from the fqdn column
+                if (blank($url)) {
+                    return null;
+                }
+
                 if (! filter_var($url, FILTER_VALIDATE_URL)) {
                     $errors[] = 'Invalid URL: '.$url;
 
@@ -3841,6 +3847,12 @@ class ApplicationsController extends Controller
             $errors = [];
             $urls = str($urls)->trim()->explode(',')->map(function ($url) use (&$errors) {
                 $url = trim($url);
+
+                // If "domains" is empty clear all URLs from the fqdn column
+                if (blank($url)) {
+                    return null;
+                }
+
                 if (! filter_var($url, FILTER_VALIDATE_URL)) {
                     $errors[] = 'Invalid URL: '.$url;
 

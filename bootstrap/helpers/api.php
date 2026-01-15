@@ -90,7 +90,7 @@ function sharedDataApplications()
         'is_auto_deploy_enabled' => 'boolean',
         'is_force_https_enabled' => 'boolean',
         'static_image' => Rule::enum(StaticImageTypes::class),
-        'domains' => 'string',
+        'domains' => 'string|nullable',
         'redirect' => Rule::enum(RedirectTypes::class),
         'git_commit_sha' => 'string',
         'docker_registry_image_name' => 'string|nullable',
