@@ -6,6 +6,7 @@ use App\Enums\ApplicationDeploymentStatus;
 use App\Services\ConfigurationGenerator;
 use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasConfiguration;
+use App\Traits\HasMetrics;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -113,7 +114,7 @@ use Visus\Cuid2\Cuid2;
 
 class Application extends BaseModel
 {
-    use ClearsGlobalSearchCache, HasConfiguration, HasFactory, HasSafeStringAttribute, SoftDeletes;
+    use ClearsGlobalSearchCache, HasConfiguration, HasFactory, HasMetrics, HasSafeStringAttribute, SoftDeletes;
 
     private static $parserVersion = '5';
 
@@ -846,15 +847,7 @@ class Application extends BaseModel
     public function environment_variables()
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
-            ->where('is_preview', false)
-            ->orderByRaw("
-                CASE
-                    WHEN is_required = true THEN 1
-                    WHEN LOWER(key) LIKE 'service_%' THEN 2
-                    ELSE 3
-                END,
-                LOWER(key) ASC
-            ");
+            ->where('is_preview', false);
     }
 
     public function runtime_environment_variables()
@@ -1586,6 +1579,11 @@ class Application extends BaseModel
         try {
             $composeFileContent = instant_remote_process($commands, $this->destination->server);
         } catch (\Exception $e) {
+            // Restore original values on failure only
+            $this->docker_compose_location = $initialDockerComposeLocation;
+            $this->base_directory = $initialBaseDirectory;
+            $this->save();
+
             if (str($e->getMessage())->contains('No such file')) {
                 throw new \RuntimeException("Docker Compose file not found at: $workdir$composeFile<br><br>Check if you used the right extension (.yaml or .yml) in the compose file name.");
             }
@@ -1597,9 +1595,7 @@ class Application extends BaseModel
             }
             throw new \RuntimeException($e->getMessage());
         } finally {
-            $this->docker_compose_location = $initialDockerComposeLocation;
-            $this->base_directory = $initialBaseDirectory;
-            $this->save();
+            // Cleanup only - restoration happens in catch block
             $commands = collect([
                 "rm -rf /tmp/{$uuid}",
             ]);
@@ -1645,6 +1641,11 @@ class Application extends BaseModel
                 'initialDockerComposeLocation' => $this->docker_compose_location,
             ];
         } else {
+            // Restore original values before throwing
+            $this->docker_compose_location = $initialDockerComposeLocation;
+            $this->base_directory = $initialBaseDirectory;
+            $this->save();
+
             throw new \RuntimeException("Docker Compose file not found at: $workdir$composeFile<br><br>Check if you used the right extension (.yaml or .yml) in the compose file name.");
         }
     }
@@ -1660,7 +1661,7 @@ class Application extends BaseModel
             $this->custom_labels = base64_encode($customLabels);
         }
         $customLabels = base64_decode($this->custom_labels);
-        if (mb_detect_encoding($customLabels, 'ASCII', true) === false) {
+        if (mb_detect_encoding($customLabels, 'UTF-8', true) === false) {
             $customLabels = str(implode('|coolify|', generateLabelsApplication($this, $preview)))->replace('|coolify|', "\n");
         }
         $this->custom_labels = base64_encode($customLabels);
@@ -1969,54 +1970,6 @@ class Application extends BaseModel
         }
 
         return [];
-    }
-
-    public function getCpuMetrics(int $mins = 5)
-    {
-        $server = $this->destination->server;
-        $container_name = $this->uuid;
-        if ($server->isMetricsEnabled()) {
-            $from = now()->subMinutes($mins)->toIso8601ZuluString();
-            $metrics = instant_remote_process(["docker exec coolify-sentinel sh -c 'curl -H \"Authorization: Bearer {$server->settings->sentinel_token}\" http://localhost:8888/api/container/{$container_name}/cpu/history?from=$from'"], $server, false);
-            if (str($metrics)->contains('error')) {
-                $error = json_decode($metrics, true);
-                $error = data_get($error, 'error', 'Something is not okay, are you okay?');
-                if ($error === 'Unauthorized') {
-                    $error = 'Unauthorized, please check your metrics token or restart Sentinel to set a new token.';
-                }
-                throw new \Exception($error);
-            }
-            $metrics = json_decode($metrics, true);
-            $parsedCollection = collect($metrics)->map(function ($metric) {
-                return [(int) $metric['time'], (float) $metric['percent']];
-            });
-
-            return $parsedCollection->toArray();
-        }
-    }
-
-    public function getMemoryMetrics(int $mins = 5)
-    {
-        $server = $this->destination->server;
-        $container_name = $this->uuid;
-        if ($server->isMetricsEnabled()) {
-            $from = now()->subMinutes($mins)->toIso8601ZuluString();
-            $metrics = instant_remote_process(["docker exec coolify-sentinel sh -c 'curl -H \"Authorization: Bearer {$server->settings->sentinel_token}\" http://localhost:8888/api/container/{$container_name}/memory/history?from=$from'"], $server, false);
-            if (str($metrics)->contains('error')) {
-                $error = json_decode($metrics, true);
-                $error = data_get($error, 'error', 'Something is not okay, are you okay?');
-                if ($error === 'Unauthorized') {
-                    $error = 'Unauthorized, please check your metrics token or restart Sentinel to set a new token.';
-                }
-                throw new \Exception($error);
-            }
-            $metrics = json_decode($metrics, true);
-            $parsedCollection = collect($metrics)->map(function ($metric) {
-                return [(int) $metric['time'], (float) $metric['used']];
-            });
-
-            return $parsedCollection->toArray();
-        }
     }
 
     public function getLimits(): array
