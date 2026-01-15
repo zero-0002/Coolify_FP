@@ -153,11 +153,14 @@ class ApplicationsController extends Controller
                             'destination_uuid' => ['type' => 'string', 'description' => 'The destination UUID.'],
                             'name' => ['type' => 'string', 'description' => 'The application name.'],
                             'description' => ['type' => 'string', 'description' => 'The application description.'],
-                            'domains' => ['type' => 'string', 'description' => 'The application domains.'],
+                            'domains' => ['type' => 'string', 'description' => 'The application URLs in a comma-separated list.'],
                             'git_commit_sha' => ['type' => 'string', 'description' => 'The git commit SHA.'],
                             'docker_registry_image_name' => ['type' => 'string', 'description' => 'The docker registry image name.'],
                             'docker_registry_image_tag' => ['type' => 'string', 'description' => 'The docker registry image tag.'],
                             'is_static' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application is static.'],
+                            'is_spa' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application is a single-page application (SPA). Only relevant when is_static is true.'],
+                            'is_auto_deploy_enabled' => ['type' => 'boolean', 'description' => 'The flag to indicate if auto-deploy is enabled on git push. Defaults to true.'],
+                            'is_force_https_enabled' => ['type' => 'boolean', 'description' => 'The flag to indicate if HTTPS is forced. Defaults to true.'],
                             'static_image' => ['type' => 'string', 'enum' => ['nginx:alpine'], 'description' => 'The static image.'],
                             'install_command' => ['type' => 'string', 'description' => 'The install command.'],
                             'build_command' => ['type' => 'string', 'description' => 'The build command.'],
@@ -198,6 +201,7 @@ class ApplicationsController extends Controller
                             // 'github_app_uuid' => ['type' => 'string', 'description' => 'The Github App UUID.'],
                             'instant_deploy' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application should be deployed instantly.'],
                             'dockerfile' => ['type' => 'string', 'description' => 'The Dockerfile content.'],
+                            'dockerfile_location' => ['type' => 'string', 'description' => 'The Dockerfile location in the repository.'],
                             'docker_compose_location' => ['type' => 'string', 'description' => 'The Docker Compose location.'],
                             'docker_compose_custom_start_command' => ['type' => 'string', 'description' => 'The Docker Compose custom start command.'],
                             'docker_compose_custom_build_command' => ['type' => 'string', 'description' => 'The Docker Compose custom build command.'],
@@ -315,11 +319,14 @@ class ApplicationsController extends Controller
                             'build_pack' => ['type' => 'string', 'enum' => ['nixpacks', 'static', 'dockerfile', 'dockercompose'], 'description' => 'The build pack type.'],
                             'name' => ['type' => 'string', 'description' => 'The application name.'],
                             'description' => ['type' => 'string', 'description' => 'The application description.'],
-                            'domains' => ['type' => 'string', 'description' => 'The application domains.'],
+                            'domains' => ['type' => 'string', 'description' => 'The application URLs in a comma-separated list.'],
                             'git_commit_sha' => ['type' => 'string', 'description' => 'The git commit SHA.'],
                             'docker_registry_image_name' => ['type' => 'string', 'description' => 'The docker registry image name.'],
                             'docker_registry_image_tag' => ['type' => 'string', 'description' => 'The docker registry image tag.'],
                             'is_static' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application is static.'],
+                            'is_spa' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application is a single-page application (SPA). Only relevant when is_static is true.'],
+                            'is_auto_deploy_enabled' => ['type' => 'boolean', 'description' => 'The flag to indicate if auto-deploy is enabled on git push. Defaults to true.'],
+                            'is_force_https_enabled' => ['type' => 'boolean', 'description' => 'The flag to indicate if HTTPS is forced. Defaults to true.'],
                             'static_image' => ['type' => 'string', 'enum' => ['nginx:alpine'], 'description' => 'The static image.'],
                             'install_command' => ['type' => 'string', 'description' => 'The install command.'],
                             'build_command' => ['type' => 'string', 'description' => 'The build command.'],
@@ -359,6 +366,7 @@ class ApplicationsController extends Controller
                             'redirect' => ['type' => 'string', 'nullable' => true, 'description' => 'How to set redirect with Traefik / Caddy. www<->non-www.', 'enum' => ['www', 'non-www', 'both']],
                             'instant_deploy' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application should be deployed instantly.'],
                             'dockerfile' => ['type' => 'string', 'description' => 'The Dockerfile content.'],
+                            'dockerfile_location' => ['type' => 'string', 'description' => 'The Dockerfile location in the repository'],
                             'docker_compose_location' => ['type' => 'string', 'description' => 'The Docker Compose location.'],
                             'docker_compose_custom_start_command' => ['type' => 'string', 'description' => 'The Docker Compose custom start command.'],
                             'docker_compose_custom_build_command' => ['type' => 'string', 'description' => 'The Docker Compose custom build command.'],
@@ -476,11 +484,14 @@ class ApplicationsController extends Controller
                             'build_pack' => ['type' => 'string', 'enum' => ['nixpacks', 'static', 'dockerfile', 'dockercompose'], 'description' => 'The build pack type.'],
                             'name' => ['type' => 'string', 'description' => 'The application name.'],
                             'description' => ['type' => 'string', 'description' => 'The application description.'],
-                            'domains' => ['type' => 'string', 'description' => 'The application domains.'],
+                            'domains' => ['type' => 'string', 'description' => 'The application URLs in a comma-separated list.'],
                             'git_commit_sha' => ['type' => 'string', 'description' => 'The git commit SHA.'],
                             'docker_registry_image_name' => ['type' => 'string', 'description' => 'The docker registry image name.'],
                             'docker_registry_image_tag' => ['type' => 'string', 'description' => 'The docker registry image tag.'],
                             'is_static' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application is static.'],
+                            'is_spa' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application is a single-page application (SPA). Only relevant when is_static is true.'],
+                            'is_auto_deploy_enabled' => ['type' => 'boolean', 'description' => 'The flag to indicate if auto-deploy is enabled on git push. Defaults to true.'],
+                            'is_force_https_enabled' => ['type' => 'boolean', 'description' => 'The flag to indicate if HTTPS is forced. Defaults to true.'],
                             'static_image' => ['type' => 'string', 'enum' => ['nginx:alpine'], 'description' => 'The static image.'],
                             'install_command' => ['type' => 'string', 'description' => 'The install command.'],
                             'build_command' => ['type' => 'string', 'description' => 'The build command.'],
@@ -520,6 +531,7 @@ class ApplicationsController extends Controller
                             'redirect' => ['type' => 'string', 'nullable' => true, 'description' => 'How to set redirect with Traefik / Caddy. www<->non-www.', 'enum' => ['www', 'non-www', 'both']],
                             'instant_deploy' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application should be deployed instantly.'],
                             'dockerfile' => ['type' => 'string', 'description' => 'The Dockerfile content.'],
+                            'dockerfile_location' => ['type' => 'string', 'description' => 'The Dockerfile location in the repository.'],
                             'docker_compose_location' => ['type' => 'string', 'description' => 'The Docker Compose location.'],
                             'docker_compose_custom_start_command' => ['type' => 'string', 'description' => 'The Docker Compose custom start command.'],
                             'docker_compose_custom_build_command' => ['type' => 'string', 'description' => 'The Docker Compose custom build command.'],
@@ -635,7 +647,7 @@ class ApplicationsController extends Controller
                             'destination_uuid' => ['type' => 'string', 'description' => 'The destination UUID.'],
                             'name' => ['type' => 'string', 'description' => 'The application name.'],
                             'description' => ['type' => 'string', 'description' => 'The application description.'],
-                            'domains' => ['type' => 'string', 'description' => 'The application domains.'],
+                            'domains' => ['type' => 'string', 'description' => 'The application URLs in a comma-separated list.'],
                             'docker_registry_image_name' => ['type' => 'string', 'description' => 'The docker registry image name.'],
                             'docker_registry_image_tag' => ['type' => 'string', 'description' => 'The docker registry image tag.'],
                             'ports_mappings' => ['type' => 'string', 'description' => 'The ports mappings.'],
@@ -671,6 +683,7 @@ class ApplicationsController extends Controller
                             'manual_webhook_secret_gitea' => ['type' => 'string', 'description' => 'Manual webhook secret for Gitea.'],
                             'redirect' => ['type' => 'string', 'nullable' => true, 'description' => 'How to set redirect with Traefik / Caddy. www<->non-www.', 'enum' => ['www', 'non-www', 'both']],
                             'instant_deploy' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application should be deployed instantly.'],
+                            'is_force_https_enabled' => ['type' => 'boolean', 'description' => 'The flag to indicate if HTTPS is forced. Defaults to true.'],
                             'use_build_server' => ['type' => 'boolean', 'nullable' => true, 'description' => 'Use build server.'],
                             'is_http_basic_auth_enabled' => ['type' => 'boolean', 'description' => 'HTTP Basic Authentication enabled.'],
                             'http_basic_auth_username' => ['type' => 'string', 'nullable' => true, 'description' => 'Username for HTTP Basic Authentication'],
@@ -771,7 +784,7 @@ class ApplicationsController extends Controller
                             'destination_uuid' => ['type' => 'string', 'description' => 'The destination UUID.'],
                             'name' => ['type' => 'string', 'description' => 'The application name.'],
                             'description' => ['type' => 'string', 'description' => 'The application description.'],
-                            'domains' => ['type' => 'string', 'description' => 'The application domains.'],
+                            'domains' => ['type' => 'string', 'description' => 'The application URLs in a comma-separated list.'],
                             'ports_mappings' => ['type' => 'string', 'description' => 'The ports mappings.'],
                             'health_check_enabled' => ['type' => 'boolean', 'description' => 'Health check enabled.'],
                             'health_check_path' => ['type' => 'string', 'description' => 'Health check path.'],
@@ -804,6 +817,7 @@ class ApplicationsController extends Controller
                             'manual_webhook_secret_gitea' => ['type' => 'string', 'description' => 'Manual webhook secret for Gitea.'],
                             'redirect' => ['type' => 'string', 'nullable' => true, 'description' => 'How to set redirect with Traefik / Caddy. www<->non-www.', 'enum' => ['www', 'non-www', 'both']],
                             'instant_deploy' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application should be deployed instantly.'],
+                            'is_force_https_enabled' => ['type' => 'boolean', 'description' => 'The flag to indicate if HTTPS is forced. Defaults to true.'],
                             'use_build_server' => ['type' => 'boolean', 'nullable' => true, 'description' => 'Use build server.'],
                             'is_http_basic_auth_enabled' => ['type' => 'boolean', 'description' => 'HTTP Basic Authentication enabled.'],
                             'http_basic_auth_username' => ['type' => 'string', 'nullable' => true, 'description' => 'Username for HTTP Basic Authentication'],
@@ -987,7 +1001,7 @@ class ApplicationsController extends Controller
         if ($return instanceof \Illuminate\Http\JsonResponse) {
             return $return;
         }
-        $allowedFields = ['project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'type', 'name', 'description', 'is_static', 'domains', 'git_repository', 'git_branch', 'git_commit_sha', 'private_key_uuid', 'docker_registry_image_name', 'docker_registry_image_tag', 'build_pack', 'install_command', 'build_command', 'start_command', 'ports_exposes', 'ports_mappings', 'custom_network_aliases', 'base_directory', 'publish_directory', 'health_check_enabled', 'health_check_path', 'health_check_port', 'health_check_host', 'health_check_method', 'health_check_return_code', 'health_check_scheme', 'health_check_response_text', 'health_check_interval', 'health_check_timeout', 'health_check_retries', 'health_check_start_period', 'limits_memory', 'limits_memory_swap', 'limits_memory_swappiness', 'limits_memory_reservation', 'limits_cpus', 'limits_cpuset', 'limits_cpu_shares', 'custom_labels', 'custom_docker_run_options', 'post_deployment_command', 'post_deployment_command_container', 'pre_deployment_command', 'pre_deployment_command_container',  'manual_webhook_secret_github', 'manual_webhook_secret_gitlab', 'manual_webhook_secret_bitbucket', 'manual_webhook_secret_gitea', 'redirect', 'github_app_uuid', 'instant_deploy', 'dockerfile', 'docker_compose_location', 'docker_compose_raw', 'docker_compose_custom_start_command', 'docker_compose_custom_build_command', 'docker_compose_domains', 'watch_paths', 'use_build_server', 'static_image', 'custom_nginx_configuration', 'is_http_basic_auth_enabled', 'http_basic_auth_username', 'http_basic_auth_password', 'connect_to_docker_network', 'force_domain_override', 'autogenerate_domain', 'is_container_label_escape_enabled'];
+        $allowedFields = ['project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'type', 'name', 'description', 'is_static', 'is_spa', 'is_auto_deploy_enabled', 'is_force_https_enabled', 'domains', 'git_repository', 'git_branch', 'git_commit_sha', 'private_key_uuid', 'docker_registry_image_name', 'docker_registry_image_tag', 'build_pack', 'install_command', 'build_command', 'start_command', 'ports_exposes', 'ports_mappings', 'custom_network_aliases', 'base_directory', 'publish_directory', 'health_check_enabled', 'health_check_path', 'health_check_port', 'health_check_host', 'health_check_method', 'health_check_return_code', 'health_check_scheme', 'health_check_response_text', 'health_check_interval', 'health_check_timeout', 'health_check_retries', 'health_check_start_period', 'limits_memory', 'limits_memory_swap', 'limits_memory_swappiness', 'limits_memory_reservation', 'limits_cpus', 'limits_cpuset', 'limits_cpu_shares', 'custom_labels', 'custom_docker_run_options', 'post_deployment_command', 'post_deployment_command_container', 'pre_deployment_command', 'pre_deployment_command_container',  'manual_webhook_secret_github', 'manual_webhook_secret_gitlab', 'manual_webhook_secret_bitbucket', 'manual_webhook_secret_gitea', 'redirect', 'github_app_uuid', 'instant_deploy', 'dockerfile', 'dockerfile_location', 'docker_compose_location', 'docker_compose_raw', 'docker_compose_custom_start_command', 'docker_compose_custom_build_command', 'docker_compose_domains', 'watch_paths', 'use_build_server', 'static_image', 'custom_nginx_configuration', 'is_http_basic_auth_enabled', 'http_basic_auth_username', 'http_basic_auth_password', 'connect_to_docker_network', 'force_domain_override', 'autogenerate_domain', 'is_container_label_escape_enabled'];
 
         $validator = customApiValidator($request->all(), [
             'name' => 'string|max:255',
@@ -1030,6 +1044,9 @@ class ApplicationsController extends Controller
         $githubAppUuid = $request->github_app_uuid;
         $useBuildServer = $request->use_build_server;
         $isStatic = $request->is_static;
+        $isSpa = $request->is_spa;
+        $isAutoDeployEnabled = $request->is_auto_deploy_enabled;
+        $isForceHttpsEnabled = $request->is_force_https_enabled;
         $connectToDockerNetwork = $request->connect_to_docker_network;
         $customNginxConfiguration = $request->custom_nginx_configuration;
         $isContainerLabelEscapeEnabled = $request->boolean('is_container_label_escape_enabled', true);
@@ -1130,37 +1147,61 @@ class ApplicationsController extends Controller
             $dockerComposeDomainsJson = collect();
             if ($request->has('docker_compose_domains')) {
                 $dockerComposeDomains = collect($request->docker_compose_domains);
-                $domainErrors = [];
 
-                foreach ($dockerComposeDomains as $index => $item) {
+                // Collect all URLs from all docker_compose_domains items
+                $urls = $dockerComposeDomains->flatMap(function ($item) {
                     $domainValue = data_get($item, 'domain');
-                    if (filled($domainValue)) {
-                        $urls = str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim();
-                        str($urls)->explode(',')->each(function ($url) use (&$domainErrors) {
-                            $url = trim($url);
-                            if (empty($url)) {
-                                return;
-                            }
-                            if (! filter_var($url, FILTER_VALIDATE_URL)) {
-                                $domainErrors[] = "Invalid URL: {$url}";
-
-                                return;
-                            }
-                            $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
-                            if (! in_array(strtolower($scheme), ['http', 'https'])) {
-                                $domainErrors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
-                            }
-                        });
+                    if (blank($domainValue)) {
+                        return [];
                     }
+
+                    return str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim()->explode(',')->map(fn ($url) => trim($url))->filter();
+                });
+
+                $errors = [];
+                $urls = $urls->map(function ($url) use (&$errors) {
+                    if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                        $errors[] = "Invalid URL: {$url}";
+
+                        return $url;
+                    }
+                    $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                    if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                        $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                    }
+
+                    return $url;
+                });
+
+                $duplicates = $urls->duplicates()->unique()->values();
+                if ($duplicates->isNotEmpty() && ! $request->boolean('force_domain_override')) {
+                    $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray()).' Use force_domain_override=true to proceed.';
                 }
 
-                if (! empty($domainErrors)) {
+                if (count($errors) > 0) {
                     return response()->json([
                         'message' => 'Validation failed.',
-                        'errors' => [
-                            'docker_compose_domains' => $domainErrors,
-                        ],
+                        'errors' => ['docker_compose_domains' => $errors],
                     ], 422);
+                }
+
+                // Check for domain conflicts
+                if ($urls->isNotEmpty()) {
+                    $result = checkIfDomainIsAlreadyUsedViaAPI($urls, $teamId);
+                    if (isset($result['error'])) {
+                        return response()->json([
+                            'message' => 'Validation failed.',
+                            'errors' => ['docker_compose_domains' => $result['error']],
+                        ], 422);
+                    }
+
+                    if ($result['hasConflicts'] && ! $request->boolean('force_domain_override')) {
+                        return response()->json([
+                            'message' => 'Domain conflicts detected. Use force_domain_override=true to proceed.',
+                            'conflicts' => $result['conflicts'],
+                            'warning' => 'Using the same domain for multiple resources can cause routing conflicts and unpredictable behavior.',
+                        ], 409);
+                    }
                 }
 
                 $dockerComposeDomains->each(function ($domain) use ($dockerComposeDomainsJson) {
@@ -1185,6 +1226,18 @@ class ApplicationsController extends Controller
             $application->save();
             if (isset($isStatic)) {
                 $application->settings->is_static = $isStatic;
+                $application->settings->save();
+            }
+            if (isset($isSpa)) {
+                $application->settings->is_spa = $isSpa;
+                $application->settings->save();
+            }
+            if (isset($isAutoDeployEnabled)) {
+                $application->settings->is_auto_deploy_enabled = $isAutoDeployEnabled;
+                $application->settings->save();
+            }
+            if (isset($isForceHttpsEnabled)) {
+                $application->settings->is_force_https_enabled = $isForceHttpsEnabled;
                 $application->settings->save();
             }
             if (isset($connectToDockerNetwork)) {
@@ -1319,37 +1372,61 @@ class ApplicationsController extends Controller
             $dockerComposeDomainsJson = collect();
             if ($request->has('docker_compose_domains')) {
                 $dockerComposeDomains = collect($request->docker_compose_domains);
-                $domainErrors = [];
 
-                foreach ($dockerComposeDomains as $index => $item) {
+                // Collect all URLs from all docker_compose_domains items
+                $urls = $dockerComposeDomains->flatMap(function ($item) {
                     $domainValue = data_get($item, 'domain');
-                    if (filled($domainValue)) {
-                        $urls = str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim();
-                        str($urls)->explode(',')->each(function ($url) use (&$domainErrors) {
-                            $url = trim($url);
-                            if (empty($url)) {
-                                return;
-                            }
-                            if (! filter_var($url, FILTER_VALIDATE_URL)) {
-                                $domainErrors[] = "Invalid URL: {$url}";
-
-                                return;
-                            }
-                            $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
-                            if (! in_array(strtolower($scheme), ['http', 'https'])) {
-                                $domainErrors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
-                            }
-                        });
+                    if (blank($domainValue)) {
+                        return [];
                     }
+
+                    return str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim()->explode(',')->map(fn ($url) => trim($url))->filter();
+                });
+
+                $errors = [];
+                $urls = $urls->map(function ($url) use (&$errors) {
+                    if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                        $errors[] = "Invalid URL: {$url}";
+
+                        return $url;
+                    }
+                    $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                    if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                        $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                    }
+
+                    return $url;
+                });
+
+                $duplicates = $urls->duplicates()->unique()->values();
+                if ($duplicates->isNotEmpty() && ! $request->boolean('force_domain_override')) {
+                    $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray()).' Use force_domain_override=true to proceed. ';
                 }
 
-                if (! empty($domainErrors)) {
+                if (count($errors) > 0) {
                     return response()->json([
                         'message' => 'Validation failed.',
-                        'errors' => [
-                            'docker_compose_domains' => $domainErrors,
-                        ],
+                        'errors' => ['docker_compose_domains' => $errors],
                     ], 422);
+                }
+
+                // Check for domain conflicts
+                if ($urls->isNotEmpty()) {
+                    $result = checkIfDomainIsAlreadyUsedViaAPI($urls, $teamId);
+                    if (isset($result['error'])) {
+                        return response()->json([
+                            'message' => 'Validation failed.',
+                            'errors' => ['docker_compose_domains' => $result['error']],
+                        ], 422);
+                    }
+
+                    if ($result['hasConflicts'] && ! $request->boolean('force_domain_override')) {
+                        return response()->json([
+                            'message' => 'Domain conflicts detected. Use force_domain_override=true to proceed.',
+                            'conflicts' => $result['conflicts'],
+                            'warning' => 'Using the same domain for multiple resources can cause routing conflicts and unpredictable behavior.',
+                        ], 409);
+                    }
                 }
 
                 $dockerComposeDomains->each(function ($domain) use ($dockerComposeDomainsJson) {
@@ -1375,6 +1452,26 @@ class ApplicationsController extends Controller
             if ($autogenerateDomain && blank($fqdn)) {
                 $application->fqdn = generateUrl(server: $server, random: $application->uuid);
                 $application->save();
+            }
+            if (isset($isStatic)) {
+                $application->settings->is_static = $isStatic;
+                $application->settings->save();
+            }
+            if (isset($isSpa)) {
+                $application->settings->is_spa = $isSpa;
+                $application->settings->save();
+            }
+            if (isset($isAutoDeployEnabled)) {
+                $application->settings->is_auto_deploy_enabled = $isAutoDeployEnabled;
+                $application->settings->save();
+            }
+            if (isset($isForceHttpsEnabled)) {
+                $application->settings->is_force_https_enabled = $isForceHttpsEnabled;
+                $application->settings->save();
+            }
+            if (isset($connectToDockerNetwork)) {
+                $application->settings->connect_to_docker_network = $connectToDockerNetwork;
+                $application->settings->save();
             }
             if (isset($useBuildServer)) {
                 $application->settings->is_build_server_enabled = $useBuildServer;
@@ -1476,37 +1573,61 @@ class ApplicationsController extends Controller
             $dockerComposeDomainsJson = collect();
             if ($request->has('docker_compose_domains')) {
                 $dockerComposeDomains = collect($request->docker_compose_domains);
-                $domainErrors = [];
 
-                foreach ($dockerComposeDomains as $index => $item) {
+                // Collect all URLs from all docker_compose_domains items
+                $urls = $dockerComposeDomains->flatMap(function ($item) {
                     $domainValue = data_get($item, 'domain');
-                    if (filled($domainValue)) {
-                        $urls = str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim();
-                        str($urls)->explode(',')->each(function ($url) use (&$domainErrors) {
-                            $url = trim($url);
-                            if (empty($url)) {
-                                return;
-                            }
-                            if (! filter_var($url, FILTER_VALIDATE_URL)) {
-                                $domainErrors[] = "Invalid URL: {$url}";
-
-                                return;
-                            }
-                            $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
-                            if (! in_array(strtolower($scheme), ['http', 'https'])) {
-                                $domainErrors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
-                            }
-                        });
+                    if (blank($domainValue)) {
+                        return [];
                     }
+
+                    return str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim()->explode(',')->map(fn ($url) => trim($url))->filter();
+                });
+
+                $errors = [];
+                $urls = $urls->map(function ($url) use (&$errors) {
+                    if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                        $errors[] = "Invalid URL: {$url}";
+
+                        return $url;
+                    }
+                    $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                    if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                        $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                    }
+
+                    return $url;
+                });
+
+                $duplicates = $urls->duplicates()->unique()->values();
+                if ($duplicates->isNotEmpty() && ! $request->boolean('force_domain_override')) {
+                    $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray()).' Use force_domain_override=true to proceed.';
                 }
 
-                if (! empty($domainErrors)) {
+                if (count($errors) > 0) {
                     return response()->json([
                         'message' => 'Validation failed.',
-                        'errors' => [
-                            'docker_compose_domains' => $domainErrors,
-                        ],
+                        'errors' => ['docker_compose_domains' => $errors],
                     ], 422);
+                }
+
+                // Check for domain conflicts
+                if ($urls->isNotEmpty()) {
+                    $result = checkIfDomainIsAlreadyUsedViaAPI($urls, $teamId);
+                    if (isset($result['error'])) {
+                        return response()->json([
+                            'message' => 'Validation failed.',
+                            'errors' => ['docker_compose_domains' => $result['error']],
+                        ], 422);
+                    }
+
+                    if ($result['hasConflicts'] && ! $request->boolean('force_domain_override')) {
+                        return response()->json([
+                            'message' => 'Domain conflicts detected. Use force_domain_override=true to proceed.',
+                            'conflicts' => $result['conflicts'],
+                            'warning' => 'Using the same domain for multiple resources can cause routing conflicts and unpredictable behavior.',
+                        ], 409);
+                    }
                 }
 
                 $dockerComposeDomains->each(function ($domain) use ($dockerComposeDomainsJson) {
@@ -1528,6 +1649,26 @@ class ApplicationsController extends Controller
             if ($autogenerateDomain && blank($fqdn)) {
                 $application->fqdn = generateUrl(server: $server, random: $application->uuid);
                 $application->save();
+            }
+            if (isset($isStatic)) {
+                $application->settings->is_static = $isStatic;
+                $application->settings->save();
+            }
+            if (isset($isSpa)) {
+                $application->settings->is_spa = $isSpa;
+                $application->settings->save();
+            }
+            if (isset($isAutoDeployEnabled)) {
+                $application->settings->is_auto_deploy_enabled = $isAutoDeployEnabled;
+                $application->settings->save();
+            }
+            if (isset($isForceHttpsEnabled)) {
+                $application->settings->is_force_https_enabled = $isForceHttpsEnabled;
+                $application->settings->save();
+            }
+            if (isset($connectToDockerNetwork)) {
+                $application->settings->connect_to_docker_network = $connectToDockerNetwork;
+                $application->settings->save();
             }
             if (isset($useBuildServer)) {
                 $application->settings->is_build_server_enabled = $useBuildServer;
@@ -1632,6 +1773,14 @@ class ApplicationsController extends Controller
                 $application->fqdn = generateUrl(server: $server, random: $application->uuid);
                 $application->save();
             }
+            if (isset($isForceHttpsEnabled)) {
+                $application->settings->is_force_https_enabled = $isForceHttpsEnabled;
+                $application->settings->save();
+            }
+            if (isset($connectToDockerNetwork)) {
+                $application->settings->connect_to_docker_network = $connectToDockerNetwork;
+                $application->settings->save();
+            }
             if (isset($useBuildServer)) {
                 $application->settings->is_build_server_enabled = $useBuildServer;
                 $application->settings->save();
@@ -1733,6 +1882,14 @@ class ApplicationsController extends Controller
             if ($autogenerateDomain && blank($fqdn)) {
                 $application->fqdn = generateUrl(server: $server, random: $application->uuid);
                 $application->save();
+            }
+            if (isset($isForceHttpsEnabled)) {
+                $application->settings->is_force_https_enabled = $isForceHttpsEnabled;
+                $application->settings->save();
+            }
+            if (isset($connectToDockerNetwork)) {
+                $application->settings->connect_to_docker_network = $connectToDockerNetwork;
+                $application->settings->save();
             }
             if (isset($useBuildServer)) {
                 $application->settings->is_build_server_enabled = $useBuildServer;
@@ -2150,11 +2307,14 @@ class ApplicationsController extends Controller
                             'build_pack' => ['type' => 'string', 'enum' => ['nixpacks', 'static', 'dockerfile', 'dockercompose'], 'description' => 'The build pack type.'],
                             'name' => ['type' => 'string', 'description' => 'The application name.'],
                             'description' => ['type' => 'string', 'description' => 'The application description.'],
-                            'domains' => ['type' => 'string', 'description' => 'The application domains.'],
+                            'domains' => ['type' => 'string', 'description' => 'The application URLs in a comma-separated list.'],
                             'git_commit_sha' => ['type' => 'string', 'description' => 'The git commit SHA.'],
                             'docker_registry_image_name' => ['type' => 'string', 'description' => 'The docker registry image name.'],
                             'docker_registry_image_tag' => ['type' => 'string', 'description' => 'The docker registry image tag.'],
                             'is_static' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application is static.'],
+                            'is_spa' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application is a single-page application (SPA). Only relevant when is_static is true.'],
+                            'is_auto_deploy_enabled' => ['type' => 'boolean', 'description' => 'The flag to indicate if auto-deploy is enabled on git push. Defaults to true.'],
+                            'is_force_https_enabled' => ['type' => 'boolean', 'description' => 'The flag to indicate if HTTPS is forced. Defaults to true.'],
                             'install_command' => ['type' => 'string', 'description' => 'The install command.'],
                             'build_command' => ['type' => 'string', 'description' => 'The build command.'],
                             'start_command' => ['type' => 'string', 'description' => 'The start command.'],
@@ -2193,6 +2353,7 @@ class ApplicationsController extends Controller
                             'redirect' => ['type' => 'string', 'nullable' => true, 'description' => 'How to set redirect with Traefik / Caddy. www<->non-www.', 'enum' => ['www', 'non-www', 'both']],
                             'instant_deploy' => ['type' => 'boolean', 'description' => 'The flag to indicate if the application should be deployed instantly.'],
                             'dockerfile' => ['type' => 'string', 'description' => 'The Dockerfile content.'],
+                            'dockerfile_location' => ['type' => 'string', 'description' => 'The Dockerfile location in the repository.'],
                             'docker_compose_location' => ['type' => 'string', 'description' => 'The Docker Compose location.'],
                             'docker_compose_custom_start_command' => ['type' => 'string', 'description' => 'The Docker Compose custom start command.'],
                             'docker_compose_custom_build_command' => ['type' => 'string', 'description' => 'The Docker Compose custom build command.'],
@@ -2297,7 +2458,7 @@ class ApplicationsController extends Controller
         $this->authorize('update', $application);
 
         $server = $application->destination->server;
-        $allowedFields = ['name', 'description', 'is_static', 'domains', 'git_repository', 'git_branch', 'git_commit_sha', 'docker_registry_image_name', 'docker_registry_image_tag', 'build_pack', 'static_image', 'install_command', 'build_command', 'start_command', 'ports_exposes', 'ports_mappings','custom_network_aliases', 'base_directory', 'publish_directory', 'health_check_enabled', 'health_check_path', 'health_check_port', 'health_check_host', 'health_check_method', 'health_check_return_code', 'health_check_scheme', 'health_check_response_text', 'health_check_interval', 'health_check_timeout', 'health_check_retries', 'health_check_start_period', 'limits_memory', 'limits_memory_swap', 'limits_memory_swappiness', 'limits_memory_reservation', 'limits_cpus', 'limits_cpuset', 'limits_cpu_shares', 'custom_labels', 'custom_docker_run_options', 'post_deployment_command', 'post_deployment_command_container', 'pre_deployment_command', 'pre_deployment_command_container', 'watch_paths', 'manual_webhook_secret_github', 'manual_webhook_secret_gitlab', 'manual_webhook_secret_bitbucket', 'manual_webhook_secret_gitea', 'docker_compose_location', 'docker_compose_custom_start_command', 'docker_compose_custom_build_command', 'docker_compose_domains', 'redirect', 'instant_deploy', 'use_build_server', 'custom_nginx_configuration', 'is_http_basic_auth_enabled', 'http_basic_auth_username', 'http_basic_auth_password', 'connect_to_docker_network', 'force_domain_override', 'is_container_label_escape_enabled'];
+        $allowedFields = ['name', 'description', 'is_static', 'is_spa', 'is_auto_deploy_enabled', 'is_force_https_enabled', 'domains', 'git_repository', 'git_branch', 'git_commit_sha', 'docker_registry_image_name', 'docker_registry_image_tag', 'build_pack', 'static_image', 'install_command', 'build_command', 'start_command', 'ports_exposes', 'ports_mappings', 'custom_network_aliases', 'base_directory', 'publish_directory', 'health_check_enabled', 'health_check_path', 'health_check_port', 'health_check_host', 'health_check_method', 'health_check_return_code', 'health_check_scheme', 'health_check_response_text', 'health_check_interval', 'health_check_timeout', 'health_check_retries', 'health_check_start_period', 'limits_memory', 'limits_memory_swap', 'limits_memory_swappiness', 'limits_memory_reservation', 'limits_cpus', 'limits_cpuset', 'limits_cpu_shares', 'custom_labels', 'custom_docker_run_options', 'post_deployment_command', 'post_deployment_command_container', 'pre_deployment_command', 'pre_deployment_command_container', 'watch_paths', 'manual_webhook_secret_github', 'manual_webhook_secret_gitlab', 'manual_webhook_secret_bitbucket', 'manual_webhook_secret_gitea', 'dockerfile_location', 'docker_compose_location', 'docker_compose_custom_start_command', 'docker_compose_custom_build_command', 'docker_compose_domains', 'redirect', 'instant_deploy', 'use_build_server', 'custom_nginx_configuration', 'is_http_basic_auth_enabled', 'http_basic_auth_username', 'http_basic_auth_password', 'connect_to_docker_network', 'force_domain_override', 'is_container_label_escape_enabled'];
 
         $validationRules = [
             'name' => 'string|max:255',
@@ -2411,18 +2572,30 @@ class ApplicationsController extends Controller
         $requestHasDomains = $request->has('domains');
         if ($requestHasDomains && $server->isProxyShouldRun()) {
             $uuid = $request->uuid;
-            $fqdn = $request->domains;
-            $fqdn = str($fqdn)->replaceEnd(',', '')->trim();
-            $fqdn = str($fqdn)->replaceStart(',', '')->trim();
+            $urls = $request->domains;
+            $urls = str($urls)->replaceStart(',', '')->replaceEnd(',', '')->trim();
             $errors = [];
-            $fqdn = str($fqdn)->trim()->explode(',')->map(function ($domain) use (&$errors) {
-                $domain = trim($domain);
-                if (filter_var($domain, FILTER_VALIDATE_URL) === false || ! preg_match('/^https?:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}/', $domain)) {
-                    $errors[] = 'Invalid domain: '.$domain;
+            $urls = str($urls)->trim()->explode(',')->map(function ($url) use (&$errors) {
+                $url = trim($url);
+
+                // If "domains" is empty clear all URLs from the fqdn column
+                if (blank($url)) {
+                    return null;
                 }
 
-                return $domain;
+                if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                    $errors[] = 'Invalid URL: '.$url;
+
+                    return $url;
+                }
+                $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                    $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                }
+
+                return str($url)->lower();
             });
+
             if (count($errors) > 0) {
                 return response()->json([
                     'message' => 'Validation failed.',
@@ -2430,7 +2603,7 @@ class ApplicationsController extends Controller
                 ], 422);
             }
             // Check for domain conflicts
-            $result = checkIfDomainIsAlreadyUsedViaAPI($fqdn, $teamId, $uuid);
+            $result = checkIfDomainIsAlreadyUsedViaAPI($urls, $teamId, $uuid);
             if (isset($result['error'])) {
                 return response()->json([
                     'message' => 'Validation failed.',
@@ -2460,37 +2633,61 @@ class ApplicationsController extends Controller
             }
 
             $dockerComposeDomains = collect($request->docker_compose_domains);
-            $domainErrors = [];
 
-            foreach ($dockerComposeDomains as $item) {
+            // Collect all URLs from all docker_compose_domains items
+            $urls = $dockerComposeDomains->flatMap(function ($item) {
                 $domainValue = data_get($item, 'domain');
-                if (filled($domainValue)) {
-                    $urls = str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim();
-                    str($urls)->explode(',')->each(function ($url) use (&$domainErrors) {
-                        $url = trim($url);
-                        if (empty($url)) {
-                            return;
-                        }
-                        if (! filter_var($url, FILTER_VALIDATE_URL)) {
-                            $domainErrors[] = "Invalid URL: {$url}";
-
-                            return;
-                        }
-                        $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
-                        if (! in_array(strtolower($scheme), ['http', 'https'])) {
-                            $domainErrors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
-                        }
-                    });
+                if (blank($domainValue)) {
+                    return [];
                 }
+
+                return str($domainValue)->replaceStart(',', '')->replaceEnd(',', '')->trim()->explode(',')->map(fn ($url) => trim($url))->filter();
+            });
+
+            $errors = [];
+            $urls = $urls->map(function ($url) use (&$errors) {
+                if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                    $errors[] = "Invalid URL: {$url}";
+
+                    return $url;
+                }
+                $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                    $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                }
+
+                return $url;
+            });
+
+            $duplicates = $urls->duplicates()->unique()->values();
+            if ($duplicates->isNotEmpty() && ! $request->boolean('force_domain_override')) {
+                $errors[] = 'The current request contains conflicting URLs: '.implode(', ', $duplicates->toArray()).' Use force_domain_override=true to proceed.';
             }
 
-            if (! empty($domainErrors)) {
+            if (count($errors) > 0) {
                 return response()->json([
                     'message' => 'Validation failed.',
-                    'errors' => [
-                        'docker_compose_domains' => $domainErrors,
-                    ],
+                    'errors' => ['docker_compose_domains' => $errors],
                 ], 422);
+            }
+
+            // Check for domain conflicts
+            if ($urls->isNotEmpty()) {
+                $result = checkIfDomainIsAlreadyUsedViaAPI($urls, $teamId, $request->uuid);
+                if (isset($result['error'])) {
+                    return response()->json([
+                        'message' => 'Validation failed.',
+                        'errors' => ['docker_compose_domains' => $result['error']],
+                    ], 422);
+                }
+
+                if ($result['hasConflicts'] && ! $request->boolean('force_domain_override')) {
+                    return response()->json([
+                        'message' => 'Domain conflicts detected. Use force_domain_override=true to proceed.',
+                        'conflicts' => $result['conflicts'],
+                        'warning' => 'Using the same domain for multiple resources can cause routing conflicts and unpredictable behavior.',
+                    ], 409);
+                }
             }
 
             $yaml = Yaml::parse($application->docker_compose_raw);
@@ -2505,6 +2702,9 @@ class ApplicationsController extends Controller
         }
         $instantDeploy = $request->instant_deploy;
         $isStatic = $request->is_static;
+        $isSpa = $request->is_spa;
+        $isAutoDeployEnabled = $request->is_auto_deploy_enabled;
+        $isForceHttpsEnabled = $request->is_force_https_enabled;
         $connectToDockerNetwork = $request->connect_to_docker_network;
         $useBuildServer = $request->use_build_server;
         $isContainerLabelEscapeEnabled = $request->boolean('is_container_label_escape_enabled');
@@ -2516,6 +2716,21 @@ class ApplicationsController extends Controller
 
         if (isset($isStatic)) {
             $application->settings->is_static = $isStatic;
+            $application->settings->save();
+        }
+
+        if (isset($isSpa)) {
+            $application->settings->is_spa = $isSpa;
+            $application->settings->save();
+        }
+
+        if (isset($isAutoDeployEnabled)) {
+            $application->settings->is_auto_deploy_enabled = $isAutoDeployEnabled;
+            $application->settings->save();
+        }
+
+        if (isset($isForceHttpsEnabled)) {
+            $application->settings->is_force_https_enabled = $isForceHttpsEnabled;
             $application->settings->save();
         }
 
@@ -3626,17 +3841,29 @@ class ApplicationsController extends Controller
         }
         if ($request->has('domains') && $server->isProxyShouldRun()) {
             $uuid = $request->uuid;
-            $fqdn = $request->domains;
-            $fqdn = str($fqdn)->replaceEnd(',', '')->trim();
-            $fqdn = str($fqdn)->replaceStart(',', '')->trim();
+            $urls = $request->domains;
+            $urls = str($urls)->replaceEnd(',', '')->trim();
+            $urls = str($urls)->replaceStart(',', '')->trim();
             $errors = [];
-            $fqdn = str($fqdn)->trim()->explode(',')->map(function ($domain) use (&$errors) {
-                $domain = trim($domain);
-                if (filter_var($domain, FILTER_VALIDATE_URL) === false) {
-                    $errors[] = 'Invalid domain: '.$domain;
+            $urls = str($urls)->trim()->explode(',')->map(function ($url) use (&$errors) {
+                $url = trim($url);
+
+                // If "domains" is empty clear all URLs from the fqdn column
+                if (blank($url)) {
+                    return null;
                 }
 
-                return str($domain)->lower();
+                if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                    $errors[] = 'Invalid URL: '.$url;
+
+                    return str($url)->lower();
+                }
+                $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
+                if (! in_array(strtolower($scheme), ['http', 'https'])) {
+                    $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
+                }
+
+                return str($url)->lower();
             });
             if (count($errors) > 0) {
                 return response()->json([
@@ -3645,7 +3872,7 @@ class ApplicationsController extends Controller
                 ], 422);
             }
             // Check for domain conflicts
-            $result = checkIfDomainIsAlreadyUsedViaAPI($fqdn, $teamId, $uuid);
+            $result = checkIfDomainIsAlreadyUsedViaAPI($urls, $teamId, $uuid);
             if (isset($result['error'])) {
                 return response()->json([
                     'message' => 'Validation failed.',
