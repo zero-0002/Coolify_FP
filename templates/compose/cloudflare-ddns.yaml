@@ -14,6 +14,6 @@ services:
     security_opt: [no-new-privileges:true]
     environment:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:?}
-      - DOMAINS=${DOMAINS}
+      - DOMAINS=${DOMAINS:?}
       - PROXIED=${PROXIED:-false}
       - IP6_PROVIDER=${IP6_PROVIDER:-none}
