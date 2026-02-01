@@ -8,7 +8,6 @@ services:
   cloudflare-ddns:
     image: favonia/cloudflare-ddns:1
     network_mode: host
-    restart: unless-stopped
     user: "1000:1000"
     read_only: true
     cap_drop: [all]
