@@ -449,7 +449,7 @@
             <div>If you need extra extensions, you can select Supabase PostgreSQL (or others), otherwise select
                 PostgreSQL
                 18 (default).</div>
-            <div class="flex flex-col gap-6 pt-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-8">
                 <div class="gap-2 coolbox group flex relative"
                     :class="{ 'cursor-pointer': !selecting, 'cursor-not-allowed opacity-50': selecting }"
                     x-on:click="!selecting && (selecting = true, $wire.setPostgresqlType('postgres:18-alpine'))"
