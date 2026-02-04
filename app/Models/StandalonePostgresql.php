@@ -32,7 +32,7 @@ class StandalonePostgresql extends BaseModel
             $image = (string) ($database->getAttributes()['image'] ?? '');
             $majorVersion = 0;
 
-            if (preg_match('/:(\d+)/', $image, $matches)) {
+            if (preg_match('/:(?:pg)?(\d+)/i', $image, $matches)) {
                 $majorVersion = (int) $matches[1];
             }
 
