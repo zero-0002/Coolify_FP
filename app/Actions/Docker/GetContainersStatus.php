@@ -3,6 +3,7 @@
 namespace App\Actions\Docker;
 
 use App\Actions\Database\StartDatabaseProxy;
+use App\Actions\Database\StopDatabaseProxy;
 use App\Actions\Shared\ComplexStatusCheck;
 use App\Events\ServiceChecked;
 use App\Models\ApplicationPreview;
@@ -180,21 +181,30 @@ class GetContainersStatus
                         if ($database_id) {
                             $service_db = ServiceDatabase::where('id', $database_id)->first();
                             if ($service_db) {
-                                $uuid = data_get($service_db, 'service.uuid');
-                                if ($uuid) {
-                                    $isPublic = data_get($service_db, 'is_public');
-                                    if ($isPublic) {
-                                        $foundTcpProxy = $this->containers->filter(function ($value, $key) use ($uuid) {
-                                            if ($this->server->isSwarm()) {
-                                                return data_get($value, 'Spec.Name') === "coolify-proxy_$uuid";
-                                            } else {
-                                                return data_get($value, 'Name') === "/$uuid-proxy";
-                                            }
-                                        })->first();
-                                        if (! $foundTcpProxy) {
-                                            StartDatabaseProxy::run($service_db);
-                                            // $this->server->team?->notify(new ContainerRestarted("TCP Proxy for {$service_db->service->name}", $this->server));
+                                $proxyUuid = $service_db->uuid;
+                                $isPublic = data_get($service_db, 'is_public');
+                                if ($isPublic) {
+                                    $foundTcpProxy = $this->containers->filter(function ($value, $key) use ($proxyUuid) {
+                                        if ($this->server->isSwarm()) {
+                                            return data_get($value, 'Spec.Name') === "coolify-proxy_$proxyUuid";
+                                        } else {
+                                            return data_get($value, 'Name') === "/$proxyUuid-proxy";
                                         }
+                                    })->first();
+                                    if (! $foundTcpProxy) {
+                                        StartDatabaseProxy::run($service_db);
+                                    }
+                                } else {
+                                    // Clean up orphaned proxy when is_public=false
+                                    $orphanedProxy = $this->containers->filter(function ($value, $key) use ($proxyUuid) {
+                                        if ($this->server->isSwarm()) {
+                                            return data_get($value, 'Spec.Name') === "coolify-proxy_$proxyUuid";
+                                        } else {
+                                            return data_get($value, 'Name') === "/$proxyUuid-proxy";
+                                        }
+                                    })->first();
+                                    if ($orphanedProxy) {
+                                        StopDatabaseProxy::run($service_db);
                                     }
                                 }
                             }
@@ -235,7 +245,18 @@ class GetContainersStatus
                                 })->first();
                                 if (! $foundTcpProxy) {
                                     StartDatabaseProxy::run($database);
-                                    // $this->server->team?->notify(new ContainerRestarted("TCP Proxy for database", $this->server));
+                                }
+                            } else {
+                                // Clean up orphaned proxy when is_public=false
+                                $orphanedProxy = $this->containers->filter(function ($value, $key) use ($uuid) {
+                                    if ($this->server->isSwarm()) {
+                                        return data_get($value, 'Spec.Name') === "coolify-proxy_$uuid";
+                                    } else {
+                                        return data_get($value, 'Name') === "/$uuid-proxy";
+                                    }
+                                })->first();
+                                if ($orphanedProxy) {
+                                    StopDatabaseProxy::run($database);
                                 }
                             }
                         } else {
@@ -392,6 +413,11 @@ class GetContainersStatus
                 'last_restart_at' => null,
                 'last_restart_type' => null,
             ]);
+
+            // Stop proxy if database was public
+            if ($database->is_public) {
+                StopDatabaseProxy::run($database);
+            }
 
             $name = data_get($database, 'name');
             $fqdn = data_get($database, 'fqdn');
