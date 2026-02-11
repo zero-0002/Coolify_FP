@@ -14,7 +14,8 @@ it('shows registration page when no users exist', function () {
     $page = visit('/register');
 
     $page->assertSee('Root User Setup')
-        ->assertSee('Create Account');
+        ->assertSee('Create Account')
+        ->screenshot();
 });
 
 it('can register a new root user', function () {
@@ -25,7 +26,8 @@ it('can register a new root user', function () {
         ->fill('password', 'Password1!@')
         ->fill('password_confirmation', 'Password1!@')
         ->click('Create Account')
-        ->assertPathIs('/onboarding');
+        ->assertPathIs('/onboarding')
+        ->screenshot();
 
     expect(User::where('email', 'root@example.com')->exists())->toBeTrue();
 });
@@ -38,7 +40,8 @@ it('fails registration with mismatched passwords', function () {
         ->fill('password', 'Password1!@')
         ->fill('password_confirmation', 'DifferentPass1!@')
         ->click('Create Account')
-        ->assertSee('password');
+        ->assertSee('password')
+        ->screenshot();
 });
 
 it('fails registration with weak password', function () {
@@ -49,7 +52,8 @@ it('fails registration with weak password', function () {
         ->fill('password', 'short')
         ->fill('password_confirmation', 'short')
         ->click('Create Account')
-        ->assertSee('password');
+        ->assertSee('password')
+        ->screenshot();
 });
 
 it('shows login link when a user already exists', function () {
@@ -58,5 +62,6 @@ it('shows login link when a user already exists', function () {
     $page = visit('/register');
 
     $page->assertSee('Already registered?')
-        ->assertDontSee('Root User Setup');
+        ->assertDontSee('Root User Setup')
+        ->screenshot();
 });

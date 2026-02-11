@@ -15,7 +15,8 @@ it('shows registration page when no users exist', function () {
     $page = visit('/login');
 
     $page->assertSee('Root User Setup')
-        ->assertSee('Create Account');
+        ->assertSee('Create Account')
+        ->screenshot();
 });
 
 it('can login with valid credentials', function () {
@@ -27,7 +28,11 @@ it('can login with valid credentials', function () {
 
     $page = visit('/login');
 
-    $page->assertSee('Login');
+    $page->fill('email', 'test@example.com')
+        ->fill('password', 'password')
+        ->click('Login')
+        ->assertSee('Welcome to Coolify')
+        ->screenshot();
 });
 
 it('fails login with invalid credentials', function () {
@@ -42,5 +47,6 @@ it('fails login with invalid credentials', function () {
     $page->fill('email', 'random@email.com')
         ->fill('password', 'wrongpassword123')
         ->click('Login')
-        ->assertSee('These credentials do not match our records');
+        ->assertSee('These credentials do not match our records')
+        ->screenshot();
 });
