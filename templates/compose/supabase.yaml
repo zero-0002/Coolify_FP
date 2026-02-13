@@ -33,7 +33,7 @@ services:
       - 'KONG_STORAGE_WRITE_TIMEOUT=${KONG_STORAGE_WRITE_TIMEOUT:-3600}'
       - 'KONG_STORAGE_READ_TIMEOUT=${KONG_STORAGE_READ_TIMEOUT:-3600}'
       - 'KONG_STORAGE_REQUEST_BUFFERING=${KONG_STORAGE_REQUEST_BUFFERING:-false}'
-      - 'KONG_STORAGE_RESPONSE_BUFFERING=${KONG_STORAGE_RESPONSE_BUFFERING:-false}' 
+      - 'KONG_STORAGE_RESPONSE_BUFFERING=${KONG_STORAGE_RESPONSE_BUFFERING:-false}'
     volumes:
       # https://github.com/supabase/supabase/issues/12661
       - type: bind
@@ -290,7 +290,7 @@ services:
                   config:
                     hide_credentials: true
   supabase-studio:
-    image: supabase/studio:2026.01.07-sha-037e5f9
+    image: supabase/studio:2026.01.27-sha-6aa59ff
     healthcheck:
       test:
         [
@@ -310,7 +310,8 @@ services:
       - STUDIO_PG_META_URL=http://supabase-meta:8080
       - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
       - POSTGRES_HOST=${POSTGRES_HOST:-supabase-db}
-      - CURRENT_CLI_VERSION=2.67.1
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
 
       - DEFAULT_ORGANIZATION_NAME=${STUDIO_DEFAULT_ORGANIZATION:-Default Organization}
       - DEFAULT_PROJECT_NAME=${STUDIO_DEFAULT_PROJECT:-Default Project}
@@ -322,8 +323,9 @@ services:
       - AUTH_JWT_SECRET=${SERVICE_PASSWORD_JWT}
 
       - LOGFLARE_API_KEY=${SERVICE_PASSWORD_LOGFLARE}
+      - LOGFLARE_PUBLIC_ACCESS_TOKEN=${SERVICE_PASSWORD_LOGFLARE}
+      - LOGFLARE_PRIVATE_ACCESS_TOKEN=${SERVICE_PASSWORD_LOGFLARE}
       - LOGFLARE_URL=http://supabase-analytics:4000
-      - 'SUPABASE_PUBLIC_API=${SERVICE_URL_SUPABASEKONG}'
       # Next.js client-side environment variables (required for browser access)
       - 'NEXT_PUBLIC_SUPABASE_URL=${SERVICE_URL_SUPABASEKONG}'
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SERVICE_SUPABASEANON_KEY}
@@ -333,8 +335,13 @@ services:
       # Uncomment to use Big Query backend for analytics
       # NEXT_ANALYTICS_BACKEND_PROVIDER=bigquery
       - 'OPENAI_API_KEY=${OPENAI_API_KEY}'
+      - SNIPPETS_MANAGEMENT_FOLDER=/app/snippets
+      - EDGE_FUNCTIONS_MANAGEMENT_FOLDER=/app/edge-functions
+    volumes:
+      - ./volumes/snippets:/app/snippets
+      - ./volumes/functions:/app/edge-functions
   supabase-db:
-    image: supabase/postgres:15.8.1.048
+    image: supabase/postgres:15.8.1.085
     healthcheck:
       test: pg_isready -U postgres -h 127.0.0.1
       interval: 5s
@@ -633,7 +640,7 @@ services:
       - supabase-db-config:/etc/postgresql-custom
 
   supabase-analytics:
-    image: supabase/logflare:1.4.0
+    image: supabase/logflare:1.30.3
     healthcheck:
       test: ["CMD", "curl", "http://127.0.0.1:4000/health"]
       timeout: 5s
@@ -655,11 +662,10 @@ services:
       - DB_PORT=${POSTGRES_PORT:-5432}
       - DB_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
       - DB_SCHEMA=_analytics
-      - LOGFLARE_API_KEY=${SERVICE_PASSWORD_LOGFLARE}
+      - LOGFLARE_PUBLIC_ACCESS_TOKEN=${SERVICE_PASSWORD_LOGFLARE}
+      - LOGFLARE_PRIVATE_ACCESS_TOKEN=${SERVICE_PASSWORD_LOGFLARE}
       - LOGFLARE_SINGLE_TENANT=true
-      - LOGFLARE_SINGLE_TENANT_MODE=true
       - LOGFLARE_SUPABASE_MODE=true
-      - LOGFLARE_MIN_CLUSTER_SIZE=1
 
       # Comment variables to use Big Query backend for analytics
       - POSTGRES_BACKEND_URL=postgresql://supabase_admin:${SERVICE_PASSWORD_POSTGRES}@${POSTGRES_HOSTNAME:-supabase-db}:${POSTGRES_PORT:-5432}/_supabase
@@ -929,7 +935,7 @@ services:
     command: ["--config", "etc/vector/vector.yml"]
 
   supabase-rest:
-    image: postgrest/postgrest:v12.2.12
+    image: postgrest/postgrest:v14.3
     depends_on:
       supabase-db:
         # Disable this if you are using an external Postgres database
@@ -947,7 +953,7 @@ services:
     command: "postgrest"
     exclude_from_hc: true
   supabase-auth:
-    image: supabase/gotrue:v2.174.0
+    image: supabase/gotrue:v2.185.0
     depends_on:
       supabase-db:
         # Disable this if you are using an external Postgres database
@@ -1038,7 +1044,7 @@ services:
 
   realtime-dev:
     # This container name looks inconsistent but is correct because realtime constructs tenant id by parsing the subdomain
-    image: supabase/realtime:v2.34.47
+    image: supabase/realtime:v2.72.0
     container_name: realtime-dev.supabase-realtime
     depends_on:
       supabase-db:
@@ -1072,11 +1078,8 @@ services:
       - DB_AFTER_CONNECT_QUERY=SET search_path TO _realtime
       - DB_ENC_KEY=supabaserealtime
       - API_JWT_SECRET=${SERVICE_PASSWORD_JWT}
-      - FLY_ALLOC_ID=fly123
-      - FLY_APP_NAME=realtime
       - SECRET_KEY_BASE=${SECRET_PASSWORD_REALTIME}
       - ERL_AFLAGS=-proto_dist inet_tcp
-      - ENABLE_TAILSCALE=false
       - DNS_NODES=''
       - RLIMIT_NOFILE=10000
       - APP_NAME=realtime
@@ -1084,6 +1087,7 @@ services:
       - LOG_LEVEL=error
       - RUN_JANITOR=true
       - JANITOR_INTERVAL=60000
+      - DISABLE_HEALTHCHECK_LOGGING=true
     command: >
       sh -c "/app/bin/migrate && /app/bin/realtime eval 'Realtime.Release.seeds(Realtime.Repo)' && /app/bin/server"
   supabase-minio:
@@ -1121,7 +1125,7 @@ services:
           exit 0
 
   supabase-storage:
-    image: supabase/storage-api:v1.14.6
+    image: supabase/storage-api:v1.37.1
     depends_on:
       supabase-db:
         # Disable this if you are using an external Postgres database
@@ -1168,46 +1172,26 @@ services:
       - DATABASE_SEARCH_PATH=storage
       - NODE_ENV=production
       - REQUEST_ALLOW_X_FORWARDED_PATH=true
-
-      # - ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzA4OTg4NDAwLAogICJleHAiOiAxODY2ODQxMjAwCn0.jCDqsoXGT58JnAjf27KOowNQsokkk0aR7rdbGG18P-8
-      # - SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogInNlcnZpY2Vfcm9sZSIsCiAgImlzcyI6ICJzdXBhYmFzZSIsCiAgImlhdCI6IDE3MDg5ODg0MDAsCiAgImV4cCI6IDE4NjY4NDEyMDAKfQ.GA7yF2BmqTzqGkP_oqDdJAQVt0djjIxGYuhE0zFDJV4
-      # - POSTGREST_URL=http://supabase-rest:3000
-      # - PGRST_JWT_SECRET=${SERVICE_PASSWORD_JWT}
-      # - DATABASE_URL=postgres://supabase_storage_admin:${SERVICE_PASSWORD_POSTGRES}@${POSTGRES_HOSTNAME:-supabase-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-postgres}
-      # - FILE_SIZE_LIMIT=52428800
-      # - STORAGE_BACKEND=s3
-      # - STORAGE_S3_BUCKET=stub
-      # - STORAGE_S3_ENDPOINT=http://supabase-minio:9000
-      # - STORAGE_S3_PROTOCOL=http
-      # - STORAGE_S3_REGION=stub
-      # - STORAGE_S3_FORCE_PATH_STYLE=true
-      # - AWS_ACCESS_KEY_ID=${SERVICE_USER_MINIO}
-      # - AWS_SECRET_ACCESS_KEY=${SERVICE_PASSWORD_MINIO}
-      # - AWS_DEFAULT_REGION=stub
-      # - FILE_STORAGE_BACKEND_PATH=/var/lib/storage
-      # - TENANT_ID=stub
-      # # TODO: https://github.com/supabase/storage-api/issues/55
-      # - REGION=stub
-      # - ENABLE_IMAGE_TRANSFORMATION=true
-      # - IMGPROXY_URL=http://imgproxy:8080
     volumes:
       - ./volumes/storage:/var/lib/storage
   imgproxy:
-    image: darthsim/imgproxy:v3.8.0
+    image: darthsim/imgproxy:v3.30.1
     healthcheck:
       test: ["CMD", "imgproxy", "health"]
       timeout: 5s
       interval: 5s
       retries: 3
     environment:
+      - IMGPROXY_BIND=:8080
       - IMGPROXY_LOCAL_FILESYSTEM_ROOT=/
       - IMGPROXY_USE_ETAG=true
       - IMGPROXY_ENABLE_WEBP_DETECTION=${IMGPROXY_ENABLE_WEBP_DETECTION:-true}
+      - IMGPROXY_MAX_SRC_RESOLUTION=16.8
     volumes:
       - ./volumes/storage:/var/lib/storage
 
   supabase-meta:
-    image: supabase/postgres-meta:v0.89.3
+    image: supabase/postgres-meta:v0.95.2
     depends_on:
       supabase-db:
         # Disable this if you are using an external Postgres database
@@ -1221,9 +1205,10 @@ services:
       - PG_META_DB_NAME=${POSTGRES_DB:-postgres}
       - PG_META_DB_USER=supabase_admin
       - PG_META_DB_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+      - CRYPTO_KEY=${SERVICE_PASSWORD_PGMETACRYPTO}
 
   supabase-edge-functions:
-    image: supabase/edge-runtime:v1.67.4
+    image: supabase/edge-runtime:v1.70.0
     depends_on:
       supabase-analytics:
         condition: service_healthy
@@ -1367,7 +1352,7 @@ services:
       - /home/deno/functions/main
 
   supabase-supavisor:
-    image: 'supabase/supavisor:2.5.1'
+    image: 'supabase/supavisor:2.7.4'
     healthcheck:
       test:
         - CMD
