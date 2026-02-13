@@ -6,17 +6,17 @@
 
 services:
   cells:
-    image: pydio/cells:latest
+    image: pydio/cells:4.4
     environment:
       - SERVICE_URL_CELLS_8080
-      - CELLS_SITE_EXTERNAL=https://${SERVICE_FQDN_CELLS}
+      - CELLS_SITE_EXTERNAL=${SERVICE_URL_CELLS}
       - CELLS_SITE_NO_TLS=1
     volumes:
-      - cellsdir:/var/cells
+      - cells_data:/var/cells
   mariadb:
     image: 'mariadb:11'
     volumes:
-      - mysqldir:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
     environment:
       - MYSQL_ROOT_PASSWORD=${SERVICE_PASSWORD_MYSQLROOT}
       - MYSQL_DATABASE=${MYSQL_DATABASE:-cells}
@@ -31,7 +31,3 @@ services:
       interval: 10s
       timeout: 20s
       retries: 5
-volumes:
-    cellsdir: {}
-    mysqldir: {}
-
