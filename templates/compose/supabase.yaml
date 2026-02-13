@@ -1164,7 +1164,7 @@ services:
       - UPLOAD_FILE_SIZE_LIMIT=524288000
       - UPLOAD_FILE_SIZE_LIMIT_STANDARD=524288000
       - UPLOAD_SIGNED_URL_EXPIRATION_TIME=120
-      - TUS_URL_PATH=upload/resumable
+      - TUS_URL_PATH=/upload/resumable
       - TUS_MAX_SIZE=3600000
       - ENABLE_IMAGE_TRANSFORMATION=true
       - IMGPROXY_URL=http://imgproxy:8080
