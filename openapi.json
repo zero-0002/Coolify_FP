@@ -2082,8 +2082,8 @@
                 "tags": [
                     "Applications"
                 ],
-                "summary": "Create (Docker Compose) (Deprecated)",
-                "description": "Create new application based on a docker-compose file (without git).",
+                "summary": "Create (Docker Compose)",
+                "description": "Deprecated: Use POST \/api\/v1\/services instead.",
                 "operationId": "create-dockercompose-application",
                 "requestBody": {
                     "description": "Application object that needs to be created.",
@@ -3063,13 +3063,7 @@
                         "content": {
                             "application\/json": {
                                 "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Environment variable updated."
-                                        }
-                                    },
-                                    "type": "object"
+                                    "$ref": "#\/components\/schemas\/EnvironmentVariable"
                                 }
                             }
                         }
@@ -9617,13 +9611,7 @@
                         "content": {
                             "application\/json": {
                                 "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Environment variable updated."
-                                        }
-                                    },
-                                    "type": "object"
+                                    "$ref": "#\/components\/schemas\/EnvironmentVariable"
                                 }
                             }
                         }
@@ -9721,13 +9709,10 @@
                         "content": {
                             "application\/json": {
                                 "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Environment variables updated."
-                                        }
-                                    },
-                                    "type": "object"
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#\/components\/schemas\/EnvironmentVariable"
+                                    }
                                 }
                             }
                         }
