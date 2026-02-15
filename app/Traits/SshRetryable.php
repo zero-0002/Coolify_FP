@@ -145,24 +145,21 @@ trait SshRetryable
         }
 
         try {
-            app('sentry')->captureMessage(
-                'SSH connection retry triggered',
-                \Sentry\Severity::warning(),
-                [
-                    'extra' => [
-                        'attempt' => $attempt,
-                        'max_retries' => $maxRetries,
-                        'delay_seconds' => $delay,
-                        'error_message' => $errorMessage,
-                        'context' => $context,
-                        'retryable_error' => true,
-                    ],
-                    'tags' => [
-                        'component' => 'ssh_retry',
-                        'error_type' => 'connection_retry',
-                    ],
-                ]
-            );
+            \Sentry\withScope(function (\Sentry\State\Scope $scope) use ($attempt, $maxRetries, $delay, $errorMessage, $context): void {
+                $scope->setExtras([
+                    'attempt' => $attempt,
+                    'max_retries' => $maxRetries,
+                    'delay_seconds' => $delay,
+                    'error_message' => $errorMessage,
+                    'context' => $context,
+                    'retryable_error' => true,
+                ]);
+                $scope->setTags([
+                    'component' => 'ssh_retry',
+                    'error_type' => 'connection_retry',
+                ]);
+                \Sentry\captureMessage('SSH connection retry triggered', \Sentry\Severity::warning());
+            });
         } catch (\Throwable $e) {
             // Don't let Sentry tracking errors break the SSH retry flow
             Log::warning('Failed to track SSH retry event in Sentry', [
