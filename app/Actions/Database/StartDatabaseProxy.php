@@ -114,15 +114,13 @@ class StartDatabaseProxy
         instant_remote_process(["docker rm -f $proxyContainerName"], $server, false);
 
         try {
-    
-        try {
             instant_remote_process([
-                    "mkdir -p $configuration_dir",
-                    "echo '{$nginxconf_base64}' | base64 -d | tee $configuration_dir/nginx.conf > /dev/null",
-                    "echo '{$dockercompose_base64}' | base64 -d | tee $configuration_dir/docker-compose.yaml > /dev/null",
-                    "docker compose --project-directory {$configuration_dir} pull",
-                    "docker compose --project-directory {$configuration_dir} up -d",
-                ], $server);
+                "mkdir -p $configuration_dir",
+                "echo '{$nginxconf_base64}' | base64 -d | tee $configuration_dir/nginx.conf > /dev/null",
+                "echo '{$dockercompose_base64}' | base64 -d | tee $configuration_dir/docker-compose.yaml > /dev/null",
+                "docker compose --project-directory {$configuration_dir} pull",
+                "docker compose --project-directory {$configuration_dir} up -d",
+            ], $server);
         } catch (\RuntimeException $e) {
             if ($this->isNonTransientError($e->getMessage())) {
                 $database->update(['is_public' => false]);
@@ -133,44 +131,6 @@ class StartDatabaseProxy
                 $team?->notify(
                     new \App\Notifications\Container\ContainerRestarted(
                         "TCP Proxy for {$database->name} database has been disabled due to error: {$e->getMessage()}",
-                        $server,
-                    )
-                );
-
-                ray("Database proxy for {$database->name} disabled due to non-transient error: {$e->getMessage()}");
-
-                return;
-            }
-
-            throw $e;
-        }
-    }
-
-    private function isNonTransientError(string $message): bool
-    {
-        $nonTransientPatterns = [
-            'port is already allocated',
-            'address already in use',
-            'Bind for',
-        ];
-
-        foreach ($nonTransientPatterns as $pattern) {
-            if (str_contains($message, $pattern)) {
-                return true;
-            }
-        }
-
-        return false;
-        } catch (\RuntimeException $e) {
-            if ($this->isNonTransientError($e->getMessage())) {
-                $database->update(['is_public' => false]);
-
-                $team = data_get($database, 'environment.project.team')
-                    ?? data_get($database, 'service.environment.project.team');
-
-                $team?->notify(
-                    new \App\Notifications\Container\ContainerRestarted(
-                        "TCP Proxy for {$database->name} was disabled due to error: {$e->getMessage()}",
                         $server,
                     )
                 );
