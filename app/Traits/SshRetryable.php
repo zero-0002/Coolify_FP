@@ -95,9 +95,6 @@ trait SshRetryable
                 if ($this->isRetryableSshError($lastErrorMessage) && $attempt < $maxRetries - 1) {
                     $delay = $this->calculateRetryDelay($attempt);
 
-                    // Track SSH retry event in Sentry
-                    $this->trackSshRetryEvent($attempt + 1, $maxRetries, $delay, $lastErrorMessage, $context);
-
                     // Add deployment log if available (for ExecuteRemoteCommand trait)
                     if (isset($this->application_deployment_queue) && method_exists($this, 'addRetryLogEntry')) {
                         $this->addRetryLogEntry($attempt + 1, $maxRetries, $delay, $lastErrorMessage);
@@ -132,40 +129,5 @@ trait SshRetryable
         }
 
         return null;
-    }
-
-    /**
-     * Track SSH retry event in Sentry
-     */
-    protected function trackSshRetryEvent(int $attempt, int $maxRetries, int $delay, string $errorMessage, array $context = []): void
-    {
-        // Only track in production/cloud instances
-        if (isDev() || ! config('constants.sentry.sentry_dsn')) {
-            return;
-        }
-
-        try {
-            \Sentry\withScope(function (\Sentry\State\Scope $scope) use ($attempt, $maxRetries, $delay, $errorMessage, $context): void {
-                $scope->setExtras([
-                    'attempt' => $attempt,
-                    'max_retries' => $maxRetries,
-                    'delay_seconds' => $delay,
-                    'error_message' => $errorMessage,
-                    'context' => $context,
-                    'retryable_error' => true,
-                ]);
-                $scope->setTags([
-                    'component' => 'ssh_retry',
-                    'error_type' => 'connection_retry',
-                ]);
-                \Sentry\captureMessage('SSH connection retry triggered', \Sentry\Severity::warning());
-            });
-        } catch (\Throwable $e) {
-            // Don't let Sentry tracking errors break the SSH retry flow
-            Log::warning('Failed to track SSH retry event in Sentry', [
-                'error' => $e->getMessage(),
-                'original_attempt' => $attempt,
-            ]);
-        }
     }
 }
