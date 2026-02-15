@@ -107,6 +107,8 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
 
     private function checkHetznerStatus(): void
     {
+        $status = null;
+
         try {
             $hetznerService = new \App\Services\HetznerService($this->server->cloudProviderToken->token);
             $serverData = $hetznerService->getServer($this->server->hetzner_server_id);
