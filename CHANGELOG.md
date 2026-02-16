@@ -4508,6 +4508,12 @@ All notable changes to this project will be documented in this file.
 - *(api-docs)* Use proper schema references for environment variable endpoints (#8239)
 - *(ui)* Fix datalist border color and add repository selection watcher (#8240)
 - *(server)* Improve IP uniqueness validation with team-specific error messages
+- *(jobs)* Initialize status variable in checkHetznerStatus (#8359)
+- *(jobs)* Handle queue timeouts gracefully in Horizon (#8360)
+- *(push-server-job)* Skip containers with empty service subId (#8361)
+- *(database)* Disable proxy on port allocation failure (#8362)
+- *(sentry)* Use withScope for SSH retry event tracking (#8363)
+- *(api)* Add a newline to openapi.json
 
 ### 💼 Other
 
@@ -5599,6 +5605,7 @@ All notable changes to this project will be documented in this file.
 - *(api)* Update application create endpoints docs
 - *(api)* Application urls validation
 - *(services)* Improve some service slogans
+- *(ssh-retry)* Remove Sentry tracking from retry logic
 
 ### 📚 Documentation
 
@@ -5743,6 +5750,7 @@ All notable changes to this project will be documented in this file.
 - *(api)* Improve app endpoint deprecation description
 - Add Coolify design system reference
 - Add Coolify design system reference (#8237)
+- Update changelog
 
 ### ⚡ Performance
 
@@ -6504,6 +6512,11 @@ All notable changes to this project will be documented in this file.
 - Prepare for PR
 - *(services)* Update service template json files
 - Bump coolify version
+- Prepare for PR
+- Prepare for PR
+- Prepare for PR
+- Prepare for PR
+- Prepare for PR
 - Prepare for PR
 - Prepare for PR
 
