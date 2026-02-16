@@ -77,7 +77,7 @@ class ScheduledTasksController extends Controller
     }
 
     #[OA\Get(
-        summary: 'List (Application)',
+        summary: 'List Task',
         description: 'List all scheduled tasks for an application.',
         path: '/applications/{uuid}/scheduled-tasks',
         operationId: 'list-scheduled-tasks-by-application-uuid',
@@ -140,7 +140,7 @@ class ScheduledTasksController extends Controller
     }
 
     #[OA\Post(
-        summary: 'Create (Application)',
+        summary: 'Create Task',
         description: 'Create a new scheduled task for an application.',
         path: '/applications/{uuid}/scheduled-tasks',
         operationId: 'create-scheduled-task-by-application-uuid',
@@ -218,8 +218,85 @@ class ScheduledTasksController extends Controller
         return $this->create_scheduled_task($request, $application);
     }
 
+    #[OA\Delete(
+        summary: 'Delete Task',
+        description: 'Delete a scheduled task for an application.',
+        path: '/applications/{uuid}/scheduled-tasks/{task_uuid}',
+        operationId: 'delete-scheduled-task-by-application-uuid',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Scheduled Tasks'],
+        parameters: [
+            new OA\Parameter(
+                name: 'uuid',
+                in: 'path',
+                description: 'UUID of the application.',
+                required: true,
+                schema: new OA\Schema(
+                    type: 'string',
+                )
+            ),
+            new OA\Parameter(
+                name: 'task_uuid',
+                in: 'path',
+                description: 'UUID of the scheduled task.',
+                required: true,
+                schema: new OA\Schema(
+                    type: 'string',
+                )
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Scheduled task deleted.',
+                content: [
+                    new OA\MediaType(
+                        mediaType: 'application/json',
+                        schema: new OA\Schema(
+                            type: 'object',
+                            properties: [
+                                'message' => ['type' => 'string', 'example' => 'Scheduled task deleted.'],
+                            ]
+                        )
+                    ),
+                ]
+            ),
+            new OA\Response(
+                response: 401,
+                ref: '#/components/responses/401',
+            ),
+            new OA\Response(
+                response: 404,
+                ref: '#/components/responses/404',
+            ),
+        ]
+    )]
+    public function delete_scheduled_task_by_application_uuid(Request $request)
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $application = Application::whereRelation('environment.project.team', 'id', $teamId)->where('uuid', $request->uuid)->first();
+        if (! $application) {
+            return response()->json(['message' => 'Application not found.'], 404);
+        }
+
+        $task = $application->scheduled_tasks()->where('uuid', $request->task_uuid)->first();
+        if (! $task) {
+            return response()->json(['message' => 'Scheduled task not found.'], 404);
+        }
+
+        $task->delete();
+
+        return response()->json(['message' => 'Scheduled task deleted.']);
+    }
+
     #[OA\Get(
-        summary: 'List (Service)',
+        summary: 'List Tasks',
         description: 'List all scheduled tasks for a service.',
         path: '/services/{uuid}/scheduled-tasks',
         operationId: 'list-scheduled-tasks-by-service-uuid',
@@ -282,7 +359,7 @@ class ScheduledTasksController extends Controller
     }
 
     #[OA\Post(
-        summary: 'Create (Service)',
+        summary: 'Create Task',
         description: 'Create a new scheduled task for a service.',
         path: '/services/{uuid}/scheduled-tasks',
         operationId: 'create-scheduled-task-by-service-uuid',
@@ -358,5 +435,82 @@ class ScheduledTasksController extends Controller
         }
 
         return $this->create_scheduled_task($request, $service);
+    }
+
+    #[OA\Delete(
+        summary: 'Delete Task',
+        description: 'Delete a scheduled task for a service.',
+        path: '/services/{uuid}/scheduled-tasks/{task_uuid}',
+        operationId: 'delete-scheduled-task-by-service-uuid',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Scheduled Tasks'],
+        parameters: [
+            new OA\Parameter(
+                name: 'uuid',
+                in: 'path',
+                description: 'UUID of the service.',
+                required: true,
+                schema: new OA\Schema(
+                    type: 'string',
+                )
+            ),
+            new OA\Parameter(
+                name: 'task_uuid',
+                in: 'path',
+                description: 'UUID of the scheduled task.',
+                required: true,
+                schema: new OA\Schema(
+                    type: 'string',
+                )
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Scheduled task deleted.',
+                content: [
+                    new OA\MediaType(
+                        mediaType: 'application/json',
+                        schema: new OA\Schema(
+                            type: 'object',
+                            properties: [
+                                'message' => ['type' => 'string', 'example' => 'Scheduled task deleted.'],
+                            ]
+                        )
+                    ),
+                ]
+            ),
+            new OA\Response(
+                response: 401,
+                ref: '#/components/responses/401',
+            ),
+            new OA\Response(
+                response: 404,
+                ref: '#/components/responses/404',
+            ),
+        ]
+    )]
+    public function delete_scheduled_task_by_service_uuid(Request $request)
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $service = Service::whereRelation('environment.project.team', 'id', $teamId)->where('uuid', $request->uuid)->first();
+        if (! $service) {
+            return response()->json(['message' => 'Service not found.'], 404);
+        }
+
+        $task = $service->scheduled_tasks()->where('uuid', $request->task_uuid)->first();
+        if (! $task) {
+            return response()->json(['message' => 'Scheduled task not found.'], 404);
+        }
+
+        $task->delete();
+
+        return response()->json(['message' => 'Scheduled task deleted.']);
     }
 }

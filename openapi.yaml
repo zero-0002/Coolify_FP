@@ -2257,6 +2257,46 @@ paths:
       security:
         -
           bearerAuth: []
+  '/applications/{uuid}/scheduled-tasks/{task_uuid}':
+    delete:
+      tags:
+        - 'Scheduled Tasks'
+      summary: 'Delete Task'
+      description: 'Delete a scheduled task for an application.'
+      operationId: delete-scheduled-task-by-application-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the application.'
+          required: true
+          schema:
+            type: string
+        -
+          name: task_uuid
+          in: path
+          description: 'UUID of the scheduled task.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Scheduled task deleted.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                    example: 'Scheduled task deleted.'
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
   /cloud-tokens:
     get:
       tags:
@@ -6416,6 +6456,46 @@ paths:
           $ref: '#/components/responses/404'
         '422':
           $ref: '#/components/responses/422'
+      security:
+        -
+          bearerAuth: []
+  '/services/{uuid}/scheduled-tasks/{task_uuid}':
+    delete:
+      tags:
+        - 'Scheduled Tasks'
+      summary: 'Delete Task'
+      description: 'Delete a scheduled task for a service.'
+      operationId: delete-scheduled-task-by-service-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the service.'
+          required: true
+          schema:
+            type: string
+        -
+          name: task_uuid
+          in: path
+          description: 'UUID of the scheduled task.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Scheduled task deleted.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                    example: 'Scheduled task deleted.'
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
       security:
         -
           bearerAuth: []
