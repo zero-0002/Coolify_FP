@@ -3571,6 +3571,100 @@
             }
         },
         "\/applications\/{uuid}\/scheduled-tasks\/{task_uuid}": {
+            "patch": {
+                "tags": [
+                    "Scheduled Tasks"
+                ],
+                "summary": "Update Task",
+                "description": "Update a scheduled task for an application.",
+                "operationId": "update-scheduled-task-by-application-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the application.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "task_uuid",
+                        "in": "path",
+                        "description": "UUID of the scheduled task.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Scheduled task data",
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "description": "The name of the scheduled task."
+                                    },
+                                    "command": {
+                                        "type": "string",
+                                        "description": "The command to execute."
+                                    },
+                                    "frequency": {
+                                        "type": "string",
+                                        "description": "The frequency of the scheduled task."
+                                    },
+                                    "container": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "description": "The container where the command should be executed."
+                                    },
+                                    "timeout": {
+                                        "type": "integer",
+                                        "description": "The timeout of the scheduled task in seconds.",
+                                        "default": 3600
+                                    },
+                                    "enabled": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the scheduled task is enabled.",
+                                        "default": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Scheduled task updated.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/ScheduledTask"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/422"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
             "delete": {
                 "tags": [
                     "Scheduled Tasks"
@@ -10301,6 +10395,100 @@
             }
         },
         "\/services\/{uuid}\/scheduled-tasks\/{task_uuid}": {
+            "patch": {
+                "tags": [
+                    "Scheduled Tasks"
+                ],
+                "summary": "Update Task",
+                "description": "Update a scheduled task for a service.",
+                "operationId": "update-scheduled-task-by-service-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the service.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "task_uuid",
+                        "in": "path",
+                        "description": "UUID of the scheduled task.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Scheduled task data",
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "description": "The name of the scheduled task."
+                                    },
+                                    "command": {
+                                        "type": "string",
+                                        "description": "The command to execute."
+                                    },
+                                    "frequency": {
+                                        "type": "string",
+                                        "description": "The frequency of the scheduled task."
+                                    },
+                                    "container": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "description": "The container where the command should be executed."
+                                    },
+                                    "timeout": {
+                                        "type": "integer",
+                                        "description": "The timeout of the scheduled task in seconds.",
+                                        "default": 3600
+                                    },
+                                    "enabled": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the scheduled task is enabled.",
+                                        "default": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Scheduled task updated.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/ScheduledTask"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/422"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
             "delete": {
                 "tags": [
                     "Scheduled Tasks"
