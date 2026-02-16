@@ -1495,7 +1495,10 @@ class GlobalSearch extends Component
                 'type' => 'one-click-service-'.$serviceKey,
                 'category' => 'Services',
                 'resourceType' => 'service',
-            ]);
+            ] + array_filter([
+                'amd_only' => data_get($service, 'amd_only') ? true : null,
+                'arm_only' => data_get($service, 'arm_only') ? true : null,
+            ]));
         }
 
         $cachedServices = $items->toArray();
