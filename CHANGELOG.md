@@ -4514,6 +4514,9 @@ All notable changes to this project will be documented in this file.
 - *(database)* Disable proxy on port allocation failure (#8362)
 - *(sentry)* Use withScope for SSH retry event tracking (#8363)
 - *(api)* Add a newline to openapi.json
+- *(server)* Improve IP uniqueness validation with team-specific error messages
+- *(service)* Glitchtip webdashboard doesn't load
+- *(service)* Glitchtip webdashboard doesn't load (#8249)
 
 ### 💼 Other
 
@@ -5606,6 +5609,7 @@ All notable changes to this project will be documented in this file.
 - *(api)* Application urls validation
 - *(services)* Improve some service slogans
 - *(ssh-retry)* Remove Sentry tracking from retry logic
+- *(ssh-retry)* Remove Sentry tracking from retry logic
 
 ### 📚 Documentation
 
@@ -5751,6 +5755,7 @@ All notable changes to this project will be documented in this file.
 - Add Coolify design system reference
 - Add Coolify design system reference (#8237)
 - Update changelog
+- Update changelog
 
 ### ⚡ Performance
 
@@ -5789,6 +5794,9 @@ All notable changes to this project will be documented in this file.
 - Add tests for shared environment variable spacing and resolution
 - Add comprehensive preview deployment port and path tests
 - Add comprehensive preview deployment port and path tests (#7677)
+- Add Pest browser testing with SQLite :memory: schema
+- Add dashboard test and improve browser test coverage
+- Migrate to SQLite :memory: and add Pest browser testing (#8364)
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -6512,6 +6520,12 @@ All notable changes to this project will be documented in this file.
 - Prepare for PR
 - *(services)* Update service template json files
 - Bump coolify version
+- Prepare for PR
+- Prepare for PR
+- Prepare for PR
+- Prepare for PR
+- Prepare for PR
+- Prepare for PR
 - Prepare for PR
 - Prepare for PR
 - Prepare for PR
