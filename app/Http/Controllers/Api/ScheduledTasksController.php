@@ -93,8 +93,8 @@ class ScheduledTasksController extends Controller
         $task->command = $request->command;
         $task->frequency = $request->frequency;
         $task->container = $request->container;
-        $task->timeout = $request->timeout ?? 300;
-        $task->enabled = $request->enabled ?? true;
+        $task->timeout = $request->has('timeout') ? $request->timeout : 300;
+        $task->enabled = $request->has('enabled') ? $request->enabled : true;
         $task->team_id = $teamId;
 
         if ($resource instanceof Application) {
@@ -115,6 +115,10 @@ class ScheduledTasksController extends Controller
         $return = validateIncomingRequest($request);
         if ($return instanceof \Illuminate\Http\JsonResponse) {
             return $return;
+        }
+
+        if ($request->all() === []) {
+            return response()->json(['message' => 'At least one field must be provided.'], 422);
         }
 
         $allowedFields = ['name', 'command', 'frequency', 'container', 'timeout', 'enabled'];
@@ -164,12 +168,10 @@ class ScheduledTasksController extends Controller
     {
         $this->authorize('update', $resource);
 
-        $task = $resource->scheduled_tasks()->where('uuid', $request->task_uuid)->first();
-        if (! $task) {
+        $deleted = $resource->scheduled_tasks()->where('uuid', $request->task_uuid)->delete();
+        if (! $deleted) {
             return response()->json(['message' => 'Scheduled task not found.'], 404);
         }
-
-        $task->delete();
 
         return response()->json(['message' => 'Scheduled task deleted.']);
     }

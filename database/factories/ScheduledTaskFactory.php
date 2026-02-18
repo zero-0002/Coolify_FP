@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Team;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ScheduledTaskFactory extends Factory
@@ -14,7 +15,7 @@ class ScheduledTaskFactory extends Factory
             'frequency' => '* * * * *',
             'timeout' => 300,
             'enabled' => true,
-            'team_id' => 1,
+            'team_id' => Team::factory(),
         ];
     }
 }
