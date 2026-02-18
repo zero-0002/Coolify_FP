@@ -2163,6 +2163,206 @@ paths:
       security:
         -
           bearerAuth: []
+  '/applications/{uuid}/scheduled-tasks':
+    get:
+      tags:
+        - 'Scheduled Tasks'
+      summary: 'List Tasks'
+      description: 'List all scheduled tasks for an application.'
+      operationId: list-scheduled-tasks-by-application-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the application.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Get all scheduled tasks for an application.'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduledTask'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - 'Scheduled Tasks'
+      summary: 'Create Tasks'
+      description: 'Create a new scheduled task for an application.'
+      operationId: create-scheduled-task-by-application-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the application.'
+          required: true,
+          schema:
+            type: string
+      requestBody:
+        description: 'Scheduled task data'
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - name
+                - command
+                - frequency
+              properties:
+                name:
+                  type: string
+                  description: 'The name of the scheduled task.'
+                command:
+                  type: string
+                  description: 'The command to execute.'
+                frequency:
+                  type: string
+                  description: 'The frequency of the scheduled task.'
+                container:
+                  type: string
+                  nullable: true
+                  description: 'The container where the command should be executed.'
+                timeout:
+                  type: integer
+                  description: 'The timeout of the scheduled task in seconds.'
+                  default: 3600
+                enabled:
+                  type: boolean
+                  description: 'The flag to indicate if the scheduled task is enabled.'
+                  default: true
+              type: object
+      responses:
+        '201':
+          description: 'Scheduled task created.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledTask'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '422':
+          $ref: '#/components/responses/422'
+      security:
+        -
+          bearerAuth: []
+  '/applications/{uuid}/scheduled-tasks/{task_uuid}':
+    patch:
+      tags:
+        - 'Scheduled Tasks'
+      summary: 'Update Task'
+      description: 'Update a scheduled task for an application.'
+      operationId: update-scheduled-task-by-application-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the application.'
+          required: true
+          schema:
+            type: string
+        -
+          name: task_uuid
+          in: path
+          description: 'UUID of the scheduled task.'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: 'Scheduled task data'
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+                  description: 'The name of the scheduled task.'
+                command:
+                  type: string
+                  description: 'The command to execute.'
+                frequency:
+                  type: string
+                  description: 'The frequency of the scheduled task.'
+                container:
+                  type: string
+                  nullable: true
+                  description: 'The container where the command should be executed.'
+                timeout:
+                  type: integer
+                  description: 'The timeout of the scheduled task in seconds.'
+                  default: 3600
+                enabled:
+                  type: boolean
+                  description: 'The flag to indicate if the scheduled task is enabled.'
+                  default: true
+              type: object
+      responses:
+        '200':
+          description: 'Scheduled task updated.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledTask'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '422':
+          $ref: '#/components/responses/422'
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - 'Scheduled Tasks'
+      summary: 'Delete Task'
+      description: 'Delete a scheduled task for an application.'
+      operationId: delete-scheduled-task-by-application-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the application.'
+          required: true
+          schema:
+            type: string
+        -
+          name: task_uuid
+          in: path
+          description: 'UUID of the scheduled task.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Scheduled task deleted.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                    example: 'Scheduled task deleted.'
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
   /cloud-tokens:
     get:
       tags:
@@ -6231,6 +6431,206 @@ paths:
       security:
         -
           bearerAuth: []
+  '/services/{uuid}/scheduled-tasks':
+    get:
+      tags:
+        - 'Scheduled Tasks'
+      summary: 'List (Service)'
+      description: 'List all scheduled tasks for a service.'
+      operationId: list-scheduled-tasks-by-service-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the service.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Get all scheduled tasks for a service.'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduledTask'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - 'Scheduled Tasks'
+      summary: 'Create (Service)'
+      description: 'Create a new scheduled task for a service.'
+      operationId: create-scheduled-task-by-service-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the service.'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: 'Scheduled task data'
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - name
+                - command
+                - frequency
+              properties:
+                name:
+                  type: string
+                  description: 'The name of the scheduled task.'
+                command:
+                  type: string
+                  description: 'The command to execute.'
+                frequency:
+                  type: string
+                  description: 'The frequency of the scheduled task.'
+                container:
+                  type: string
+                  nullable: true
+                  description: 'The container where the command should be executed.'
+                timeout:
+                  type: integer
+                  description: 'The timeout of the scheduled task in seconds.'
+                  default: 3600
+                enabled:
+                  type: boolean
+                  description: 'The flag to indicate if the scheduled task is enabled.'
+                  default: true
+              type: object
+      responses:
+        '201':
+          description: 'Scheduled task created.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledTask'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '422':
+          $ref: '#/components/responses/422'
+      security:
+        -
+          bearerAuth: []
+  '/services/{uuid}/scheduled-tasks/{task_uuid}':
+    patch:
+      tags:
+        - 'Scheduled Tasks'
+      summary: 'Update Task'
+      description: 'Update a scheduled task for a service.'
+      operationId: update-scheduled-task-by-service-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the service.'
+          required: true
+          schema:
+            type: string
+        -
+          name: task_uuid
+          in: path
+          description: 'UUID of the scheduled task.'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: 'Scheduled task data'
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+                  description: 'The name of the scheduled task.'
+                command:
+                  type: string
+                  description: 'The command to execute.'
+                frequency:
+                  type: string
+                  description: 'The frequency of the scheduled task.'
+                container:
+                  type: string
+                  nullable: true
+                  description: 'The container where the command should be executed.'
+                timeout:
+                  type: integer
+                  description: 'The timeout of the scheduled task in seconds.'
+                  default: 3600
+                enabled:
+                  type: boolean
+                  description: 'The flag to indicate if the scheduled task is enabled.'
+                  default: true
+              type: object
+      responses:
+        '200':
+          description: 'Scheduled task updated.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledTask'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '422':
+          $ref: '#/components/responses/422'
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - 'Scheduled Tasks'
+      summary: 'Delete Task'
+      description: 'Delete a scheduled task for a service.'
+      operationId: delete-scheduled-task-by-service-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the service.'
+          required: true
+          schema:
+            type: string
+        -
+          name: task_uuid
+          in: path
+          description: 'UUID of the scheduled task.'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Scheduled task deleted.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                    example: 'Scheduled task deleted.'
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
   /teams:
     get:
       tags:
@@ -6943,6 +7343,43 @@ components:
         delete_unused_networks:
           type: boolean
           description: 'The flag to indicate if the unused networks should be deleted.'
+      type: object
+    ScheduledTask:
+      description: 'Scheduled Task model'
+      properties:
+        id:
+          type: integer
+          description: 'The unique identifier of the scheduled task in the database.'
+        uuid:
+          type: string
+          description: 'The unique identifier of the scheduled task.'
+        enabled:
+          type: boolean
+          description: 'The flag to indicate if the scheduled task is enabled.'
+        name:
+          type: string
+          description: 'The name of the scheduled task.'
+        command:
+          type: string
+          description: 'The command to execute.'
+        frequency:
+          type: string
+          description: 'The frequency of the scheduled task.'
+        container:
+          type: string
+          nullable: true
+          description: 'The container where the command should be executed.'
+        timeout:
+          type: integer
+          description: 'The timeout of the scheduled task in seconds.'
+        created_at:
+          type: string
+          format: date-time
+          description: 'The date and time when the scheduled task was created.'
+        updated_at:
+          type: string
+          format: date-time
+          description: 'The date and time when the scheduled task was last updated.'
       type: object
     Service:
       description: 'Service model'
