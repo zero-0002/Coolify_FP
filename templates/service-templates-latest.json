@@ -4384,6 +4384,25 @@
         "minversion": "0.0.0",
         "port": "8989"
     },
+    "spacebot": {
+        "documentation": "https://docs.spacebot.sh/docker?utm_source=coolify.io",
+        "slogan": "An agentic AI system with specialized processes for thinking, working, and remembering.",
+        "compose": "c2VydmljZXM6CiAgc3BhY2Vib3Q6CiAgICBpbWFnZTogJ2doY3IuaW8vc3BhY2Vkcml2ZWFwcC9zcGFjZWJvdDpmdWxsJwogICAgZW52aXJvbm1lbnQ6CiAgICAgIC0gU0VSVklDRV9GUUROX1NQQUNFQk9UXzE5ODk4CiAgICAgIC0gJ0FOVEhST1BJQ19BUElfS0VZPSR7QU5USFJPUElDX0FQSV9LRVl9JwogICAgICAtICdPUEVOQUlfQVBJX0tFWT0ke09QRU5BSV9BUElfS0VZfScKICAgICAgLSAnT1BFTlJPVVRFUl9BUElfS0VZPSR7T1BFTlJPVVRFUl9BUElfS0VZfScKICAgICAgLSAnRElTQ09SRF9CT1RfVE9LRU49JHtESVNDT1JEX0JPVF9UT0tFTn0nCiAgICAgIC0gJ1NMQUNLX0JPVF9UT0tFTj0ke1NMQUNLX0JPVF9UT0tFTn0nCiAgICAgIC0gJ1NMQUNLX0FQUF9UT0tFTj0ke1NMQUNLX0FQUF9UT0tFTn0nCiAgICAgIC0gJ0JSQVZFX1NFQVJDSF9BUElfS0VZPSR7QlJBVkVfU0VBUkNIX0FQSV9LRVl9JwogICAgICAtICdTUEFDRUJPVF9DSEFOTkVMX01PREVMPSR7U1BBQ0VCT1RfQ0hBTk5FTF9NT0RFTH0nCiAgICAgIC0gJ1NQQUNFQk9UX1dPUktFUl9NT0RFTD0ke1NQQUNFQk9UX1dPUktFUl9NT0RFTH0nCiAgICB2b2x1bWVzOgogICAgICAtICdzcGFjZWJvdC1kYXRhOi9kYXRhJwogICAgc2VjdXJpdHlfb3B0OgogICAgICAtIHNlY2NvbXA9dW5jb25maW5lZAogICAgc2htX3NpemU6IDFnCiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gY3VybAogICAgICAgIC0gJy1zZicKICAgICAgICAtICdodHRwOi8vbG9jYWxob3N0OjE5ODk4L2FwaS9oZWFsdGgnCiAgICAgIGludGVydmFsOiAzMHMKICAgICAgdGltZW91dDogNXMKICAgICAgcmV0cmllczogMwo=",
+        "tags": [
+            "ai",
+            "agent",
+            "anthropic",
+            "openai",
+            "discord",
+            "slack",
+            "llm",
+            "agentic"
+        ],
+        "category": "ai",
+        "logo": "svgs/spacebot.png",
+        "minversion": "0.0.0",
+        "port": "19898"
+    },
     "sparkyfitness": {
         "documentation": "https://codewithcj.github.io/SparkyFitness/?utm_source=coolify.io",
         "slogan": "SparkyFitness is a comprehensive fitness tracking and management application designed to help users monitor their nutrition, exercise, and body measurements. It provides tools for daily progress tracking, goal setting, and insightful reports to support a healthy lifestyle.",
