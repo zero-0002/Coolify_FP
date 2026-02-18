@@ -29,6 +29,11 @@ class ScheduledTask extends BaseModel
 
     protected $guarded = [];
 
+    public static function ownedByCurrentTeamAPI(int $teamId)
+    {
+        return static::where('team_id', $teamId)->orderBy('created_at', 'desc');
+    }
+
     protected function casts(): array
     {
         return [
