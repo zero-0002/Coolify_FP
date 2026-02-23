@@ -80,6 +80,11 @@ class ServiceDatabase extends BaseModel
         return data_get($this, 'is_gzip_enabled', true);
     }
 
+    public function isForceHttpsEnabled()
+    {
+        return data_get($this, 'is_force_https_enabled', true);
+    }
+
     public function type()
     {
         return 'service';
