@@ -20,6 +20,7 @@ body:
         - New Feature
         - New Service
         - Improvement
+        - Bug Fix
     validations:
       required: true
 
@@ -27,5 +28,27 @@ body:
     attributes:
       label: Description
       description: Provide a detailed description of the feature, improvement, or service you are proposing.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Requirements / How It Should Work
+      description: Describe in detail how the feature, service, or improvement should function. Include user flow, expected behavior, or technical implementation notes if applicable.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Criteria to Satisfy Bounty
+      description: Define the conditions that must be met for the PR or contribution to be considered complete and eligible for the bounty. Be specific about functionality, tests, or documentation requirements.
+      value: |
+        1.
+        2.
+        3.
     validations:
       required: true
