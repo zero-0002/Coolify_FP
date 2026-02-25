@@ -2765,26 +2765,44 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         // HTTP type healthcheck (default)
         if (! $this->application->health_check_port) {
-            $health_check_port = $this->application->ports_exposes_array[0];
+            $health_check_port = (int) $this->application->ports_exposes_array[0];
         } else {
-            $health_check_port = $this->application->health_check_port;
+            $health_check_port = (int) $this->application->health_check_port;
         }
         if ($this->application->settings->is_static || $this->application->build_pack === 'static') {
             $health_check_port = 80;
         }
-        if ($this->application->health_check_path) {
-            $this->full_healthcheck_url = "{$this->application->health_check_method}: {$this->application->health_check_scheme}://{$this->application->health_check_host}:{$health_check_port}{$this->application->health_check_path}";
-            $generated_healthchecks_commands = [
-                "curl -s -X {$this->application->health_check_method} -f {$this->application->health_check_scheme}://{$this->application->health_check_host}:{$health_check_port}{$this->application->health_check_path} > /dev/null || wget -q -O- {$this->application->health_check_scheme}://{$this->application->health_check_host}:{$health_check_port}{$this->application->health_check_path} > /dev/null || exit 1",
-            ];
+
+        $method = $this->sanitizeHealthCheckValue($this->application->health_check_method, '/^[A-Z]+$/', 'GET');
+        $scheme = $this->sanitizeHealthCheckValue($this->application->health_check_scheme, '/^https?$/', 'http');
+        $host = $this->sanitizeHealthCheckValue($this->application->health_check_host, '/^[a-zA-Z0-9.\-_]+$/', 'localhost');
+        $path = $this->application->health_check_path
+            ? $this->sanitizeHealthCheckValue($this->application->health_check_path, '#^[a-zA-Z0-9/\-_.~%]+$#', '/')
+            : null;
+
+        $url = escapeshellarg("{$scheme}://{$host}:{$health_check_port}".($path ?? '/'));
+        $method = escapeshellarg($method);
+
+        if ($path) {
+            $this->full_healthcheck_url = "{$this->application->health_check_method}: {$scheme}://{$host}:{$health_check_port}{$path}";
         } else {
-            $this->full_healthcheck_url = "{$this->application->health_check_method}: {$this->application->health_check_scheme}://{$this->application->health_check_host}:{$health_check_port}/";
-            $generated_healthchecks_commands = [
-                "curl -s -X {$this->application->health_check_method} -f {$this->application->health_check_scheme}://{$this->application->health_check_host}:{$health_check_port}/ > /dev/null || wget -q -O- {$this->application->health_check_scheme}://{$this->application->health_check_host}:{$health_check_port}/ > /dev/null || exit 1",
-            ];
+            $this->full_healthcheck_url = "{$this->application->health_check_method}: {$scheme}://{$host}:{$health_check_port}/";
         }
 
+        $generated_healthchecks_commands = [
+            "curl -s -X {$method} -f {$url} > /dev/null || wget -q -O- {$url} > /dev/null || exit 1",
+        ];
+
         return implode(' ', $generated_healthchecks_commands);
+    }
+
+    private function sanitizeHealthCheckValue(string $value, string $pattern, string $default): string
+    {
+        if (preg_match($pattern, $value)) {
+            return $value;
+        }
+
+        return $default;
     }
 
     private function pull_latest_image($image)
