@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Hash;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    InstanceSettings::create(['id' => 0]);
+    InstanceSettings::create(['id' => 0, 'is_sponsorship_popup_enabled' => false]);
 
     // Create root/owner user
     $this->user = User::factory()->create([
@@ -96,15 +96,6 @@ uZx9iFkCELtxrh31QJ68AAAAEXNhaWxANzZmZjY2ZDJlMmRkAQIDBA==
     $this->member->teams()->attach(0, ['role' => 'member']);
 });
 
-function loginAndSkipOnboarding(): mixed
-{
-    return visit('/login')
-        ->fill('email', 'test@example.com')
-        ->fill('password', 'password')
-        ->click('Login')
-        ->click('Skip Setup');
-}
-
 function loginAsMember(): mixed
 {
     return visit('/login')
@@ -121,7 +112,7 @@ it('redirects unauthenticated users to login', function () {
 });
 
 it('shows dashboard after successful login and onboarding skip', function () {
-    $page = loginAndSkipOnboarding();
+    $page = loginAndSkipBoarding();
 
     $page->assertSee('Dashboard')
         ->assertSee('Your self-hosted infrastructure')
@@ -129,7 +120,7 @@ it('shows dashboard after successful login and onboarding skip', function () {
 });
 
 it('displays all projects on dashboard', function () {
-    $page = loginAndSkipOnboarding();
+    $page = loginAndSkipBoarding();
 
     $page->assertSee('Projects')
         ->assertSee('My first project')
@@ -140,7 +131,7 @@ it('displays all projects on dashboard', function () {
 });
 
 it('displays all servers on dashboard', function () {
-    $page = loginAndSkipOnboarding();
+    $page = loginAndSkipBoarding();
 
     $page->assertSee('Servers')
         ->assertSee('localhost')
@@ -151,7 +142,7 @@ it('displays all servers on dashboard', function () {
 });
 
 it('allows authenticated users to access team settings', function () {
-    loginAndSkipOnboarding();
+    loginAndSkipBoarding();
 
     $page = visit('/team');
 
@@ -161,7 +152,7 @@ it('allows authenticated users to access team settings', function () {
 });
 
 it('shows danger zone to team owner', function () {
-    loginAndSkipOnboarding();
+    loginAndSkipBoarding();
 
     $page = visit('/team');
 
@@ -194,7 +185,7 @@ it('prevents unauthenticated access to project show page', function () {
 });
 
 it('authenticated user can navigate to server details', function () {
-    loginAndSkipOnboarding();
+    loginAndSkipBoarding();
 
     // Navigate to server show page using UUID
     $server = Server::first();
@@ -206,7 +197,7 @@ it('authenticated user can navigate to server details', function () {
 });
 
 it('authenticated user can navigate to project details', function () {
-    loginAndSkipOnboarding();
+    loginAndSkipBoarding();
 
     // Navigate to project show page using UUID
     $project = Project::first();
@@ -225,7 +216,7 @@ it('prevents unauthenticated access to team members page', function () {
 });
 
 it('authenticated user can access team members page', function () {
-    loginAndSkipOnboarding();
+    loginAndSkipBoarding();
 
     $page = visit('/team/members');
 
@@ -300,7 +291,7 @@ it('member does not see proxy controls on server page', function () {
 });
 
 it('owner sees terminal and security links on server page', function () {
-    loginAndSkipOnboarding();
+    loginAndSkipBoarding();
 
     $server = Server::first();
     $page = visit("/server/{$server->uuid}");
@@ -341,7 +332,7 @@ it('member does not see environment settings link on project page', function () 
 });
 
 it('owner sees add environment and settings on project page', function () {
-    loginAndSkipOnboarding();
+    loginAndSkipBoarding();
 
     $project = Project::where('uuid', 'project-1')->first();
     $page = visit("/project/{$project->uuid}");
