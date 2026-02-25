@@ -1,16 +1,16 @@
 # documentation: https://github.com/librespeed/speedtest
-# slogan: Self-hosted Speed Test for HTML5 and more.
+# slogan: Self-hosted lightweight Speed Test.
 # category: devtools
 # tags: speedtest, internet-speed
-# logo: svgs/speedtest.svg
+# logo: svgs/librespeed.svg
 # port: 82
 
 services:
-  speedtest:
-    container_name: speedtest
+  librespeed:
+    container_name: librespeed
     image: 'ghcr.io/librespeed/speedtest:latest'
     environment:
-      - SERVICE_URL_SPEEDTEST_82
+      - SERVICE_URL_LIBRESPEED_82
       - MODE=standalone
       - TELEMETRY=false
       - DISTANCE=km
