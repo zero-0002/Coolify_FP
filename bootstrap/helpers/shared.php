@@ -186,6 +186,14 @@ function refreshSession(?Team $team = null): void
             $team = User::find(Auth::id())->teams->first();
         }
     }
+
+    if (! $team) {
+        session()->forget('currentTeam');
+        Cache::forget('team:'.Auth::id());
+
+        return;
+    }
+
     // Clear old cache key format for backwards compatibility
     Cache::forget('team:'.Auth::id());
     // Use new cache key format that includes team ID

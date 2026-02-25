@@ -7,6 +7,7 @@ use App\Models\TeamInvitation;
 use App\Support\ValidationPatterns;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
@@ -98,8 +99,6 @@ class Index extends Component
         try {
             $currentTeam = currentTeam();
             $this->authorize('delete', $currentTeam);
-            $currentTeam->delete();
-
             $currentTeam->members->each(function ($user) use ($currentTeam) {
                 if ($user->id === Auth::id()) {
                     return;
@@ -111,7 +110,13 @@ class Index extends Component
                 }
             });
 
-            refreshSession();
+            // Clear stale cache before deleting so refreshSession doesn't resolve the deleted team
+            Cache::forget('user:'.Auth::id().':team:'.$currentTeam->id);
+            $currentTeam->delete();
+
+            // Switch to the user's next available team
+            $newTeam = Auth::user()->teams()->first();
+            refreshSession($newTeam);
 
             return redirect()->route('team.index');
         } catch (\Throwable $e) {
