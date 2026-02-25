@@ -16,6 +16,12 @@ class HealthChecks extends Component
     #[Validate(['boolean'])]
     public bool $healthCheckEnabled = false;
 
+    #[Validate(['string', 'in:http,cmd'])]
+    public string $healthCheckType = 'http';
+
+    #[Validate(['nullable', 'required_if:healthCheckType,cmd', 'string', 'max:1000', 'regex:/^[a-zA-Z0-9 \-_.\/:=@,+]+$/'])]
+    public ?string $healthCheckCommand = null;
+
     #[Validate(['required', 'string', 'in:GET,HEAD,POST,OPTIONS'])]
     public string $healthCheckMethod;
 
@@ -54,6 +60,8 @@ class HealthChecks extends Component
 
     protected $rules = [
         'healthCheckEnabled' => 'boolean',
+        'healthCheckType' => 'string|in:http,cmd',
+        'healthCheckCommand' => ['nullable', 'string', 'max:1000', 'regex:/^[a-zA-Z0-9 \-_.\/:=@,+]+$/'],
         'healthCheckPath' => ['required', 'string', 'regex:#^[a-zA-Z0-9/\-_.~%]+$#'],
         'healthCheckPort' => 'nullable|integer|min:1|max:65535',
         'healthCheckHost' => ['required', 'string', 'regex:/^[a-zA-Z0-9.\-_]+$/'],
@@ -85,6 +93,8 @@ class HealthChecks extends Component
 
             // Sync to model
             $this->resource->health_check_enabled = $this->healthCheckEnabled;
+            $this->resource->health_check_type = $this->healthCheckType;
+            $this->resource->health_check_command = $this->healthCheckCommand;
             $this->resource->health_check_method = $this->healthCheckMethod;
             $this->resource->health_check_scheme = $this->healthCheckScheme;
             $this->resource->health_check_host = $this->healthCheckHost;
@@ -102,6 +112,8 @@ class HealthChecks extends Component
         } else {
             // Sync from model
             $this->healthCheckEnabled = $this->resource->health_check_enabled;
+            $this->healthCheckType = $this->resource->health_check_type ?? 'http';
+            $this->healthCheckCommand = $this->resource->health_check_command;
             $this->healthCheckMethod = $this->resource->health_check_method;
             $this->healthCheckScheme = $this->resource->health_check_scheme;
             $this->healthCheckHost = $this->resource->health_check_host;
@@ -120,9 +132,12 @@ class HealthChecks extends Component
     public function instantSave()
     {
         $this->authorize('update', $this->resource);
+        $this->validate();
 
         // Sync component properties to model
         $this->resource->health_check_enabled = $this->healthCheckEnabled;
+        $this->resource->health_check_type = $this->healthCheckType;
+        $this->resource->health_check_command = $this->healthCheckCommand;
         $this->resource->health_check_method = $this->healthCheckMethod;
         $this->resource->health_check_scheme = $this->healthCheckScheme;
         $this->resource->health_check_host = $this->healthCheckHost;
@@ -147,6 +162,8 @@ class HealthChecks extends Component
 
             // Sync component properties to model
             $this->resource->health_check_enabled = $this->healthCheckEnabled;
+            $this->resource->health_check_type = $this->healthCheckType;
+            $this->resource->health_check_command = $this->healthCheckCommand;
             $this->resource->health_check_method = $this->healthCheckMethod;
             $this->resource->health_check_scheme = $this->healthCheckScheme;
             $this->resource->health_check_host = $this->healthCheckHost;
@@ -175,6 +192,8 @@ class HealthChecks extends Component
 
             // Sync component properties to model
             $this->resource->health_check_enabled = $this->healthCheckEnabled;
+            $this->resource->health_check_type = $this->healthCheckType;
+            $this->resource->health_check_command = $this->healthCheckCommand;
             $this->resource->health_check_method = $this->healthCheckMethod;
             $this->resource->health_check_scheme = $this->healthCheckScheme;
             $this->resource->health_check_host = $this->healthCheckHost;

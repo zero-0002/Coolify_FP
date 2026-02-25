@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\GithubApp;
 use App\Models\User;
 use App\Policies\GithubAppPolicy;
 
@@ -14,9 +13,12 @@ it('allows any user to view any github apps', function () {
 it('allows any user to view system-wide github app', function () {
     $user = Mockery::mock(User::class)->makePartial();
 
-    $model = Mockery::mock(GithubApp::class)->makePartial();
-    $model->team_id = 1;
-    $model->is_system_wide = true;
+    $model = new class
+    {
+        public $team_id = 1;
+
+        public $is_system_wide = true;
+    };
 
     $policy = new GithubAppPolicy;
     expect($policy->view($user, $model))->toBeTrue();
@@ -30,9 +32,12 @@ it('allows team member to view non-system-wide github app', function () {
     $user = Mockery::mock(User::class)->makePartial();
     $user->shouldReceive('getAttribute')->with('teams')->andReturn($teams);
 
-    $model = Mockery::mock(GithubApp::class)->makePartial();
-    $model->team_id = 1;
-    $model->is_system_wide = false;
+    $model = new class
+    {
+        public $team_id = 1;
+
+        public $is_system_wide = false;
+    };
 
     $policy = new GithubAppPolicy;
     expect($policy->view($user, $model))->toBeTrue();
@@ -46,9 +51,12 @@ it('denies non-team member to view non-system-wide github app', function () {
     $user = Mockery::mock(User::class)->makePartial();
     $user->shouldReceive('getAttribute')->with('teams')->andReturn($teams);
 
-    $model = Mockery::mock(GithubApp::class)->makePartial();
-    $model->team_id = 1;
-    $model->is_system_wide = false;
+    $model = new class
+    {
+        public $team_id = 1;
+
+        public $is_system_wide = false;
+    };
 
     $policy = new GithubAppPolicy;
     expect($policy->view($user, $model))->toBeFalse();
@@ -74,9 +82,12 @@ it('allows user with system access to update system-wide github app', function (
     $user = Mockery::mock(User::class)->makePartial();
     $user->shouldReceive('canAccessSystemResources')->andReturn(true);
 
-    $model = Mockery::mock(GithubApp::class)->makePartial();
-    $model->team_id = 1;
-    $model->is_system_wide = true;
+    $model = new class
+    {
+        public $team_id = 1;
+
+        public $is_system_wide = true;
+    };
 
     $policy = new GithubAppPolicy;
     expect($policy->update($user, $model))->toBeTrue();
@@ -86,9 +97,12 @@ it('denies user without system access to update system-wide github app', functio
     $user = Mockery::mock(User::class)->makePartial();
     $user->shouldReceive('canAccessSystemResources')->andReturn(false);
 
-    $model = Mockery::mock(GithubApp::class)->makePartial();
-    $model->team_id = 1;
-    $model->is_system_wide = true;
+    $model = new class
+    {
+        public $team_id = 1;
+
+        public $is_system_wide = true;
+    };
 
     $policy = new GithubAppPolicy;
     expect($policy->update($user, $model))->toBeFalse();
@@ -98,9 +112,12 @@ it('allows team admin to update non-system-wide github app', function () {
     $user = Mockery::mock(User::class)->makePartial();
     $user->shouldReceive('isAdminOfTeam')->with(1)->andReturn(true);
 
-    $model = Mockery::mock(GithubApp::class)->makePartial();
-    $model->team_id = 1;
-    $model->is_system_wide = false;
+    $model = new class
+    {
+        public $team_id = 1;
+
+        public $is_system_wide = false;
+    };
 
     $policy = new GithubAppPolicy;
     expect($policy->update($user, $model))->toBeTrue();
@@ -110,9 +127,12 @@ it('denies team member to update non-system-wide github app', function () {
     $user = Mockery::mock(User::class)->makePartial();
     $user->shouldReceive('isAdminOfTeam')->with(1)->andReturn(false);
 
-    $model = Mockery::mock(GithubApp::class)->makePartial();
-    $model->team_id = 1;
-    $model->is_system_wide = false;
+    $model = new class
+    {
+        public $team_id = 1;
+
+        public $is_system_wide = false;
+    };
 
     $policy = new GithubAppPolicy;
     expect($policy->update($user, $model))->toBeFalse();
@@ -122,9 +142,12 @@ it('allows user with system access to delete system-wide github app', function (
     $user = Mockery::mock(User::class)->makePartial();
     $user->shouldReceive('canAccessSystemResources')->andReturn(true);
 
-    $model = Mockery::mock(GithubApp::class)->makePartial();
-    $model->team_id = 1;
-    $model->is_system_wide = true;
+    $model = new class
+    {
+        public $team_id = 1;
+
+        public $is_system_wide = true;
+    };
 
     $policy = new GithubAppPolicy;
     expect($policy->delete($user, $model))->toBeTrue();
@@ -134,9 +157,12 @@ it('denies user without system access to delete system-wide github app', functio
     $user = Mockery::mock(User::class)->makePartial();
     $user->shouldReceive('canAccessSystemResources')->andReturn(false);
 
-    $model = Mockery::mock(GithubApp::class)->makePartial();
-    $model->team_id = 1;
-    $model->is_system_wide = true;
+    $model = new class
+    {
+        public $team_id = 1;
+
+        public $is_system_wide = true;
+    };
 
     $policy = new GithubAppPolicy;
     expect($policy->delete($user, $model))->toBeFalse();
@@ -146,9 +172,12 @@ it('allows team admin to delete non-system-wide github app', function () {
     $user = Mockery::mock(User::class)->makePartial();
     $user->shouldReceive('isAdminOfTeam')->with(1)->andReturn(true);
 
-    $model = Mockery::mock(GithubApp::class)->makePartial();
-    $model->team_id = 1;
-    $model->is_system_wide = false;
+    $model = new class
+    {
+        public $team_id = 1;
+
+        public $is_system_wide = false;
+    };
 
     $policy = new GithubAppPolicy;
     expect($policy->delete($user, $model))->toBeTrue();
@@ -158,9 +187,12 @@ it('denies team member to delete non-system-wide github app', function () {
     $user = Mockery::mock(User::class)->makePartial();
     $user->shouldReceive('isAdminOfTeam')->with(1)->andReturn(false);
 
-    $model = Mockery::mock(GithubApp::class)->makePartial();
-    $model->team_id = 1;
-    $model->is_system_wide = false;
+    $model = new class
+    {
+        public $team_id = 1;
+
+        public $is_system_wide = false;
+    };
 
     $policy = new GithubAppPolicy;
     expect($policy->delete($user, $model))->toBeFalse();
@@ -169,9 +201,12 @@ it('denies team member to delete non-system-wide github app', function () {
 it('denies restore of github app', function () {
     $user = Mockery::mock(User::class)->makePartial();
 
-    $model = Mockery::mock(GithubApp::class)->makePartial();
-    $model->team_id = 1;
-    $model->is_system_wide = false;
+    $model = new class
+    {
+        public $team_id = 1;
+
+        public $is_system_wide = false;
+    };
 
     $policy = new GithubAppPolicy;
     expect($policy->restore($user, $model))->toBeFalse();
@@ -180,9 +215,12 @@ it('denies restore of github app', function () {
 it('denies force delete of github app', function () {
     $user = Mockery::mock(User::class)->makePartial();
 
-    $model = Mockery::mock(GithubApp::class)->makePartial();
-    $model->team_id = 1;
-    $model->is_system_wide = false;
+    $model = new class
+    {
+        public $team_id = 1;
+
+        public $is_system_wide = false;
+    };
 
     $policy = new GithubAppPolicy;
     expect($policy->forceDelete($user, $model))->toBeFalse();
