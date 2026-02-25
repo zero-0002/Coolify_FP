@@ -105,8 +105,6 @@ it('saves application name and enables static site with nginx config', function 
     $applicationRoute = "/project/{$this->project->uuid}/environment/{$this->environment->uuid}/application/{$this->application->uuid}";
 
     $page = visit($applicationRoute);
-
-    dismissNotificationPrompt($page);
     $page->screenshot();
 
     $page->assertSee('General')
@@ -115,7 +113,6 @@ it('saves application name and enables static site with nginx config', function 
         ->fill('customDockerRunOptions', '--read-only');
 
     submitResourceForm($page);
-    dismissNotificationPrompt($page);
     toggleCheckboxByWireModel($page, 'isStatic');
     $page->screenshot();
 
@@ -129,7 +126,6 @@ it('saves application name and enables static site with nginx config', function 
         ->and($this->application->settings->is_static)->toBeTrue();
 
     $reloadedPage = visit($applicationRoute);
-    dismissNotificationPrompt($reloadedPage);
     $reloadedPage->screenshot();
 
     $reloadedPage->assertValue('name', $updatedName)
@@ -144,8 +140,6 @@ it('saves database name and enables ssl with mode selector', function () {
     $databaseRoute = "/project/{$this->project->uuid}/environment/{$this->environment->uuid}/database/{$this->database->uuid}";
 
     $page = visit($databaseRoute);
-
-    dismissNotificationPrompt($page);
     $page->screenshot();
 
     $page->assertSee('General')
@@ -154,8 +148,6 @@ it('saves database name and enables ssl with mode selector', function () {
         ->fill('description', 'Updated by browser test');
 
     submitResourceForm($page);
-    dismissNotificationPrompt($page);
-
     toggleCheckboxByWireModel($page, 'enableSsl');
 
     $page->assertSee('SSL Mode')
@@ -168,38 +160,11 @@ it('saves database name and enables ssl with mode selector', function () {
         ->and($this->database->enable_ssl)->toBeTruthy();
 
     $reloadedPage = visit($databaseRoute);
-    dismissNotificationPrompt($reloadedPage);
     $reloadedPage->screenshot();
 
     $reloadedPage->assertValue('name', $updatedDatabaseName)
         ->assertSee('SSL Mode');
 });
-
-function dismissNotificationPrompt($page): void
-{
-    $page->script(<<<'JS'
-        const closeButtonTexts = ['Accept and Close', 'Slice', 'Maybe next time'];
-        for (const text of closeButtonTexts) {
-            const closeButton = Array.from(document.querySelectorAll('button, a'))
-                .find((button) => button.textContent.includes(text));
-
-            if (! closeButton) {
-                continue;
-            }
-
-            const modal =
-                closeButton.closest('.fixed') ??
-                closeButton.closest('[role="dialog"]') ??
-                closeButton.closest('div');
-
-            if (modal) {
-                modal.remove();
-            } else {
-                closeButton.click();
-            }
-        }
-    JS);
-}
 
 function submitResourceForm($page): void
 {
