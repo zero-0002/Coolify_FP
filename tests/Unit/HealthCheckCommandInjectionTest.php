@@ -165,12 +165,69 @@ it('allows valid health check values via API rules', function () {
     expect($validator->fails())->toBeFalse();
 });
 
+it('generates CMD healthcheck command directly', function () {
+    $result = callGenerateHealthcheckCommands([
+        'health_check_type' => 'cmd',
+        'health_check_command' => 'pg_isready -U postgres',
+    ]);
+
+    expect($result)->toBe('pg_isready -U postgres');
+});
+
+it('strips newlines from CMD healthcheck command', function () {
+    $result = callGenerateHealthcheckCommands([
+        'health_check_type' => 'cmd',
+        'health_check_command' => "redis-cli ping\n&& echo pwned",
+    ]);
+
+    expect($result)->not->toContain("\n")
+        ->and($result)->toBe('redis-cli ping && echo pwned');
+});
+
+it('falls back to HTTP healthcheck when CMD type has empty command', function () {
+    $result = callGenerateHealthcheckCommands([
+        'health_check_type' => 'cmd',
+        'health_check_command' => '',
+    ]);
+
+    // Should fall through to HTTP path
+    expect($result)->toContain('curl -s -X');
+});
+
+it('validates healthCheckCommand rejects strings over 1000 characters', function () {
+    $rules = [
+        'healthCheckCommand' => 'nullable|string|max:1000',
+    ];
+
+    $validator = Validator::make(
+        ['healthCheckCommand' => str_repeat('a', 1001)],
+        $rules
+    );
+
+    expect($validator->fails())->toBeTrue();
+});
+
+it('validates healthCheckCommand accepts strings under 1000 characters', function () {
+    $rules = [
+        'healthCheckCommand' => 'nullable|string|max:1000',
+    ];
+
+    $validator = Validator::make(
+        ['healthCheckCommand' => 'pg_isready -U postgres'],
+        $rules
+    );
+
+    expect($validator->fails())->toBeFalse();
+});
+
 /**
  * Helper: Invokes the private generate_healthcheck_commands() method via reflection.
  */
 function callGenerateHealthcheckCommands(array $overrides = []): string
 {
     $defaults = [
+        'health_check_type' => 'http',
+        'health_check_command' => null,
         'health_check_method' => 'GET',
         'health_check_scheme' => 'http',
         'health_check_host' => 'localhost',
@@ -182,6 +239,8 @@ function callGenerateHealthcheckCommands(array $overrides = []): string
     $values = array_merge($defaults, $overrides);
 
     $application = Mockery::mock(Application::class)->makePartial();
+    $application->shouldReceive('getAttribute')->with('health_check_type')->andReturn($values['health_check_type']);
+    $application->shouldReceive('getAttribute')->with('health_check_command')->andReturn($values['health_check_command']);
     $application->shouldReceive('getAttribute')->with('health_check_method')->andReturn($values['health_check_method']);
     $application->shouldReceive('getAttribute')->with('health_check_scheme')->andReturn($values['health_check_scheme']);
     $application->shouldReceive('getAttribute')->with('health_check_host')->andReturn($values['health_check_host']);

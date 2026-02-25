@@ -1810,7 +1810,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     $counter = 1;
                     $this->application_deployment_queue->addLogEntry('Waiting for healthcheck to pass on the new container.');
                     if ($this->full_healthcheck_url && ! $this->application->custom_healthcheck_found) {
-                        $this->application_deployment_queue->addLogEntry("Healthcheck URL (inside the container): {$this->full_healthcheck_url}");
+                        $healthcheckLabel = $this->application->health_check_type === 'cmd' ? 'Healthcheck command' : 'Healthcheck URL';
+                        $this->application_deployment_queue->addLogEntry("{$healthcheckLabel} (inside the container): {$this->full_healthcheck_url}");
                     }
                     $this->application_deployment_queue->addLogEntry("Waiting for the start period ({$this->application->health_check_start_period} seconds) before starting healthcheck.");
                     $sleeptime = 0;
@@ -2768,6 +2769,14 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private function generate_healthcheck_commands()
     {
+        // Handle CMD type healthcheck
+        if ($this->application->health_check_type === 'cmd' && ! empty($this->application->health_check_command)) {
+            $this->full_healthcheck_url = $this->application->health_check_command;
+
+            return $this->application->health_check_command;
+        }
+
+        // HTTP type healthcheck (default)
         if (! $this->application->health_check_port) {
             $health_check_port = (int) $this->application->ports_exposes_array[0];
         } else {
