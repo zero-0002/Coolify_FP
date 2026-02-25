@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Destination;
 
-use App\Models\Server;
 use App\Models\StandaloneDocker;
 use App\Models\SwarmDocker;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -32,17 +31,12 @@ class Show extends Component
             $destination = StandaloneDocker::whereUuid($destination_uuid)->first() ??
                 SwarmDocker::whereUuid($destination_uuid)->firstOrFail();
 
-            $ownedByTeam = Server::ownedByCurrentTeam()->each(function ($server) use ($destination) {
-                if ($server->standaloneDockers->contains($destination) || $server->swarmDockers->contains($destination)) {
-                    $this->destination = $destination;
-                    $this->syncData();
-                }
-            });
-            if ($ownedByTeam === false) {
-                return redirect()->route('destination.index');
-            }
+            $this->authorize('view', $destination);
+
             $this->destination = $destination;
             $this->syncData();
+        } catch (\Illuminate\Auth\Access\AuthorizationException) {
+            abort(403);
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
