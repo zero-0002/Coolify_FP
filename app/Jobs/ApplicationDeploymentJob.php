@@ -2771,10 +2771,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     {
         // Handle CMD type healthcheck
         if ($this->application->health_check_type === 'cmd' && ! empty($this->application->health_check_command)) {
-            $command = str_replace(["\r\n", "\r", "\n"], ' ', $this->application->health_check_command);
-            $this->full_healthcheck_url = $command;
+            $this->full_healthcheck_url = $this->application->health_check_command;
 
-            return $command;
+            return $this->application->health_check_command;
         }
 
         // HTTP type healthcheck (default)
