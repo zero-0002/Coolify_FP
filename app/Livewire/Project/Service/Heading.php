@@ -7,12 +7,15 @@ use App\Actions\Service\StartService;
 use App\Actions\Service\StopService;
 use App\Enums\ProcessStatus;
 use App\Models\Service;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Spatie\Activitylog\Models\Activity;
 
 class Heading extends Component
 {
+    use AuthorizesRequests;
+
     public Service $service;
 
     public array $parameters;
@@ -99,13 +102,19 @@ class Heading extends Component
 
     public function start()
     {
-        $activity = StartService::run($this->service, pullLatestImages: true);
-        $this->dispatch('activityMonitor', $activity->id);
+        try {
+            $this->authorize('deploy', $this->service);
+            $activity = StartService::run($this->service, pullLatestImages: true);
+            $this->dispatch('activityMonitor', $activity->id);
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function forceDeploy()
     {
         try {
+            $this->authorize('deploy', $this->service);
             $activities = Activity::where('properties->type_uuid', $this->service->uuid)
                 ->where(function ($q) {
                     $q->where('properties->status', ProcessStatus::IN_PROGRESS->value)
@@ -117,42 +126,53 @@ class Heading extends Component
             }
             $activity = StartService::run($this->service, pullLatestImages: true, stopBeforeStart: true);
             $this->dispatch('activityMonitor', $activity->id);
-        } catch (\Exception $e) {
-            $this->dispatch('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
         }
     }
 
     public function stop()
     {
         try {
+            $this->authorize('stop', $this->service);
             StopService::dispatch($this->service, false, $this->docker_cleanup);
-        } catch (\Exception $e) {
-            $this->dispatch('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
         }
     }
 
     public function restart()
     {
-        $this->checkDeployments();
-        if ($this->isDeploymentProgress) {
-            $this->dispatch('error', 'There is a deployment in progress.');
+        try {
+            $this->authorize('deploy', $this->service);
+            $this->checkDeployments();
+            if ($this->isDeploymentProgress) {
+                $this->dispatch('error', 'There is a deployment in progress.');
 
-            return;
+                return;
+            }
+            $activity = StartService::run($this->service, stopBeforeStart: true);
+            $this->dispatch('activityMonitor', $activity->id);
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
         }
-        $activity = StartService::run($this->service, stopBeforeStart: true);
-        $this->dispatch('activityMonitor', $activity->id);
     }
 
     public function pullAndRestartEvent()
     {
-        $this->checkDeployments();
-        if ($this->isDeploymentProgress) {
-            $this->dispatch('error', 'There is a deployment in progress.');
+        try {
+            $this->authorize('deploy', $this->service);
+            $this->checkDeployments();
+            if ($this->isDeploymentProgress) {
+                $this->dispatch('error', 'There is a deployment in progress.');
 
-            return;
+                return;
+            }
+            $activity = StartService::run($this->service, pullLatestImages: true, stopBeforeStart: true);
+            $this->dispatch('activityMonitor', $activity->id);
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
         }
-        $activity = StartService::run($this->service, pullLatestImages: true, stopBeforeStart: true);
-        $this->dispatch('activityMonitor', $activity->id);
     }
 
     public function render()

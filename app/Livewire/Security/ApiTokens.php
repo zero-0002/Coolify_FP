@@ -23,6 +23,8 @@ class ApiTokens extends Component
 
     public bool $canUseWritePermissions = false;
 
+    public bool $canUseDeployPermissions = false;
+
     public function render()
     {
         return view('livewire.security.api-tokens');
@@ -33,6 +35,7 @@ class ApiTokens extends Component
         $this->isApiEnabled = InstanceSettings::get()->is_api_enabled;
         $this->canUseRootPermissions = auth()->user()->can('useRootPermissions', PersonalAccessToken::class);
         $this->canUseWritePermissions = auth()->user()->can('useWritePermissions', PersonalAccessToken::class);
+        $this->canUseDeployPermissions = auth()->user()->can('useDeployPermissions', PersonalAccessToken::class);
         $this->getTokens();
     }
 
@@ -56,6 +59,13 @@ class ApiTokens extends Component
             $this->dispatch('error', 'You do not have permission to use write permissions.');
             // Remove write permissions if they were somehow added
             $this->permissions = array_diff($this->permissions, ['write', 'write:sensitive']);
+
+            return;
+        }
+
+        if ($permissionToUpdate == 'deploy' && ! $this->canUseDeployPermissions) {
+            $this->dispatch('error', 'You do not have permission to use deploy permissions.');
+            $this->permissions = array_diff($this->permissions, ['deploy']);
 
             return;
         }
@@ -86,6 +96,10 @@ class ApiTokens extends Component
 
             if (array_intersect(['write', 'write:sensitive'], $this->permissions) && ! $this->canUseWritePermissions) {
                 throw new \Exception('You do not have permission to create tokens with write permissions.');
+            }
+
+            if (in_array('deploy', $this->permissions) && ! $this->canUseDeployPermissions) {
+                throw new \Exception('You do not have permission to create tokens with deploy permissions.');
             }
 
             $this->validate([

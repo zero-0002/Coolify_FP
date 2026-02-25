@@ -57,9 +57,13 @@ class Show extends Component
 
     public function switch()
     {
-        $this->authorize('view', $this->project);
-        $this->view = $this->view === 'normal' ? 'dev' : 'normal';
-        $this->getDevView();
+        try {
+            $this->authorize('view', $this->project);
+            $this->view = $this->view === 'normal' ? 'dev' : 'normal';
+            $this->getDevView();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function getDevView()

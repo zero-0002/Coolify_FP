@@ -29,23 +29,38 @@ class Resources extends Component
 
     public function startUnmanaged($id)
     {
-        $this->server->startUnmanaged($id);
-        $this->dispatch('success', 'Container started.');
-        $this->loadUnmanagedContainers();
+        try {
+            $this->authorize('update', $this->server);
+            $this->server->startUnmanaged($id);
+            $this->dispatch('success', 'Container started.');
+            $this->loadUnmanagedContainers();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function restartUnmanaged($id)
     {
-        $this->server->restartUnmanaged($id);
-        $this->dispatch('success', 'Container restarted.');
-        $this->loadUnmanagedContainers();
+        try {
+            $this->authorize('update', $this->server);
+            $this->server->restartUnmanaged($id);
+            $this->dispatch('success', 'Container restarted.');
+            $this->loadUnmanagedContainers();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function stopUnmanaged($id)
     {
-        $this->server->stopUnmanaged($id);
-        $this->dispatch('success', 'Container stopped.');
-        $this->loadUnmanagedContainers();
+        try {
+            $this->authorize('update', $this->server);
+            $this->server->stopUnmanaged($id);
+            $this->dispatch('success', 'Container stopped.');
+            $this->loadUnmanagedContainers();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function refreshStatus()

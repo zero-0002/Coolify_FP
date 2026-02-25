@@ -21,7 +21,11 @@ class CloudProviderTokenForm extends Component
 
     public function mount()
     {
-        $this->authorize('create', CloudProviderToken::class);
+        try {
+            $this->authorize('create', CloudProviderToken::class);
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     protected function rules(): array

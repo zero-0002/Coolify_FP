@@ -215,24 +215,31 @@ class Previews extends Component
 
     public function force_deploy_without_cache(int $pull_request_id, ?string $pull_request_html_url = null)
     {
-        $this->authorize('deploy', $this->application);
+        try {
+            $this->authorize('deploy', $this->application);
 
-        $this->deploy($pull_request_id, $pull_request_html_url, force_rebuild: true);
+            $this->deploy($pull_request_id, $pull_request_html_url, force_rebuild: true);
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function add_and_deploy(int $pull_request_id, ?string $pull_request_html_url = null)
     {
-        $this->authorize('deploy', $this->application);
+        try {
+            $this->authorize('deploy', $this->application);
 
-        $this->add($pull_request_id, $pull_request_html_url);
-        $this->deploy($pull_request_id, $pull_request_html_url);
+            $this->add($pull_request_id, $pull_request_html_url);
+            $this->deploy($pull_request_id, $pull_request_html_url);
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function deploy(int $pull_request_id, ?string $pull_request_html_url = null, bool $force_rebuild = false)
     {
-        $this->authorize('deploy', $this->application);
-
         try {
+            $this->authorize('deploy', $this->application);
             $this->setDeploymentUuid();
             $found = ApplicationPreview::where('application_id', $this->application->id)->where('pull_request_id', $pull_request_id)->first();
             if (! $found && ! is_null($pull_request_html_url)) {
@@ -291,9 +298,8 @@ class Previews extends Component
 
     public function stop(int $pull_request_id)
     {
-        $this->authorize('deploy', $this->application);
-
         try {
+            $this->authorize('deploy', $this->application);
             $server = $this->application->destination->server;
 
             if ($this->application->destination->server->isSwarm()) {

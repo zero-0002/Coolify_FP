@@ -50,8 +50,13 @@
                             helper="Write access requires admin or owner role" :checked="false"></x-forms.checkbox>
                     @endif
 
-                    <x-forms.checkbox label="deploy" wire:model.live="permissions" domValue="deploy"
-                        helper="Can trigger deploy webhooks." :checked="in_array('deploy', $permissions)"></x-forms.checkbox>
+                    @if ($canUseDeployPermissions)
+                        <x-forms.checkbox label="deploy" wire:model.live="permissions" domValue="deploy"
+                            helper="Can trigger deploy webhooks." :checked="in_array('deploy', $permissions)"></x-forms.checkbox>
+                    @else
+                        <x-forms.checkbox label="deploy (admin/owner only)" disabled domValue="deploy"
+                            helper="Deploy access requires admin or owner role" :checked="false"></x-forms.checkbox>
+                    @endif
                     <x-forms.checkbox label="read" domValue="read" wire:model.live="permissions" domValue="read"
                         :checked="in_array('read', $permissions)"></x-forms.checkbox>
                     <x-forms.checkbox label="read:sensitive" wire:model.live="permissions" domValue="read:sensitive"

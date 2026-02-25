@@ -30,7 +30,7 @@
             <div class="flex flex-wrap order-first gap-2 items-center sm:order-last">
                 <x-services.advanced :service="$service" />
                 @if (str($service->status)->contains('running'))
-                    <x-forms.button title="Restart" @click="$wire.dispatch('restartEvent')">
+                    <x-forms.button canGate="deploy" :canResource="$service" title="Restart" @click="$wire.dispatch('restartEvent')">
                         <svg class="w-5 h-5 dark:text-warning" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
                                 stroke-width="2">
@@ -40,7 +40,7 @@
                         </svg>
                         Restart
                     </x-forms.button>
-                    <x-modal-confirmation title="Confirm Service Stopping?" buttonTitle="Stop" :dispatchEvent="true"
+                    <x-modal-confirmation :disabled="!auth()->user()->can('stop', $service)" title="Confirm Service Stopping?" buttonTitle="Stop" :dispatchEvent="true"
                         submitAction="stop" dispatchEventType="stopEvent" :checkboxes="$checkboxes" :actions="[__('service.stop'), __('resource.non_persistent')]"
                         :confirmWithText="false" :confirmWithPassword="false" step1ButtonText="Continue" step2ButtonText="Confirm">
                         <x-slot:button-title>
@@ -58,7 +58,7 @@
                         </x-slot:button-title>
                     </x-modal-confirmation>
                 @elseif (str($service->status)->contains('degraded'))
-                    <x-forms.button title="Restart" @click="$wire.dispatch('restartEvent')">
+                    <x-forms.button canGate="deploy" :canResource="$service" title="Restart" @click="$wire.dispatch('restartEvent')">
                         <svg class="w-5 h-5 dark:text-warning" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
                                 stroke-width="2">
@@ -68,7 +68,7 @@
                         </svg>
                         Restart
                     </x-forms.button>
-                    <x-modal-confirmation title="Confirm Service Stopping?" buttonTitle="Stop" :dispatchEvent="true"
+                    <x-modal-confirmation :disabled="!auth()->user()->can('stop', $service)" title="Confirm Service Stopping?" buttonTitle="Stop" :dispatchEvent="true"
                         submitAction="stop" dispatchEventType="stopEvent" :checkboxes="$checkboxes" :actions="[__('service.stop'), __('resource.non_persistent')]"
                         :confirmWithText="false" :confirmWithPassword="false" step1ButtonText="Continue" step2ButtonText="Confirm">
                         <x-slot:button-title>
@@ -86,7 +86,7 @@
                         </x-slot:button-title>
                     </x-modal-confirmation>
                 @elseif (str($service->status)->contains('exited'))
-                    <button @click="$wire.dispatch('startEvent')" class="gap-2 button">
+                    <button @disabled(!auth()->user()->can('deploy', $service)) @click="$wire.dispatch('startEvent')" class="gap-2 button">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 dark:text-warning" viewBox="0 0 24 24"
                             stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round"
                             stroke-linejoin="round">
@@ -96,7 +96,7 @@
                         Deploy
                     </button>
                 @else
-                    <x-modal-confirmation title="Confirm Service Stopping?" buttonTitle="Stop" :dispatchEvent="true"
+                    <x-modal-confirmation :disabled="!auth()->user()->can('stop', $service)" title="Confirm Service Stopping?" buttonTitle="Stop" :dispatchEvent="true"
                         submitAction="stop" dispatchEventType="stopEvent" :checkboxes="$checkboxes" :actions="[__('service.stop'), __('resource.non_persistent')]"
                         :confirmWithText="false" :confirmWithPassword="false" step1ButtonText="Continue" step2ButtonText="Confirm">
                         <x-slot:button-title>
@@ -113,7 +113,7 @@
                             Stop
                         </x-slot:button-title>
                     </x-modal-confirmation>
-                    <button @click="$wire.dispatch('startEvent')" class="gap-2 button">
+                    <button @disabled(!auth()->user()->can('deploy', $service)) @click="$wire.dispatch('startEvent')" class="gap-2 button">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 dark:text-warning" viewBox="0 0 24 24"
                             stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round"
                             stroke-linejoin="round">

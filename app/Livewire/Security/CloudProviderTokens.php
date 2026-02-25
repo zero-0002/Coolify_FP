@@ -14,8 +14,12 @@ class CloudProviderTokens extends Component
 
     public function mount()
     {
-        $this->authorize('viewAny', CloudProviderToken::class);
-        $this->loadTokens();
+        try {
+            $this->authorize('viewAny', CloudProviderToken::class);
+            $this->loadTokens();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function getListeners()

@@ -3,7 +3,7 @@
         Advanced
     </x-slot>
     @if ($application->status === 'running')
-        <div class="dropdown-iteme" wire:click='force_deploy_without_cache'>
+        <div class="dropdown-iteme" @if(!auth()->user()->can('deploy', $application)) data-disabled @endif wire:click='force_deploy_without_cache'>
             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" stroke-width="1.5"
                 stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <path stroke="none" d="M0 0h24v24H0z" fill="none" />
@@ -18,7 +18,7 @@
             cache)
         </div>
     @else
-        <div class="dropdown-item" wire:click='deploy(true)'>
+        <div class="dropdown-item" @if(!auth()->user()->can('deploy', $application)) data-disabled @endif wire:click='deploy(true)'>
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" stroke-width="1.5"
                 stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <path stroke="none" d="M0 0h24v24H0z" fill="none" />

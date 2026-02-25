@@ -95,23 +95,27 @@ class Index extends Component
 
     public function delete()
     {
-        $currentTeam = currentTeam();
-        $this->authorize('delete', $currentTeam);
-        $currentTeam->delete();
+        try {
+            $currentTeam = currentTeam();
+            $this->authorize('delete', $currentTeam);
+            $currentTeam->delete();
 
-        $currentTeam->members->each(function ($user) use ($currentTeam) {
-            if ($user->id === Auth::id()) {
-                return;
-            }
-            $user->teams()->detach($currentTeam);
-            $session = DB::table('sessions')->where('user_id', $user->id)->first();
-            if ($session) {
-                DB::table('sessions')->where('id', $session->id)->delete();
-            }
-        });
+            $currentTeam->members->each(function ($user) use ($currentTeam) {
+                if ($user->id === Auth::id()) {
+                    return;
+                }
+                $user->teams()->detach($currentTeam);
+                $session = DB::table('sessions')->where('user_id', $user->id)->first();
+                if ($session) {
+                    DB::table('sessions')->where('id', $session->id)->delete();
+                }
+            });
 
-        refreshSession();
+            refreshSession();
 
-        return redirect()->route('team.index');
+            return redirect()->route('team.index');
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 }

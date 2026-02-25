@@ -96,6 +96,7 @@ class ProjectController extends Controller
         if (! $project) {
             return response()->json(['message' => 'Project not found.'], 404);
         }
+        $this->authorize('view', $project);
 
         $project->load(['environments']);
 
@@ -232,6 +233,7 @@ class ProjectController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
+        $this->authorize('create', [Project::class]);
 
         $return = validateIncomingRequest($request);
         if ($return instanceof \Illuminate\Http\JsonResponse) {
@@ -378,6 +380,7 @@ class ProjectController extends Controller
         if (! $project) {
             return response()->json(['message' => 'Project not found.'], 404);
         }
+        $this->authorize('update', $project);
 
         $project->update($request->only($allowedFields));
 
@@ -455,6 +458,7 @@ class ProjectController extends Controller
         if (! $project) {
             return response()->json(['message' => 'Project not found.'], 404);
         }
+        $this->authorize('delete', $project);
         if (! $project->isEmpty()) {
             return response()->json(['message' => 'Project has resources, so it cannot be deleted.'], 400);
         }
@@ -630,6 +634,7 @@ class ProjectController extends Controller
         if (! $project) {
             return response()->json(['message' => 'Project not found.'], 404);
         }
+        $this->authorize('update', $project);
 
         $existingEnvironment = $project->environments()->where('name', $request->name)->first();
         if ($existingEnvironment) {
@@ -717,6 +722,7 @@ class ProjectController extends Controller
         if (! $environment) {
             return response()->json(['message' => 'Environment not found.'], 404);
         }
+        $this->authorize('delete', $environment);
 
         if (! $environment->isEmpty()) {
             return response()->json(['message' => 'Environment has resources, so it cannot be deleted.'], 400);

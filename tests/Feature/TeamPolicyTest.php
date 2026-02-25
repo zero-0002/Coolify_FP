@@ -156,6 +156,54 @@ describe('manageInvitations permission (privilege escalation fix)', function () 
     });
 });
 
+describe('create team', function () {
+    test('member can create a new independent team', function () {
+        $this->actingAs($this->member);
+        session(['currentTeam' => $this->team]);
+
+        $newTeam = Team::create([
+            'name' => 'New Team',
+            'description' => 'Created by member',
+            'personal_team' => false,
+        ]);
+
+        expect($newTeam)->toBeInstanceOf(Team::class)
+            ->and($newTeam->name)->toBe('New Team');
+    });
+
+    test('member cannot update an existing team', function () {
+        $this->actingAs($this->member);
+        session(['currentTeam' => $this->team]);
+
+        expect(fn () => $this->team->update(['name' => 'Hacked']))
+            ->toThrow(\Exception::class, 'You are not allowed to update this team.');
+    });
+
+    test('owner can create a new team', function () {
+        $this->actingAs($this->owner);
+        session(['currentTeam' => $this->team]);
+
+        $newTeam = Team::create([
+            'name' => 'Owner New Team',
+            'personal_team' => false,
+        ]);
+
+        expect($newTeam)->toBeInstanceOf(Team::class);
+    });
+
+    test('admin can create a new team', function () {
+        $this->actingAs($this->admin);
+        session(['currentTeam' => $this->team]);
+
+        $newTeam = Team::create([
+            'name' => 'Admin New Team',
+            'personal_team' => false,
+        ]);
+
+        expect($newTeam)->toBeInstanceOf(Team::class);
+    });
+});
+
 describe('view permission', function () {
     test('owner can view team', function () {
         $this->actingAs($this->owner);

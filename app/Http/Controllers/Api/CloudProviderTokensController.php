@@ -176,6 +176,7 @@ class CloudProviderTokensController extends Controller
         if (is_null($token)) {
             return response()->json(['message' => 'Cloud provider token not found.'], 404);
         }
+        $this->authorize('view', $token);
 
         return response()->json($this->removeSensitiveData($token));
     }
@@ -242,6 +243,7 @@ class CloudProviderTokensController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
+        $this->authorize('create', [CloudProviderToken::class]);
 
         $return = validateIncomingRequest($request);
         if ($return instanceof \Illuminate\Http\JsonResponse) {
@@ -386,6 +388,7 @@ class CloudProviderTokensController extends Controller
         if (! $token) {
             return response()->json(['message' => 'Cloud provider token not found.'], 404);
         }
+        $this->authorize('update', $token);
 
         $token->update(array_intersect_key($body, array_flip($allowedFields)));
 
@@ -459,6 +462,7 @@ class CloudProviderTokensController extends Controller
         if (! $token) {
             return response()->json(['message' => 'Cloud provider token not found.'], 404);
         }
+        $this->authorize('delete', $token);
 
         if ($token->hasServers()) {
             return response()->json(['message' => 'Cannot delete token that is used by servers.'], 400);

@@ -20,15 +20,19 @@ class CloudInitScriptForm extends Component
 
     public function mount(?int $scriptId = null)
     {
-        if ($scriptId) {
-            $this->scriptId = $scriptId;
-            $cloudInitScript = CloudInitScript::ownedByCurrentTeam()->findOrFail($scriptId);
-            $this->authorize('update', $cloudInitScript);
+        try {
+            if ($scriptId) {
+                $this->scriptId = $scriptId;
+                $cloudInitScript = CloudInitScript::ownedByCurrentTeam()->findOrFail($scriptId);
+                $this->authorize('update', $cloudInitScript);
 
-            $this->name = $cloudInitScript->name;
-            $this->script = $cloudInitScript->script;
-        } else {
-            $this->authorize('create', CloudInitScript::class);
+                $this->name = $cloudInitScript->name;
+                $this->script = $cloudInitScript->script;
+            } else {
+                $this->authorize('create', CloudInitScript::class);
+            }
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
         }
     }
 
