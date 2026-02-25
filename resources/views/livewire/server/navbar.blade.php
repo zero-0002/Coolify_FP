@@ -105,6 +105,7 @@
         <div class="order-first sm:order-last">
             <div>
                 @if ($server->proxySet())
+                    @can('manageProxy', $server)
                     @if ($proxyStatus === 'running')
                             <div class="flex gap-2">
                                 <div class="mt-1" wire:loading wire:target="loadProxyConfiguration">
@@ -169,6 +170,7 @@
                             Start Proxy
                         </button>
                     @endif
+                    @endcan
                 @endif
                 @script
                 <script>
