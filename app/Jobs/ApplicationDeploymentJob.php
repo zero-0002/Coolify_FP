@@ -686,8 +686,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             // Inject build arguments after build subcommand if not using build secrets
             if (! $this->application->settings->use_build_secrets && $this->build_args instanceof \Illuminate\Support\Collection && $this->build_args->isNotEmpty()) {
                 $build_args_string = $this->build_args->implode(' ');
-                // Escape single quotes for bash -c context used by executeInDocker
-                $build_args_string = str_replace("'", "'\\''", $build_args_string);
 
                 // Inject build args right after 'build' subcommand (not at the end)
                 $original_command = $build_command;
@@ -699,9 +697,17 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 }
             }
 
-            $this->execute_remote_command(
-                [executeInDocker($this->deployment_uuid, "cd {$this->basedir} && {$build_command}"), 'hidden' => true],
-            );
+            try {
+                $this->execute_remote_command(
+                    [executeInDocker($this->deployment_uuid, "cd {$this->basedir} && {$build_command}"), 'hidden' => true],
+                );
+            } catch (\RuntimeException $e) {
+                if (str_contains($e->getMessage(), "matching `'") || str_contains($e->getMessage(), 'unexpected EOF')) {
+                    throw new DeploymentException("Custom build command failed due to shell syntax error. Please check your command for special characters (like unmatched quotes): {$this->docker_compose_custom_build_command}");
+                }
+
+                throw $e;
+            }
         } else {
             $command = "{$this->coolify_variables} docker compose";
             // Prepend DOCKER_BUILDKIT=1 if BuildKit is supported
@@ -718,8 +724,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
             if (! $this->application->settings->use_build_secrets && $this->build_args instanceof \Illuminate\Support\Collection && $this->build_args->isNotEmpty()) {
                 $build_args_string = $this->build_args->implode(' ');
-                // Escape single quotes for bash -c context used by executeInDocker
-                $build_args_string = str_replace("'", "'\\''", $build_args_string);
                 $command .= " {$build_args_string}";
                 $this->application_deployment_queue->addLogEntry('Adding build arguments to Docker Compose build command.');
             }
@@ -765,9 +769,18 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 );
 
                 $this->write_deployment_configurations();
-                $this->execute_remote_command(
-                    [executeInDocker($this->deployment_uuid, "cd {$this->workdir} && {$start_command}"), 'hidden' => true],
-                );
+
+                try {
+                    $this->execute_remote_command(
+                        [executeInDocker($this->deployment_uuid, "cd {$this->workdir} && {$start_command}"), 'hidden' => true],
+                    );
+                } catch (\RuntimeException $e) {
+                    if (str_contains($e->getMessage(), "matching `'") || str_contains($e->getMessage(), 'unexpected EOF')) {
+                        throw new DeploymentException("Custom start command failed due to shell syntax error. Please check your command for special characters (like unmatched quotes): {$this->docker_compose_custom_start_command}");
+                    }
+
+                    throw $e;
+                }
             } else {
                 $this->write_deployment_configurations();
                 $this->docker_compose_location = '/docker-compose.yaml';
