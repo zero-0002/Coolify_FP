@@ -1961,16 +1961,6 @@ class Application extends BaseModel
         }
     }
 
-    public static function getDomainsByUuid(string $uuid): array
-    {
-        $application = self::where('uuid', $uuid)->first();
-
-        if ($application) {
-            return $application->fqdns;
-        }
-
-        return [];
-    }
 
     public function getLimits(): array
     {
