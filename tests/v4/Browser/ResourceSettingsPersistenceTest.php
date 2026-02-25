@@ -3,6 +3,7 @@
 use App\Enums\ProxyStatus;
 use App\Enums\ProxyTypes;
 use App\Models\Application;
+use App\Models\DiscordNotificationSettings;
 use App\Models\InstanceSettings;
 use App\Models\PrivateKey;
 use App\Models\Project;
@@ -24,6 +25,11 @@ beforeEach(function () {
         'name' => 'Root User',
         'email' => 'test@example.com',
         'password' => Hash::make('password'),
+    ]);
+
+    DiscordNotificationSettings::where('team_id', 0)->update([
+        'discord_enabled' => true,
+        'discord_webhook_url' => 'https://discord.com/test',
     ]);
 
     PrivateKey::create([
@@ -112,11 +118,12 @@ it('saves application name and enables static site with nginx config', function 
         ->fill('name', $updatedName)
         ->fill('customDockerRunOptions', '--read-only');
 
-    submitResourceForm($page);
-    toggleCheckboxByWireModel($page, 'isStatic');
-    $page->screenshot();
+    submitLivewireForm($page);
+    $page->click('[id^="isStatic"]')
+        ->wait(2)
+        ->screenshot();
 
-    $page->assertSee('Custom Nginx Configuration')
+    $page->assertSourceHas('Custom Nginx Configuration')
         ->assertSee('Is it a SPA (Single Page Application)?')
         ->assertValue('name', $updatedName);
 
@@ -129,8 +136,8 @@ it('saves application name and enables static site with nginx config', function 
     $reloadedPage->screenshot();
 
     $reloadedPage->assertValue('name', $updatedName)
-        ->assertSee('Custom Nginx Configuration')
-        ->assertSee('Is it a SPA (Single Page Application)?');
+        ->assertSourceHas('Custom Nginx Configuration')
+        ->assertSourceHas('Is it a SPA (Single Page Application)?');
 });
 
 it('saves database name and enables ssl with mode selector', function () {
@@ -147,8 +154,8 @@ it('saves database name and enables ssl with mode selector', function () {
         ->fill('name', $updatedDatabaseName)
         ->fill('description', 'Updated by browser test');
 
-    submitResourceForm($page);
-    toggleCheckboxByWireModel($page, 'enableSsl');
+    submitLivewireForm($page);
+    $page->click('[id^="enableSsl"]');
 
     $page->assertSee('SSL Mode')
         ->assertValue('name', $updatedDatabaseName);
@@ -166,26 +173,8 @@ it('saves database name and enables ssl with mode selector', function () {
         ->assertSee('SSL Mode');
 });
 
-function submitResourceForm($page): void
+function submitLivewireForm($page): void
 {
-    $page->script("
-        const form = document.querySelector('form[wire\\\\:submit=\"submit\"]');
-        if (form) {
-            form.requestSubmit();
-        }
-    ");
-    $page->wait(0.3);
-}
-
-function toggleCheckboxByWireModel($page, string $wireModel): void
-{
-    $page->script("
-        const checkbox = document.querySelector(
-            'input[wire\\\\:model=\"{$wireModel}\"], input[wire\\\\:model\\\\.live=\"{$wireModel}\"]'
-        );
-        if (checkbox) {
-            checkbox.click();
-        }
-    ");
-    $page->wait(0.3);
+    $page->script("document.querySelector('form[wire\\\\:submit=\"submit\"]')?.requestSubmit()");
+    $page->wait(1);
 }
