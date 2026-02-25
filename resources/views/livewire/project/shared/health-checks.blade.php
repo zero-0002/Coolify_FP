@@ -52,11 +52,14 @@
             </div>
         @else
             {{-- CMD Healthcheck Fields --}}
+            <x-callout type="warning" title="Caution">
+                <p>This command runs inside the container on every health check interval. Shell operators (;, |, &amp;, $, &gt;, &lt;) are not allowed.</p>
+            </x-callout>
             <div class="flex flex-col gap-2">
-                <x-forms.textarea canGate="update" :canResource="$resource" id="healthCheckCommand"
+                <x-forms.input canGate="update" :canResource="$resource" id="healthCheckCommand"
                     label="Command"
-                    placeholder="Example: pg_isready -U postgres&#10;Example: redis-cli ping&#10;Example: curl -f http://localhost:8080/health"
-                    helper="The command to run inside the container. It should exit with code 0 on success and non-zero on failure."
+                    placeholder="pg_isready -U postgres"
+                    helper="A simple command to run inside the container. Must exit with code 0 on success. Shell operators like ;, |, &&, $() are not allowed."
                     :required="$healthCheckType === 'cmd'" />
             </div>
         @endif

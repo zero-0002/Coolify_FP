@@ -19,7 +19,7 @@ class HealthChecks extends Component
     #[Validate(['string', 'in:http,cmd'])]
     public string $healthCheckType = 'http';
 
-    #[Validate(['nullable', 'required_if:healthCheckType,cmd', 'string'])]
+    #[Validate(['nullable', 'required_if:healthCheckType,cmd', 'string', 'max:1000', 'regex:/^[a-zA-Z0-9 \-_.\/:=@,+]+$/'])]
     public ?string $healthCheckCommand = null;
 
     #[Validate(['required', 'string', 'in:GET,HEAD,POST,OPTIONS'])]
@@ -61,7 +61,7 @@ class HealthChecks extends Component
     protected $rules = [
         'healthCheckEnabled' => 'boolean',
         'healthCheckType' => 'string|in:http,cmd',
-        'healthCheckCommand' => 'nullable|string',
+        'healthCheckCommand' => ['nullable', 'string', 'max:1000', 'regex:/^[a-zA-Z0-9 \-_.\/:=@,+]+$/'],
         'healthCheckPath' => ['required', 'string', 'regex:#^[a-zA-Z0-9/\-_.~%]+$#'],
         'healthCheckPort' => 'nullable|integer|min:1|max:65535',
         'healthCheckHost' => ['required', 'string', 'regex:/^[a-zA-Z0-9.\-_]+$/'],
