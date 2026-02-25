@@ -2,7 +2,7 @@
 # slogan: Self-hosted lightweight Speed Test.
 # category: devtools
 # tags: speedtest, internet-speed
-# logo: svgs/librespeed.svg
+# logo: svgs/librespeed.png
 # port: 82
 
 services:
