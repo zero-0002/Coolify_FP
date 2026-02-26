@@ -8,6 +8,13 @@ class Subscription extends Model
 {
     protected $guarded = [];
 
+    protected function casts(): array
+    {
+        return [
+            'stripe_refunded_at' => 'datetime',
+        ];
+    }
+
     public function team()
     {
         return $this->belongsTo(Team::class);
