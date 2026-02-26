@@ -734,7 +734,7 @@ services:
                 rest: 'starts_with(string!(.appname), "supabase-rest")'
                 realtime: 'starts_with(string!(.appname), "realtime-dev")'
                 storage: 'starts_with(string!(.appname), "supabase-storage")'
-                functions: 'starts_with(string!(.appname), "supabase-functions")'
+                functions: 'starts_with(string!(.appname), "supabase-edge-functions")'
                 db: 'starts_with(string!(.appname), "supabase-db")'
             # Ignores non nginx errors since they are related with kong booting up
             kong_logs:
@@ -748,10 +748,13 @@ services:
                     .metadata.request.headers.referer = req.referer
                     .metadata.request.headers.user_agent = req.agent
                     .metadata.request.headers.cf_connecting_ip = req.client
-                    .metadata.request.method = req.method
-                    .metadata.request.path = req.path
-                    .metadata.request.protocol = req.protocol
                     .metadata.response.status_code = req.status
+                    url, split_err = split(req.request, " ")
+                    if split_err == null {
+                        .metadata.request.method = url[0]
+                        .metadata.request.path = url[1]
+                        .metadata.request.protocol = url[2]
+                    }
                 }
                 if err != null {
                   abort
@@ -803,11 +806,17 @@ services:
                     .timestamp = parse_timestamp!(value: parsed.time, format: "%d/%b/%Y:%H:%M:%S %z")
                     .metadata.host = .project
                 }
+            # Filter out healthcheck logs from Realtime
+            realtime_logs_filtered:
+              type: filter
+              inputs:
+                - router.realtime
+              condition: '!contains(string!(.event_message), "/health")'
             # Realtime logs are structured so we parse the severity level using regex (ignore time because it has no date)
             realtime_logs:
               type: remap
               inputs:
-                - router.realtime
+                - realtime_logs_filtered
               source: |-
                 .metadata.project = del(.project)
                 .metadata.external_id = .metadata.project
@@ -832,6 +841,13 @@ services:
                     .metadata.context[0].host = parsed.hostname
                     .metadata.context[0].pid = parsed.pid
                 }
+            # Function logs are unstructured messages on stderr
+            functions_logs:
+              type: remap
+              inputs:
+                - router.functions
+              source: |-
+                .metadata.project_ref = del(.project)
             # Postgres logs some messages to stderr which we map to warning severity level
             db_logs:
               type: remap
@@ -846,8 +862,8 @@ services:
                 if err != null || parsed == null {
                   .metadata.parsed.error_severity = "info"
                 }
-                if parsed != null {
-                .metadata.parsed.error_severity = parsed.level
+                if parsed.level != null {
+                 .metadata.parsed.error_severity = parsed.level
                 }
                 if .metadata.parsed.error_severity == "info" {
                     .metadata.parsed.error_severity = "log"
@@ -910,7 +926,7 @@ services:
             logflare_functions:
               type: 'http'
               inputs:
-                - router.functions
+                - functions_logs
               encoding:
                 codec: 'json'
               method: 'post'
@@ -951,7 +967,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - LOGFLARE_API_KEY=${SERVICE_PASSWORD_LOGFLARE}
-    command: ["--config", "etc/vector/vector.yml"]
+    command: ["--config", "/etc/vector/vector.yml"]
 
   supabase-rest:
     image: postgrest/postgrest:v14.5
