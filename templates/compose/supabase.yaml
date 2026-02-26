@@ -290,7 +290,7 @@ services:
                   config:
                     hide_credentials: true
   supabase-studio:
-    image: supabase/studio:2026.01.27-sha-6aa59ff
+    image: supabase/studio:2026.02.16-sha-26c615c
     healthcheck:
       test:
         [
@@ -321,6 +321,7 @@ services:
       - SUPABASE_ANON_KEY=${SERVICE_SUPABASEANON_KEY}
       - SUPABASE_SERVICE_KEY=${SERVICE_SUPABASESERVICE_KEY}
       - AUTH_JWT_SECRET=${SERVICE_PASSWORD_JWT}
+      - PG_META_CRYPTO_KEY=${SERVICE_PASSWORD_PGMETACRYPTO}
 
       - LOGFLARE_API_KEY=${SERVICE_PASSWORD_LOGFLARE}
       - LOGFLARE_PUBLIC_ACCESS_TOKEN=${SERVICE_PASSWORD_LOGFLARE}
@@ -640,7 +641,7 @@ services:
       - supabase-db-config:/etc/postgresql-custom
 
   supabase-analytics:
-    image: supabase/logflare:1.30.3
+    image: supabase/logflare:1.31.2
     healthcheck:
       test: ["CMD", "curl", "http://127.0.0.1:4000/health"]
       timeout: 5s
@@ -676,7 +677,7 @@ services:
       # GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID}
       # GOOGLE_PROJECT_NUMBER=${GOOGLE_PROJECT_NUMBER}
   supabase-vector:
-    image: timberio/vector:0.28.1-alpine
+    image: timberio/vector:0.53.0-alpine
     healthcheck:
       test:
         [
@@ -799,7 +800,7 @@ services:
                 parsed, err = parse_regex(.event_message, r'^(?P<time>.*): (?P<msg>.*)$')
                 if err == null {
                     .event_message = parsed.msg
-                    .timestamp = to_timestamp!(parsed.time)
+                    .timestamp = parse_timestamp!(value: parsed.time, format: "%d/%b/%Y:%H:%M:%S %z")
                     .metadata.host = .project
                 }
             # Realtime logs are structured so we parse the severity level using regex (ignore time because it has no date)
@@ -862,8 +863,11 @@ services:
                 codec: 'json'
               method: 'post'
               request:
-                retry_max_duration_secs: 10
-              uri: 'http://supabase-analytics:4000/api/logs?source_name=gotrue.logs.prod&api_key=${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+                retry_max_duration_secs: 30
+                retry_initial_backoff_secs: 1
+                headers:
+                  x-api-key: '${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+              uri: 'http://supabase-analytics:4000/api/logs?source_name=gotrue.logs.prod'
             logflare_realtime:
               type: 'http'
               inputs:
@@ -872,8 +876,11 @@ services:
                 codec: 'json'
               method: 'post'
               request:
-                retry_max_duration_secs: 10
-              uri: 'http://supabase-analytics:4000/api/logs?source_name=realtime.logs.prod&api_key=${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+                retry_max_duration_secs: 30
+                retry_initial_backoff_secs: 1
+                headers:
+                  x-api-key: '${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+              uri: 'http://supabase-analytics:4000/api/logs?source_name=realtime.logs.prod'
             logflare_rest:
               type: 'http'
               inputs:
@@ -882,8 +889,11 @@ services:
                 codec: 'json'
               method: 'post'
               request:
-                retry_max_duration_secs: 10
-              uri: 'http://supabase-analytics:4000/api/logs?source_name=postgREST.logs.prod&api_key=${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+                retry_max_duration_secs: 30
+                retry_initial_backoff_secs: 1
+                headers:
+                  x-api-key: '${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+              uri: 'http://supabase-analytics:4000/api/logs?source_name=postgREST.logs.prod'
             logflare_db:
               type: 'http'
               inputs:
@@ -892,11 +902,11 @@ services:
                 codec: 'json'
               method: 'post'
               request:
-                retry_max_duration_secs: 10
-              # We must route the sink through kong because ingesting logs before logflare is fully initialised will
-              # lead to broken queries from studio. This works by the assumption that containers are started in the
-              # following order: vector > db > logflare > kong
-              uri: 'http://supabase-kong:8000/analytics/v1/api/logs?source_name=postgres.logs&api_key=${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+                retry_max_duration_secs: 30
+                retry_initial_backoff_secs: 1
+                headers:
+                  x-api-key: '${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+              uri: 'http://supabase-analytics:4000/api/logs?source_name=postgres.logs'
             logflare_functions:
               type: 'http'
               inputs:
@@ -905,8 +915,11 @@ services:
                 codec: 'json'
               method: 'post'
               request:
-                retry_max_duration_secs: 10
-              uri: 'http://supabase-analytics:4000/api/logs?source_name=deno-relay-logs&api_key=${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+                retry_max_duration_secs: 30
+                retry_initial_backoff_secs: 1
+                headers:
+                  x-api-key: '${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+              uri: 'http://supabase-analytics:4000/api/logs?source_name=deno-relay-logs'
             logflare_storage:
               type: 'http'
               inputs:
@@ -915,8 +928,11 @@ services:
                 codec: 'json'
               method: 'post'
               request:
-                retry_max_duration_secs: 10
-              uri: 'http://supabase-analytics:4000/api/logs?source_name=storage.logs.prod.2&api_key=${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+                retry_max_duration_secs: 30
+                retry_initial_backoff_secs: 1
+                headers:
+                  x-api-key: '${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+              uri: 'http://supabase-analytics:4000/api/logs?source_name=storage.logs.prod.2'
             logflare_kong:
               type: 'http'
               inputs:
@@ -926,8 +942,11 @@ services:
                 codec: 'json'
               method: 'post'
               request:
-                retry_max_duration_secs: 10
-              uri: 'http://supabase-analytics:4000/api/logs?source_name=cloudflare.logs.prod&api_key=${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+                retry_max_duration_secs: 30
+                retry_initial_backoff_secs: 1
+                headers:
+                  x-api-key: '${LOGFLARE_API_KEY?LOGFLARE_API_KEY is required}'
+              uri: 'http://supabase-analytics:4000/api/logs?source_name=cloudflare.logs.prod'
 
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
@@ -935,7 +954,7 @@ services:
     command: ["--config", "etc/vector/vector.yml"]
 
   supabase-rest:
-    image: postgrest/postgrest:v14.3
+    image: postgrest/postgrest:v14.5
     depends_on:
       supabase-db:
         # Disable this if you are using an external Postgres database
@@ -953,7 +972,7 @@ services:
     command: "postgrest"
     exclude_from_hc: true
   supabase-auth:
-    image: supabase/gotrue:v2.185.0
+    image: supabase/gotrue:v2.186.0
     depends_on:
       supabase-db:
         # Disable this if you are using an external Postgres database
@@ -1044,7 +1063,7 @@ services:
 
   realtime-dev:
     # This container name looks inconsistent but is correct because realtime constructs tenant id by parsing the subdomain
-    image: supabase/realtime:v2.72.0
+    image: supabase/realtime:v2.76.5
     container_name: realtime-dev.supabase-realtime
     depends_on:
       supabase-db:
@@ -1125,7 +1144,7 @@ services:
           exit 0
 
   supabase-storage:
-    image: supabase/storage-api:v1.37.1
+    image: supabase/storage-api:v1.37.8
     depends_on:
       supabase-db:
         # Disable this if you are using an external Postgres database
@@ -1172,6 +1191,10 @@ services:
       - DATABASE_SEARCH_PATH=storage
       - NODE_ENV=production
       - REQUEST_ALLOW_X_FORWARDED_PATH=true
+      - ANON_KEY=${SERVICE_SUPABASEANON_KEY}
+      - SERVICE_KEY=${SERVICE_SUPABASESERVICE_KEY}
+      - POSTGREST_URL=http://supabase-rest:3000
+      - PGRST_JWT_SECRET=${SERVICE_PASSWORD_JWT}
     volumes:
       - ./volumes/storage:/var/lib/storage
   imgproxy:
@@ -1208,7 +1231,7 @@ services:
       - CRYPTO_KEY=${SERVICE_PASSWORD_PGMETACRYPTO}
 
   supabase-edge-functions:
-    image: supabase/edge-runtime:v1.70.0
+    image: supabase/edge-runtime:v1.70.3
     depends_on:
       supabase-analytics:
         condition: service_healthy
