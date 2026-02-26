@@ -205,3 +205,123 @@ test('user from different team cannot manage members', function () {
 
     expect(auth()->user()->can('manageMembers', $this->team))->toBeFalse();
 });
+
+// --- Team Policy: view ---
+
+test('owner can view team', function () {
+    $this->actingAs($this->owner);
+    session(['currentTeam' => $this->team]);
+
+    expect(auth()->user()->can('view', $this->team))->toBeTrue();
+});
+
+test('admin can view team', function () {
+    $this->actingAs($this->admin);
+    session(['currentTeam' => $this->team]);
+
+    expect(auth()->user()->can('view', $this->team))->toBeTrue();
+});
+
+test('member can view team', function () {
+    $this->actingAs($this->member);
+    session(['currentTeam' => $this->team]);
+
+    expect(auth()->user()->can('view', $this->team))->toBeTrue();
+});
+
+test('non-team member cannot view team', function () {
+    $outsider = User::factory()->create();
+    $this->actingAs($outsider);
+    session(['currentTeam' => $this->team]);
+
+    expect($outsider->can('view', $this->team))->toBeFalse();
+});
+
+// --- Team Policy: viewAdmin ---
+
+test('owner can view admin panel', function () {
+    $this->actingAs($this->owner);
+    session(['currentTeam' => $this->team]);
+
+    expect(auth()->user()->can('viewAdmin', $this->team))->toBeTrue();
+});
+
+test('admin can view admin panel', function () {
+    $this->actingAs($this->admin);
+    session(['currentTeam' => $this->team]);
+
+    expect(auth()->user()->can('viewAdmin', $this->team))->toBeTrue();
+});
+
+test('member cannot view admin panel', function () {
+    $this->actingAs($this->member);
+    session(['currentTeam' => $this->team]);
+
+    expect(auth()->user()->can('viewAdmin', $this->team))->toBeFalse();
+});
+
+test('non-team member cannot view admin panel', function () {
+    $outsider = User::factory()->create();
+    $this->actingAs($outsider);
+    session(['currentTeam' => $this->team]);
+
+    expect($outsider->can('viewAdmin', $this->team))->toBeFalse();
+});
+
+// --- Non-team member isolation ---
+
+test('non-team member cannot update team', function () {
+    $outsider = User::factory()->create();
+    $this->actingAs($outsider);
+    session(['currentTeam' => $this->team]);
+
+    expect($outsider->can('update', $this->team))->toBeFalse();
+});
+
+test('non-team member cannot delete team', function () {
+    $outsider = User::factory()->create();
+    $this->actingAs($outsider);
+    session(['currentTeam' => $this->team]);
+
+    expect($outsider->can('delete', $this->team))->toBeFalse();
+});
+
+test('non-team member cannot manage members', function () {
+    $outsider = User::factory()->create();
+    $this->actingAs($outsider);
+    session(['currentTeam' => $this->team]);
+
+    expect($outsider->can('manageMembers', $this->team))->toBeFalse();
+});
+
+test('non-team member cannot manage invitations', function () {
+    $outsider = User::factory()->create();
+    $this->actingAs($outsider);
+    session(['currentTeam' => $this->team]);
+
+    expect($outsider->can('manageInvitations', $this->team))->toBeFalse();
+});
+
+// --- Team creation and model-level protection ---
+
+test('member can create a new independent team', function () {
+    $this->actingAs($this->member);
+    session(['currentTeam' => $this->team]);
+
+    $newTeam = Team::create([
+        'name' => 'New Team',
+        'description' => 'Created by member',
+        'personal_team' => false,
+    ]);
+
+    expect($newTeam)->toBeInstanceOf(Team::class)
+        ->and($newTeam->name)->toBe('New Team');
+});
+
+test('member cannot update an existing team at model level', function () {
+    $this->actingAs($this->member);
+    session(['currentTeam' => $this->team]);
+
+    expect(fn () => $this->team->update(['name' => 'Hacked']))
+        ->toThrow(\Exception::class, 'You are not allowed to update this team.');
+});
