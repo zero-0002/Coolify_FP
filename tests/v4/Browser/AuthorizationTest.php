@@ -343,9 +343,105 @@ it('owner sees add environment and settings on project page', function () {
         ->screenshot();
 });
 
-// Note: Application, database, and service deploy/restart/stop controls
-// are tested via unit policy tests (tests/Unit/Policies/).
-// Browser tests for these resource pages require complex model chain setup
-// (Application -> Environment -> Project -> Team, with StandaloneDocker destination)
-// that causes Livewire mount() to redirect due to model relationship loading issues
-// in the browser test context.
+// --- Dashboard: resource links authorization ---
+
+it('member does not see add resource link on dashboard project cards', function () {
+    $page = loginAsMember();
+
+    $page->assertSee('Projects')
+        ->assertSee('My first project')
+        ->assertDontSee('+ Add Resource')
+        ->screenshot();
+});
+
+it('owner sees add resource link on dashboard project cards', function () {
+    loginAndSkipBoarding();
+
+    $page = visit('/dashboard');
+
+    $page->assertSee('Projects')
+        ->assertSee('My first project')
+        ->assertSee('+ Add Resource')
+        ->screenshot();
+});
+
+it('member does not see project settings link on dashboard', function () {
+    $page = loginAsMember();
+
+    // The "Settings" link is inside the project card on the dashboard
+    // Member should not see it due to @can('update', $project)
+    $page->assertSee('My first project')
+        ->assertDontSee('Settings')
+        ->screenshot();
+});
+
+// --- Team members page authorization ---
+
+it('member does not see invite form on team members page', function () {
+    loginAsMember();
+
+    $page = visit('/team/members');
+
+    $page->assertSee('Members')
+        ->assertDontSee('Invite New Member')
+        ->screenshot();
+});
+
+it('owner sees invite form on team members page', function () {
+    loginAndSkipBoarding();
+
+    $page = visit('/team/members');
+
+    $page->assertSee('Members')
+        ->assertSee('Invite New Member')
+        ->screenshot();
+});
+
+it('member does not see role change buttons on team members page', function () {
+    loginAsMember();
+
+    $page = visit('/team/members');
+
+    $page->assertSee('Members')
+        ->assertDontSee('To Admin')
+        ->assertDontSee('To Owner')
+        ->assertDontSee('Remove')
+        ->screenshot();
+});
+
+// --- Server show page authorization ---
+
+it('member does not see save button on server show page', function () {
+    loginAsMember();
+
+    $server = Server::first();
+    $page = visit("/server/{$server->uuid}");
+
+    $page->assertSee('General')
+        ->assertDontSee('Revalidate server')
+        ->screenshot();
+});
+
+it('owner sees save button on server show page', function () {
+    loginAndSkipBoarding();
+
+    $server = Server::first();
+    $page = visit("/server/{$server->uuid}");
+
+    $page->assertSee('General')
+        ->assertSee('Save')
+        ->screenshot();
+});
+
+// --- Project show page authorization ---
+
+it('member does not see delete project button on project page', function () {
+    loginAsMember();
+
+    $project = Project::where('uuid', 'project-1')->first();
+    $page = visit("/project/{$project->uuid}");
+
+    $page->assertSee('Environments')
+        ->assertDontSee('Delete Project')
+        ->screenshot();
+});
