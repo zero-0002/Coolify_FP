@@ -1,70 +1,65 @@
 <?php
 
+use App\Enums\ProcessStatus;
 use App\Jobs\CoolifyTask;
 use App\Models\Server;
+use App\Models\Team;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
-it('can dispatch CoolifyTask successfully', function () {
-    // Skip if no servers available
-    $server = Server::where('ip', '!=', '1.2.3.4')->first();
+beforeEach(function () {
+    $team = Team::factory()->create();
+    Server::factory()->create(['team_id' => $team->id]);
 
-    if (! $server) {
-        $this->markTestSkipped('No servers available for testing');
-    }
-
-    Queue::fake();
-
-    // Create an activity for the task
-    $activity = activity()
+    $this->activity = activity()
         ->withProperties([
-            'server_uuid' => $server->uuid,
+            'server_uuid' => Server::first()->uuid,
             'command' => 'echo "test"',
             'type' => 'inline',
+            'status' => ProcessStatus::QUEUED->value,
         ])
         ->event('inline')
         ->log('[]');
 
-    // Dispatch the job
-    CoolifyTask::dispatch(
-        activity: $activity,
+    $this->job = new CoolifyTask(
+        activity: $this->activity,
         ignore_errors: false,
         call_event_on_finish: null,
-        call_event_data: null
+        call_event_data: null,
     );
-
-    // Assert job was dispatched
-    Queue::assertPushed(CoolifyTask::class);
 });
 
-it('has correct retry configuration on CoolifyTask', function () {
-    $server = Server::where('ip', '!=', '1.2.3.4')->first();
+test('has correct retry configuration', function () {
+    expect($this->job->tries)->toBe(3)
+        ->and($this->job->maxExceptions)->toBe(1)
+        ->and($this->job->timeout)->toBe(600)
+        ->and($this->job->backoff())->toBe([30, 90, 180]);
+});
 
-    if (! $server) {
-        $this->markTestSkipped('No servers available for testing');
-    }
+test('is queued on the high priority queue', function () {
+    expect($this->job->queue)->toBe('high');
+});
 
-    $activity = activity()
-        ->withProperties([
-            'server_uuid' => $server->uuid,
-            'command' => 'echo "test"',
-            'type' => 'inline',
-        ])
-        ->event('inline')
-        ->log('[]');
+test('marks activity as error on permanent failure', function () {
+    $exception = new \RuntimeException('SSH connection failed');
 
-    $job = new CoolifyTask(
-        activity: $activity,
-        ignore_errors: false,
-        call_event_on_finish: null,
-        call_event_data: null
-    );
+    $this->job->failed($exception);
 
-    // Assert retry configuration
-    expect($job->tries)->toBe(3);
-    expect($job->maxExceptions)->toBe(1);
-    expect($job->timeout)->toBe(600);
-    expect($job->backoff())->toBe([30, 90, 180]);
+    $this->activity->refresh();
+    $properties = $this->activity->properties;
+
+    expect($properties['status'])->toBe(ProcessStatus::ERROR->value)
+        ->and($properties['error'])->toBe('SSH connection failed')
+        ->and($properties)->toHaveKey('failed_at');
+});
+
+test('marks activity as error with default message when exception is null', function () {
+    $this->job->failed(null);
+
+    $this->activity->refresh();
+    $properties = $this->activity->properties;
+
+    expect($properties['status'])->toBe(ProcessStatus::ERROR->value)
+        ->and($properties['error'])->toBe('Job permanently failed');
 });

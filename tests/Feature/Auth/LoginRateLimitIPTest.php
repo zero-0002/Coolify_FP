@@ -1,58 +1,68 @@
 <?php
 
-it('tests login rate limiting with different IPs like the Python script', function () {
-    // Create a test route that mimics login behavior
-    // We'll directly test the rate limiter behavior
+use App\Models\InstanceSettings;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\RateLimiter;
 
-    $baseUrl = '/login';
-    $email = 'grumpinout+admin@wearehackerone.com';
+uses(RefreshDatabase::class);
 
-    // First, get a CSRF token by visiting the login page
-    $loginPageResponse = $this->get($baseUrl);
-    $loginPageResponse->assertSuccessful();
+beforeEach(function () {
+    InstanceSettings::updateOrCreate(['id' => 0]);
+    RateLimiter::clear('login');
 
-    // Extract CSRF token using regex similar to Python script
-    preg_match('/name="_token"\s+value="([^"]+)"/', $loginPageResponse->getContent(), $matches);
-    $token = $matches[1] ?? null;
+    $this->user = User::factory()->create([
+        'email' => 'test@example.com',
+        'password' => bcrypt('password'),
+    ]);
+});
 
-    expect($token)->not->toBeNull('CSRF token should be found');
+test('login is rate limited after 5 failed attempts from same IP', function () {
+    $email = 'test@example.com';
 
-    // Test 14 login attempts with different IPs (like the Python script does 1-14)
-    $results = [];
-    for ($i = 1; $i <= 14; $i++) {
-        $spoofedIp = "198.51.100.{$i}";
+    // First 5 attempts should be accepted (302 redirect back with error, not 429)
+    for ($i = 1; $i <= 5; $i++) {
+        $response = $this->post('/login', [
+            'email' => $email,
+            'password' => 'wrong-password',
+        ]);
 
-        $response = $this->withHeader('X-Forwarded-For', $spoofedIp)
-            ->post($baseUrl, [
-                '_token' => $token,
-                'email' => $email,
-                'password' => "WrongPass{$i}!",
-            ]);
-
-        $statusCode = $response->getStatusCode();
-        $rateLimitLimit = $response->headers->get('X-RateLimit-Limit');
-        $rateLimitRemaining = $response->headers->get('X-RateLimit-Remaining');
-
-        $results[$i] = [
-            'ip' => $spoofedIp,
-            'status' => $statusCode,
-            'rate_limit' => $rateLimitLimit,
-            'rate_limit_remaining' => $rateLimitRemaining,
-        ];
-
-        // Print output similar to Python script
-        echo 'Attempt '.str_pad($i, 2, '0', STR_PAD_LEFT).": status=$statusCode, RL=$rateLimitLimit/$rateLimitRemaining\n";
-
-        // Add a small delay like the Python script (0.2 seconds)
-        usleep(200000);
+        expect($response->status())->toBe(302, "Attempt {$i} should redirect (302), got {$response->status()}");
     }
 
-    // Verify results
-    expect($results)->toHaveCount(14);
+    // 6th attempt from same IP should be throttled
+    $response = $this->post('/login', [
+        'email' => $email,
+        'password' => 'wrong-password',
+    ]);
 
-    // Check that we got responses for all attempts
-    foreach ($results as $i => $result) {
-        expect($result['status'])->toBeGreaterThanOrEqual(200);
-        expect($result['ip'])->toBe("198.51.100.{$i}");
+    expect($response->status())->toBe(429, 'Expected 429 Too Many Requests after exceeding rate limit');
+});
+
+test('rate limit is scoped per email and IP combination', function () {
+    // Exhaust rate limit for first email
+    for ($i = 1; $i <= 5; $i++) {
+        $this->post('/login', [
+            'email' => 'test@example.com',
+            'password' => 'wrong-password',
+        ]);
     }
+
+    // Different email from same IP should still work (different composite key)
+    $response = $this->post('/login', [
+        'email' => 'other@example.com',
+        'password' => 'wrong-password',
+    ]);
+
+    expect($response->status())->toBe(302, 'Different email should not be rate limited');
+});
+
+test('successful login is still possible within rate limit', function () {
+    $response = $this->post('/login', [
+        'email' => 'test@example.com',
+        'password' => 'password',
+    ]);
+
+    $response->assertRedirect();
+    expect($response->status())->not->toBe(429);
 });
