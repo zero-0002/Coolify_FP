@@ -165,3 +165,29 @@ it('denies member from using deploy permissions', function () {
     $policy = new ApiTokenPolicy;
     expect($policy->useDeployPermissions($user))->toBeFalse();
 });
+
+it('allows admin to use sensitive permissions', function () {
+    $user = Mockery::mock(User::class)->makePartial();
+    $user->shouldReceive('isAdmin')->andReturn(true);
+
+    $policy = new ApiTokenPolicy;
+    expect($policy->useSensitivePermissions($user))->toBeTrue();
+});
+
+it('allows owner to use sensitive permissions', function () {
+    $user = Mockery::mock(User::class)->makePartial();
+    $user->shouldReceive('isAdmin')->andReturn(false);
+    $user->shouldReceive('isOwner')->andReturn(true);
+
+    $policy = new ApiTokenPolicy;
+    expect($policy->useSensitivePermissions($user))->toBeTrue();
+});
+
+it('denies member from using sensitive permissions', function () {
+    $user = Mockery::mock(User::class)->makePartial();
+    $user->shouldReceive('isAdmin')->andReturn(false);
+    $user->shouldReceive('isOwner')->andReturn(false);
+
+    $policy = new ApiTokenPolicy;
+    expect($policy->useSensitivePermissions($user))->toBeFalse();
+});

@@ -40,7 +40,7 @@
         @if ($database->destination->server->isFunctional())
                 <div class="flex flex-wrap gap-2 items-center">
                     @if (!str($database->status)->startsWith('exited'))
-                        <x-modal-confirmation :disabled="!auth()->user()->can('manage', $database)" title="Confirm Database Restart?" buttonTitle="Restart" submitAction="restart"
+                        <x-modal-confirmation :disabled="!auth()->user()->can('manage', $database)" :authDisabled="!auth()->user()->can('manage', $database)" title="Confirm Database Restart?" buttonTitle="Restart" submitAction="restart"
                             :actions="[
                                 'This database will be unavailable during the restart.',
                                 'If the database is currently in use data could be lost.',
@@ -58,7 +58,7 @@
                                 Restart
                             </x-slot:button-title>
                         </x-modal-confirmation>
-                        <x-modal-confirmation :disabled="!auth()->user()->can('manage', $database)" title="Confirm Database Stopping?" buttonTitle="Stop" submitAction="stop"
+                        <x-modal-confirmation :disabled="!auth()->user()->can('manage', $database)" :authDisabled="!auth()->user()->can('manage', $database)" title="Confirm Database Stopping?" buttonTitle="Stop" submitAction="stop"
                             :checkboxes="$checkboxes" :actions="[
                                 'This database will be stopped.',
                                 'If the database is currently in use data could be lost.',
@@ -80,7 +80,7 @@
                             </x-slot:button-title>
                         </x-modal-confirmation>
                     @else
-                        <button @disabled(!auth()->user()->can('manage', $database)) @click="$wire.dispatch('startEvent')" class="gap-2 button">
+                        <x-forms.button canGate="manage" :canResource="$database" @click="$wire.dispatch('startEvent')" class="gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 dark:text-warning" viewBox="0 0 24 24"
                                 stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round"
                                 stroke-linejoin="round">
@@ -88,17 +88,15 @@
                                 <path d="M7 4v16l13 -8z" />
                             </svg>
                             Start
-                        </button>
+                        </x-forms.button>
                     @endif
                     @script
                         <script>
                             $wire.$on('startEvent', () => {
-                                window.dispatchEvent(new CustomEvent('startdatabase'));
                                 $wire.$call('start');
                             });
                             $wire.$on('restartEvent', () => {
                                 $wire.$dispatch('info', 'Restarting database.');
-                                window.dispatchEvent(new CustomEvent('startdatabase'));
                                 $wire.$call('restart');
                             });
                         </script>

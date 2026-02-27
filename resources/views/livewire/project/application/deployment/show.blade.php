@@ -246,6 +246,7 @@
                                             class="block w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-coolgray-300">
                                             Download displayed logs
                                         </button>
+                                        @can('update', $application)
                                         <button x-on:click="
                                             downloadingAllLogs = true;
                                             $wire.downloadAllLogs().then(logs => {
@@ -276,6 +277,7 @@
                                                 Downloading...
                                             </span>
                                         </button>
+                                        @endcan
                                     </div>
                                 </div>
                             </div>

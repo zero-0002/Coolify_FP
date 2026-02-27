@@ -123,6 +123,8 @@ class Show extends Component
 
     public function downloadAllLogs(): string
     {
+        $this->authorize('update', $this->application);
+
         $logs = decode_remote_command_output($this->application_deployment_queue, includeAll: true)
             ->map(function ($line) {
                 $prefix = '';

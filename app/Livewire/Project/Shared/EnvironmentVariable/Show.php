@@ -52,6 +52,8 @@ class Show extends Component
 
     public bool $is_redis_credential = false;
 
+    public bool $isValueHidden = false;
+
     public array $problematicVariables = [];
 
     protected $listeners = [
@@ -134,6 +136,13 @@ class Show extends Component
             $this->is_really_required = $this->env->is_really_required ?? false;
             $this->is_shared = $this->env->is_shared ?? false;
             $this->real_value = $this->env->real_value;
+
+            if ($this->env->is_shown_once || auth()->user()?->isMember()) {
+                $this->value = null;
+                $this->real_value = null;
+            }
+
+            $this->isValueHidden = auth()->user()?->isMember() ?? false;
         }
     }
 

@@ -90,6 +90,7 @@ class Heading extends Component
             $this->authorize('manage', $this->database);
 
             $activity = RestartDatabase::run($this->database);
+            $this->js("window.dispatchEvent(new CustomEvent('startdatabase'))");
             $this->dispatch('activityMonitor', $activity->id, ServiceStatusChanged::class);
         } catch (\Throwable $e) {
             return handleError($e, $this);
@@ -102,6 +103,7 @@ class Heading extends Component
             $this->authorize('manage', $this->database);
 
             $activity = StartDatabase::run($this->database);
+            $this->js("window.dispatchEvent(new CustomEvent('startdatabase'))");
             $this->dispatch('activityMonitor', $activity->id, ServiceStatusChanged::class);
         } catch (\Throwable $e) {
             return handleError($e, $this);

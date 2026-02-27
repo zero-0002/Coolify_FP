@@ -4,6 +4,7 @@ namespace App\Livewire\Security;
 
 use App\Models\InstanceSettings;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Component;
 
@@ -25,6 +26,8 @@ class ApiTokens extends Component
 
     public bool $canUseDeployPermissions = false;
 
+    public bool $canUseSensitivePermissions = false;
+
     public function render()
     {
         return view('livewire.security.api-tokens');
@@ -36,6 +39,7 @@ class ApiTokens extends Component
         $this->canUseRootPermissions = auth()->user()->can('useRootPermissions', PersonalAccessToken::class);
         $this->canUseWritePermissions = auth()->user()->can('useWritePermissions', PersonalAccessToken::class);
         $this->canUseDeployPermissions = auth()->user()->can('useDeployPermissions', PersonalAccessToken::class);
+        $this->canUseSensitivePermissions = auth()->user()->can('useSensitivePermissions', PersonalAccessToken::class);
         $this->getTokens();
     }
 
@@ -66,6 +70,13 @@ class ApiTokens extends Component
         if ($permissionToUpdate == 'deploy' && ! $this->canUseDeployPermissions) {
             $this->dispatch('error', 'You do not have permission to use deploy permissions.');
             $this->permissions = array_diff($this->permissions, ['deploy']);
+
+            return;
+        }
+
+        if ($permissionToUpdate == 'read:sensitive' && ! $this->canUseSensitivePermissions) {
+            $this->dispatch('error', 'You do not have permission to use read:sensitive permissions.');
+            $this->permissions = array_diff($this->permissions, ['read:sensitive']);
 
             return;
         }
@@ -102,12 +113,16 @@ class ApiTokens extends Component
                 throw new \Exception('You do not have permission to create tokens with deploy permissions.');
             }
 
+            if (in_array('read:sensitive', $this->permissions) && ! $this->canUseSensitivePermissions) {
+                throw new \Exception('You do not have permission to create tokens with read:sensitive permissions.');
+            }
+
             $this->validate([
                 'description' => 'required|min:3|max:255',
             ]);
             $token = auth()->user()->createToken($this->description, array_values($this->permissions));
             $this->getTokens();
-            session()->flash('token', $token->plainTextToken);
+            session()->flash('token', Str::after($token->plainTextToken, '|'));
         } catch (\Exception $e) {
             return handleError($e, $this);
         }

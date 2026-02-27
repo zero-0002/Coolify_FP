@@ -404,6 +404,7 @@ class Show extends Component
     public function checkHetznerServerStatus(bool $manual = false)
     {
         try {
+            $this->authorize('view', $this->server);
             if (! $this->server->hetzner_server_id || ! $this->server->cloudProviderToken) {
                 $this->dispatch('error', 'This server is not associated with a Hetzner Cloud server or token.');
 
@@ -468,6 +469,7 @@ class Show extends Component
     public function startHetznerServer()
     {
         try {
+            $this->authorize('update', $this->server);
             if (! $this->server->hetzner_server_id || ! $this->server->cloudProviderToken) {
                 $this->dispatch('error', 'This server is not associated with a Hetzner Cloud server or token.');
 

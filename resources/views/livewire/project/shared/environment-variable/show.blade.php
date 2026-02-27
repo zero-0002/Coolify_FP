@@ -139,15 +139,22 @@
             @else
                 <div class="flex flex-col w-full gap-2 lg:flex-row">
                     <x-forms.input disabled id="key" />
-                    <x-forms.env-var-input
-                        disabled
-                        type="password"
-                        id="value"
-                        :availableVars="$this->availableSharedVariables"
-                        :projectUuid="data_get($parameters, 'project_uuid')"
-                        :environmentUuid="data_get($parameters, 'environment_uuid')" />
-                    @if ($is_shared)
-                        <x-forms.input disabled type="password" id="real_value" />
+                    @if ($isValueHidden)
+                        <div class="w-full">
+                            <input disabled type="text" value="Hidden (only admins can view)"
+                                class="input italic !text-neutral-500 dark:!text-neutral-500" />
+                        </div>
+                    @else
+                        <x-forms.env-var-input
+                            disabled
+                            type="password"
+                            id="value"
+                            :availableVars="$this->availableSharedVariables"
+                            :projectUuid="data_get($parameters, 'project_uuid')"
+                            :environmentUuid="data_get($parameters, 'environment_uuid')" />
+                        @if ($is_shared)
+                            <x-forms.input disabled type="password" id="real_value" />
+                        @endif
                     @endif
                 </div>
             @endcan

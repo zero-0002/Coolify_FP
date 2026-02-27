@@ -54,6 +54,10 @@ class ApplicationsController extends Controller
             ]);
         }
 
+        if ($application->is_shown_once ?? false) {
+            $application->makeHidden(['value', 'real_value']);
+        }
+
         return serializeApiResponse($application);
     }
 

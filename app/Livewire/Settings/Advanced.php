@@ -4,11 +4,14 @@ namespace App\Livewire\Settings;
 
 use App\Models\InstanceSettings;
 use App\Rules\ValidIpOrCidr;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 
 class Advanced extends Component
 {
+    use AuthorizesRequests;
+
     public InstanceSettings $settings;
 
     #[Validate('boolean')]
@@ -72,6 +75,7 @@ class Advanced extends Component
     public function submit()
     {
         try {
+            $this->authorize('update', $this->settings);
             $this->validate();
 
             $this->custom_dns_servers = str($this->custom_dns_servers)->replaceEnd(',', '')->trim();
@@ -137,6 +141,7 @@ class Advanced extends Component
     public function instantSave()
     {
         try {
+            $this->authorize('update', $this->settings);
             $this->settings->is_registration_enabled = $this->is_registration_enabled;
             $this->settings->do_not_track = $this->do_not_track;
             $this->settings->is_dns_validation_enabled = $this->is_dns_validation_enabled;
@@ -155,6 +160,7 @@ class Advanced extends Component
 
     public function toggleTwoStepConfirmation($password): bool
     {
+        $this->authorize('update', $this->settings);
         if (! verifyPasswordConfirmation($password, $this)) {
             return false;
         }

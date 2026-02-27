@@ -5,11 +5,14 @@ namespace App\Livewire\Settings;
 use App\Jobs\CheckForUpdatesJob;
 use App\Models\InstanceSettings;
 use App\Models\Server;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 
 class Updates extends Component
 {
+    use AuthorizesRequests;
+
     public InstanceSettings $settings;
 
     public ?Server $server = null;
@@ -25,6 +28,9 @@ class Updates extends Component
 
     public function mount()
     {
+        if (! isInstanceAdmin()) {
+            return redirect()->route('dashboard');
+        }
         if (! isCloud()) {
             $this->server = Server::findOrFail(0);
         }
@@ -38,6 +44,7 @@ class Updates extends Component
     public function instantSave()
     {
         try {
+            $this->authorize('update', $this->settings);
             if ($this->settings->is_auto_update_enabled === true) {
                 $this->validate([
                     'auto_update_frequency' => ['required', 'string'],
@@ -56,6 +63,7 @@ class Updates extends Component
     public function submit()
     {
         try {
+            $this->authorize('update', $this->settings);
             $this->resetErrorBag();
             $this->validate();
 
@@ -88,6 +96,7 @@ class Updates extends Component
 
     public function checkManually()
     {
+        $this->authorize('update', $this->settings);
         CheckForUpdatesJob::dispatchSync();
         $this->dispatch('updateAvailable');
         $settings = instanceSettings();

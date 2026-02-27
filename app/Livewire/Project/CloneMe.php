@@ -11,11 +11,14 @@ use App\Models\Environment;
 use App\Models\Project;
 use App\Models\Server;
 use App\Support\ValidationPatterns;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 use Visus\Cuid2\Cuid2;
 
 class CloneMe extends Component
 {
+    use AuthorizesRequests;
+
     public string $project_uuid;
 
     public string $environment_uuid;
@@ -91,6 +94,7 @@ class CloneMe extends Component
     public function clone(string $type)
     {
         try {
+            $this->authorize('create', Project::class);
             $this->validate([
                 'selectedDestination' => 'required',
                 'newName' => ValidationPatterns::nameRules(),

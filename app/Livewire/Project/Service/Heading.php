@@ -105,6 +105,7 @@ class Heading extends Component
         try {
             $this->authorize('deploy', $this->service);
             $activity = StartService::run($this->service, pullLatestImages: true);
+            $this->js("window.dispatchEvent(new CustomEvent('startservice'))");
             $this->dispatch('activityMonitor', $activity->id);
         } catch (\Throwable $e) {
             return handleError($e, $this);
@@ -125,6 +126,7 @@ class Heading extends Component
                 $activity->save();
             }
             $activity = StartService::run($this->service, pullLatestImages: true, stopBeforeStart: true);
+            $this->js("window.dispatchEvent(new CustomEvent('startservice'))");
             $this->dispatch('activityMonitor', $activity->id);
         } catch (\Throwable $e) {
             return handleError($e, $this);
@@ -152,6 +154,7 @@ class Heading extends Component
                 return;
             }
             $activity = StartService::run($this->service, stopBeforeStart: true);
+            $this->js("window.dispatchEvent(new CustomEvent('startservice'))");
             $this->dispatch('activityMonitor', $activity->id);
         } catch (\Throwable $e) {
             return handleError($e, $this);
@@ -169,6 +172,7 @@ class Heading extends Component
                 return;
             }
             $activity = StartService::run($this->service, pullLatestImages: true, stopBeforeStart: true);
+            $this->js("window.dispatchEvent(new CustomEvent('startservice'))");
             $this->dispatch('activityMonitor', $activity->id);
         } catch (\Throwable $e) {
             return handleError($e, $this);

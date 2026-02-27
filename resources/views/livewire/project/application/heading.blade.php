@@ -85,7 +85,7 @@
                                     </x-forms.button>
                                 @endif
                             @endif
-                            <x-modal-confirmation :disabled="!auth()->user()->can('deploy', $application)" title="Confirm Application Stopping?" buttonTitle="Stop"
+                            <x-modal-confirmation :disabled="!auth()->user()->can('deploy', $application)" :authDisabled="!auth()->user()->can('deploy', $application)" title="Confirm Application Stopping?" buttonTitle="Stop"
                                 submitAction="stop" :checkboxes="$checkboxes" :actions="[
                                     'This application will be stopped.',
                                     'All non-persistent data of this application will be deleted.',
