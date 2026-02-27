@@ -109,6 +109,11 @@ class DatabasePolicy
 
     private function getTeamId($database): ?int
     {
+        // Instance-level databases (e.g., coolify-db) belong to root team
+        if (isset($database->id) && $database->id === 0) {
+            return 0;
+        }
+
         if (method_exists($database, 'team')) {
             return $database->team()?->id;
         }
