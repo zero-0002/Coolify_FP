@@ -17,6 +17,8 @@ class StackForm extends Component
 
     public Collection $fields;
 
+    public bool $isPasswordHiddenForMember = false;
+
     protected $listeners = ['saveCompose'];
 
     // Explicit properties
@@ -121,6 +123,17 @@ class StackForm extends Component
         })->flatMap(function ($group) {
             return $group;
         });
+
+        $this->isPasswordHiddenForMember = auth()->user()?->isMember() ?? false;
+        if ($this->isPasswordHiddenForMember) {
+            $this->fields = $this->fields->map(function ($field) {
+                if (data_get($field, 'isPassword')) {
+                    $field['value'] = null;
+                }
+
+                return $field;
+            });
+        }
     }
 
     public function saveCompose($raw)

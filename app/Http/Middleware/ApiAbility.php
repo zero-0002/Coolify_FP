@@ -21,9 +21,9 @@ class ApiAbility extends CheckForAnyAbility
     {
         try {
             $token = $request->user()->currentAccessToken();
-            $teamId = (int) data_get($token, 'team_id');
+            $teamId = data_get($token, 'team_id');
 
-            if ($teamId && ! $request->user()->isAdminOfTeam($teamId)) {
+            if ($teamId !== null && ! $request->user()->isAdminOfTeam((int) $teamId)) {
                 $tokenAbilities = $token->abilities ?? [];
                 $disallowed = array_intersect($tokenAbilities, self::MEMBER_DISALLOWED_ABILITIES);
 

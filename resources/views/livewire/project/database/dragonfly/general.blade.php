@@ -18,16 +18,24 @@
 
         @if ($database->started_at)
             <div class="flex gap-2">
-                <x-forms.input label="Initial Password" id="dragonflyPassword" type="password" required readonly
-                    helper="You can only change this in the database." canGate="update" :canResource="$database" />
+                @if ($isPasswordHiddenForMember)
+                    <x-forms.input label="Initial Password" disabled value="Hidden (only admins can view)" />
+                @else
+                    <x-forms.input label="Initial Password" id="dragonflyPassword" type="password" required readonly
+                        helper="You can only change this in the database." canGate="update" :canResource="$database" />
+                @endif
             </div>
         @else
             <div class=" dark:text-warning">Please verify these values. You can only modify them before the initial
                 start. After that, you need to modify it in the database.
             </div>
             <div class="flex gap-2">
-                <x-forms.input label="Password" id="dragonflyPassword" type="password" required canGate="update"
-                    :canResource="$database" />
+                @if ($isPasswordHiddenForMember)
+                    <x-forms.input label="Password" disabled value="Hidden (only admins can view)" />
+                @else
+                    <x-forms.input label="Password" id="dragonflyPassword" type="password" required canGate="update"
+                        :canResource="$database" />
+                @endif
             </div>
         @endif
         <div class="flex flex-col gap-2">
@@ -37,18 +45,26 @@
                     helper="A comma separated list of ports you would like to map to the host system.<br><span class='inline-block font-bold dark:text-warning'>Example</span>3000:5432,3002:5433"
                     canGate="update" :canResource="$database" />
             </div>
-            <x-forms.input label="Dragonfly URL (internal)"
-                helper="If you change the user/password/port, this could be different. This is with the default values."
-                type="password" readonly wire:model="dbUrl" canGate="update" :canResource="$database" />
-
-            @if ($dbUrlPublic)
-                <x-forms.input label="Dragonfly URL (public)"
-                    helper="If you change the user/password/port, this could be different. This is with the default values."
-                    type="password" readonly wire:model="dbUrlPublic" canGate="update" :canResource="$database" />
+            @if ($isPasswordHiddenForMember)
+                <x-forms.input label="Dragonfly URL (internal)" disabled value="Hidden (only admins can view)" />
             @else
-                <x-forms.input label="Dragonfly URL (public)"
+                <x-forms.input label="Dragonfly URL (internal)"
                     helper="If you change the user/password/port, this could be different. This is with the default values."
-                    readonly value="Starting the database will generate this." canGate="update" :canResource="$database" />
+                    type="password" readonly wire:model="dbUrl" canGate="update" :canResource="$database" />
+            @endif
+
+            @if ($isPasswordHiddenForMember)
+                <x-forms.input label="Dragonfly URL (public)" disabled value="Hidden (only admins can view)" />
+            @else
+                @if ($dbUrlPublic)
+                    <x-forms.input label="Dragonfly URL (public)"
+                        helper="If you change the user/password/port, this could be different. This is with the default values."
+                        type="password" readonly wire:model="dbUrlPublic" canGate="update" :canResource="$database" />
+                @else
+                    <x-forms.input label="Dragonfly URL (public)"
+                        helper="If you change the user/password/port, this could be different. This is with the default values."
+                        readonly value="Starting the database will generate this." canGate="update" :canResource="$database" />
+                @endif
             @endif
         </div>
         <div class="flex flex-col gap-2">

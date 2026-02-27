@@ -23,8 +23,12 @@
                         <x-forms.input label="Username" id="redisUsername"
                             helper="You can only change this in the database." canGate="update" :canResource="$database" />
                     @endif
-                    <x-forms.input label="Password" id="redisPassword" type="password"
-                        helper="You can only change this in the database." canGate="update" :canResource="$database" />
+                    @if ($isPasswordHiddenForMember)
+                        <x-forms.input label="Password" disabled value="Hidden (only admins can view)" />
+                    @else
+                        <x-forms.input label="Password" id="redisPassword" type="password"
+                            helper="You can only change this in the database." canGate="update" :canResource="$database" />
+                    @endif
                 </div>
             @else
                 <div class="pt-2 dark:text-warning">You can only change the username and password in the database after
@@ -39,13 +43,17 @@
                     Note: If the environment variable REDIS_USERNAME is set as a shared variable (environment, project, or team-based), this input field will become read-only."
                             :disabled="$this->isSharedVariable('REDIS_USERNAME')" canGate="update" :canResource="$database" />
                     @endif
-                    <x-forms.input label="Password" id="redisPassword" type="password" required
-                        helper="You can change the Redis Password in the input field below or by editing the value of the REDIS_PASSWORD environment variable.
+                    @if ($isPasswordHiddenForMember)
+                        <x-forms.input label="Password" disabled value="Hidden (only admins can view)" />
+                    @else
+                        <x-forms.input label="Password" id="redisPassword" type="password" required
+                            helper="You can change the Redis Password in the input field below or by editing the value of the REDIS_PASSWORD environment variable.
                 <br><br>
                 If you change the Redis Password in the database, please sync it here, otherwise automations (like backups) won't work.
                 <br><br>
                 Note: If the environment variable REDIS_PASSWORD is set as a shared variable (environment, project, or team-based), this input field will become read-only."
-                        :disabled="$this->isSharedVariable('REDIS_PASSWORD')" canGate="update" :canResource="$database" />
+                            :disabled="$this->isSharedVariable('REDIS_PASSWORD')" canGate="update" :canResource="$database" />
+                    @endif
                 </div>
             @endif
         </div>
@@ -60,13 +68,21 @@
                     helper="A comma separated list of ports you would like to map to the host system.<br><span class='inline-block font-bold dark:text-warning'>Example</span>3000:5432,3002:5433"
                     canGate="update" :canResource="$database" />
             </div>
-            <x-forms.input label="Redis URL (internal)"
-                helper="If you change the user/password/port, this could be different. This is with the default values."
-                type="password" readonly wire:model="dbUrl" canGate="update" :canResource="$database" />
-            @if ($dbUrlPublic)
-                <x-forms.input label="Redis URL (public)"
+            @if ($isPasswordHiddenForMember)
+                <x-forms.input label="Redis URL (internal)" disabled value="Hidden (only admins can view)" />
+            @else
+                <x-forms.input label="Redis URL (internal)"
                     helper="If you change the user/password/port, this could be different. This is with the default values."
-                    type="password" readonly wire:model="dbUrlPublic" canGate="update" :canResource="$database" />
+                    type="password" readonly wire:model="dbUrl" canGate="update" :canResource="$database" />
+            @endif
+            @if ($isPasswordHiddenForMember)
+                <x-forms.input label="Redis URL (public)" disabled value="Hidden (only admins can view)" />
+            @else
+                @if ($dbUrlPublic)
+                    <x-forms.input label="Redis URL (public)"
+                        helper="If you change the user/password/port, this could be different. This is with the default values."
+                        type="password" readonly wire:model="dbUrlPublic" canGate="update" :canResource="$database" />
+                @endif
             @endif
         </div>
         <div class="flex flex-col gap-2">

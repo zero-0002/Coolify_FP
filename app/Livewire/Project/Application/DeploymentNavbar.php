@@ -28,7 +28,9 @@ class DeploymentNavbar extends Component
     {
         $this->application = Application::ownedByCurrentTeam()->find($this->application_deployment_queue->application_id);
         $this->server = $this->application->destination->server;
-        $this->is_debug_enabled = $this->application->settings->is_debug_enabled;
+        $this->is_debug_enabled = auth()->user()->isMember()
+            ? false
+            : $this->application->settings->is_debug_enabled;
     }
 
     public function deploymentFinished()
@@ -67,10 +69,15 @@ class DeploymentNavbar extends Component
             return '';
         }
 
+        $isMember = auth()->user()->isMember();
+
         $markdown = "# Deployment Logs\n\n";
         $markdown .= "```\n";
 
         foreach ($logs as $log) {
+            if ($isMember && ! empty($log['hidden'])) {
+                continue;
+            }
             if (isset($log['output'])) {
                 $markdown .= $log['output']."\n";
             }

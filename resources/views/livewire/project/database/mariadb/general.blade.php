@@ -17,15 +17,23 @@
         </div>
         @if ($database->started_at)
             <div class="flex xl:flex-row flex-col gap-2">
-                <x-forms.input label="Root Password" id="mariadbRootPassword" type="password" required
-                    helper="If you change this in the database, please sync it here, otherwise automations (like backups) won't work."
-                    canGate="update" :canResource="$database" />
+                @if ($isPasswordHiddenForMember)
+                    <x-forms.input label="Root Password" disabled value="Hidden (only admins can view)" />
+                @else
+                    <x-forms.input label="Root Password" id="mariadbRootPassword" type="password" required
+                        helper="If you change this in the database, please sync it here, otherwise automations (like backups) won't work."
+                        canGate="update" :canResource="$database" />
+                @endif
                 <x-forms.input label="Normal User" id="mariadbUser" required
                     helper="If you change this in the database, please sync it here, otherwise automations (like backups) won't work."
                     canGate="update" :canResource="$database" />
-                <x-forms.input label="Normal User Password" id="mariadbPassword" type="password" required
-                    helper="If you change this in the database, please sync it here, otherwise automations (like backups) won't work."
-                    canGate="update" :canResource="$database" />
+                @if ($isPasswordHiddenForMember)
+                    <x-forms.input label="Normal User Password" disabled value="Hidden (only admins can view)" />
+                @else
+                    <x-forms.input label="Normal User Password" id="mariadbPassword" type="password" required
+                        helper="If you change this in the database, please sync it here, otherwise automations (like backups) won't work."
+                        canGate="update" :canResource="$database" />
+                @endif
             </div>
             <div class="flex flex-col gap-2">
                 <x-forms.input label="Initial Database" id="mariadbDatabase"
@@ -34,12 +42,20 @@
             </div>
         @else
             <div class="flex xl:flex-row flex-col gap-2 pb-2">
-                <x-forms.input label="Root Password" id="mariadbRootPassword" type="password"
-                    helper="You can only change this in the database." canGate="update" :canResource="$database" />
+                @if ($isPasswordHiddenForMember)
+                    <x-forms.input label="Root Password" disabled value="Hidden (only admins can view)" />
+                @else
+                    <x-forms.input label="Root Password" id="mariadbRootPassword" type="password"
+                        helper="You can only change this in the database." canGate="update" :canResource="$database" />
+                @endif
                 <x-forms.input label="Normal User" id="mariadbUser" required
                     helper="You can only change this in the database." canGate="update" :canResource="$database" />
-                <x-forms.input label="Normal User Password" id="mariadbPassword" type="password" required
-                    helper="You can only change this in the database." canGate="update" :canResource="$database" />
+                @if ($isPasswordHiddenForMember)
+                    <x-forms.input label="Normal User Password" disabled value="Hidden (only admins can view)" />
+                @else
+                    <x-forms.input label="Normal User Password" id="mariadbPassword" type="password" required
+                        helper="You can only change this in the database." canGate="update" :canResource="$database" />
+                @endif
             </div>
             <div class="flex flex-col gap-2">
                 <x-forms.input label="Initial Database" id="mariadbDatabase"
@@ -61,13 +77,21 @@
                     helper="A comma separated list of ports you would like to map to the host system.<br><span class='inline-block font-bold dark:text-warning'>Example</span>3000:5432,3002:5433"
                     canGate="update" :canResource="$database" />
             </div>
-            <x-forms.input label="MariaDB URL (internal)"
-                helper="If you change the user/password/port, this could be different. This is with the default values."
-                type="password" readonly wire:model="db_url" canGate="update" :canResource="$database" />
-            @if ($db_url_public)
-                <x-forms.input label="MariaDB URL (public)"
+            @if ($isPasswordHiddenForMember)
+                <x-forms.input label="MariaDB URL (internal)" disabled value="Hidden (only admins can view)" />
+            @else
+                <x-forms.input label="MariaDB URL (internal)"
                     helper="If you change the user/password/port, this could be different. This is with the default values."
-                    type="password" readonly wire:model="db_url_public" canGate="update" :canResource="$database" />
+                    type="password" readonly wire:model="db_url" canGate="update" :canResource="$database" />
+            @endif
+            @if ($isPasswordHiddenForMember)
+                <x-forms.input label="MariaDB URL (public)" disabled value="Hidden (only admins can view)" />
+            @else
+                @if ($db_url_public)
+                    <x-forms.input label="MariaDB URL (public)"
+                        helper="If you change the user/password/port, this could be different. This is with the default values."
+                        type="password" readonly wire:model="db_url_public" canGate="update" :canResource="$database" />
+                @endif
             @endif
         </div>
 

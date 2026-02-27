@@ -50,6 +50,8 @@ class General extends Component
 
     public bool $enable_ssl = false;
 
+    public bool $isPasswordHiddenForMember = false;
+
     public function getListeners()
     {
         $userId = Auth::id();
@@ -80,6 +82,13 @@ class General extends Component
             }
         } catch (\Throwable $e) {
             return handleError($e, $this);
+        }
+
+        $this->isPasswordHiddenForMember = auth()->user()?->isMember() ?? false;
+        if ($this->isPasswordHiddenForMember) {
+            $this->keydbPassword = '';
+            $this->dbUrl = null;
+            $this->dbUrlPublic = null;
         }
     }
 

@@ -34,9 +34,13 @@
                 <x-forms.input label="Username" id="postgresUser" placeholder="If empty: postgres" canGate="update"
                     :canResource="$database"
                     helper="If you change this in the database, please sync it here, otherwise automations (like backups) won't work." />
-                <x-forms.input label="Password" id="postgresPassword" type="password" required canGate="update"
-                    :canResource="$database"
-                    helper="If you change this in the database, please sync it here, otherwise automations (like backups) won't work." />
+                @if ($isPasswordHiddenForMember)
+                    <x-forms.input label="Password" disabled value="Hidden (only admins can view)" />
+                @else
+                    <x-forms.input label="Password" id="postgresPassword" type="password" required canGate="update"
+                        :canResource="$database"
+                        helper="If you change this in the database, please sync it here, otherwise automations (like backups) won't work." />
+                @endif
                 <x-forms.input label="Initial Database" id="postgresDb"
                     placeholder="If empty, it will be the same as Username." readonly
                     helper="You can only change this in the database." />
@@ -45,8 +49,12 @@
             <div class="flex xl:flex-row flex-col gap-2 pb-2">
                 <x-forms.input label="Username" id="postgresUser" placeholder="If empty: postgres" canGate="update"
                     :canResource="$database" />
-                <x-forms.input label="Password" id="postgresPassword" type="password" required canGate="update"
-                    :canResource="$database" />
+                @if ($isPasswordHiddenForMember)
+                    <x-forms.input label="Password" disabled value="Hidden (only admins can view)" />
+                @else
+                    <x-forms.input label="Password" id="postgresPassword" type="password" required canGate="update"
+                        :canResource="$database" />
+                @endif
                 <x-forms.input label="Initial Database" id="postgresDb"
                     placeholder="If empty, it will be the same as Username." canGate="update" :canResource="$database" />
             </div>
@@ -69,13 +77,21 @@
                     canGate="update" :canResource="$database" />
             </div>
 
-            <x-forms.input label="Postgres URL (internal)"
-                helper="If you change the user/password/port, this could be different. This is with the default values."
-                type="password" readonly wire:model="db_url" />
-            @if ($db_url_public)
-                <x-forms.input label="Postgres URL (public)"
+            @if ($isPasswordHiddenForMember)
+                <x-forms.input label="Postgres URL (internal)" disabled value="Hidden (only admins can view)" />
+            @else
+                <x-forms.input label="Postgres URL (internal)"
                     helper="If you change the user/password/port, this could be different. This is with the default values."
-                    type="password" readonly wire:model="db_url_public" />
+                    type="password" readonly wire:model="db_url" />
+            @endif
+            @if ($isPasswordHiddenForMember)
+                <x-forms.input label="Postgres URL (public)" disabled value="Hidden (only admins can view)" />
+            @else
+                @if ($db_url_public)
+                    <x-forms.input label="Postgres URL (public)"
+                        helper="If you change the user/password/port, this could be different. This is with the default values."
+                        type="password" readonly wire:model="db_url_public" />
+                @endif
             @endif
         </div>
         <div class="flex flex-col gap-2">

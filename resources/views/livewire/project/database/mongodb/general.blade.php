@@ -21,10 +21,14 @@
                     placeholder="If empty: postgres"
                     helper="If you change this in the database, please sync it here, otherwise automations (like backups) won't work."
                     canGate="update" :canResource="$database" />
-                <x-forms.input label="Initial Password" id="mongoInitdbRootPassword" type="password"
-                    required
-                    helper="If you change this in the database, please sync it here, otherwise automations (like backups) won't work."
-                    canGate="update" :canResource="$database" />
+                @if ($isPasswordHiddenForMember)
+                    <x-forms.input label="Initial Password" disabled value="Hidden (only admins can view)" />
+                @else
+                    <x-forms.input label="Initial Password" id="mongoInitdbRootPassword" type="password"
+                        required
+                        helper="If you change this in the database, please sync it here, otherwise automations (like backups) won't work."
+                        canGate="update" :canResource="$database" />
+                @endif
                 <x-forms.input label="Initial Database" id="mongoInitdbDatabase"
                     placeholder="If empty, it will be the same as Username." readonly
                     helper="You can only change this in the database." canGate="update" :canResource="$database" />
@@ -33,8 +37,12 @@
             <div class="flex xl:flex-row flex-col gap-2 pb-2">
                 <x-forms.input required label="Username" id="mongoInitdbRootUsername"
                     placeholder="If empty: postgres" canGate="update" :canResource="$database" />
-                <x-forms.input label="Password" id="mongoInitdbRootPassword" type="password" required
-                    canGate="update" :canResource="$database" />
+                @if ($isPasswordHiddenForMember)
+                    <x-forms.input label="Password" disabled value="Hidden (only admins can view)" />
+                @else
+                    <x-forms.input label="Password" id="mongoInitdbRootPassword" type="password" required
+                        canGate="update" :canResource="$database" />
+                @endif
                 <x-forms.input required label="Database" id="mongoInitdbDatabase"
                     placeholder="If empty, it will be the same as Username." canGate="update" :canResource="$database" />
             </div>
@@ -50,13 +58,21 @@
                     helper="A comma separated list of ports you would like to map to the host system.<br><span class='inline-block font-bold dark:text-warning'>Example</span>3000:5432,3002:5433"
                     canGate="update" :canResource="$database" />
             </div>
-            <x-forms.input label="Mongo URL (internal)"
-                helper="If you change the user/password/port, this could be different. This is with the default values."
-                type="password" readonly wire:model="db_url" canGate="update" :canResource="$database" />
-            @if ($db_url_public)
-                <x-forms.input label="Mongo URL (public)"
+            @if ($isPasswordHiddenForMember)
+                <x-forms.input label="Mongo URL (internal)" disabled value="Hidden (only admins can view)" />
+            @else
+                <x-forms.input label="Mongo URL (internal)"
                     helper="If you change the user/password/port, this could be different. This is with the default values."
-                    type="password" readonly wire:model="db_url_public" canGate="update" :canResource="$database" />
+                    type="password" readonly wire:model="db_url" canGate="update" :canResource="$database" />
+            @endif
+            @if ($isPasswordHiddenForMember)
+                <x-forms.input label="Mongo URL (public)" disabled value="Hidden (only admins can view)" />
+            @else
+                @if ($db_url_public)
+                    <x-forms.input label="Mongo URL (public)"
+                        helper="If you change the user/password/port, this could be different. This is with the default values."
+                        type="password" readonly wire:model="db_url_public" canGate="update" :canResource="$database" />
+                @endif
             @endif
         </div>
 
