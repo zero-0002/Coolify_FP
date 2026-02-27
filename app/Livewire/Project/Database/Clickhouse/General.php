@@ -82,7 +82,7 @@ class General extends Component
             'portsMappings' => 'nullable|string',
             'isPublic' => 'nullable|boolean',
             'publicPort' => 'nullable|integer',
-            'publicPortTimeout' => 'nullable|integer',
+            'publicPortTimeout' => 'nullable|integer|min:1',
             'customDockerRunOptions' => 'nullable|string',
             'dbUrl' => 'nullable|string',
             'dbUrlPublic' => 'nullable|string',
@@ -103,6 +103,7 @@ class General extends Component
                 'image.string' => 'The Docker Image must be a string.',
                 'publicPort.integer' => 'The Public Port must be an integer.',
                 'publicPortTimeout.integer' => 'The Public Port Timeout must be an integer.',
+                'publicPortTimeout.min' => 'The Public Port Timeout must be at least 1.',
             ]
         );
     }

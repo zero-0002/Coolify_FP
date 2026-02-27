@@ -83,7 +83,7 @@ class General extends Component
             'portsMappings' => 'nullable',
             'isPublic' => 'nullable|boolean',
             'publicPort' => 'nullable|integer',
-            'publicPortTimeout' => 'nullable|integer',
+            'publicPortTimeout' => 'nullable|integer|min:1',
             'isLogDrainEnabled' => 'nullable|boolean',
             'customDockerRunOptions' => 'nullable',
             'enableSsl' => 'boolean',
@@ -104,6 +104,7 @@ class General extends Component
                 'image.required' => 'The Docker Image field is required.',
                 'publicPort.integer' => 'The Public Port must be an integer.',
                 'publicPortTimeout.integer' => 'The Public Port Timeout must be an integer.',
+                'publicPortTimeout.min' => 'The Public Port Timeout must be at least 1.',
                 'sslMode.in' => 'The SSL Mode must be one of: PREFERRED, REQUIRED, VERIFY_CA, VERIFY_IDENTITY.',
             ]
         );
