@@ -52,6 +52,7 @@ class DeploymentNavbar extends Component
     public function force_start()
     {
         try {
+            $this->authorize('deploy', $this->application);
             force_start_deployment($this->application_deployment_queue);
         } catch (\Throwable $e) {
             return handleError($e, $this);
@@ -82,6 +83,11 @@ class DeploymentNavbar extends Component
 
     public function cancel()
     {
+        try {
+            $this->authorize('deploy', $this->application);
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
         $deployment_uuid = $this->application_deployment_queue->deployment_uuid;
         $kill_command = "docker rm -f {$deployment_uuid}";
         $build_server_id = $this->application_deployment_queue->build_server_id ?? $this->application->destination->server_id;

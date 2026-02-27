@@ -4,12 +4,15 @@ namespace App\Livewire\Project\Service;
 
 use App\Models\Service;
 use App\Support\ValidationPatterns;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class StackForm extends Component
 {
+    use AuthorizesRequests;
+
     public Service $service;
 
     public Collection $fields;
@@ -128,14 +131,20 @@ class StackForm extends Component
 
     public function instantSave()
     {
-        $this->syncData(true);
-        $this->service->save();
-        $this->dispatch('success', 'Service settings saved.');
+        try {
+            $this->authorize('update', $this->service);
+            $this->syncData(true);
+            $this->service->save();
+            $this->dispatch('success', 'Service settings saved.');
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function submit($notify = true)
     {
         try {
+            $this->authorize('update', $this->service);
             $this->validate();
             $this->syncData(true);
 

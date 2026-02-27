@@ -45,6 +45,9 @@ class Index extends Component
 
     public function submitSearch()
     {
+        if (Auth::id() !== 0 && ! session('impersonating')) {
+            return redirect()->route('dashboard');
+        }
         if ($this->search !== '') {
             $this->foundUsers = User::where(function ($query) {
                 $query->where('name', 'like', "%{$this->search}%")
@@ -55,6 +58,9 @@ class Index extends Component
 
     public function getSubscribers()
     {
+        if (Auth::id() !== 0 && ! session('impersonating')) {
+            return redirect()->route('dashboard');
+        }
         $this->inactiveSubscribers = Team::whereRelation('subscription', 'stripe_invoice_paid', false)->count();
         $this->activeSubscribers = Team::whereRelation('subscription', 'stripe_invoice_paid', true)->count();
     }
