@@ -22,7 +22,7 @@ services:
       - KONG_DECLARATIVE_CONFIG=/home/kong/kong.yml
       # https://github.com/supabase/cli/issues/14
       - KONG_DNS_ORDER=LAST,A,CNAME
-      - KONG_PLUGINS=request-transformer,cors,key-auth,acl,basic-auth
+      - KONG_PLUGINS=request-transformer,cors,key-auth,acl,basic-auth,request-termination
       - KONG_NGINX_PROXY_PROXY_BUFFER_SIZE=160k
       - KONG_NGINX_PROXY_PROXY_BUFFERS=64 160k
       - SUPABASE_ANON_KEY=${SERVICE_SUPABASEANON_KEY}
@@ -274,6 +274,36 @@ services:
                     hide_groups_header: true
                     allow:
                       - admin
+
+            ## Block access to /api/mcp
+            - name: mcp-blocker
+              _comment: 'Block direct access to /api/mcp'
+              url: http://supabase-studio:3000/api/mcp
+              routes:
+                - name: mcp-blocker-route
+                  strip_path: true
+                  paths:
+                    - /api/mcp
+              plugins:
+                - name: request-termination
+                  config:
+                    status_code: 403
+                    message: "Access is forbidden."
+
+            ## MCP endpoint - local access
+            - name: mcp
+              _comment: 'MCP: /mcp -> http://supabase-studio:3000/api/mcp (local access)'
+              url: http://supabase-studio:3000/api/mcp
+              routes:
+                - name: mcp
+                  strip_path: true
+                  paths:
+                    - /mcp
+              plugins:
+                - name: request-termination
+                  config:
+                    status_code: 403
+                    message: "Access is forbidden."
 
             ## Protected Dashboard - catch all remaining routes
             - name: dashboard
@@ -1270,7 +1300,6 @@ services:
         source: ./volumes/functions/main/index.ts
         target: /home/deno/functions/main/index.ts
         content: |
-          import { serve } from 'https://deno.land/std@0.131.0/http/server.ts'
           import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts'
 
           console.log('main function started')
@@ -1302,7 +1331,7 @@ services:
             return true
           }
 
-          serve(async (req: Request) => {
+          Deno.serve(async (req: Request) => {
             if (req.method !== 'OPTIONS' && VERIFY_JWT) {
               try {
                 const token = getAuthToken(req)
@@ -1372,9 +1401,7 @@ services:
           // https://deno.land/manual/getting_started/setup_your_environment
           // This enables autocomplete, go to definition, etc.
 
-          import { serve } from "https://deno.land/std@0.177.1/http/server.ts"
-
-          serve(async () => {
+          Deno.serve(async () => {
             return new Response(
               `"Hello from Edge Functions!"`,
               { headers: { "Content-Type": "application/json" } },
