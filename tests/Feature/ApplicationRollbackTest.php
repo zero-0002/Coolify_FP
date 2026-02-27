@@ -11,7 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 describe('Application Rollback', function () {
-    test('setGitImportSettings uses passed commit instead of application git_commit_sha', function () {
+    beforeEach(function () {
         $team = Team::factory()->create();
         $project = Project::create([
             'team_id' => $team->id,
@@ -25,31 +25,80 @@ describe('Application Rollback', function () {
         ]);
         $server = Server::factory()->create(['team_id' => $team->id]);
 
-        // Create application with git_commit_sha = 'HEAD' (default - use latest)
-        $application = Application::factory()->create([
+        $this->application = Application::factory()->create([
             'environment_id' => $environment->id,
             'destination_id' => $server->id,
             'git_commit_sha' => 'HEAD',
         ]);
+    });
 
-        // Create application settings
+    test('setGitImportSettings uses passed commit instead of application git_commit_sha', function () {
         ApplicationSetting::create([
-            'application_id' => $application->id,
+            'application_id' => $this->application->id,
             'is_git_shallow_clone_enabled' => false,
         ]);
 
-        // The rollback commit SHA we want to deploy
         $rollbackCommit = 'abc123def456';
 
-        // This should use the passed commit, not the application's git_commit_sha
-        $result = $application->setGitImportSettings(
+        $result = $this->application->setGitImportSettings(
             deployment_uuid: 'test-uuid',
             git_clone_command: 'git clone',
             public: true,
             commit: $rollbackCommit
         );
 
-        // Assert: The command should checkout the ROLLBACK commit
         expect($result)->toContain($rollbackCommit);
+    });
+
+    test('setGitImportSettings with shallow clone fetches specific commit', function () {
+        ApplicationSetting::create([
+            'application_id' => $this->application->id,
+            'is_git_shallow_clone_enabled' => true,
+        ]);
+
+        $rollbackCommit = 'abc123def456';
+
+        $result = $this->application->setGitImportSettings(
+            deployment_uuid: 'test-uuid',
+            git_clone_command: 'git clone',
+            public: true,
+            commit: $rollbackCommit
+        );
+
+        expect($result)
+            ->toContain('git fetch --depth=1 origin')
+            ->toContain($rollbackCommit);
+    });
+
+    test('setGitImportSettings falls back to git_commit_sha when no commit passed', function () {
+        $this->application->update(['git_commit_sha' => 'def789abc012']);
+
+        ApplicationSetting::create([
+            'application_id' => $this->application->id,
+            'is_git_shallow_clone_enabled' => false,
+        ]);
+
+        $result = $this->application->setGitImportSettings(
+            deployment_uuid: 'test-uuid',
+            git_clone_command: 'git clone',
+            public: true,
+        );
+
+        expect($result)->toContain('def789abc012');
+    });
+
+    test('setGitImportSettings does not append checkout when commit is HEAD', function () {
+        ApplicationSetting::create([
+            'application_id' => $this->application->id,
+            'is_git_shallow_clone_enabled' => false,
+        ]);
+
+        $result = $this->application->setGitImportSettings(
+            deployment_uuid: 'test-uuid',
+            git_clone_command: 'git clone',
+            public: true,
+        );
+
+        expect($result)->not->toContain('advice.detachedHead=false checkout');
     });
 });

@@ -1096,12 +1096,13 @@ class Application extends BaseModel
         $commitToUse = $commit ?? $this->git_commit_sha;
 
         if ($commitToUse !== 'HEAD') {
+            $escapedCommit = escapeshellarg($commitToUse);
             // If shallow clone is enabled and we need a specific commit,
             // we need to fetch that specific commit with depth=1
             if ($isShallowCloneEnabled) {
-                $git_clone_command = "{$git_clone_command} && cd {$escapedBaseDir} && GIT_SSH_COMMAND=\"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" git fetch --depth=1 origin {$commitToUse} && git -c advice.detachedHead=false checkout {$commitToUse} >/dev/null 2>&1";
+                $git_clone_command = "{$git_clone_command} && cd {$escapedBaseDir} && GIT_SSH_COMMAND=\"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" git fetch --depth=1 origin {$escapedCommit} && git -c advice.detachedHead=false checkout {$escapedCommit} >/dev/null 2>&1";
             } else {
-                $git_clone_command = "{$git_clone_command} && cd {$escapedBaseDir} && GIT_SSH_COMMAND=\"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" git -c advice.detachedHead=false checkout {$commitToUse} >/dev/null 2>&1";
+                $git_clone_command = "{$git_clone_command} && cd {$escapedBaseDir} && GIT_SSH_COMMAND=\"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" git -c advice.detachedHead=false checkout {$escapedCommit} >/dev/null 2>&1";
             }
         }
         if ($this->settings->is_git_submodules_enabled) {
