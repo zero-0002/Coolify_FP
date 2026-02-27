@@ -123,10 +123,10 @@ test('admin with root token can view database', function () {
 
 // --- Member with root token (policy should deny mutations) ---
 
-test('member with root token can view project', function () {
+test('member with root token is blocked by middleware', function () {
     $this->withToken($this->memberRootToken->plainTextToken)
         ->getJson("/api/v1/projects/{$this->project->uuid}")
-        ->assertSuccessful();
+        ->assertStatus(403);
 });
 
 test('member with root token cannot delete project', function () {
