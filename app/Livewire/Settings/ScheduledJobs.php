@@ -16,6 +16,18 @@ class ScheduledJobs extends Component
 
     public string $filterDate = 'last_24h';
 
+    public int $skipPage = 0;
+
+    public int $skipDefaultTake = 20;
+
+    public bool $showSkipNext = false;
+
+    public bool $showSkipPrev = false;
+
+    public int $skipCurrentPage = 1;
+
+    public int $skipTotalCount = 0;
+
     protected Collection $executions;
 
     protected Collection $skipLogs;
@@ -42,11 +54,30 @@ class ScheduledJobs extends Component
 
     public function updatedFilterType(): void
     {
+        $this->skipPage = 0;
         $this->loadData();
     }
 
     public function updatedFilterDate(): void
     {
+        $this->skipPage = 0;
+        $this->loadData();
+    }
+
+    public function skipNextPage(): void
+    {
+        $this->skipPage += $this->skipDefaultTake;
+        $this->showSkipPrev = true;
+        $this->loadData();
+    }
+
+    public function skipPreviousPage(): void
+    {
+        $this->skipPage -= $this->skipDefaultTake;
+        if ($this->skipPage < 0) {
+            $this->skipPage = 0;
+        }
+        $this->showSkipPrev = $this->skipPage > 0;
         $this->loadData();
     }
 
@@ -69,7 +100,12 @@ class ScheduledJobs extends Component
         $this->executions = $this->getExecutions($teamId);
 
         $parser = new SchedulerLogParser;
-        $this->skipLogs = $parser->getRecentSkips(50, $teamId);
+        $allSkips = $parser->getRecentSkips(500, $teamId);
+        $this->skipTotalCount = $allSkips->count();
+        $this->skipLogs = $allSkips->slice($this->skipPage, $this->skipDefaultTake)->values();
+        $this->showSkipPrev = $this->skipPage > 0;
+        $this->showSkipNext = ($this->skipPage + $this->skipDefaultTake) < $this->skipTotalCount;
+        $this->skipCurrentPage = intval($this->skipPage / $this->skipDefaultTake) + 1;
         $this->managerRuns = $parser->getRecentRuns(30, $teamId);
     }
 
