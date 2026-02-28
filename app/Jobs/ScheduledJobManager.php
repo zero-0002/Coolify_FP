@@ -214,10 +214,12 @@ class ScheduledJobManager implements ShouldQueue
         foreach ($tasks as $task) {
             try {
                 $server = $task->server();
-                $skipReason = $this->getTaskSkipReason($task, $server);
-                if ($skipReason !== null) {
+
+                // Phase 1: Critical checks (always — cheap, handles orphans and infra issues)
+                $criticalSkip = $this->getTaskCriticalSkipReason($task, $server);
+                if ($criticalSkip !== null) {
                     $this->skippedCount++;
-                    $this->logSkip('task', $skipReason, [
+                    $this->logSkip('task', $criticalSkip, [
                         'task_id' => $task->id,
                         'task_name' => $task->name,
                         'team_id' => $server?->team_id,
@@ -237,16 +239,31 @@ class ScheduledJobManager implements ShouldQueue
                     $frequency = VALID_CRON_STRINGS[$frequency];
                 }
 
-                if ($this->shouldRunNow($frequency, $serverTimezone, "scheduled-task:{$task->id}")) {
-                    ScheduledTaskJob::dispatch($task);
-                    $this->dispatchedCount++;
-                    Log::channel('scheduled')->info('Task dispatched', [
+                if (! $this->shouldRunNow($frequency, $serverTimezone, "scheduled-task:{$task->id}")) {
+                    continue;
+                }
+
+                // Phase 2: Runtime checks (only when cron is due — avoids noise for stopped resources)
+                $runtimeSkip = $this->getTaskRuntimeSkipReason($task);
+                if ($runtimeSkip !== null) {
+                    $this->skippedCount++;
+                    $this->logSkip('task', $runtimeSkip, [
                         'task_id' => $task->id,
                         'task_name' => $task->name,
                         'team_id' => $server->team_id,
-                        'server_id' => $server->id,
                     ]);
+
+                    continue;
                 }
+
+                ScheduledTaskJob::dispatch($task);
+                $this->dispatchedCount++;
+                Log::channel('scheduled')->info('Task dispatched', [
+                    'task_id' => $task->id,
+                    'task_name' => $task->name,
+                    'team_id' => $server->team_id,
+                    'server_id' => $server->id,
+                ]);
             } catch (\Exception $e) {
                 Log::channel('scheduled-errors')->error('Error processing task', [
                     'task_id' => $task->id,
@@ -281,11 +298,8 @@ class ScheduledJobManager implements ShouldQueue
         return null;
     }
 
-    private function getTaskSkipReason(ScheduledTask $task, ?Server $server): ?string
+    private function getTaskCriticalSkipReason(ScheduledTask $task, ?Server $server): ?string
     {
-        $service = $task->service;
-        $application = $task->application;
-
         if (blank($server)) {
             $task->delete();
 
@@ -300,17 +314,22 @@ class ScheduledJobManager implements ShouldQueue
             return 'subscription_unpaid';
         }
 
-        if (! $service && ! $application) {
+        if (! $task->service && ! $task->application) {
             $task->delete();
 
             return 'resource_deleted';
         }
 
-        if ($application && str($application->status)->contains('running') === false) {
+        return null;
+    }
+
+    private function getTaskRuntimeSkipReason(ScheduledTask $task): ?string
+    {
+        if ($task->application && str($task->application->status)->contains('running') === false) {
             return 'application_not_running';
         }
 
-        if ($service && str($service->status)->contains('running') === false) {
+        if ($task->service && str($task->service->status)->contains('running') === false) {
             return 'service_not_running';
         }
 
