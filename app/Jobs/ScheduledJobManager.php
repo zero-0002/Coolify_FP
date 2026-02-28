@@ -160,7 +160,8 @@ class ScheduledJobManager implements ShouldQueue
 
         foreach ($backups as $backup) {
             try {
-                $skipReason = $this->getBackupSkipReason($backup);
+                $server = $backup->server();
+                $skipReason = $this->getBackupSkipReason($backup, $server);
                 if ($skipReason !== null) {
                     $this->skippedCount++;
                     $this->logSkip('backup', $skipReason, [
@@ -173,7 +174,6 @@ class ScheduledJobManager implements ShouldQueue
                     continue;
                 }
 
-                $server = $backup->server();
                 $serverTimezone = data_get($server->settings, 'server_timezone', config('app.timezone'));
 
                 if (validate_timezone($serverTimezone) === false) {
@@ -185,7 +185,7 @@ class ScheduledJobManager implements ShouldQueue
                     $frequency = VALID_CRON_STRINGS[$frequency];
                 }
 
-                if ($this->shouldRunNow($frequency, $serverTimezone)) {
+                if ($this->shouldRunNow($frequency, $serverTimezone, "scheduled-backup:{$backup->id}")) {
                     DatabaseBackupJob::dispatch($backup);
                     $this->dispatchedCount++;
                     Log::channel('scheduled')->info('Backup dispatched', [
@@ -213,19 +213,19 @@ class ScheduledJobManager implements ShouldQueue
 
         foreach ($tasks as $task) {
             try {
-                $skipReason = $this->getTaskSkipReason($task);
+                $server = $task->server();
+                $skipReason = $this->getTaskSkipReason($task, $server);
                 if ($skipReason !== null) {
                     $this->skippedCount++;
                     $this->logSkip('task', $skipReason, [
                         'task_id' => $task->id,
                         'task_name' => $task->name,
-                        'team_id' => $task->server()?->team_id,
+                        'team_id' => $server?->team_id,
                     ]);
 
                     continue;
                 }
 
-                $server = $task->server();
                 $serverTimezone = data_get($server->settings, 'server_timezone', config('app.timezone'));
 
                 if (validate_timezone($serverTimezone) === false) {
@@ -237,7 +237,7 @@ class ScheduledJobManager implements ShouldQueue
                     $frequency = VALID_CRON_STRINGS[$frequency];
                 }
 
-                if ($this->shouldRunNow($frequency, $serverTimezone)) {
+                if ($this->shouldRunNow($frequency, $serverTimezone, "scheduled-task:{$task->id}")) {
                     ScheduledTaskJob::dispatch($task);
                     $this->dispatchedCount++;
                     Log::channel('scheduled')->info('Task dispatched', [
@@ -256,7 +256,7 @@ class ScheduledJobManager implements ShouldQueue
         }
     }
 
-    private function getBackupSkipReason(ScheduledDatabaseBackup $backup): ?string
+    private function getBackupSkipReason(ScheduledDatabaseBackup $backup, ?Server $server): ?string
     {
         if (blank(data_get($backup, 'database'))) {
             $backup->delete();
@@ -264,7 +264,6 @@ class ScheduledJobManager implements ShouldQueue
             return 'database_deleted';
         }
 
-        $server = $backup->server();
         if (blank($server)) {
             $backup->delete();
 
@@ -282,12 +281,11 @@ class ScheduledJobManager implements ShouldQueue
         return null;
     }
 
-    private function getTaskSkipReason(ScheduledTask $task): ?string
+    private function getTaskSkipReason(ScheduledTask $task, ?Server $server): ?string
     {
         $service = $task->service;
         $application = $task->application;
 
-        $server = $task->server();
         if (blank($server)) {
             $task->delete();
 
@@ -319,16 +317,38 @@ class ScheduledJobManager implements ShouldQueue
         return null;
     }
 
-    private function shouldRunNow(string $frequency, string $timezone): bool
+    /**
+     * Determine if a cron schedule should run now.
+     *
+     * When a dedupKey is provided, uses getPreviousRunDate() + last-dispatch tracking
+     * instead of isDue(). This is resilient to queue delays — even if the job is delayed
+     * by minutes, it still catches the missed cron window. Without dedupKey, falls back
+     * to simple isDue() check.
+     */
+    private function shouldRunNow(string $frequency, string $timezone, ?string $dedupKey = null): bool
     {
         $cron = new CronExpression($frequency);
-
-        // Use the frozen execution time, not the current time
-        // Fallback to current time if execution time is not set (shouldn't happen)
         $baseTime = $this->executionTime ?? Carbon::now();
         $executionTime = $baseTime->copy()->setTimezone($timezone);
 
-        return $cron->isDue($executionTime);
+        // No dedup key → simple isDue check (used by docker cleanups)
+        if ($dedupKey === null) {
+            return $cron->isDue($executionTime);
+        }
+
+        // Get the most recent time this cron was due (including current minute)
+        $previousDue = Carbon::instance($cron->getPreviousRunDate($executionTime, allowCurrentDate: true));
+
+        $lastDispatched = Cache::get($dedupKey);
+
+        // Run if: never dispatched before, OR there's been a due time since last dispatch
+        if ($lastDispatched === null || $previousDue->gt(Carbon::parse($lastDispatched))) {
+            Cache::put($dedupKey, $executionTime->toIso8601String(), 86400);
+
+            return true;
+        }
+
+        return false;
     }
 
     private function processDockerCleanups(): void
