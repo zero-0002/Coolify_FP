@@ -30,8 +30,11 @@ it('dispatches backup when job runs on time at the cron minute', function () {
     expect($result)->toBeTrue();
 });
 
-it('dispatches backup when job is delayed past the cron minute', function () {
-    // Freeze time at 02:07 — job was delayed 7 minutes past the 02:00 cron
+it('catches delayed job when cache has a baseline from previous run', function () {
+    // Simulate a previous dispatch yesterday at 02:00
+    Cache::put('test-backup:1', Carbon::create(2026, 2, 27, 2, 0, 0, 'UTC')->toIso8601String(), 86400);
+
+    // Freeze time at 02:07 — job was delayed 7 minutes past today's 02:00 cron
     Carbon::setTestNow(Carbon::create(2026, 2, 28, 2, 7, 0, 'UTC'));
 
     $job = new ScheduledJobManager;
@@ -45,8 +48,8 @@ it('dispatches backup when job is delayed past the cron minute', function () {
     $method = $reflection->getMethod('shouldRunNow');
     $method->setAccessible(true);
 
-    // isDue() would return false at 02:07, but getPreviousRunDate() = 02:00
-    // No lastDispatched in cache → should run
+    // isDue() would return false at 02:07, but getPreviousRunDate() = 02:00 today
+    // lastDispatched = 02:00 yesterday → 02:00 today > yesterday → fires
     $result = $method->invoke($job, '0 2 * * *', 'UTC', 'test-backup:1');
 
     expect($result)->toBeTrue();
@@ -106,8 +109,27 @@ it('fires every_minute cron correctly on consecutive minutes', function () {
     expect($result3)->toBeTrue();
 });
 
-it('re-dispatches after cache loss instead of missing', function () {
-    // First run at 02:00 — dispatches
+it('does not fire non-due jobs on restart when cache is empty', function () {
+    // Time is 10:00, cron is daily at 02:00 — NOT due right now
+    Carbon::setTestNow(Carbon::create(2026, 2, 28, 10, 0, 0, 'UTC'));
+
+    $job = new ScheduledJobManager;
+    $reflection = new ReflectionClass($job);
+
+    $executionTimeProp = $reflection->getProperty('executionTime');
+    $executionTimeProp->setAccessible(true);
+    $executionTimeProp->setValue($job, Carbon::now());
+
+    $method = $reflection->getMethod('shouldRunNow');
+    $method->setAccessible(true);
+
+    // Cache is empty (fresh restart) — should NOT fire daily backup at 10:00
+    $result = $method->invoke($job, '0 2 * * *', 'UTC', 'test-backup:4');
+    expect($result)->toBeFalse();
+});
+
+it('fires due jobs on restart when cache is empty', function () {
+    // Time is exactly 02:00, cron is daily at 02:00 — IS due right now
     Carbon::setTestNow(Carbon::create(2026, 2, 28, 2, 0, 0, 'UTC'));
 
     $job = new ScheduledJobManager;
@@ -120,16 +142,8 @@ it('re-dispatches after cache loss instead of missing', function () {
     $method = $reflection->getMethod('shouldRunNow');
     $method->setAccessible(true);
 
-    $method->invoke($job, '0 2 * * *', 'UTC', 'test-backup:4');
-
-    // Simulate Redis restart — cache lost
-    Cache::forget('test-backup:4');
-
-    // Run again at 02:01 — should re-dispatch (lastDispatched = null after cache loss)
-    Carbon::setTestNow(Carbon::create(2026, 2, 28, 2, 1, 0, 'UTC'));
-    $executionTimeProp->setValue($job, Carbon::now());
-
-    $result = $method->invoke($job, '0 2 * * *', 'UTC', 'test-backup:4');
+    // Cache is empty (fresh restart) — but cron IS due → should fire
+    $result = $method->invoke($job, '0 2 * * *', 'UTC', 'test-backup:4b');
     expect($result)->toBeTrue();
 });
 

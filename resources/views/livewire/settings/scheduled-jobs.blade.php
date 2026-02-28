@@ -213,8 +213,8 @@
                         <tr>
                             <th class="px-4 py-3">Time</th>
                             <th class="px-4 py-3">Type</th>
+                            <th class="px-4 py-3">Resource</th>
                             <th class="px-4 py-3">Reason</th>
-                            <th class="px-4 py-3">Details</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -236,6 +236,17 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-2">
+                                    @if($skip['link'] ?? null)
+                                        <a href="{{ $skip['link'] }}" class="text-white underline hover:no-underline">
+                                            {{ $skip['resource_name'] }}
+                                        </a>
+                                    @elseif($skip['resource_name'] ?? null)
+                                        {{ $skip['resource_name'] }}
+                                    @else
+                                        <span class="text-gray-500">{{ $skip['context']['task_name'] ?? $skip['context']['server_name'] ?? 'Deleted' }}</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-2">
                                     @php
                                         $reasonLabel = match($skip['reason']) {
                                             'server_not_functional' => 'Server not functional',
@@ -255,15 +266,6 @@
                                         };
                                     @endphp
                                     <span class="{{ $reasonBg }}">{{ $reasonLabel }}</span>
-                                </td>
-                                <td class="px-4 py-2 text-xs text-gray-500">
-                                    @php
-                                        $details = collect($skip['context'])
-                                            ->except(['type', 'skip_reason', 'execution_time'])
-                                            ->map(fn($v, $k) => str_replace('_', ' ', $k) . ': ' . $v)
-                                            ->implode(', ');
-                                    @endphp
-                                    {{ $details }}
                                 </td>
                             </tr>
                         @empty

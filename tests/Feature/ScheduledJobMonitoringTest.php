@@ -234,3 +234,39 @@ test('scheduler log parser filters by team id', function () {
     // Cleanup
     @unlink($logPath);
 });
+
+test('skipped jobs show fallback when resource is deleted', function () {
+    $this->actingAs($this->rootUser);
+    session(['currentTeam' => $this->rootTeam]);
+
+    $logPath = storage_path('logs/scheduled-'.now()->format('Y-m-d').'.log');
+    $logDir = dirname($logPath);
+    if (! is_dir($logDir)) {
+        mkdir($logDir, 0755, true);
+    }
+
+    // Temporarily rename existing logs so they don't interfere
+    $existingLogs = glob(storage_path('logs/scheduled-*.log'));
+    $renamed = [];
+    foreach ($existingLogs as $log) {
+        $tmp = $log.'.bak';
+        rename($log, $tmp);
+        $renamed[$tmp] = $log;
+    }
+
+    $lines = [
+        '['.now()->format('Y-m-d H:i:s').'] production.INFO: Task skipped {"type":"task","skip_reason":"application_not_running","task_id":99999,"task_name":"my-cron-job","team_id":0}',
+    ];
+    file_put_contents($logPath, implode("\n", $lines)."\n");
+
+    Livewire::test(ScheduledJobs::class)
+        ->assertStatus(200)
+        ->assertSee('my-cron-job')
+        ->assertSee('Application not running');
+
+    // Cleanup
+    @unlink($logPath);
+    foreach ($renamed as $tmp => $original) {
+        rename($tmp, $original);
+    }
+});

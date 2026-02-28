@@ -341,8 +341,19 @@ class ScheduledJobManager implements ShouldQueue
 
         $lastDispatched = Cache::get($dedupKey);
 
-        // Run if: never dispatched before, OR there's been a due time since last dispatch
-        if ($lastDispatched === null || $previousDue->gt(Carbon::parse($lastDispatched))) {
+        if ($lastDispatched === null) {
+            // First run after restart or cache loss: only fire if actually due right now.
+            // Seed the cache so subsequent runs can use tolerance/catch-up logic.
+            $isDue = $cron->isDue($executionTime);
+            if ($isDue) {
+                Cache::put($dedupKey, $executionTime->toIso8601String(), 86400);
+            }
+
+            return $isDue;
+        }
+
+        // Subsequent runs: fire if there's been a due time since last dispatch
+        if ($previousDue->gt(Carbon::parse($lastDispatched))) {
             Cache::put($dedupKey, $executionTime->toIso8601String(), 86400);
 
             return true;
