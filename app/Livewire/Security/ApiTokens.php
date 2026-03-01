@@ -4,7 +4,6 @@ namespace App\Livewire\Security;
 
 use App\Models\InstanceSettings;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Component;
 
@@ -122,7 +121,8 @@ class ApiTokens extends Component
             ]);
             $token = auth()->user()->createToken($this->description, array_values($this->permissions));
             $this->getTokens();
-            session()->flash('token', Str::after($token->plainTextToken, '|'));
+            // Do NOT strip the numeric prefix (e.g. "69|...") — Sanctum uses it to index and look up tokens.
+            session()->flash('token', $token->plainTextToken);
         } catch (\Exception $e) {
             return handleError($e, $this);
         }
