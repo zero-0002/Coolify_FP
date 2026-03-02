@@ -50,6 +50,7 @@ class EnvironmentVariable extends BaseModel
         'is_buildtime',
         'is_shown_once',
         'is_shared',
+        'is_required',
 
         // Metadata
         'version',
