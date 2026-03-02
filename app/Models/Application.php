@@ -61,6 +61,8 @@ use Visus\Cuid2\Cuid2;
         'health_check_timeout' => ['type' => 'integer', 'description' => 'Health check timeout in seconds.'],
         'health_check_retries' => ['type' => 'integer', 'description' => 'Health check retries count.'],
         'health_check_start_period' => ['type' => 'integer', 'description' => 'Health check start period in seconds.'],
+        'health_check_type' => ['type' => 'string', 'description' => 'Health check type: http or cmd.', 'enum' => ['http', 'cmd']],
+        'health_check_command' => ['type' => 'string', 'nullable' => true, 'description' => 'Health check command for CMD type.'],
         'limits_memory' => ['type' => 'string', 'description' => 'Memory limit.'],
         'limits_memory_swap' => ['type' => 'string', 'description' => 'Memory swap limit.'],
         'limits_memory_swappiness' => ['type' => 'integer', 'description' => 'Memory swappiness.'],
@@ -990,7 +992,7 @@ class Application extends BaseModel
         if (isDev() && data_get($this, 'private_key_id') === 0) {
             return 'deploy_key';
         }
-        if (data_get($this, 'private_key_id')) {
+        if (! is_null(data_get($this, 'private_key_id'))) {
             return 'deploy_key';
         } elseif (data_get($this, 'source')) {
             return 'source';
@@ -1959,16 +1961,6 @@ class Application extends BaseModel
         }
     }
 
-    public static function getDomainsByUuid(string $uuid): array
-    {
-        $application = self::where('uuid', $uuid)->first();
-
-        if ($application) {
-            return $application->fqdns;
-        }
-
-        return [];
-    }
 
     public function getLimits(): array
     {
