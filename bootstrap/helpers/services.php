@@ -28,6 +28,9 @@ function collectRegex(string $name)
 function extractBalancedBraceContent(string $str, int $startPos = 0): ?array
 {
     // Find opening brace
+    if ($startPos >= strlen($str)) {
+        return null;
+    }
     $openPos = strpos($str, '{', $startPos);
     if ($openPos === false) {
         return null;
