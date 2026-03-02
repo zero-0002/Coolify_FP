@@ -38,7 +38,7 @@ describe('Application Rollback', function () {
             'is_git_shallow_clone_enabled' => false,
         ]);
 
-        $rollbackCommit = 'abc123def456';
+        $rollbackCommit = 'abc123def456abc123def456abc123def456abc1';
 
         $result = $this->application->setGitImportSettings(
             deployment_uuid: 'test-uuid',
@@ -56,7 +56,7 @@ describe('Application Rollback', function () {
             'is_git_shallow_clone_enabled' => true,
         ]);
 
-        $rollbackCommit = 'abc123def456';
+        $rollbackCommit = 'abc123def456abc123def456abc123def456abc1';
 
         $result = $this->application->setGitImportSettings(
             deployment_uuid: 'test-uuid',
@@ -71,7 +71,7 @@ describe('Application Rollback', function () {
     });
 
     test('setGitImportSettings falls back to git_commit_sha when no commit passed', function () {
-        $this->application->update(['git_commit_sha' => 'def789abc012']);
+        $this->application->update(['git_commit_sha' => 'def789abc012def789abc012def789abc012def7']);
 
         ApplicationSetting::create([
             'application_id' => $this->application->id,
@@ -84,7 +84,7 @@ describe('Application Rollback', function () {
             public: true,
         );
 
-        expect($result)->toContain('def789abc012');
+        expect($result)->toContain('def789abc012def789abc012def789abc012def7');
     });
 
     test('setGitImportSettings does not append checkout when commit is HEAD', function () {
