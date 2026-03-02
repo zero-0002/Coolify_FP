@@ -2940,7 +2940,7 @@ class ApplicationsController extends Controller
     )]
     public function update_env_by_uuid(Request $request)
     {
-        $allowedFields = ['key', 'value', 'is_preview', 'is_literal', 'is_multiline', 'is_shown_once', 'is_runtime', 'is_buildtime'];
+        $allowedFields = ['key', 'value', 'is_preview', 'is_literal', 'is_multiline', 'is_shown_once', 'is_runtime', 'is_buildtime', 'comment'];
         $teamId = getTeamIdFromToken();
 
         if (is_null($teamId)) {
@@ -2970,6 +2970,7 @@ class ApplicationsController extends Controller
             'is_shown_once' => 'boolean',
             'is_runtime' => 'boolean',
             'is_buildtime' => 'boolean',
+            'comment' => 'string|nullable|max:256',
         ]);
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
@@ -3011,6 +3012,9 @@ class ApplicationsController extends Controller
                 if ($request->has('is_buildtime') && $env->is_buildtime != $request->is_buildtime) {
                     $env->is_buildtime = $request->is_buildtime;
                 }
+                if ($request->has('comment') && $env->comment != $request->comment) {
+                    $env->comment = $request->comment;
+                }
                 $env->save();
 
                 return response()->json($this->removeSensitiveData($env))->setStatusCode(201);
@@ -3040,6 +3044,9 @@ class ApplicationsController extends Controller
                 }
                 if ($request->has('is_buildtime') && $env->is_buildtime != $request->is_buildtime) {
                     $env->is_buildtime = $request->is_buildtime;
+                }
+                if ($request->has('comment') && $env->comment != $request->comment) {
+                    $env->comment = $request->comment;
                 }
                 $env->save();
 
@@ -3333,7 +3340,7 @@ class ApplicationsController extends Controller
     )]
     public function create_env(Request $request)
     {
-        $allowedFields = ['key', 'value', 'is_preview', 'is_literal', 'is_multiline', 'is_shown_once', 'is_runtime', 'is_buildtime'];
+        $allowedFields = ['key', 'value', 'is_preview', 'is_literal', 'is_multiline', 'is_shown_once', 'is_runtime', 'is_buildtime', 'comment'];
         $teamId = getTeamIdFromToken();
 
         if (is_null($teamId)) {
@@ -3358,6 +3365,7 @@ class ApplicationsController extends Controller
             'is_shown_once' => 'boolean',
             'is_runtime' => 'boolean',
             'is_buildtime' => 'boolean',
+            'comment' => 'string|nullable|max:256',
         ]);
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
@@ -3393,6 +3401,7 @@ class ApplicationsController extends Controller
                     'is_shown_once' => $request->is_shown_once ?? false,
                     'is_runtime' => $request->is_runtime ?? true,
                     'is_buildtime' => $request->is_buildtime ?? true,
+                    'comment' => $request->comment ?? null,
                     'resourceable_type' => get_class($application),
                     'resourceable_id' => $application->id,
                 ]);
@@ -3417,6 +3426,7 @@ class ApplicationsController extends Controller
                     'is_shown_once' => $request->is_shown_once ?? false,
                     'is_runtime' => $request->is_runtime ?? true,
                     'is_buildtime' => $request->is_buildtime ?? true,
+                    'comment' => $request->comment ?? null,
                     'resourceable_type' => get_class($application),
                     'resourceable_id' => $application->id,
                 ]);
