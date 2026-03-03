@@ -1093,6 +1093,8 @@ class Application extends BaseModel
         $escapedBaseDir = escapeshellarg($baseDir);
         $isShallowCloneEnabled = $this->settings?->is_git_shallow_clone_enabled ?? false;
 
+        // Use the explicitly passed commit (e.g. from rollback), falling back to the application's git_commit_sha.
+        // Invalid refs will cause the git checkout/fetch command to fail on the remote server.
         $commitToUse = $commit ?? $this->git_commit_sha;
 
         if ($commitToUse !== 'HEAD') {
@@ -1963,7 +1965,6 @@ class Application extends BaseModel
             }
         }
     }
-
 
     public function getLimits(): array
     {
