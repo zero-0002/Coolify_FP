@@ -87,6 +87,27 @@ describe('Application Rollback', function () {
         expect($result)->toContain('def789abc012def789abc012def789abc012def7');
     });
 
+    test('setGitImportSettings escapes shell metacharacters in commit parameter', function () {
+        ApplicationSetting::create([
+            'application_id' => $this->application->id,
+            'is_git_shallow_clone_enabled' => false,
+        ]);
+
+        $maliciousCommit = 'abc123; rm -rf /';
+
+        $result = $this->application->setGitImportSettings(
+            deployment_uuid: 'test-uuid',
+            git_clone_command: 'git clone',
+            public: true,
+            commit: $maliciousCommit
+        );
+
+        // escapeshellarg wraps the value in single quotes, neutralizing metacharacters
+        expect($result)
+            ->toContain("checkout 'abc123; rm -rf /'")
+            ->not->toContain('checkout abc123; rm -rf /');
+    });
+
     test('setGitImportSettings does not append checkout when commit is HEAD', function () {
         ApplicationSetting::create([
             'application_id' => $this->application->id,
