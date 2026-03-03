@@ -5,6 +5,7 @@ namespace App\Livewire\Subscription;
 use App\Actions\Stripe\CancelSubscriptionAtPeriodEnd;
 use App\Actions\Stripe\RefundSubscription;
 use App\Actions\Stripe\ResumeSubscription;
+use App\Actions\Stripe\UpdateSubscriptionQuantity;
 use App\Models\Team;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Component;
@@ -13,6 +14,14 @@ use Stripe\StripeClient;
 class Actions extends Component
 {
     public $server_limits = 0;
+
+    public int $quantity = UpdateSubscriptionQuantity::MIN_SERVER_LIMIT;
+
+    public int $minServerLimit = UpdateSubscriptionQuantity::MIN_SERVER_LIMIT;
+
+    public int $maxServerLimit = UpdateSubscriptionQuantity::MAX_SERVER_LIMIT;
+
+    public ?array $pricePreview = null;
 
     public bool $isRefundEligible = false;
 
@@ -25,6 +34,46 @@ class Actions extends Component
     public function mount(): void
     {
         $this->server_limits = Team::serverLimit();
+        $this->quantity = (int) $this->server_limits;
+    }
+
+    public function loadPricePreview(int $quantity): void
+    {
+        $this->quantity = $quantity;
+        $result = (new UpdateSubscriptionQuantity)->fetchPricePreview(currentTeam(), $quantity);
+        $this->pricePreview = $result['success'] ? $result['preview'] : null;
+    }
+
+    // Password validation is intentionally skipped for quantity updates.
+    // Unlike refunds/cancellations, changing the server limit is a
+    // non-destructive, reversible billing adjustment (prorated by Stripe).
+    public function updateQuantity(string $password = ''): bool
+    {
+        if ($this->quantity < UpdateSubscriptionQuantity::MIN_SERVER_LIMIT) {
+            $this->dispatch('error', 'Minimum server limit is '.UpdateSubscriptionQuantity::MIN_SERVER_LIMIT.'.');
+            $this->quantity = UpdateSubscriptionQuantity::MIN_SERVER_LIMIT;
+
+            return true;
+        }
+
+        if ($this->quantity === (int) $this->server_limits) {
+            return true;
+        }
+
+        $result = (new UpdateSubscriptionQuantity)->execute(currentTeam(), $this->quantity);
+
+        if ($result['success']) {
+            $this->server_limits = $this->quantity;
+            $this->pricePreview = null;
+            $this->dispatch('success', 'Server limit updated to '.$this->quantity.'.');
+
+            return true;
+        }
+
+        $this->dispatch('error', $result['error'] ?? 'Failed to update server limit.');
+        $this->quantity = (int) $this->server_limits;
+
+        return true;
     }
 
     public function loadRefundEligibility(): void

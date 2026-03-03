@@ -20,6 +20,20 @@ class Subscription extends Model
         return $this->belongsTo(Team::class);
     }
 
+    public function billingInterval(): string
+    {
+        if ($this->stripe_plan_id) {
+            $configKey = collect(config('subscription'))
+                ->search($this->stripe_plan_id);
+
+            if ($configKey && str($configKey)->contains('yearly')) {
+                return 'yearly';
+            }
+        }
+
+        return 'monthly';
+    }
+
     public function type()
     {
         if (isStripe()) {

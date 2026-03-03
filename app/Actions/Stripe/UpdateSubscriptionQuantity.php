@@ -8,6 +8,10 @@ use Stripe\StripeClient;
 
 class UpdateSubscriptionQuantity
 {
+    public const int MAX_SERVER_LIMIT = 100;
+
+    public const int MIN_SERVER_LIMIT = 2;
+
     private StripeClient $stripe;
 
     public function __construct(?StripeClient $stripe = null)
@@ -60,6 +64,7 @@ class UpdateSubscriptionQuantity
                     $taxDescription = $taxRate->display_name.' ('.$taxRate->jurisdiction.') '.$taxRate->percentage.'%';
                 }
             }
+            // Fallback tax percentage from invoice totals - use tax_rate details when available for accuracy
             if ($taxPercentage === 0.0 && ($upcomingInvoice->tax ?? 0) > 0 && ($upcomingInvoice->subtotal ?? 0) > 0) {
                 $taxPercentage = round(($upcomingInvoice->tax / $upcomingInvoice->subtotal) * 100, 2);
             }
@@ -110,8 +115,8 @@ class UpdateSubscriptionQuantity
      */
     public function execute(Team $team, int $quantity): array
     {
-        if ($quantity < 2) {
-            return ['success' => false, 'error' => 'Minimum server limit is 2.'];
+        if ($quantity < self::MIN_SERVER_LIMIT) {
+            return ['success' => false, 'error' => 'Minimum server limit is '.self::MIN_SERVER_LIMIT.'.'];
         }
 
         $subscription = $team->subscription;
