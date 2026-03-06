@@ -89,7 +89,7 @@
                     line.classList.add('log-warning');
                 } else if (/\b(debug|dbg|trace|verbose)\b/.test(content)) {
                     line.classList.add('log-debug');
-                } else if (/\b(info|inf|notice)\b/.test(content)) {
+                } else {
                     line.classList.add('log-info');
                 }
             });
