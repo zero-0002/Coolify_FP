@@ -1940,7 +1940,7 @@ function serviceParser(Service $resource): Collection
 
                 } else {
                     $value = generateEnvValue($command, $resource);
-                    $resource->environment_variables()->updateOrCreate([
+                    $resource->environment_variables()->firstOrCreate([
                         'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
