@@ -92,7 +92,7 @@ class Index extends Component
         'image' => 'required',
         'excludeFromStatus' => 'required|boolean',
         'publicPort' => 'nullable|integer',
-        'publicPortTimeout' => 'nullable|integer',
+        'publicPortTimeout' => 'nullable|integer|min:1',
         'isPublic' => 'required|boolean',
         'isLogDrainEnabled' => 'required|boolean',
         // Application-specific rules
