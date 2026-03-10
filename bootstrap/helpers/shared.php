@@ -147,6 +147,39 @@ function validateShellSafePath(string $input, string $context = 'path'): string
     return $input;
 }
 
+/**
+ * Validate that a string is a safe git ref (commit SHA, branch name, tag, or HEAD).
+ *
+ * Prevents command injection by enforcing an allowlist of characters valid for git refs.
+ * Valid: hex SHAs, HEAD, branch/tag names (alphanumeric, dots, hyphens, underscores, slashes).
+ *
+ * @param  string  $input  The git ref to validate
+ * @param  string  $context  Descriptive name for error messages
+ * @return string The validated input (trimmed)
+ *
+ * @throws \Exception If the input contains disallowed characters
+ */
+function validateGitRef(string $input, string $context = 'git ref'): string
+{
+    $input = trim($input);
+
+    if ($input === '' || $input === 'HEAD') {
+        return $input;
+    }
+
+    // Must not start with a hyphen (git flag injection)
+    if (str_starts_with($input, '-')) {
+        throw new \Exception("Invalid {$context}: must not start with a hyphen.");
+    }
+
+    // Allow only alphanumeric characters, dots, hyphens, underscores, and slashes
+    if (! preg_match('/^[a-zA-Z0-9][a-zA-Z0-9._\-\/]*$/', $input)) {
+        throw new \Exception("Invalid {$context}: contains disallowed characters. Only alphanumeric characters, dots, hyphens, underscores, and slashes are allowed.");
+    }
+
+    return $input;
+}
+
 function generate_readme_file(string $name, string $updated_at): string
 {
     $name = sanitize_string($name);

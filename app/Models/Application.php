@@ -1686,7 +1686,8 @@ class Application extends BaseModel
 
     protected function buildGitCheckoutCommand($target): string
     {
-        $command = "git checkout $target";
+        $escapedTarget = escapeshellarg($target);
+        $command = "git checkout {$escapedTarget}";
 
         if ($this->settings->is_git_submodules_enabled) {
             $command .= ' && git submodule update --init --recursive';
