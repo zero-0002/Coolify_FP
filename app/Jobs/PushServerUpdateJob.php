@@ -399,6 +399,8 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
         if ($application->status !== $containerStatus) {
             $application->status = $containerStatus;
             $application->save();
+        } else {
+            $application->update(['last_online_at' => now()]);
         }
     }
 
@@ -508,6 +510,8 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
         if ($database->status !== $containerStatus) {
             $database->status = $containerStatus;
             $database->save();
+        } else {
+            $database->update(['last_online_at' => now()]);
         }
         if ($this->isRunning($containerStatus) && $tcpProxy) {
             $tcpProxyContainerFound = $this->containers->filter(function ($value, $key) use ($databaseUuid) {
