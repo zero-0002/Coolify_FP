@@ -2777,9 +2777,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     {
         // Handle CMD type healthcheck
         if ($this->application->health_check_type === 'cmd' && ! empty($this->application->health_check_command)) {
-            $this->full_healthcheck_url = $this->application->health_check_command;
+            $command = str_replace(["\r\n", "\r", "\n"], ' ', $this->application->health_check_command);
+            $this->full_healthcheck_url = $command;
 
-            return $this->application->health_check_command;
+            return $command;
         }
 
         // HTTP type healthcheck (default)
@@ -2904,7 +2905,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     private function build_image()
     {
         // Add Coolify related variables to the build args/secrets
-        if (! $this->dockerBuildkitSupported) {
+        if (! $this->dockerSecretsSupported) {
             // Traditional build args approach - generate COOLIFY_ variables locally
             $coolify_envs = $this->generate_coolify_env_variables(forBuildTime: true);
             $coolify_envs->each(function ($value, $key) {
@@ -3515,8 +3516,8 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
     private function add_build_env_variables_to_dockerfile()
     {
-        if ($this->dockerBuildkitSupported) {
-            // We dont need to add build secrets to dockerfile for buildkit, as we already added them with --secret flag in function generate_docker_env_flags_for_secrets
+        if ($this->dockerSecretsSupported) {
+            // We dont need to add ARG declarations when using Docker build secrets, as variables are passed with --secret flag
             return;
         }
 
