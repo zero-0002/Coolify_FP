@@ -8,6 +8,7 @@ use App\Models\ApplicationDeploymentQueue;
 use App\Models\ApplicationPreview;
 use App\Models\EnvironmentVariable;
 use App\Models\GithubApp;
+use App\Models\GitlabApp;
 use App\Models\InstanceSettings;
 use App\Models\LocalFileVolume;
 use App\Models\LocalPersistentVolume;
@@ -3522,7 +3523,7 @@ NGINX;
     }
 }
 
-function convertGitUrl(string $gitRepository, string $deploymentType, ?GithubApp $source = null): array
+function convertGitUrl(string $gitRepository, string $deploymentType, GithubApp|GitlabApp|null $source = null): array
 {
     $repository = $gitRepository;
     $providerInfo = [
@@ -3542,6 +3543,7 @@ function convertGitUrl(string $gitRepository, string $deploymentType, ?GithubApp
         // Let's try and fix that for known Git providers
         switch ($source->getMorphClass()) {
             case \App\Models\GithubApp::class:
+            case \App\Models\GitlabApp::class:
                 $providerInfo['host'] = Url::fromString($source->html_url)->getHost();
                 $providerInfo['port'] = $source->custom_port;
                 $providerInfo['user'] = $source->custom_user;
