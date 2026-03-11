@@ -198,8 +198,8 @@ class General extends Component
             'dockerfile' => 'nullable',
             'dockerRegistryImageName' => 'nullable',
             'dockerRegistryImageTag' => 'nullable',
-            'dockerfileLocation' => 'nullable',
-            'dockerComposeLocation' => 'nullable',
+            'dockerfileLocation' => ['nullable', 'regex:/^\/[a-zA-Z0-9._\-\/]+$/'],
+            'dockerComposeLocation' => ['nullable', 'regex:/^\/[a-zA-Z0-9._\-\/]+$/'],
             'dockerCompose' => 'nullable',
             'dockerComposeRaw' => 'nullable',
             'dockerfileTargetBuild' => 'nullable',
@@ -231,6 +231,8 @@ class General extends Component
         return array_merge(
             ValidationPatterns::combinedMessages(),
             [
+                'dockerfileLocation.regex' => 'The Dockerfile location must be a valid path starting with / and containing only alphanumeric characters, dots, hyphens, and slashes.',
+                'dockerComposeLocation.regex' => 'The Docker Compose location must be a valid path starting with / and containing only alphanumeric characters, dots, hyphens, and slashes.',
                 'name.required' => 'The Name field is required.',
                 'gitRepository.required' => 'The Git Repository field is required.',
                 'gitBranch.required' => 'The Git Branch field is required.',
