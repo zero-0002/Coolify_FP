@@ -1875,8 +1875,9 @@ function serviceParser(Service $resource): Collection
                         $serviceExists->fqdn = $url;
                         $serviceExists->save();
                     }
-                    // Create FQDN variable
-                    $resource->environment_variables()->updateOrCreate([
+                    // Create FQDN variable (use firstOrCreate to avoid overwriting values
+                    // already set by direct template declarations or updateCompose)
+                    $resource->environment_variables()->firstOrCreate([
                         'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
@@ -1888,7 +1889,7 @@ function serviceParser(Service $resource): Collection
 
                     // Also create the paired SERVICE_URL_* variable
                     $urlKey = 'SERVICE_URL_'.strtoupper($fqdnFor);
-                    $resource->environment_variables()->updateOrCreate([
+                    $resource->environment_variables()->firstOrCreate([
                         'key' => $urlKey,
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
@@ -1918,8 +1919,9 @@ function serviceParser(Service $resource): Collection
                         $serviceExists->fqdn = $url;
                         $serviceExists->save();
                     }
-                    // Create URL variable
-                    $resource->environment_variables()->updateOrCreate([
+                    // Create URL variable (use firstOrCreate to avoid overwriting values
+                    // already set by direct template declarations or updateCompose)
+                    $resource->environment_variables()->firstOrCreate([
                         'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
@@ -1931,7 +1933,7 @@ function serviceParser(Service $resource): Collection
 
                     // Also create the paired SERVICE_FQDN_* variable
                     $fqdnKey = 'SERVICE_FQDN_'.strtoupper($urlFor);
-                    $resource->environment_variables()->updateOrCreate([
+                    $resource->environment_variables()->firstOrCreate([
                         'key' => $fqdnKey,
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
