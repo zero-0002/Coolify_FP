@@ -2196,7 +2196,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->create_workdir();
         $this->execute_remote_command(
             [
-                executeInDocker($this->deployment_uuid, "cd {$this->workdir} && git log -1 ".escapeshellarg($this->commit)." --pretty=%B"),
+                executeInDocker($this->deployment_uuid, "cd {$this->workdir} && git log -1 ".escapeshellarg($this->commit).' --pretty=%B'),
                 'hidden' => true,
                 'save' => 'commit_message',
             ]
@@ -2462,7 +2462,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         $coolify_envs = $this->generate_coolify_env_variables(forBuildTime: true);
         $coolify_envs->each(function ($value, $key) {
-            $this->env_args->put($key, $value);
+            if (! is_null($value) && $value !== '') {
+                $this->env_args->put($key, $value);
+            }
         });
 
         // For build process, include only environment variables where is_buildtime = true
