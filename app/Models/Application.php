@@ -989,17 +989,24 @@ class Application extends BaseModel
 
     public function deploymentType()
     {
-        if (isDev() && data_get($this, 'private_key_id') === 0) {
+        $privateKeyId = data_get($this, 'private_key_id');
+
+        // Real private key (id > 0) always takes precedence
+        if ($privateKeyId !== null && $privateKeyId > 0) {
             return 'deploy_key';
         }
-        if (! is_null(data_get($this, 'private_key_id'))) {
-            return 'deploy_key';
-        } elseif (data_get($this, 'source')) {
+
+        // GitHub/GitLab App source
+        if (data_get($this, 'source')) {
             return 'source';
-        } else {
-            return 'other';
         }
-        throw new \Exception('No deployment type found');
+
+        // Localhost key (id = 0) when no source is configured
+        if ($privateKeyId === 0) {
+            return 'deploy_key';
+        }
+
+        return 'other';
     }
 
     public function could_set_build_commands(): bool
