@@ -1294,6 +1294,13 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     // Otherwise keep empty string as-is
                 }
 
+                // Resolve shared variable patterns like {{environment.VAR}}, {{project.VAR}}, {{team.VAR}}
+                // Without this, literal {{...}} strings end up in the compose environment: section,
+                // which takes precedence over the resolved values in the .env file (env_file:)
+                if (is_string($value) && str_contains($value, '{{')) {
+                    $value = resolveSharedEnvironmentVariables($value, $resource);
+                }
+
                 return $value;
             });
         }
@@ -2556,6 +2563,13 @@ function serviceParser(Service $resource): Collection
                         $value = $dbEnv->value;
                     }
                     // Otherwise keep empty string as-is
+                }
+
+                // Resolve shared variable patterns like {{environment.VAR}}, {{project.VAR}}, {{team.VAR}}
+                // Without this, literal {{...}} strings end up in the compose environment: section,
+                // which takes precedence over the resolved values in the .env file (env_file:)
+                if (is_string($value) && str_contains($value, '{{')) {
+                    $value = resolveSharedEnvironmentVariables($value, $resource);
                 }
 
                 return $value;

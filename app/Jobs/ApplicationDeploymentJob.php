@@ -2133,7 +2133,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     executeInDocker($this->deployment_uuid, 'chmod 600 /root/.ssh/id_rsa'),
                 ],
                 [
-                    executeInDocker($this->deployment_uuid, "GIT_SSH_COMMAND=\"ssh -o ConnectTimeout=30 -p {$this->customPort} -o Port={$this->customPort} -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" git ls-remote {$this->fullRepoUrl} {$lsRemoteRef}"),
+                    executeInDocker($this->deployment_uuid, "GIT_SSH_COMMAND=\"ssh -o ConnectTimeout=30 -p {$this->customPort} -o Port={$this->customPort} -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa\" git ls-remote {$this->fullRepoUrl} {$lsRemoteRef}"),
                     'hidden' => true,
                     'save' => 'git_commit_sha',
                 ]
@@ -3929,7 +3929,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
     private function validatePathField(string $value, string $fieldName): string
     {
-        if (! preg_match('/^\/[a-zA-Z0-9._\-\/]+$/', $value)) {
+        if (! preg_match(\App\Support\ValidationPatterns::FILE_PATH_PATTERN, $value)) {
             throw new \RuntimeException("Invalid {$fieldName}: contains forbidden characters.");
         }
         if (str_contains($value, '..')) {

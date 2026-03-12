@@ -73,7 +73,7 @@ class General extends Component
     #[Validate(['string', 'nullable'])]
     public ?string $dockerfile = null;
 
-    #[Validate(['string', 'nullable', 'max:255', 'regex:/^\/[a-zA-Z0-9._\-\/]+$/'])]
+    #[Validate(['string', 'nullable', 'max:255', 'regex:/^\/[a-zA-Z0-9._\-\/~@+]+$/'])]
     public ?string $dockerfileLocation = null;
 
     #[Validate(['string', 'nullable'])]
@@ -85,7 +85,7 @@ class General extends Component
     #[Validate(['string', 'nullable'])]
     public ?string $dockerRegistryImageTag = null;
 
-    #[Validate(['string', 'nullable', 'max:255', 'regex:/^\/[a-zA-Z0-9._\-\/]+$/'])]
+    #[Validate(['string', 'nullable', 'max:255', 'regex:/^\/[a-zA-Z0-9._\-\/~@+]+$/'])]
     public ?string $dockerComposeLocation = null;
 
     #[Validate(['string', 'nullable'])]
@@ -198,8 +198,8 @@ class General extends Component
             'dockerfile' => 'nullable',
             'dockerRegistryImageName' => 'nullable',
             'dockerRegistryImageTag' => 'nullable',
-            'dockerfileLocation' => ['nullable', 'regex:/^\/[a-zA-Z0-9._\-\/]+$/'],
-            'dockerComposeLocation' => ['nullable', 'regex:/^\/[a-zA-Z0-9._\-\/]+$/'],
+            'dockerfileLocation' => ['nullable', 'regex:'.ValidationPatterns::FILE_PATH_PATTERN],
+            'dockerComposeLocation' => ['nullable', 'regex:'.ValidationPatterns::FILE_PATH_PATTERN],
             'dockerCompose' => 'nullable',
             'dockerComposeRaw' => 'nullable',
             'dockerfileTargetBuild' => 'nullable',
@@ -231,8 +231,8 @@ class General extends Component
         return array_merge(
             ValidationPatterns::combinedMessages(),
             [
-                'dockerfileLocation.regex' => 'The Dockerfile location must be a valid path starting with / and containing only alphanumeric characters, dots, hyphens, and slashes.',
-                'dockerComposeLocation.regex' => 'The Docker Compose location must be a valid path starting with / and containing only alphanumeric characters, dots, hyphens, and slashes.',
+                ...ValidationPatterns::filePathMessages('dockerfileLocation', 'Dockerfile'),
+                ...ValidationPatterns::filePathMessages('dockerComposeLocation', 'Docker Compose'),
                 'name.required' => 'The Name field is required.',
                 'gitRepository.required' => 'The Git Repository field is required.',
                 'gitBranch.required' => 'The Git Branch field is required.',
