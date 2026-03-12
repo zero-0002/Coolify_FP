@@ -3972,3 +3972,49 @@ function downsampleLTTB(array $data, int $threshold): array
 
     return $sampled;
 }
+
+/**
+ * Resolve shared environment variable patterns like {{environment.VAR}}, {{project.VAR}}, {{team.VAR}}.
+ *
+ * This is the canonical implementation used by both EnvironmentVariable::realValue and the compose parsers
+ * to ensure shared variable references are replaced with their actual values.
+ */
+function resolveSharedEnvironmentVariables(?string $value, $resource): ?string
+{
+    if (is_null($value) || $value === '' || is_null($resource)) {
+        return $value;
+    }
+    $value = trim($value);
+    $sharedEnvsFound = str($value)->matchAll('/{{(.*?)}}/');
+    if ($sharedEnvsFound->isEmpty()) {
+        return $value;
+    }
+    foreach ($sharedEnvsFound as $sharedEnv) {
+        $type = str($sharedEnv)->trim()->match('/(.*?)\./');
+        if (! collect(SHARED_VARIABLE_TYPES)->contains($type)) {
+            continue;
+        }
+        $variable = str($sharedEnv)->trim()->match('/\.(.*)/');
+        $id = null;
+        if ($type->value() === 'environment') {
+            $id = $resource->environment->id;
+        } elseif ($type->value() === 'project') {
+            $id = $resource->environment->project->id;
+        } elseif ($type->value() === 'team') {
+            $id = $resource->team()->id;
+        }
+        if (is_null($id)) {
+            continue;
+        }
+        $found = \App\Models\SharedEnvironmentVariable::where('type', $type)
+            ->where('key', $variable)
+            ->where('team_id', $resource->team()->id)
+            ->where("{$type}_id", $id)
+            ->first();
+        if ($found) {
+            $value = str($value)->replace("{{{$sharedEnv}}}", $found->value);
+        }
+    }
+
+    return str($value)->value();
+}
