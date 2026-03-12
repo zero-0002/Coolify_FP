@@ -3929,7 +3929,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
     private function validatePathField(string $value, string $fieldName): string
     {
-        if (! preg_match('/^\/[a-zA-Z0-9._\-\/]+$/', $value)) {
+        if (! preg_match(\App\Support\ValidationPatterns::FILE_PATH_PATTERN, $value)) {
             throw new \RuntimeException("Invalid {$fieldName}: contains forbidden characters.");
         }
         if (str_contains($value, '..')) {
