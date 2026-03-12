@@ -169,7 +169,6 @@ describe('API validation rules for path fields', function () {
 
         expect($validator->fails())->toBeFalse();
     });
-});
 
     test('dockerfile_location validation allows paths with @ for scoped packages', function () {
         $rules = sharedDataApplications();
