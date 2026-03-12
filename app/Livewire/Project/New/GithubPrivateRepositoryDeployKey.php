@@ -64,7 +64,7 @@ class GithubPrivateRepositoryDeployKey extends Component
         'is_static' => 'required|boolean',
         'publish_directory' => 'nullable|string',
         'build_pack' => 'required|string',
-        'docker_compose_location' => ['nullable', 'string', 'max:255', 'regex:/^\/[a-zA-Z0-9._\-\/]+$/'],
+        'docker_compose_location' => \App\Support\ValidationPatterns::filePathRules(),
     ];
 
     protected function rules()
@@ -76,7 +76,7 @@ class GithubPrivateRepositoryDeployKey extends Component
             'is_static' => 'required|boolean',
             'publish_directory' => 'nullable|string',
             'build_pack' => 'required|string',
-            'docker_compose_location' => ['nullable', 'string', 'max:255', 'regex:/^\/[a-zA-Z0-9._\-\/]+$/'],
+            'docker_compose_location' => \App\Support\ValidationPatterns::filePathRules(),
         ];
     }
 
