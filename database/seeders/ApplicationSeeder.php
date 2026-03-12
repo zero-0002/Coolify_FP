@@ -100,6 +100,21 @@ CMD ["sh", "-c", "echo Crashing in 5 seconds... && sleep 5 && exit 1"]
 ',
         ]);
         Application::create([
+            'uuid' => 'github-deploy-key',
+            'name' => 'GitHub Deploy Key Example',
+            'fqdn' => 'http://github-deploy-key.127.0.0.1.sslip.io',
+            'git_repository' => 'git@github.com:coollabsio/coolify-examples-deploy-key.git',
+            'git_branch' => 'main',
+            'build_pack' => 'nixpacks',
+            'ports_exposes' => '80',
+            'environment_id' => 1,
+            'destination_id' => 0,
+            'destination_type' => StandaloneDocker::class,
+            'source_id' => 0,
+            'source_type' => GithubApp::class,
+            'private_key_id' => 1,
+        ]);
+        Application::create([
             'uuid' => 'gitlab-deploy-key',
             'name' => 'GitLab Deploy Key Example',
             'fqdn' => 'http://gitlab-deploy-key.127.0.0.1.sslip.io',
