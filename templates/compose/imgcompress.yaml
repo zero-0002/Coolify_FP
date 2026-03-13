@@ -8,8 +8,6 @@
 services:
   imgcompress:
     image: karimz1/imgcompress:${IMGCOMPRESS_VERSION:-latest}
-    container_name: imgcompress
-    restart: always
     environment:
       - SERVICE_URL_IMGCOMPRESS_5000
       - DISABLE_LOGO=${DISABLE_LOGO:-false}
