@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Stringable;
 use OpenApi\Attributes as OA;
@@ -231,6 +232,7 @@ class Server extends BaseModel
     protected $casts = [
         'proxy' => SchemalessAttributes::class,
         'traefik_outdated_info' => 'array',
+        'server_metadata' => 'array',
         'logdrain_axiom_api_key' => 'encrypted',
         'logdrain_newrelic_license_key' => 'encrypted',
         'delete_unused_volumes' => 'boolean',
@@ -258,6 +260,7 @@ class Server extends BaseModel
         'is_validating',
         'detected_traefik_version',
         'traefik_outdated_info',
+        'server_metadata',
     ];
 
     protected $guarded = [];
@@ -913,6 +916,9 @@ $schema://$host {
         return Attribute::make(
             get: function ($value) {
                 return (int) preg_replace('/[^0-9]/', '', $value);
+            },
+            set: function ($value) {
+                return (int) preg_replace('/[^0-9]/', '', (string) $value);
             }
         );
     }
@@ -922,6 +928,9 @@ $schema://$host {
         return Attribute::make(
             get: function ($value) {
                 return preg_replace('/[^A-Za-z0-9\-_]/', '', $value);
+            },
+            set: function ($value) {
+                return preg_replace('/[^A-Za-z0-9\-_]/', '', $value);
             }
         );
     }
@@ -930,6 +939,9 @@ $schema://$host {
     {
         return Attribute::make(
             get: function ($value) {
+                return preg_replace('/[^0-9a-zA-Z.:%-]/', '', $value);
+            },
+            set: function ($value) {
                 return preg_replace('/[^0-9a-zA-Z.:%-]/', '', $value);
             }
         );
@@ -1062,6 +1074,55 @@ $schema://$host {
             return str($supported->first());
         } else {
             return false;
+        }
+    }
+
+    public function gatherServerMetadata(): ?array
+    {
+        if (! $this->isFunctional()) {
+            return null;
+        }
+
+        try {
+            $output = instant_remote_process([
+                'echo "---PRETTY_NAME---" && grep PRETTY_NAME /etc/os-release | cut -d= -f2 | tr -d \'"\' && echo "---ARCH---" && uname -m && echo "---KERNEL---" && uname -r && echo "---CPUS---" && nproc && echo "---MEMORY---" && free -b | awk \'/Mem:/{print $2}\' && echo "---UPTIME_SINCE---" && uptime -s',
+            ], $this, false);
+
+            if (! $output) {
+                return null;
+            }
+
+            $sections = [];
+            $currentKey = null;
+            foreach (explode("\n", trim($output)) as $line) {
+                $line = trim($line);
+                if (preg_match('/^---(\w+)---$/', $line, $m)) {
+                    $currentKey = $m[1];
+                } elseif ($currentKey) {
+                    $sections[$currentKey] = $line;
+                }
+            }
+
+            $metadata = [
+                'os' => $sections['PRETTY_NAME'] ?? 'Unknown',
+                'arch' => $sections['ARCH'] ?? 'Unknown',
+                'kernel' => $sections['KERNEL'] ?? 'Unknown',
+                'cpus' => (int) ($sections['CPUS'] ?? 0),
+                'memory_bytes' => (int) ($sections['MEMORY'] ?? 0),
+                'uptime_since' => $sections['UPTIME_SINCE'] ?? null,
+                'collected_at' => now()->toIso8601String(),
+            ];
+
+            $this->update(['server_metadata' => $metadata]);
+
+            return $metadata;
+        } catch (\Throwable $e) {
+            Log::debug('Failed to gather server metadata', [
+                'server_id' => $this->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
         }
     }
 
@@ -1452,12 +1513,14 @@ $schema://$host {
                 $certificateContent = $caCertificate->ssl_certificate;
                 $caCertPath = config('constants.coolify.base_config_path').'/ssl/';
 
+                $base64Cert = base64_encode($certificateContent);
+
                 $commands = collect([
                     "mkdir -p $caCertPath",
                     "chown -R 9999:root $caCertPath",
                     "chmod -R 700 $caCertPath",
                     "rm -rf $caCertPath/coolify-ca.crt",
-                    "echo '{$certificateContent}' > $caCertPath/coolify-ca.crt",
+                    "echo '{$base64Cert}' | base64 -d | tee $caCertPath/coolify-ca.crt > /dev/null",
                     "chmod 644 $caCertPath/coolify-ca.crt",
                 ]);
 
