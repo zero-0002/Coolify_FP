@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Storage;
 
 class SshMultiplexingHelper
 {
@@ -208,12 +209,36 @@ class SshMultiplexingHelper
 
     private static function validateSshKey(PrivateKey $privateKey): void
     {
-        $keyLocation = $privateKey->getKeyLocation();
-        $checkKeyCommand = "ls $keyLocation 2>/dev/null";
-        $keyCheckProcess = Process::run($checkKeyCommand);
+        $privateKey->refresh();
 
-        if ($keyCheckProcess->exitCode() !== 0) {
+        $keyLocation = $privateKey->getKeyLocation();
+        $filename = "ssh_key@{$privateKey->uuid}";
+        $disk = Storage::disk('ssh-keys');
+
+        $needsRewrite = false;
+
+        if (! $disk->exists($filename)) {
+            $needsRewrite = true;
+        } else {
+            $diskContent = $disk->get($filename);
+            if ($diskContent !== $privateKey->private_key) {
+                Log::warning('SSH key file content does not match database, resyncing', [
+                    'key_uuid' => $privateKey->uuid,
+                ]);
+                $needsRewrite = true;
+            }
+        }
+
+        if ($needsRewrite) {
             $privateKey->storeInFileSystem();
+        }
+
+        // Ensure correct permissions (SSH requires 0600)
+        if (file_exists($keyLocation)) {
+            $currentPerms = fileperms($keyLocation) & 0777;
+            if ($currentPerms !== 0600) {
+                chmod($keyLocation, 0600);
+            }
         }
     }
 

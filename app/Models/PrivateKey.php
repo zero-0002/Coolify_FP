@@ -65,6 +65,20 @@ class PrivateKey extends BaseModel
             }
         });
 
+        static::saved(function ($key) {
+            if ($key->wasChanged('private_key')) {
+                try {
+                    $key->storeInFileSystem();
+                    refresh_server_connection($key);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to resync SSH key after update', [
+                        'key_uuid' => $key->uuid,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        });
+
         static::deleted(function ($key) {
             self::deleteFromStorage($key);
         });
@@ -185,29 +199,52 @@ class PrivateKey extends BaseModel
     {
         $filename = "ssh_key@{$this->uuid}";
         $disk = Storage::disk('ssh-keys');
+        $keyLocation = $this->getKeyLocation();
+        $lockFile = $keyLocation.'.lock';
 
         // Ensure the storage directory exists and is writable
         $this->ensureStorageDirectoryExists();
 
-        // Attempt to store the private key
-        $success = $disk->put($filename, $this->private_key);
-
-        if (! $success) {
-            throw new \Exception("Failed to write SSH key to filesystem. Check disk space and permissions for: {$this->getKeyLocation()}");
+        // Use file locking to prevent concurrent writes from corrupting the key
+        $lockHandle = fopen($lockFile, 'c');
+        if ($lockHandle === false) {
+            throw new \Exception("Failed to open lock file for SSH key: {$lockFile}");
         }
 
-        // Verify the file was actually created and has content
-        if (! $disk->exists($filename)) {
-            throw new \Exception("SSH key file was not created: {$this->getKeyLocation()}");
-        }
+        try {
+            if (! flock($lockHandle, LOCK_EX)) {
+                throw new \Exception("Failed to acquire lock for SSH key: {$keyLocation}");
+            }
 
-        $storedContent = $disk->get($filename);
-        if (empty($storedContent) || $storedContent !== $this->private_key) {
-            $disk->delete($filename); // Clean up the bad file
-            throw new \Exception("SSH key file content verification failed: {$this->getKeyLocation()}");
-        }
+            // Attempt to store the private key
+            $success = $disk->put($filename, $this->private_key);
 
-        return $this->getKeyLocation();
+            if (! $success) {
+                throw new \Exception("Failed to write SSH key to filesystem. Check disk space and permissions for: {$keyLocation}");
+            }
+
+            // Verify the file was actually created and has content
+            if (! $disk->exists($filename)) {
+                throw new \Exception("SSH key file was not created: {$keyLocation}");
+            }
+
+            $storedContent = $disk->get($filename);
+            if (empty($storedContent) || $storedContent !== $this->private_key) {
+                $disk->delete($filename); // Clean up the bad file
+                throw new \Exception("SSH key file content verification failed: {$keyLocation}");
+            }
+
+            // Ensure correct permissions for SSH (0600 required)
+            if (file_exists($keyLocation)) {
+                chmod($keyLocation, 0600);
+            }
+
+            return $keyLocation;
+        } finally {
+            flock($lockHandle, LOCK_UN);
+            fclose($lockHandle);
+            @unlink($lockFile);
+        }
     }
 
     public static function deleteFromStorage(self $privateKey)
