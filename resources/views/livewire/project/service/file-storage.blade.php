@@ -15,6 +15,13 @@
                 <x-forms.input label="Destination Path" :value="$fileStorage->mount_path" readonly />
             </div>
         </div>
+        @can('update', $resource)
+            <div class="w-96">
+                <x-forms.checkbox instantSave label="Add suffix for PR deployments"
+                    id="isPreviewSuffixEnabled"
+                    helper="When enabled, a -pr-N suffix is added to this volume's path for preview deployments (e.g. ./scripts becomes ./scripts-pr-1). Disable this for volumes that contain shared config or scripts from your repository."></x-forms.checkbox>
+            </div>
+        @endcan
         <form wire:submit='submit' class="flex flex-col gap-2">
             @if (!$isReadOnly)
                 @can('update', $resource)
