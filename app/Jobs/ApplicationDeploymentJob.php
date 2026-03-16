@@ -2781,9 +2781,15 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         // Handle CMD type healthcheck
         if ($this->application->health_check_type === 'cmd' && ! empty($this->application->health_check_command)) {
             $command = str_replace(["\r\n", "\r", "\n"], ' ', $this->application->health_check_command);
-            $this->full_healthcheck_url = $command;
 
-            return $command;
+            // Defense in depth: validate command at runtime (matches input validation regex)
+            if (! preg_match('/^[a-zA-Z0-9 \-_.\/:=@,+]+$/', $command) || strlen($command) > 1000) {
+                $this->application_deployment_queue->addLogEntry('Warning: Health check command contains invalid characters or exceeds max length. Falling back to HTTP healthcheck.');
+            } else {
+                $this->full_healthcheck_url = $command;
+
+                return $command;
+            }
         }
 
         // HTTP type healthcheck (default)
@@ -2804,16 +2810,16 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             : null;
 
         $url = escapeshellarg("{$scheme}://{$host}:{$health_check_port}".($path ?? '/'));
-        $method = escapeshellarg($method);
+        $escapedMethod = escapeshellarg($method);
 
         if ($path) {
-            $this->full_healthcheck_url = "{$this->application->health_check_method}: {$scheme}://{$host}:{$health_check_port}{$path}";
+            $this->full_healthcheck_url = "{$method}: {$scheme}://{$host}:{$health_check_port}{$path}";
         } else {
-            $this->full_healthcheck_url = "{$this->application->health_check_method}: {$scheme}://{$host}:{$health_check_port}/";
+            $this->full_healthcheck_url = "{$method}: {$scheme}://{$host}:{$health_check_port}/";
         }
 
         $generated_healthchecks_commands = [
-            "curl -s -X {$method} -f {$url} > /dev/null || wget -q -O- {$url} > /dev/null || exit 1",
+            "curl -s -X {$escapedMethod} -f {$url} > /dev/null || wget -q -O- {$url} > /dev/null || exit 1",
         ];
 
         return implode(' ', $generated_healthchecks_commands);
