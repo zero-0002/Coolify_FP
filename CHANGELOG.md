@@ -1285,6 +1285,9 @@ All notable changes to this project will be documented in this file.
 - *(compose-preview)* Populate fqdn from docker_compose_domains (#8963)
 - *(server)* Auto-fetch server metadata after validation
 - *(server)* Auto-fetch server metadata after validation (#8964)
+- *(templates)* Add imgcompress service, for offline image processing (#8763)
+- *(service)* Add librespeed (#8626)
+- *(service)* Update databasus to v3.16.2 (#8586)
 
 ### 🐛 Bug Fixes
 
@@ -4681,6 +4684,9 @@ All notable changes to this project will be documented in this file.
 - *(api)* Allow is_container_label_escape_enabled in service operations (#8955)
 - *(docker-compose)* Respect preserveRepository when injecting --project-directory
 - *(docker-compose)* Respect preserveRepository when injecting --project-directory (#8956)
+- *(compose)* Include git branch in compose file not found error
+- *(template)* Fix heyform template
+- *(template)* Fix heyform template (#8747)
 
 ### 💼 Other
 
@@ -5937,6 +5943,7 @@ All notable changes to this project will be documented in this file.
 - *(readme)* Add VPSDime to Big Sponsors list
 - *(readme)* Move MVPS to Huge Sponsors section
 - *(settings)* Clarify Do Not Track helper text
+- Update changelog
 
 ### ⚡ Performance
 
@@ -6775,6 +6782,10 @@ All notable changes to this project will be documented in this file.
 - Prepare for PR
 - Prepare for PR
 - *(service)* Pin castopod service to a static version instead of latest
+- *(service)* Remove unused attributes on imgcompress service
+- *(service)* Pin imgcompress to a static version instead of latest
+- *(service)* Update SeaweedFS images to version 4.13 (#8738)
+- *(templates)* Bump databasus image version
 
 ### ◀️ Revert
 
