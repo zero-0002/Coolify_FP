@@ -7,7 +7,7 @@
 
 services:
   espocrm:
-    image: espocrm/espocrm:latest
+    image: espocrm/espocrm:9
     environment:
       - SERVICE_URL_ESPOCRM
       - ESPOCRM_ADMIN_USERNAME=${ESPOCRM_ADMIN_USERNAME:-admin}
@@ -31,7 +31,7 @@ services:
         condition: service_healthy
 
   espocrm-daemon:
-    image: espocrm/espocrm:latest
+    image: espocrm/espocrm:9
     container_name: espocrm-daemon
     volumes:
       - espocrm:/var/www/html
@@ -42,7 +42,7 @@ services:
         condition: service_healthy
 
   espocrm-websocket:
-    image: espocrm/espocrm:latest
+    image: espocrm/espocrm:9
     container_name: espocrm-websocket
     environment:
       - SERVICE_URL_ESPOCRM_WEBSOCKET_8080
@@ -59,7 +59,7 @@ services:
         condition: service_healthy
 
   espocrm-db:
-    image: mariadb:latest
+    image: mariadb:11.8
     environment:
       - MARIADB_DATABASE=${MARIADB_DATABASE:-espocrm}
       - MARIADB_USER=${SERVICE_USER_MARIADB}
