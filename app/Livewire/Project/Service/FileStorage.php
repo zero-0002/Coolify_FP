@@ -181,6 +181,7 @@ class FileStorage extends Component
             // Sync component properties to model
             $this->fileStorage->content = $this->content;
             $this->fileStorage->is_based_on_git = $this->isBasedOnGit;
+            $this->fileStorage->is_preview_suffix_enabled = $this->isPreviewSuffixEnabled;
             $this->fileStorage->save();
             $this->fileStorage->saveStorageOnServer();
             $this->dispatch('success', 'File updated.');
