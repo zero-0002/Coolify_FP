@@ -2212,7 +2212,7 @@ paths:
           schema:
             type: string
       requestBody:
-        description: 'Storage updated.'
+        description: 'Storage updated. For read-only storages (from docker-compose or services), only is_preview_suffix_enabled can be updated.'
         required: true
         content:
           application/json:
@@ -2231,6 +2231,20 @@ paths:
                 is_preview_suffix_enabled:
                   type: boolean
                   description: 'Whether to add -pr-N suffix for preview deployments.'
+                name:
+                  type: string
+                  description: 'The volume name (persistent only, not allowed for read-only storages).'
+                mount_path:
+                  type: string
+                  description: 'The container mount path (not allowed for read-only storages).'
+                host_path:
+                  type: string
+                  nullable: true
+                  description: 'The host path (persistent only, not allowed for read-only storages).'
+                content:
+                  type: string
+                  nullable: true
+                  description: 'The file content (file only, not allowed for read-only storages).'
               type: object
       responses:
         '200':

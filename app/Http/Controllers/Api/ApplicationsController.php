@@ -4005,7 +4005,7 @@ class ApplicationsController extends Controller
             ),
         ],
         requestBody: new OA\RequestBody(
-            description: 'Storage updated.',
+            description: 'Storage updated. For read-only storages (from docker-compose or services), only is_preview_suffix_enabled can be updated.',
             required: true,
             content: [
                 new OA\MediaType(
@@ -4017,6 +4017,10 @@ class ApplicationsController extends Controller
                             'id' => ['type' => 'integer', 'description' => 'The ID of the storage.'],
                             'type' => ['type' => 'string', 'enum' => ['persistent', 'file'], 'description' => 'The type of storage: persistent or file.'],
                             'is_preview_suffix_enabled' => ['type' => 'boolean', 'description' => 'Whether to add -pr-N suffix for preview deployments.'],
+                            'name' => ['type' => 'string', 'description' => 'The volume name (persistent only, not allowed for read-only storages).'],
+                            'mount_path' => ['type' => 'string', 'description' => 'The container mount path (not allowed for read-only storages).'],
+                            'host_path' => ['type' => 'string', 'nullable' => true, 'description' => 'The host path (persistent only, not allowed for read-only storages).'],
+                            'content' => ['type' => 'string', 'nullable' => true, 'description' => 'The file content (file only, not allowed for read-only storages).'],
                         ],
                     ),
                 ),
@@ -4043,7 +4047,6 @@ class ApplicationsController extends Controller
     )]
     public function update_storage(Request $request)
     {
-        $allowedFields = ['id', 'type', 'is_preview_suffix_enabled'];
         $teamId = getTeamIdFromToken();
 
         if (is_null($teamId)) {
@@ -4069,9 +4072,14 @@ class ApplicationsController extends Controller
             'id' => 'required|integer',
             'type' => 'required|string|in:persistent,file',
             'is_preview_suffix_enabled' => 'boolean',
+            'name' => 'string',
+            'mount_path' => 'string',
+            'host_path' => 'string|nullable',
+            'content' => 'string|nullable',
         ]);
 
-        $extraFields = array_diff(array_keys($request->all()), $allowedFields);
+        $allAllowedFields = ['id', 'type', 'is_preview_suffix_enabled', 'name', 'mount_path', 'host_path', 'content'];
+        $extraFields = array_diff(array_keys($request->all()), $allAllowedFields);
         if ($validator->fails() || ! empty($extraFields)) {
             $errors = $validator->errors();
             if (! empty($extraFields)) {
@@ -4098,8 +4106,42 @@ class ApplicationsController extends Controller
             ], 404);
         }
 
+        $isReadOnly = $storage->shouldBeReadOnlyInUI();
+        $editableOnlyFields = ['name', 'mount_path', 'host_path', 'content'];
+        $requestedEditableFields = array_intersect($editableOnlyFields, array_keys($request->all()));
+
+        if ($isReadOnly && ! empty($requestedEditableFields)) {
+            return response()->json([
+                'message' => 'This storage is read-only (managed by docker-compose or service definition). Only is_preview_suffix_enabled can be updated.',
+                'read_only_fields' => array_values($requestedEditableFields),
+            ], 422);
+        }
+
+        // Always allowed
         if ($request->has('is_preview_suffix_enabled')) {
             $storage->is_preview_suffix_enabled = $request->is_preview_suffix_enabled;
+        }
+
+        // Only for editable storages
+        if (! $isReadOnly) {
+            if ($request->type === 'persistent') {
+                if ($request->has('name')) {
+                    $storage->name = $request->name;
+                }
+                if ($request->has('mount_path')) {
+                    $storage->mount_path = $request->mount_path;
+                }
+                if ($request->has('host_path')) {
+                    $storage->host_path = $request->host_path;
+                }
+            } else {
+                if ($request->has('mount_path')) {
+                    $storage->mount_path = $request->mount_path;
+                }
+                if ($request->has('content')) {
+                    $storage->content = $request->content;
+                }
+            }
         }
 
         $storage->save();
