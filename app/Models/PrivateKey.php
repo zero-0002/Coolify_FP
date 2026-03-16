@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\HasSafeStringAttribute;
 use DanHarrin\LivewireRateLimiting\WithRateLimiting;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
@@ -71,7 +72,7 @@ class PrivateKey extends BaseModel
                     $key->storeInFileSystem();
                     refresh_server_connection($key);
                 } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error('Failed to resync SSH key after update', [
+                    Log::error('Failed to resync SSH key after update', [
                         'key_uuid' => $key->uuid,
                         'error' => $e->getMessage(),
                     ]);
@@ -235,15 +236,17 @@ class PrivateKey extends BaseModel
             }
 
             // Ensure correct permissions for SSH (0600 required)
-            if (file_exists($keyLocation)) {
-                chmod($keyLocation, 0600);
+            if (file_exists($keyLocation) && ! chmod($keyLocation, 0600)) {
+                Log::warning('Failed to set SSH key file permissions to 0600', [
+                    'key_uuid' => $this->uuid,
+                    'path' => $keyLocation,
+                ]);
             }
 
             return $keyLocation;
         } finally {
             flock($lockHandle, LOCK_UN);
             fclose($lockHandle);
-            @unlink($lockFile);
         }
     }
 
@@ -290,12 +293,6 @@ class PrivateKey extends BaseModel
     {
         return DB::transaction(function () use ($data) {
             $this->update($data);
-
-            try {
-                $this->storeInFileSystem();
-            } catch (\Exception $e) {
-                throw new \Exception('Failed to update SSH key: '.$e->getMessage());
-            }
 
             return $this;
         });

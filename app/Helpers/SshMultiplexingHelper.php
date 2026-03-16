@@ -209,8 +209,6 @@ class SshMultiplexingHelper
 
     private static function validateSshKey(PrivateKey $privateKey): void
     {
-        $privateKey->refresh();
-
         $keyLocation = $privateKey->getKeyLocation();
         $filename = "ssh_key@{$privateKey->uuid}";
         $disk = Storage::disk('ssh-keys');
@@ -236,8 +234,11 @@ class SshMultiplexingHelper
         // Ensure correct permissions (SSH requires 0600)
         if (file_exists($keyLocation)) {
             $currentPerms = fileperms($keyLocation) & 0777;
-            if ($currentPerms !== 0600) {
-                chmod($keyLocation, 0600);
+            if ($currentPerms !== 0600 && ! chmod($keyLocation, 0600)) {
+                Log::warning('Failed to set SSH key file permissions to 0600', [
+                    'key_uuid' => $privateKey->uuid,
+                    'path' => $keyLocation,
+                ]);
             }
         }
     }
