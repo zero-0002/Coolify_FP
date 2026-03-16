@@ -59,6 +59,7 @@ Thank you so much!
 
 * [MVPS](https://www.mvps.net?ref=coolify.io) - Cheap VPS servers at the highest possible quality
 * [SerpAPI](https://serpapi.com?ref=coolify.io) - Google Search API — Scrape Google and other search engines from our fast, easy, and complete API
+* [ScreenshotOne](https://screenshotone.com?ref=coolify.io) - Screenshot API for devs
 *
 
 ### Big Sponsors
