@@ -4,7 +4,9 @@ namespace Tests\Unit;
 
 use App\Helpers\SshMultiplexingHelper;
 use App\Models\PrivateKey;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -129,5 +131,59 @@ class SshKeyValidationTest extends TestCase
             $source,
             'PrivateKey saved event should resync key file'
         );
+    }
+
+    public function test_validate_ssh_key_rewrites_stale_file_and_fixes_permissions()
+    {
+        $diskRoot = sys_get_temp_dir().'/coolify-ssh-test-'.Str::uuid();
+        File::ensureDirectoryExists($diskRoot);
+        config(['filesystems.disks.ssh-keys.root' => $diskRoot]);
+        app('filesystem')->forgetDisk('ssh-keys');
+
+        $privateKey = new class extends PrivateKey
+        {
+            public int $storeCallCount = 0;
+
+            public function refresh()
+            {
+                return $this;
+            }
+
+            public function getKeyLocation()
+            {
+                return Storage::disk('ssh-keys')->path("ssh_key@{$this->uuid}");
+            }
+
+            public function storeInFileSystem()
+            {
+                $this->storeCallCount++;
+                $filename = "ssh_key@{$this->uuid}";
+                $disk = Storage::disk('ssh-keys');
+                $disk->put($filename, $this->private_key);
+                $keyLocation = $disk->path($filename);
+                chmod($keyLocation, 0600);
+
+                return $keyLocation;
+            }
+        };
+
+        $privateKey->uuid = (string) Str::uuid();
+        $privateKey->private_key = 'NEW_PRIVATE_KEY_CONTENT';
+
+        $filename = "ssh_key@{$privateKey->uuid}";
+        $disk = Storage::disk('ssh-keys');
+        $disk->put($filename, 'OLD_PRIVATE_KEY_CONTENT');
+        $staleKeyPath = $disk->path($filename);
+        chmod($staleKeyPath, 0644);
+
+        $reflection = new \ReflectionMethod(SshMultiplexingHelper::class, 'validateSshKey');
+        $reflection->setAccessible(true);
+        $reflection->invoke(null, $privateKey);
+
+        $this->assertSame('NEW_PRIVATE_KEY_CONTENT', $disk->get($filename));
+        $this->assertSame(1, $privateKey->storeCallCount);
+        $this->assertSame(0600, fileperms($staleKeyPath) & 0777);
+
+        File::deleteDirectory($diskRoot);
     }
 }
