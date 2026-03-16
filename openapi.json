@@ -3463,7 +3463,28 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "All storages by application UUID."
+                        "description": "All storages by application UUID.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "persistent_storages": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "file_storages": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "401": {
                         "$ref": "#\/components\/responses\/401"
@@ -3545,14 +3566,22 @@
                                         "description": "The file content (file only, not allowed for read-only storages)."
                                     }
                                 },
-                                "type": "object"
+                                "type": "object",
+                                "additionalProperties": false
                             }
                         }
                     }
                 },
                 "responses": {
                     "200": {
-                        "description": "Storage updated."
+                        "description": "Storage updated.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "401": {
                         "$ref": "#\/components\/responses\/401"
@@ -3562,6 +3591,9 @@
                     },
                     "404": {
                         "$ref": "#\/components\/responses\/404"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/422"
                     }
                 },
                 "security": [

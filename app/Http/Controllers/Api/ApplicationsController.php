@@ -18,6 +18,7 @@ use App\Models\Service;
 use App\Rules\ValidGitBranch;
 use App\Rules\ValidGitRepositoryUrl;
 use App\Services\DockerImageParser;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
@@ -3944,6 +3945,12 @@ class ApplicationsController extends Controller
             new OA\Response(
                 response: 200,
                 description: 'All storages by application UUID.',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'persistent_storages', type: 'array', items: new OA\Items(type: 'object')),
+                        new OA\Property(property: 'file_storages', type: 'array', items: new OA\Items(type: 'object')),
+                    ],
+                ),
             ),
             new OA\Response(
                 response: 401,
@@ -3959,7 +3966,7 @@ class ApplicationsController extends Controller
             ),
         ]
     )]
-    public function storages(Request $request)
+    public function storages(Request $request): JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -4022,6 +4029,7 @@ class ApplicationsController extends Controller
                             'host_path' => ['type' => 'string', 'nullable' => true, 'description' => 'The host path (persistent only, not allowed for read-only storages).'],
                             'content' => ['type' => 'string', 'nullable' => true, 'description' => 'The file content (file only, not allowed for read-only storages).'],
                         ],
+                        additionalProperties: false,
                     ),
                 ),
             ],
@@ -4030,6 +4038,7 @@ class ApplicationsController extends Controller
             new OA\Response(
                 response: 200,
                 description: 'Storage updated.',
+                content: new OA\JsonContent(type: 'object'),
             ),
             new OA\Response(
                 response: 401,
@@ -4043,9 +4052,13 @@ class ApplicationsController extends Controller
                 response: 404,
                 ref: '#/components/responses/404',
             ),
+            new OA\Response(
+                response: 422,
+                ref: '#/components/responses/422',
+            ),
         ]
     )]
-    public function update_storage(Request $request)
+    public function update_storage(Request $request): JsonResponse
     {
         $teamId = getTeamIdFromToken();
 
@@ -4115,6 +4128,21 @@ class ApplicationsController extends Controller
                 'message' => 'This storage is read-only (managed by docker-compose or service definition). Only is_preview_suffix_enabled can be updated.',
                 'read_only_fields' => array_values($requestedEditableFields),
             ], 422);
+        }
+
+        // Reject fields that don't apply to the given storage type
+        if (! $isReadOnly) {
+            $typeSpecificInvalidFields = $request->type === 'persistent'
+                ? array_intersect(['content'], array_keys($request->all()))
+                : array_intersect(['name', 'host_path'], array_keys($request->all()));
+
+            if (! empty($typeSpecificInvalidFields)) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => collect($typeSpecificInvalidFields)
+                        ->mapWithKeys(fn ($field) => [$field => "Field '{$field}' is not valid for type '{$request->type}'."]),
+                ], 422);
+            }
         }
 
         // Always allowed

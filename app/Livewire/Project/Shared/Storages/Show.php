@@ -72,9 +72,10 @@ class Show extends Component
         $this->isReadOnly = $this->storage->shouldBeReadOnlyInUI();
     }
 
-    public function instantSave()
+    public function instantSave(): void
     {
         $this->authorize('update', $this->resource);
+        $this->validate();
 
         $this->syncData(true);
         $this->storage->save();

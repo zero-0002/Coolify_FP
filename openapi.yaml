@@ -2188,6 +2188,13 @@ paths:
       responses:
         '200':
           description: 'All storages by application UUID.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  persistent_storages: { type: array, items: { type: object } }
+                  file_storages: { type: array, items: { type: object } }
+                type: object
         '401':
           $ref: '#/components/responses/401'
         '400':
@@ -2246,15 +2253,22 @@ paths:
                   nullable: true
                   description: 'The file content (file only, not allowed for read-only storages).'
               type: object
+              additionalProperties: false
       responses:
         '200':
           description: 'Storage updated.'
+          content:
+            application/json:
+              schema:
+                type: object
         '401':
           $ref: '#/components/responses/401'
         '400':
           $ref: '#/components/responses/400'
         '404':
           $ref: '#/components/responses/404'
+        '422':
+          $ref: '#/components/responses/422'
       security:
         -
           bearerAuth: []

@@ -194,9 +194,11 @@ class FileStorage extends Component
         }
     }
 
-    public function instantSave()
+    public function instantSave(): void
     {
-        $this->submit();
+        $this->authorize('update', $this->resource);
+        $this->syncData(true);
+        $this->dispatch('success', 'File updated.');
     }
 
     public function render()

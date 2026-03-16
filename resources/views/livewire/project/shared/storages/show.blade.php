@@ -38,13 +38,15 @@
                     <x-forms.input id="mountPath" required readonly />
                 </div>
             @endif
-            @can('update', $resource)
-                <div class="w-96">
-                    <x-forms.checkbox instantSave label="Add suffix for PR deployments"
-                        id="isPreviewSuffixEnabled"
-                        helper="When enabled, a -pr-N suffix is added to this volume's name for preview deployments (e.g. myvolume becomes myvolume-pr-1). Disable this for volumes that should be shared between the main and preview deployments."></x-forms.checkbox>
-                </div>
-            @endcan
+            @if (!$isService)
+                @can('update', $resource)
+                    <div class="w-96">
+                        <x-forms.checkbox instantSave canGate="update" :canResource="$resource" label="Add suffix for PR deployments"
+                            id="isPreviewSuffixEnabled"
+                            helper="When enabled, a -pr-N suffix is added to this volume's name for preview deployments (e.g. myvolume becomes myvolume-pr-1). Disable this for volumes that should be shared between the main and preview deployments."></x-forms.checkbox>
+                    </div>
+                @endcan
+            @endif
         @else
             @can('update', $resource)
                 @if ($isFirst)
@@ -61,9 +63,9 @@
                         <x-forms.input id="mountPath" required />
                     </div>
                 @endif
-                @if (data_get($resource, 'settings.is_preview_deployments_enabled'))
+                @if (!$isService)
                     <div class="w-96">
-                        <x-forms.checkbox instantSave label="Add suffix for PR deployments"
+                        <x-forms.checkbox instantSave canGate="update" :canResource="$resource" label="Add suffix for PR deployments"
                             id="isPreviewSuffixEnabled"
                             helper="When enabled, a -pr-N suffix is added to this volume's name for preview deployments (e.g. myvolume becomes myvolume-pr-1). Disable this for volumes that should be shared between the main and preview deployments."></x-forms.checkbox>
                     </div>
