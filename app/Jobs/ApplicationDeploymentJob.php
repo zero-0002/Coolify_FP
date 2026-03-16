@@ -2745,7 +2745,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             } else {
                 $volume_name = $persistentStorage->name;
             }
-            if ($this->pull_request_id !== 0) {
+            $isPreviewSuffixEnabled = (bool) data_get($persistentStorage, 'is_preview_suffix_enabled', true);
+            if ($this->pull_request_id !== 0 && $isPreviewSuffixEnabled) {
                 $volume_name = addPreviewDeploymentSuffix($volume_name, $this->pull_request_id);
             }
             $local_persistent_volumes[] = $volume_name.':'.$persistentStorage->mount_path;
@@ -2763,7 +2764,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
             $name = $persistentStorage->name;
 
-            if ($this->pull_request_id !== 0) {
+            $isPreviewSuffixEnabled = (bool) data_get($persistentStorage, 'is_preview_suffix_enabled', true);
+            if ($this->pull_request_id !== 0 && $isPreviewSuffixEnabled) {
                 $name = addPreviewDeploymentSuffix($name, $this->pull_request_id);
             }
 
