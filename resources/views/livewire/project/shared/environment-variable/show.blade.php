@@ -26,6 +26,7 @@
                 <div class="flex flex-col w-full gap-2 lg:flex-row lg:items-end">
                     <div class="flex-1">
                         <x-forms.input id="comment" label="Comment"
+                            placeholder="{{ $isMagicVariable ? 'This env cannot be edited manually, it is handled by Coolify.' : '' }}"
                             helper="Add a note to document what this environment variable is used for." maxlength="256" />
                     </div>
                     <x-forms.button type="submit">Update</x-forms.button>
