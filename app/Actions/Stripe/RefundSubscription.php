@@ -19,7 +19,7 @@ class RefundSubscription
     /**
      * Check if the team's subscription is eligible for a refund.
      *
-     * @return array{eligible: bool, days_remaining: int, reason: string}
+     * @return array{eligible: bool, days_remaining: int, reason: string, current_period_end: int|null}
      */
     public function checkEligibility(Team $team): array
     {
@@ -43,8 +43,10 @@ class RefundSubscription
             return $this->ineligible('Subscription not found in Stripe.');
         }
 
+        $currentPeriodEnd = $stripeSubscription->current_period_end;
+
         if (! in_array($stripeSubscription->status, ['active', 'trialing'])) {
-            return $this->ineligible("Subscription status is '{$stripeSubscription->status}'.");
+            return $this->ineligible("Subscription status is '{$stripeSubscription->status}'.", $currentPeriodEnd);
         }
 
         $startDate = \Carbon\Carbon::createFromTimestamp($stripeSubscription->start_date);
@@ -52,13 +54,14 @@ class RefundSubscription
         $daysRemaining = self::REFUND_WINDOW_DAYS - $daysSinceStart;
 
         if ($daysRemaining <= 0) {
-            return $this->ineligible('The 30-day refund window has expired.');
+            return $this->ineligible('The 30-day refund window has expired.', $currentPeriodEnd);
         }
 
         return [
             'eligible' => true,
             'days_remaining' => $daysRemaining,
             'reason' => 'Eligible for refund.',
+            'current_period_end' => $currentPeriodEnd,
         ];
     }
 
@@ -128,14 +131,15 @@ class RefundSubscription
     }
 
     /**
-     * @return array{eligible: bool, days_remaining: int, reason: string}
+     * @return array{eligible: bool, days_remaining: int, reason: string, current_period_end: int|null}
      */
-    private function ineligible(string $reason): array
+    private function ineligible(string $reason, ?int $currentPeriodEnd = null): array
     {
         return [
             'eligible' => false,
             'days_remaining' => 0,
             'reason' => $reason,
+            'current_period_end' => $currentPeriodEnd,
         ];
     }
 }
