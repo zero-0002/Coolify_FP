@@ -74,7 +74,7 @@
                         </div>
                         <div class="flex flex-col gap-2">
                             @if ($requiredPort && !$serviceApplication->serviceType()?->contains(str($serviceApplication->image)->before(':')))
-                                <x-callout type="warning" title="Required Port: {{ $requiredPort }}" class="mb-2">
+                                <x-callout type="info" title="Required Port: {{ $requiredPort }}" class="mb-2">
                                     This service requires port <strong>{{ $requiredPort }}</strong> to function correctly. All domains must include this port number (or any other port if you know what you're doing).
                                     <br><br>
                                     <strong>Example:</strong> http://app.coolify.io:{{ $requiredPort }}

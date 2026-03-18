@@ -1,7 +1,7 @@
 <div class="w-full">
     <form wire:submit.prevent='submit' class="flex flex-col w-full gap-2">
         @if($requiredPort)
-            <x-callout type="warning" title="Required Port: {{ $requiredPort }}" class="mb-2">
+            <x-callout type="info" title="Required Port: {{ $requiredPort }}" class="mb-2">
                 This service requires port <strong>{{ $requiredPort }}</strong> to function correctly. All domains must include this port number (or any other port if you know what you're doing).
                 <br><br>
                 <strong>Example:</strong> http://app.coolify.io:{{ $requiredPort }}
