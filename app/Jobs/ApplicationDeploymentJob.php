@@ -223,7 +223,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->preserveRepository = $this->application->settings->is_preserve_repository_enabled;
 
         $this->basedir = $this->application->generateBaseDir($this->deployment_uuid);
-        $this->workdir = "{$this->basedir}".rtrim($this->application->base_directory, '/');
+        $baseDir = $this->application->base_directory;
+        if ($baseDir && $baseDir !== '/') {
+            $this->validatePathField($baseDir, 'base_directory');
+        }
+        $this->workdir = "{$this->basedir}".rtrim($baseDir, '/');
         $this->configuration_dir = application_configuration_dir()."/{$this->application->uuid}";
         $this->is_debug_enabled = $this->application->settings->is_debug_enabled;
 
@@ -312,7 +316,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
 
             if ($this->application->dockerfile_target_build) {
-                $this->buildTarget = " --target {$this->application->dockerfile_target_build} ";
+                $target = $this->application->dockerfile_target_build;
+                if (! preg_match(\App\Support\ValidationPatterns::DOCKER_TARGET_PATTERN, $target)) {
+                    throw new \RuntimeException('Invalid dockerfile_target_build: contains forbidden characters.');
+                }
+                $this->buildTarget = " --target {$target} ";
             }
 
             // Check custom port
@@ -571,6 +579,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->docker_compose_location = $this->validatePathField($this->application->docker_compose_location, 'docker_compose_location');
         }
         if (data_get($this->application, 'docker_compose_custom_start_command')) {
+            $this->validateShellSafeCommand($this->application->docker_compose_custom_start_command, 'docker_compose_custom_start_command');
             $this->docker_compose_custom_start_command = $this->application->docker_compose_custom_start_command;
             if (! str($this->docker_compose_custom_start_command)->contains('--project-directory')) {
                 $projectDir = $this->preserveRepository ? $this->application->workdir() : $this->workdir;
@@ -578,6 +587,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
         }
         if (data_get($this->application, 'docker_compose_custom_build_command')) {
+            $this->validateShellSafeCommand($this->application->docker_compose_custom_build_command, 'docker_compose_custom_build_command');
             $this->docker_compose_custom_build_command = $this->application->docker_compose_custom_build_command;
             if (! str($this->docker_compose_custom_build_command)->contains('--project-directory')) {
                 $this->docker_compose_custom_build_command = str($this->docker_compose_custom_build_command)->replaceFirst('compose', 'compose --project-directory '.$this->workdir)->value();
@@ -3948,6 +3958,24 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         return $value;
     }
 
+    private function validateShellSafeCommand(string $value, string $fieldName): string
+    {
+        if (! preg_match(\App\Support\ValidationPatterns::SHELL_SAFE_COMMAND_PATTERN, $value)) {
+            throw new \RuntimeException("Invalid {$fieldName}: contains forbidden shell characters.");
+        }
+
+        return $value;
+    }
+
+    private function validateContainerName(string $value): string
+    {
+        if (! preg_match(\App\Support\ValidationPatterns::CONTAINER_NAME_PATTERN, $value)) {
+            throw new \RuntimeException('Invalid container name: contains forbidden characters.');
+        }
+
+        return $value;
+    }
+
     private function run_pre_deployment_command()
     {
         if (empty($this->application->pre_deployment_command)) {
@@ -3961,7 +3989,17 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
         foreach ($containers as $container) {
             $containerName = data_get($container, 'Names');
+            if ($containerName) {
+                $this->validateContainerName($containerName);
+            }
             if ($containers->count() == 1 || str_starts_with($containerName, $this->application->pre_deployment_command_container.'-'.$this->application->uuid)) {
+                // Security: pre_deployment_command is intentionally treated as arbitrary shell input.
+                // Users (team members with deployment access) need full shell flexibility to run commands
+                // like "php artisan migrate", "npm run build", etc. inside their own application containers.
+                // The trust boundary is at the application/team ownership level — only authenticated team
+                // members can set these commands, and execution is scoped to the application's own container.
+                // The single-quote escaping here prevents breaking out of the sh -c wrapper, but does not
+                // restrict the command itself. Container names are validated separately via validateContainerName().
                 $cmd = "sh -c '".str_replace("'", "'\''", $this->application->pre_deployment_command)."'";
                 $exec = "docker exec {$containerName} {$cmd}";
                 $this->execute_remote_command(
@@ -3988,7 +4026,12 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         $containers = getCurrentApplicationContainerStatus($this->server, $this->application->id, $this->pull_request_id);
         foreach ($containers as $container) {
             $containerName = data_get($container, 'Names');
+            if ($containerName) {
+                $this->validateContainerName($containerName);
+            }
             if ($containers->count() == 1 || str_starts_with($containerName, $this->application->post_deployment_command_container.'-'.$this->application->uuid)) {
+                // Security: post_deployment_command is intentionally treated as arbitrary shell input.
+                // See the equivalent comment in run_pre_deployment_command() for the full security rationale.
                 $cmd = "sh -c '".str_replace("'", "'\''", $this->application->post_deployment_command)."'";
                 $exec = "docker exec {$containerName} {$cmd}";
                 try {
