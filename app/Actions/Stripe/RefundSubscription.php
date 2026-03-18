@@ -102,16 +102,27 @@ class RefundSubscription
                 'payment_intent' => $paymentIntentId,
             ]);
 
-            $this->stripe->subscriptions->cancel($subscription->stripe_subscription_id);
+            // Record refund immediately so it cannot be retried if cancel fails
+            $subscription->update([
+                'stripe_refunded_at' => now(),
+                'stripe_feedback' => 'Refund requested by user',
+                'stripe_comment' => 'Full refund processed within 30-day window at '.now()->toDateTimeString(),
+            ]);
+
+            try {
+                $this->stripe->subscriptions->cancel($subscription->stripe_subscription_id);
+            } catch (\Exception $e) {
+                \Log::critical("Refund succeeded but subscription cancel failed for team {$team->id}: ".$e->getMessage());
+                send_internal_notification(
+                    "CRITICAL: Refund succeeded but cancel failed for subscription {$subscription->stripe_subscription_id}, team {$team->id}. Manual intervention required."
+                );
+            }
 
             $subscription->update([
                 'stripe_cancel_at_period_end' => false,
                 'stripe_invoice_paid' => false,
                 'stripe_trial_already_ended' => false,
                 'stripe_past_due' => false,
-                'stripe_feedback' => 'Refund requested by user',
-                'stripe_comment' => 'Full refund processed within 30-day window at '.now()->toDateTimeString(),
-                'stripe_refunded_at' => now(),
             ]);
 
             $team->subscriptionEnded();
