@@ -251,6 +251,56 @@ describe('execute', function () {
         expect($result['error'])->toContain('No payment intent');
     });
 
+    test('records refund and proceeds when cancel fails', function () {
+        $stripeSubscription = (object) [
+            'status' => 'active',
+            'start_date' => now()->subDays(10)->timestamp,
+        ];
+
+        $this->mockSubscriptions
+            ->shouldReceive('retrieve')
+            ->with('sub_test_123')
+            ->andReturn($stripeSubscription);
+
+        $invoiceCollection = (object) ['data' => [
+            (object) ['payment_intent' => 'pi_test_123'],
+        ]];
+
+        $this->mockInvoices
+            ->shouldReceive('all')
+            ->with([
+                'subscription' => 'sub_test_123',
+                'status' => 'paid',
+                'limit' => 1,
+            ])
+            ->andReturn($invoiceCollection);
+
+        $this->mockRefunds
+            ->shouldReceive('create')
+            ->with(['payment_intent' => 'pi_test_123'])
+            ->andReturn((object) ['id' => 're_test_123']);
+
+        // Cancel throws — simulating Stripe failure after refund
+        $this->mockSubscriptions
+            ->shouldReceive('cancel')
+            ->with('sub_test_123')
+            ->andThrow(new \Exception('Stripe cancel API error'));
+
+        $action = new RefundSubscription($this->mockStripe);
+        $result = $action->execute($this->team);
+
+        // Should still succeed — refund went through
+        expect($result['success'])->toBeTrue();
+        expect($result['error'])->toBeNull();
+
+        $this->subscription->refresh();
+        // Refund timestamp must be recorded
+        expect($this->subscription->stripe_refunded_at)->not->toBeNull();
+        // Subscription should still be marked as ended locally
+        expect($this->subscription->stripe_invoice_paid)->toBeFalsy();
+        expect($this->subscription->stripe_subscription_id)->toBeNull();
+    });
+
     test('fails when subscription is past refund window', function () {
         $stripeSubscription = (object) [
             'status' => 'active',
