@@ -3175,7 +3175,7 @@ class ApplicationsController extends Controller
             ], 400);
         }
         $bulk_data = collect($bulk_data)->map(function ($item) {
-            return collect($item)->only(['key', 'value', 'is_preview', 'is_literal', 'is_multiline', 'is_shown_once', 'is_runtime', 'is_buildtime']);
+            return collect($item)->only(['key', 'value', 'is_preview', 'is_literal', 'is_multiline', 'is_shown_once', 'is_runtime', 'is_buildtime', 'comment']);
         });
         $returnedEnvs = collect();
         foreach ($bulk_data as $item) {
@@ -3188,6 +3188,7 @@ class ApplicationsController extends Controller
                 'is_shown_once' => 'boolean',
                 'is_runtime' => 'boolean',
                 'is_buildtime' => 'boolean',
+                'comment' => 'string|nullable|max:256',
             ]);
             if ($validator->fails()) {
                 return response()->json([
@@ -3220,6 +3221,9 @@ class ApplicationsController extends Controller
                     if ($item->has('is_buildtime') && $env->is_buildtime != $item->get('is_buildtime')) {
                         $env->is_buildtime = $item->get('is_buildtime');
                     }
+                    if ($item->has('comment') && $env->comment != $item->get('comment')) {
+                        $env->comment = $item->get('comment');
+                    }
                     $env->save();
                 } else {
                     $env = $application->environment_variables()->create([
@@ -3231,6 +3235,7 @@ class ApplicationsController extends Controller
                         'is_shown_once' => $is_shown_once,
                         'is_runtime' => $item->get('is_runtime', true),
                         'is_buildtime' => $item->get('is_buildtime', true),
+                        'comment' => $item->get('comment'),
                         'resourceable_type' => get_class($application),
                         'resourceable_id' => $application->id,
                     ]);
@@ -3254,6 +3259,9 @@ class ApplicationsController extends Controller
                     if ($item->has('is_buildtime') && $env->is_buildtime != $item->get('is_buildtime')) {
                         $env->is_buildtime = $item->get('is_buildtime');
                     }
+                    if ($item->has('comment') && $env->comment != $item->get('comment')) {
+                        $env->comment = $item->get('comment');
+                    }
                     $env->save();
                 } else {
                     $env = $application->environment_variables()->create([
@@ -3265,6 +3273,7 @@ class ApplicationsController extends Controller
                         'is_shown_once' => $is_shown_once,
                         'is_runtime' => $item->get('is_runtime', true),
                         'is_buildtime' => $item->get('is_buildtime', true),
+                        'comment' => $item->get('comment'),
                         'resourceable_type' => get_class($application),
                         'resourceable_id' => $application->id,
                     ]);

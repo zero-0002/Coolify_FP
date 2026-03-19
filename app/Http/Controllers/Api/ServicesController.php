@@ -1362,6 +1362,7 @@ class ServicesController extends Controller
                 'is_literal' => 'boolean',
                 'is_multiline' => 'boolean',
                 'is_shown_once' => 'boolean',
+                'comment' => 'string|nullable|max:256',
             ]);
 
             if ($validator->fails()) {
