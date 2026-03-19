@@ -6132,6 +6132,387 @@
                 ]
             }
         },
+        "\/databases\/{uuid}\/envs": {
+            "get": {
+                "tags": [
+                    "Databases"
+                ],
+                "summary": "List Envs",
+                "description": "List all envs by database UUID.",
+                "operationId": "list-envs-by-database-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the database.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Environment variables.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#\/components\/schemas\/EnvironmentVariable"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Databases"
+                ],
+                "summary": "Create Env",
+                "description": "Create env by database UUID.",
+                "operationId": "create-env-by-database-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the database.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Env created.",
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "properties": {
+                                    "key": {
+                                        "type": "string",
+                                        "description": "The key of the environment variable."
+                                    },
+                                    "value": {
+                                        "type": "string",
+                                        "description": "The value of the environment variable."
+                                    },
+                                    "is_literal": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the environment variable is a literal, nothing espaced."
+                                    },
+                                    "is_multiline": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the environment variable is multiline."
+                                    },
+                                    "is_shown_once": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the environment variable's value is shown on the UI."
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Environment variable created.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "uuid": {
+                                            "type": "string",
+                                            "example": "nc0k04gk8g0cgsk440g0koko"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/422"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Databases"
+                ],
+                "summary": "Update Env",
+                "description": "Update env by database UUID.",
+                "operationId": "update-env-by-database-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the database.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Env updated.",
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "required": [
+                                    "key",
+                                    "value"
+                                ],
+                                "properties": {
+                                    "key": {
+                                        "type": "string",
+                                        "description": "The key of the environment variable."
+                                    },
+                                    "value": {
+                                        "type": "string",
+                                        "description": "The value of the environment variable."
+                                    },
+                                    "is_literal": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the environment variable is a literal, nothing espaced."
+                                    },
+                                    "is_multiline": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the environment variable is multiline."
+                                    },
+                                    "is_shown_once": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the environment variable's value is shown on the UI."
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Environment variable updated.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/EnvironmentVariable"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/422"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/databases\/{uuid}\/envs\/bulk": {
+            "patch": {
+                "tags": [
+                    "Databases"
+                ],
+                "summary": "Update Envs (Bulk)",
+                "description": "Update multiple envs by database UUID.",
+                "operationId": "update-envs-by-database-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the database.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Bulk envs updated.",
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "required": [
+                                    "data"
+                                ],
+                                "properties": {
+                                    "data": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "key": {
+                                                    "type": "string",
+                                                    "description": "The key of the environment variable."
+                                                },
+                                                "value": {
+                                                    "type": "string",
+                                                    "description": "The value of the environment variable."
+                                                },
+                                                "is_literal": {
+                                                    "type": "boolean",
+                                                    "description": "The flag to indicate if the environment variable is a literal, nothing espaced."
+                                                },
+                                                "is_multiline": {
+                                                    "type": "boolean",
+                                                    "description": "The flag to indicate if the environment variable is multiline."
+                                                },
+                                                "is_shown_once": {
+                                                    "type": "boolean",
+                                                    "description": "The flag to indicate if the environment variable's value is shown on the UI."
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Environment variables updated.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#\/components\/schemas\/EnvironmentVariable"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/422"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/databases\/{uuid}\/envs\/{env_uuid}": {
+            "delete": {
+                "tags": [
+                    "Databases"
+                ],
+                "summary": "Delete Env",
+                "description": "Delete env by UUID.",
+                "operationId": "delete-env-by-database-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the database.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "env_uuid",
+                        "in": "path",
+                        "description": "UUID of the environment variable.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Environment variable deleted.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Environment variable deleted."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "\/deployments": {
             "get": {
                 "tags": [
