@@ -40,7 +40,6 @@ services:
       - SMTP_SECURE=${SMTP_SECURE:-false}
       - SMTP_USER=${SMTP_USER}
       - SMTP_PWD=${SMTP_PWD}
-      - SMTP_TLS_ENABLED=${SMTP_TLS_ENABLED:-false}
     healthcheck:
       test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/3000' || exit 1"]
       interval: 5s
