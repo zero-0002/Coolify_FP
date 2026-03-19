@@ -13,11 +13,13 @@ class Resources extends Component
     public function render()
     {
         $backups = ScheduledDatabaseBackup::where('s3_storage_id', $this->storage->id)
+            ->where('save_s3', true)
             ->with('database')
-            ->get();
+            ->get()
+            ->groupBy(fn ($backup) => $backup->database_type.'-'.$backup->database_id);
 
         return view('livewire.storage.resources', [
-            'backups' => $backups,
+            'groupedBackups' => $backups,
         ]);
     }
 }

@@ -46,7 +46,7 @@
     @if ($currentRoute === 'storage.show')
         <livewire:storage.form :storage="$storage" />
     @elseif ($currentRoute === 'storage.resources')
-        <livewire:storage.resources :storage="$storage" />
+        <livewire:storage.resources :storage="$storage" :key="'resources-'.uniqid()" />
     @endif
     </div>
 </div>
