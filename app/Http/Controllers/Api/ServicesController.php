@@ -1207,7 +1207,7 @@ class ServicesController extends Controller
             return invalidTokenResponse();
         }
 
-        $service = Service::whereRelation('environment.project.team', 'id', $teamId)->whereUuid($request->uuid)->first();
+        $service = Service::whereRelation('environment.project.team', 'id', $teamId)->whereUuid($request->route('uuid'))->first();
         if (! $service) {
             return response()->json(['message' => 'Service not found.'], 404);
         }
@@ -1342,7 +1342,7 @@ class ServicesController extends Controller
             return invalidTokenResponse();
         }
 
-        $service = Service::whereRelation('environment.project.team', 'id', $teamId)->whereUuid($request->uuid)->first();
+        $service = Service::whereRelation('environment.project.team', 'id', $teamId)->whereUuid($request->route('uuid'))->first();
         if (! $service) {
             return response()->json(['message' => 'Service not found.'], 404);
         }
@@ -1461,7 +1461,7 @@ class ServicesController extends Controller
             return invalidTokenResponse();
         }
 
-        $service = Service::whereRelation('environment.project.team', 'id', $teamId)->whereUuid($request->uuid)->first();
+        $service = Service::whereRelation('environment.project.team', 'id', $teamId)->whereUuid($request->route('uuid'))->first();
         if (! $service) {
             return response()->json(['message' => 'Service not found.'], 404);
         }
@@ -1570,14 +1570,14 @@ class ServicesController extends Controller
             return invalidTokenResponse();
         }
 
-        $service = Service::whereRelation('environment.project.team', 'id', $teamId)->whereUuid($request->uuid)->first();
+        $service = Service::whereRelation('environment.project.team', 'id', $teamId)->whereUuid($request->route('uuid'))->first();
         if (! $service) {
             return response()->json(['message' => 'Service not found.'], 404);
         }
 
         $this->authorize('manageEnvironment', $service);
 
-        $env = EnvironmentVariable::where('uuid', $request->env_uuid)
+        $env = EnvironmentVariable::where('uuid', $request->route('env_uuid'))
             ->where('resourceable_type', Service::class)
             ->where('resourceable_id', $service->id)
             ->first();
