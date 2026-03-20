@@ -1113,10 +1113,21 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     private function just_restart()
     {
         $this->application_deployment_queue->addLogEntry("Restarting {$this->customRepository}:{$this->application->git_branch} on {$this->server->name}.");
+
+        // Restart doesn't need the build server — disable it so the helper container
+        // is created on the deployment server with the correct network/flags.
+        $originalUseBuildServer = $this->use_build_server;
+        $this->use_build_server = false;
+
         $this->prepare_builder_image();
         $this->check_git_if_build_needed();
         $this->generate_image_names();
         $this->check_image_locally_or_remotely();
+
+        // Restore before should_skip_build() — it may re-enter decide_what_to_do()
+        // for a full rebuild which needs the build server.
+        $this->use_build_server = $originalUseBuildServer;
+
         $this->should_skip_build();
         $this->completeDeployment();
     }
