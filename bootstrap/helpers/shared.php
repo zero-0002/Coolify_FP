@@ -466,6 +466,36 @@ function validate_cron_expression($expression_to_validate): bool
     return $isValid;
 }
 
+/**
+ * Determine if a cron schedule should run now, with deduplication.
+ *
+ * Uses getPreviousRunDate() + last-dispatch tracking to be resilient to queue delays.
+ * Even if the job runs minutes late, it still catches the missed cron window.
+ * Without a dedupKey, falls back to a simple isDue() check.
+ */
+function shouldRunCronNow(string $frequency, string $timezone, ?string $dedupKey = null, ?\Illuminate\Support\Carbon $executionTime = null): bool
+{
+    $cron = new \Cron\CronExpression($frequency);
+    $executionTime = ($executionTime ?? \Illuminate\Support\Carbon::now())->copy()->setTimezone($timezone);
+
+    if ($dedupKey === null) {
+        return $cron->isDue($executionTime);
+    }
+
+    $previousDue = \Illuminate\Support\Carbon::instance($cron->getPreviousRunDate($executionTime, allowCurrentDate: true));
+    $lastDispatched = Cache::get($dedupKey);
+
+    $shouldFire = $lastDispatched === null
+        ? $cron->isDue($executionTime)
+        : $previousDue->gt(\Illuminate\Support\Carbon::parse($lastDispatched));
+
+    // Always write: seeds on first miss, refreshes on dispatch.
+    // 30-day static TTL covers all intervals; orphan keys self-clean.
+    Cache::put($dedupKey, ($shouldFire ? $executionTime : $previousDue)->toIso8601String(), 2592000);
+
+    return $shouldFire;
+}
+
 function validate_timezone(string $timezone): bool
 {
     return in_array($timezone, timezone_identifiers_list());
