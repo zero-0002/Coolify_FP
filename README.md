@@ -70,7 +70,7 @@ Thank you so much!
 * [Arcjet](https://arcjet.com?ref=coolify.io) - Advanced web security and performance solutions
 * [BC Direct](https://bc.direct?ref=coolify.io) - Your trusted technology consulting partner
 * [Blacksmith](https://blacksmith.sh?ref=coolify.io) - Infrastructure automation platform
-* [Brand.dev](https://brand.dev?ref=coolify.io) - API to personalize your product with logos, colors, and company info from any domain
+* [Context.dev](https://context.dev?ref=coolify.io) - API to personalize your product with logos, colors, and company info from any domain
 * [ByteBase](https://www.bytebase.com?ref=coolify.io) - Database CI/CD and Security at Scale
 * [CodeRabbit](https://coderabbit.ai?ref=coolify.io) - Cut Code Review Time & Bugs in Half
 * [COMIT](https://comit.international?ref=coolify.io) - New York Times award–winning contractor
