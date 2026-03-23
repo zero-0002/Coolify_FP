@@ -57,7 +57,7 @@ class PublicGitRepository extends Component
 
     public string $git_repository;
 
-    public $build_pack = 'nixpacks';
+    public $build_pack = 'railpack';
 
     public bool $show_is_static = true;
 
@@ -99,7 +99,7 @@ class PublicGitRepository extends Component
 
     public function updatedBuildPack()
     {
-        if ($this->build_pack === 'nixpacks') {
+        if ($this->build_pack === 'nixpacks' || $this->build_pack === 'railpack') {
             $this->show_is_static = true;
             $this->port = 3000;
         } elseif ($this->build_pack === 'static') {

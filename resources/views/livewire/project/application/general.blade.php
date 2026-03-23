@@ -31,6 +31,7 @@
                     <div class="flex gap-2">
                         <x-forms.select x-bind:disabled="shouldDisable()" wire:model.live="buildPack" label="Build Pack"
                             required>
+                            <option value="railpack">Railpack</option>
                             <option value="nixpacks">Nixpacks</option>
                             <option value="static">Static</option>
                             <option value="dockerfile">Dockerfile</option>
@@ -218,16 +219,16 @@
                         id="customDockerRunOptions" label="Custom Docker Options" x-bind:disabled="!canUpdate" />
                 @else
                     @if ($application->could_set_build_commands())
-                        @if ($buildPack === 'nixpacks')
+                        @if ($buildPack === 'nixpacks' || $buildPack === 'railpack')
                             <div class="flex flex-col gap-2 xl:flex-row">
-                                <x-forms.input helper="If you modify this, you probably need to have a nixpacks.toml"
+                                <x-forms.input helper="If you modify this, you probably need to have a {{ $buildPack === 'railpack' ? 'railpack.json' : 'nixpacks.toml' }}"
                                     id="installCommand" label="Install Command" x-bind:disabled="!canUpdate" />
-                                <x-forms.input helper="If you modify this, you probably need to have a nixpacks.toml"
+                                <x-forms.input helper="If you modify this, you probably need to have a {{ $buildPack === 'railpack' ? 'railpack.json' : 'nixpacks.toml' }}"
                                     id="buildCommand" label="Build Command" x-bind:disabled="!canUpdate" />
-                                <x-forms.input helper="If you modify this, you probably need to have a nixpacks.toml"
+                                <x-forms.input helper="If you modify this, you probably need to have a {{ $buildPack === 'railpack' ? 'railpack.json' : 'nixpacks.toml' }}"
                                     id="startCommand" label="Start Command" x-bind:disabled="!canUpdate" />
                             </div>
-                            <div class="pt-1 text-xs">Nixpacks will detect the required configuration
+                            <div class="pt-1 text-xs">{{ $buildPack === 'railpack' ? 'Railpack' : 'Nixpacks' }} will detect the required configuration
                                 automatically.
                                 <a class="underline" href="https://coolify.io/docs/applications/">Framework
                                     Specific Docs</a>

@@ -121,6 +121,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private $env_nixpacks_args;
 
+    private $env_railpack_args;
+
     private $docker_compose;
 
     private $docker_compose_base64;
@@ -476,8 +478,12 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->deploy_dockerfile_buildpack();
         } elseif ($this->application->build_pack === 'static') {
             $this->deploy_static_buildpack();
-        } else {
+        } elseif ($this->application->build_pack === 'nixpacks') {
             $this->deploy_nixpacks_buildpack();
+        } elseif ($this->application->build_pack === 'railpack') {
+            $this->deploy_railpack_buildpack();
+        } else {
+            throw new \RuntimeException("Unsupported build pack: {$this->application->build_pack}");
         }
         $this->post_deployment();
     }
@@ -916,6 +922,37 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         // For Nixpacks, save runtime environment variables AFTER the build
         // This overwrites the build-time .env with ALL variables (build-time + runtime)
+        $this->save_runtime_environment_variables();
+        $this->push_to_docker_registry();
+        $this->rolling_update();
+    }
+
+    private function deploy_railpack_buildpack()
+    {
+        if ($this->use_build_server) {
+            $this->server = $this->build_server;
+        }
+        $this->application_deployment_queue->addLogEntry("Starting deployment of {$this->customRepository}:{$this->application->git_branch} to {$this->server->name}.");
+        $this->prepare_builder_image();
+        $this->check_git_if_build_needed();
+        $this->generate_image_names();
+        if (! $this->force_rebuild) {
+            $this->check_image_locally_or_remotely();
+            if ($this->should_skip_build()) {
+                return;
+            }
+        }
+        $this->clone_repository();
+        $this->cleanup_git();
+        $this->generate_compose_file();
+
+        // Save build-time .env file BEFORE the build
+        $this->save_buildtime_environment_variables();
+
+        $this->generate_build_env_variables();
+        $this->build_railpack_image();
+
+        // Save runtime environment variables AFTER the build
         $this->save_runtime_environment_variables();
         $this->push_to_docker_registry();
         $this->rolling_update();
@@ -1943,7 +1980,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         if ($this->application->build_pack === 'dockerfile') {
             $this->add_build_env_variables_to_dockerfile();
         }
-        $this->build_image();
+        if ($this->application->build_pack === 'railpack') {
+            $this->build_railpack_image();
+        } else {
+            $this->build_image();
+        }
 
         // This overwrites the build-time .env with ALL variables (build-time + runtime)
         $this->save_runtime_environment_variables();
@@ -2374,6 +2415,137 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         });
 
         $this->env_nixpacks_args = $this->env_nixpacks_args->implode(' ');
+    }
+
+    private function generate_railpack_env_variables(): void
+    {
+        $this->env_railpack_args = collect([]);
+        if ($this->pull_request_id === 0) {
+            foreach ($this->application->railpack_environment_variables as $env) {
+                if (! is_null($env->real_value) && $env->real_value !== '') {
+                    $this->env_railpack_args->push("--env {$env->key}={$env->real_value}");
+                }
+            }
+        } else {
+            foreach ($this->application->railpack_environment_variables_preview as $env) {
+                if (! is_null($env->real_value) && $env->real_value !== '') {
+                    $this->env_railpack_args->push("--env {$env->key}={$env->real_value}");
+                }
+            }
+        }
+
+        // Note: COOLIFY_* vars are NOT passed to railpack prepare because railpack treats
+        // all --env vars as secrets that must be provided during docker buildx build.
+        // COOLIFY_* vars are informational and available at runtime via .env file.
+
+        $this->env_railpack_args = $this->env_railpack_args->implode(' ');
+    }
+
+    private function build_railpack_image(): void
+    {
+        $this->generate_railpack_env_variables();
+
+        // Step 1: Generate build plan with railpack prepare
+        $prepare_command = 'railpack prepare';
+
+        if ($this->env_railpack_args) {
+            $prepare_command .= " {$this->env_railpack_args}";
+        }
+        if ($this->application->build_command) {
+            $prepare_command .= " --build-cmd \"{$this->application->build_command}\"";
+        }
+        if ($this->application->start_command) {
+            $prepare_command .= " --start-cmd \"{$this->application->start_command}\"";
+        }
+        if ($this->application->install_command) {
+            $prepare_command .= " --env RAILPACK_INSTALL_CMD=\"{$this->application->install_command}\"";
+        }
+
+        $prepare_command .= " --plan-out /artifacts/railpack-plan.json {$this->workdir}";
+
+        $this->application_deployment_queue->addLogEntry('Generating Railpack build plan.');
+        $this->execute_remote_command(
+            [executeInDocker($this->deployment_uuid, $prepare_command), 'hidden' => true],
+        );
+
+        // Step 2: Build image using docker buildx with railpack frontend.
+        // Railpack's frontend requires full BuildKit (mergeop), so we use a docker-container driver builder.
+        $this->application_deployment_queue->addLogEntry('Building docker image with Railpack.');
+        $this->application_deployment_queue->addLogEntry('To check the current progress, click on Show Debug Logs.');
+
+        $image_name = $this->application->settings->is_static
+            ? $this->build_image_name
+            : $this->production_image_name;
+
+        if ($this->application->settings->is_static && $this->application->static_image) {
+            $this->pull_latest_image($this->application->static_image);
+        }
+
+        $cache_args = '';
+        if ($this->force_rebuild) {
+            $cache_args = '--no-cache';
+        } else {
+            $cache_args = "--build-arg cache-key='{$this->application->uuid}'";
+        }
+
+        $build_command = 'docker buildx create --name coolify-railpack --driver docker-container 2>/dev/null || true'
+            .' && docker buildx build --builder coolify-railpack'
+            ." {$this->addHosts} --network host"
+            ." --build-arg BUILDKIT_SYNTAX='ghcr.io/railwayapp/railpack-frontend'"
+            ." {$cache_args}"
+            .' -f /artifacts/railpack-plan.json'
+            .' --progress plain'
+            .' --load'
+            ." -t {$image_name}"
+            ." {$this->workdir}";
+
+        $base64_build_command = base64_encode($build_command);
+        $this->execute_remote_command(
+            [
+                executeInDocker($this->deployment_uuid, "echo '{$base64_build_command}' | base64 -d | tee ".self::BUILD_SCRIPT_PATH.' > /dev/null'),
+                'hidden' => true,
+            ],
+            [
+                executeInDocker($this->deployment_uuid, 'cat '.self::BUILD_SCRIPT_PATH),
+                'hidden' => true,
+            ],
+            [
+                executeInDocker($this->deployment_uuid, 'bash '.self::BUILD_SCRIPT_PATH),
+                'hidden' => true,
+            ]
+        );
+
+        // Step 3: If static, copy built assets into nginx image
+        if ($this->application->settings->is_static) {
+            $publishDir = trim($this->application->publish_directory, '/');
+            $publishDir = $publishDir ? "/{$publishDir}" : '';
+            $dockerfile = base64_encode("FROM {$this->application->static_image}
+WORKDIR /usr/share/nginx/html/
+LABEL coolify.deploymentId={$this->deployment_uuid}
+COPY --from={$this->build_image_name} /app{$publishDir} .
+COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
+
+            if (str($this->application->custom_nginx_configuration)->isNotEmpty()) {
+                $nginx_config = base64_encode($this->application->custom_nginx_configuration);
+            } else {
+                $nginx_config = $this->application->settings->is_spa
+                    ? base64_encode(defaultNginxConfiguration('spa'))
+                    : base64_encode(defaultNginxConfiguration());
+            }
+
+            $static_build = $this->dockerBuildkitSupported
+                ? "DOCKER_BUILDKIT=1 docker build {$this->addHosts} --network host -f {$this->workdir}/Dockerfile --progress plain -t {$this->production_image_name} {$this->workdir}"
+                : "docker build {$this->addHosts} --network host -f {$this->workdir}/Dockerfile -t {$this->production_image_name} {$this->workdir}";
+
+            $base64_static_build = base64_encode($static_build);
+            $this->execute_remote_command(
+                [executeInDocker($this->deployment_uuid, "echo '{$dockerfile}' | base64 -d | tee {$this->workdir}/Dockerfile > /dev/null")],
+                [executeInDocker($this->deployment_uuid, "echo '{$nginx_config}' | base64 -d | tee {$this->workdir}/nginx.conf > /dev/null")],
+                [executeInDocker($this->deployment_uuid, "echo '{$base64_static_build}' | base64 -d | tee ".self::BUILD_SCRIPT_PATH.' > /dev/null'), 'hidden' => true],
+                [executeInDocker($this->deployment_uuid, 'cat '.self::BUILD_SCRIPT_PATH), 'hidden' => true],
+                [executeInDocker($this->deployment_uuid, 'bash '.self::BUILD_SCRIPT_PATH), 'hidden' => true],
+            );
+        }
     }
 
     private function generate_coolify_env_variables(bool $forBuildTime = false): Collection

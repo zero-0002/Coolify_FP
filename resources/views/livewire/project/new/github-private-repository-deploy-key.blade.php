@@ -51,6 +51,7 @@
                 <div class="flex gap-2">
                     <x-forms.input id="branch" required label="Branch" />
                     <x-forms.select wire:model.live="build_pack" label="Build Pack" required>
+                        <option value="railpack">Railpack</option>
                         <option value="nixpacks">Nixpacks</option>
                         <option value="static">Static</option>
                         <option value="dockerfile">Dockerfile</option>

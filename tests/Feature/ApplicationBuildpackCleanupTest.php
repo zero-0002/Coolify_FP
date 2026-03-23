@@ -117,6 +117,52 @@ describe('Application Model Buildpack Cleanup', function () {
         expect($application->environment_variables()->where('key', 'REGULAR_VAR')->count())->toBe(1);
     });
 
+    test('model clears dockerfile fields when build_pack changes from dockerfile to railpack', function () {
+        $team = Team::factory()->create();
+        $project = Project::factory()->create(['team_id' => $team->id]);
+        $environment = Environment::factory()->create(['project_id' => $project->id]);
+
+        $application = Application::factory()->create([
+            'environment_id' => $environment->id,
+            'build_pack' => 'dockerfile',
+            'dockerfile' => 'FROM node:18',
+            'dockerfile_location' => '/Dockerfile',
+            'dockerfile_target_build' => 'production',
+            'custom_healthcheck_found' => true,
+        ]);
+
+        $application->build_pack = 'railpack';
+        $application->save();
+        $application->refresh();
+
+        expect($application->build_pack)->toBe('railpack');
+        expect($application->dockerfile)->toBeNull();
+        expect($application->dockerfile_location)->toBeNull();
+        expect($application->dockerfile_target_build)->toBeNull();
+        expect($application->custom_healthcheck_found)->toBeFalse();
+    });
+
+    test('model clears dockercompose fields when build_pack changes from dockercompose to railpack', function () {
+        $team = Team::factory()->create();
+        $project = Project::factory()->create(['team_id' => $team->id]);
+        $environment = Environment::factory()->create(['project_id' => $project->id]);
+
+        $application = Application::factory()->create([
+            'environment_id' => $environment->id,
+            'build_pack' => 'dockercompose',
+            'docker_compose_domains' => '{"app": "example.com"}',
+            'docker_compose_raw' => 'version: "3.8"\nservices:\n  app:\n    image: nginx',
+        ]);
+
+        $application->build_pack = 'railpack';
+        $application->save();
+        $application->refresh();
+
+        expect($application->build_pack)->toBe('railpack');
+        expect($application->docker_compose_domains)->toBeNull();
+        expect($application->docker_compose_raw)->toBeNull();
+    });
+
     test('model does not clear dockerfile fields when switching to dockerfile', function () {
         $team = Team::factory()->create();
         $project = Project::factory()->create(['team_id' => $team->id]);
