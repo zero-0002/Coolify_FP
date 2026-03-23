@@ -339,7 +339,9 @@ function generate_application_name(string $git_repository, string $git_branch, ?
         $cuid = new Cuid2;
     }
 
-    return Str::kebab("$git_repository:$git_branch-$cuid");
+    $repo_name = str_contains($git_repository, '/') ? last(explode('/', $git_repository)) : $git_repository;
+
+    return Str::kebab("$repo_name:$git_branch-$cuid");
 }
 
 /**
