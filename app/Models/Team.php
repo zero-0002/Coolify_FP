@@ -89,10 +89,13 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         });
     }
 
-    public static function serverLimitReached()
+    public static function serverLimitReached(?Team $team = null)
     {
-        $serverLimit = Team::serverLimit();
-        $team = currentTeam();
+        $team = $team ?? currentTeam();
+        if (! $team) {
+            return true;
+        }
+        $serverLimit = Team::serverLimit($team);
         $servers = $team->servers->count();
 
         return $servers >= $serverLimit;
@@ -116,12 +119,16 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         return false;
     }
 
-    public static function serverLimit()
+    public static function serverLimit(?Team $team = null)
     {
-        if (currentTeam()->id === 0 && isDev()) {
+        $team = $team ?? currentTeam();
+        if (! $team) {
+            return 0;
+        }
+        if ($team->id === 0 && isDev()) {
             return 9999999;
         }
-        $team = Team::find(currentTeam()->id);
+        $team = Team::find($team->id);
         if (! $team) {
             return 0;
         }
