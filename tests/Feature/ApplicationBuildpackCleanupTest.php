@@ -78,26 +78,29 @@ describe('Application Model Buildpack Cleanup', function () {
 
         // Add environment variables that should be deleted
         EnvironmentVariable::create([
-            'application_id' => $application->id,
+            'resourceable_type' => Application::class,
+            'resourceable_id' => $application->id,
             'key' => 'SERVICE_FQDN_APP',
             'value' => 'app.example.com',
-            'is_build_time' => false,
+            'is_buildtime' => false,
             'is_preview' => false,
         ]);
 
         EnvironmentVariable::create([
-            'application_id' => $application->id,
+            'resourceable_type' => Application::class,
+            'resourceable_id' => $application->id,
             'key' => 'SERVICE_URL_APP',
             'value' => 'http://app.example.com',
-            'is_build_time' => false,
+            'is_buildtime' => false,
             'is_preview' => false,
         ]);
 
         EnvironmentVariable::create([
-            'application_id' => $application->id,
+            'resourceable_type' => Application::class,
+            'resourceable_id' => $application->id,
             'key' => 'REGULAR_VAR',
             'value' => 'should_remain',
-            'is_build_time' => false,
+            'is_buildtime' => false,
             'is_preview' => false,
         ]);
 
@@ -154,6 +157,34 @@ describe('Application Model Buildpack Cleanup', function () {
             'docker_compose_raw' => 'version: "3.8"\nservices:\n  app:\n    image: nginx',
         ]);
 
+        // Add environment variables that should be deleted
+        EnvironmentVariable::create([
+            'resourceable_type' => Application::class,
+            'resourceable_id' => $application->id,
+            'key' => 'SERVICE_FQDN_APP',
+            'value' => 'app.example.com',
+            'is_buildtime' => false,
+            'is_preview' => false,
+        ]);
+
+        EnvironmentVariable::create([
+            'resourceable_type' => Application::class,
+            'resourceable_id' => $application->id,
+            'key' => 'SERVICE_URL_APP',
+            'value' => 'http://app.example.com',
+            'is_buildtime' => false,
+            'is_preview' => false,
+        ]);
+
+        EnvironmentVariable::create([
+            'resourceable_type' => Application::class,
+            'resourceable_id' => $application->id,
+            'key' => 'REGULAR_VAR',
+            'value' => 'should_remain',
+            'is_buildtime' => false,
+            'is_preview' => false,
+        ]);
+
         $application->build_pack = 'railpack';
         $application->save();
         $application->refresh();
@@ -161,6 +192,13 @@ describe('Application Model Buildpack Cleanup', function () {
         expect($application->build_pack)->toBe('railpack');
         expect($application->docker_compose_domains)->toBeNull();
         expect($application->docker_compose_raw)->toBeNull();
+
+        // Verify SERVICE_FQDN_* and SERVICE_URL_* were deleted
+        expect($application->environment_variables()->where('key', 'SERVICE_FQDN_APP')->count())->toBe(0);
+        expect($application->environment_variables()->where('key', 'SERVICE_URL_APP')->count())->toBe(0);
+
+        // Verify regular variables remain
+        expect($application->environment_variables()->where('key', 'REGULAR_VAR')->count())->toBe(1);
     });
 
     test('model does not clear dockerfile fields when switching to dockerfile', function () {

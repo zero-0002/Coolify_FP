@@ -483,7 +483,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         } elseif ($this->application->build_pack === 'railpack') {
             $this->deploy_railpack_buildpack();
         } else {
-            throw new \RuntimeException("Unsupported build pack: {$this->application->build_pack}");
+            throw new DeploymentException("Unsupported build pack: {$this->application->build_pack}");
         }
         $this->post_deployment();
     }
@@ -2517,35 +2517,40 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         // Step 3: If static, copy built assets into nginx image
         if ($this->application->settings->is_static) {
-            $publishDir = trim($this->application->publish_directory, '/');
-            $publishDir = $publishDir ? "/{$publishDir}" : '';
-            $dockerfile = base64_encode("FROM {$this->application->static_image}
+            $this->build_railpack_static_image();
+        }
+    }
+
+    private function build_railpack_static_image(): void
+    {
+        $publishDir = trim($this->application->publish_directory, '/');
+        $publishDir = $publishDir ? "/{$publishDir}" : '';
+        $dockerfile = base64_encode("FROM {$this->application->static_image}
 WORKDIR /usr/share/nginx/html/
 LABEL coolify.deploymentId={$this->deployment_uuid}
 COPY --from={$this->build_image_name} /app{$publishDir} .
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
-            if (str($this->application->custom_nginx_configuration)->isNotEmpty()) {
-                $nginx_config = base64_encode($this->application->custom_nginx_configuration);
-            } else {
-                $nginx_config = $this->application->settings->is_spa
-                    ? base64_encode(defaultNginxConfiguration('spa'))
-                    : base64_encode(defaultNginxConfiguration());
-            }
-
-            $static_build = $this->dockerBuildkitSupported
-                ? "DOCKER_BUILDKIT=1 docker build {$this->addHosts} --network host -f {$this->workdir}/Dockerfile --progress plain -t {$this->production_image_name} {$this->workdir}"
-                : "docker build {$this->addHosts} --network host -f {$this->workdir}/Dockerfile -t {$this->production_image_name} {$this->workdir}";
-
-            $base64_static_build = base64_encode($static_build);
-            $this->execute_remote_command(
-                [executeInDocker($this->deployment_uuid, "echo '{$dockerfile}' | base64 -d | tee {$this->workdir}/Dockerfile > /dev/null")],
-                [executeInDocker($this->deployment_uuid, "echo '{$nginx_config}' | base64 -d | tee {$this->workdir}/nginx.conf > /dev/null")],
-                [executeInDocker($this->deployment_uuid, "echo '{$base64_static_build}' | base64 -d | tee ".self::BUILD_SCRIPT_PATH.' > /dev/null'), 'hidden' => true],
-                [executeInDocker($this->deployment_uuid, 'cat '.self::BUILD_SCRIPT_PATH), 'hidden' => true],
-                [executeInDocker($this->deployment_uuid, 'bash '.self::BUILD_SCRIPT_PATH), 'hidden' => true],
-            );
+        if (str($this->application->custom_nginx_configuration)->isNotEmpty()) {
+            $nginx_config = base64_encode($this->application->custom_nginx_configuration);
+        } else {
+            $nginx_config = $this->application->settings->is_spa
+                ? base64_encode(defaultNginxConfiguration('spa'))
+                : base64_encode(defaultNginxConfiguration());
         }
+
+        $static_build = $this->dockerBuildkitSupported
+            ? "DOCKER_BUILDKIT=1 docker build {$this->addHosts} --network host -f {$this->workdir}/Dockerfile --progress plain -t {$this->production_image_name} {$this->workdir}"
+            : "docker build {$this->addHosts} --network host -f {$this->workdir}/Dockerfile -t {$this->production_image_name} {$this->workdir}";
+
+        $base64_static_build = base64_encode($static_build);
+        $this->execute_remote_command(
+            [executeInDocker($this->deployment_uuid, "echo '{$dockerfile}' | base64 -d | tee {$this->workdir}/Dockerfile > /dev/null")],
+            [executeInDocker($this->deployment_uuid, "echo '{$nginx_config}' | base64 -d | tee {$this->workdir}/nginx.conf > /dev/null")],
+            [executeInDocker($this->deployment_uuid, "echo '{$base64_static_build}' | base64 -d | tee ".self::BUILD_SCRIPT_PATH.' > /dev/null'), 'hidden' => true],
+            [executeInDocker($this->deployment_uuid, 'cat '.self::BUILD_SCRIPT_PATH), 'hidden' => true],
+            [executeInDocker($this->deployment_uuid, 'bash '.self::BUILD_SCRIPT_PATH), 'hidden' => true],
+        );
     }
 
     private function generate_coolify_env_variables(bool $forBuildTime = false): Collection

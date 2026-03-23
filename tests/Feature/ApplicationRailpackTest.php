@@ -10,13 +10,15 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 describe('Application Railpack Support', function () {
-    test('could_set_build_commands returns true for railpack', function () {
+    beforeEach(function () {
         $team = Team::factory()->create();
         $project = Project::factory()->create(['team_id' => $team->id]);
-        $environment = Environment::factory()->create(['project_id' => $project->id]);
+        $this->environment = Environment::factory()->create(['project_id' => $project->id]);
+    });
 
+    test('could_set_build_commands returns true for railpack', function () {
         $application = Application::factory()->create([
-            'environment_id' => $environment->id,
+            'environment_id' => $this->environment->id,
             'build_pack' => 'railpack',
         ]);
 
@@ -24,12 +26,8 @@ describe('Application Railpack Support', function () {
     });
 
     test('could_set_build_commands returns true for nixpacks', function () {
-        $team = Team::factory()->create();
-        $project = Project::factory()->create(['team_id' => $team->id]);
-        $environment = Environment::factory()->create(['project_id' => $project->id]);
-
         $application = Application::factory()->create([
-            'environment_id' => $environment->id,
+            'environment_id' => $this->environment->id,
             'build_pack' => 'nixpacks',
         ]);
 
@@ -37,12 +35,8 @@ describe('Application Railpack Support', function () {
     });
 
     test('could_set_build_commands returns false for dockerfile', function () {
-        $team = Team::factory()->create();
-        $project = Project::factory()->create(['team_id' => $team->id]);
-        $environment = Environment::factory()->create(['project_id' => $project->id]);
-
         $application = Application::factory()->create([
-            'environment_id' => $environment->id,
+            'environment_id' => $this->environment->id,
             'build_pack' => 'dockerfile',
         ]);
 
@@ -50,12 +44,8 @@ describe('Application Railpack Support', function () {
     });
 
     test('railpack_environment_variables returns only RAILPACK_ prefixed vars', function () {
-        $team = Team::factory()->create();
-        $project = Project::factory()->create(['team_id' => $team->id]);
-        $environment = Environment::factory()->create(['project_id' => $project->id]);
-
         $application = Application::factory()->create([
-            'environment_id' => $environment->id,
+            'environment_id' => $this->environment->id,
             'build_pack' => 'railpack',
         ]);
 
@@ -92,12 +82,8 @@ describe('Application Railpack Support', function () {
     });
 
     test('runtime_environment_variables excludes RAILPACK_ and NIXPACKS_ prefixed vars', function () {
-        $team = Team::factory()->create();
-        $project = Project::factory()->create(['team_id' => $team->id]);
-        $environment = Environment::factory()->create(['project_id' => $project->id]);
-
         $application = Application::factory()->create([
-            'environment_id' => $environment->id,
+            'environment_id' => $this->environment->id,
             'build_pack' => 'railpack',
         ]);
 
@@ -134,12 +120,8 @@ describe('Application Railpack Support', function () {
     });
 
     test('railpack_environment_variables_preview returns only RAILPACK_ prefixed preview vars', function () {
-        $team = Team::factory()->create();
-        $project = Project::factory()->create(['team_id' => $team->id]);
-        $environment = Environment::factory()->create(['project_id' => $project->id]);
-
         $application = Application::factory()->create([
-            'environment_id' => $environment->id,
+            'environment_id' => $this->environment->id,
             'build_pack' => 'railpack',
         ]);
 

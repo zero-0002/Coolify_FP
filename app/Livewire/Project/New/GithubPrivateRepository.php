@@ -84,7 +84,9 @@ class GithubPrivateRepository extends Component
     {
         if ($this->build_pack === 'nixpacks' || $this->build_pack === 'railpack') {
             $this->show_is_static = true;
-            $this->port = 3000;
+            if (! $this->is_static) {
+                $this->port = 3000;
+            }
         } elseif ($this->build_pack === 'static') {
             $this->show_is_static = false;
             $this->is_static = false;
