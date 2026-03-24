@@ -112,7 +112,7 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
 
     public function serverOverflow()
     {
-        if ($this->serverLimit() < $this->servers->count()) {
+        if (Team::serverLimit($this) < $this->servers->count()) {
             return true;
         }
 
