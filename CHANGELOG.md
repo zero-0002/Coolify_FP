@@ -1288,6 +1288,20 @@ All notable changes to this project will be documented in this file.
 - *(templates)* Add imgcompress service, for offline image processing (#8763)
 - *(service)* Add librespeed (#8626)
 - *(service)* Update databasus to v3.16.2 (#8586)
+- *(preview)* Add configurable PR suffix toggle for volumes
+- *(api)* Add storages endpoints for applications
+- *(api)* Expand update_storage to support name, mount_path, host_path, content fields
+- *(environment-variable)* Add placeholder hint for magic variables
+- *(subscription)* Display next billing date and billing interval
+- *(api)* Support comments in bulk environment variable endpoints
+- *(api)* Add database environment variable management endpoints
+- *(storage)* Add resources tab and improve S3 deletion handling
+- *(storage)* Group backups by database and filter by s3 status
+- *(storage)* Add storage management for backup schedules
+- *(jobs)* Add cache-based deduplication for delayed cron execution
+- *(storage)* Add storage endpoints and UUID support for databases and services
+- *(monitoring)* Add Laravel Nightwatch monitoring support
+- *(validation)* Make hostname validation case-insensitive and expand allowed characters
 
 ### 🐛 Bug Fixes
 
@@ -4687,6 +4701,29 @@ All notable changes to this project will be documented in this file.
 - *(compose)* Include git branch in compose file not found error
 - *(template)* Fix heyform template
 - *(template)* Fix heyform template (#8747)
+- *(preview)* Exclude bind mounts from preview deployment suffix
+- *(preview)* Sync isPreviewSuffixEnabled property on file storage save
+- *(storages)* Hide PR suffix for services and fix instantSave logic
+- *(preview)* Enable per-volume control of PR suffix in preview deployments (#9006)
+- Prevent sporadic SSH permission denied by validating key content
+- *(ssh)* Handle chmod failures gracefully and simplify key management
+- Prevent sporadic SSH permission denied on key rotation (#8990)
+- *(stripe)* Add error handling and resilience to subscription operations
+- *(stripe)* Add error handling and resilience to subscription operations (#9030)
+- *(api)* Extract resource UUIDs from route parameters
+- *(backup)* Throw explicit error when S3 storage missing or deleted (#9038)
+- *(docker)* Skip cleanup stale warning on cloud instances
+- *(deployment)* Disable build server during restart operations
+- *(deployment)* Disable build server during restart operations (#9045)
+- *(docker)* Log failed cleanup attempts when server is not functional
+- *(environment-variable)* Guard refresh against missing or stale variables
+- *(github-webhook)* Handle unsupported event types gracefully
+- *(github-webhook)* Handle unsupported event types gracefully (#9119)
+- *(deployment)* Properly escape shell arguments in nixpacks commands
+- *(deployment)* Properly escape shell arguments in nixpacks commands (#9122)
+- *(validation)* Make hostname validation case-insensitive and expand allowed name characters (#9134)
+- *(team)* Resolve server limit checks for API token authentication (#9123)
+- *(subscription)* Prevent duplicate subscriptions with updateOrCreate
 
 ### 💼 Other
 
@@ -5791,6 +5828,13 @@ All notable changes to this project will be documented in this file.
 - *(application-source)* Use Laravel helpers for null checks
 - *(ssh)* Remove Sentry retry event tracking from ExecuteRemoteCommand
 - Consolidate file path validation patterns and support scoped packages
+- *(environment-variable)* Remove buildtime/runtime options and improve comment field
+- Remove verbose logging and use explicit exception types
+- *(breadcrumb)* Optimize queries and simplify state management
+- *(scheduler)* Extract cron scheduling logic to shared helper
+- *(team)* Make server limit methods accept optional team parameter
+- *(team)* Update serverOverflow to use static serverLimit
+- *(docker)* Simplify installation and remove version pinning
 
 ### 📚 Documentation
 
@@ -5944,6 +5988,10 @@ All notable changes to this project will be documented in this file.
 - *(readme)* Move MVPS to Huge Sponsors section
 - *(settings)* Clarify Do Not Track helper text
 - Update changelog
+- Update changelog
+- *(sponsors)* Add ScreenshotOne as a huge sponsor
+- *(sponsors)* Update Brand.dev to Context.dev
+- *(readme)* Add PetroSky Cloud to sponsors
 
 ### ⚡ Performance
 
@@ -5954,6 +6002,7 @@ All notable changes to this project will be documented in this file.
 - Remove dead server filtering code from Kernel scheduler (#7585)
 - *(server)* Optimize destinationsByServer query
 - *(server)* Optimize destinationsByServer query (#7854)
+- *(breadcrumb)* Optimize queries and simplify navigation to fix OOM (#9048)
 
 ### 🎨 Styling
 
@@ -5966,6 +6015,7 @@ All notable changes to this project will be documented in this file.
 - *(campfire)* Format environment variables for better readability in Docker Compose file
 - *(campfire)* Update comment for DISABLE_SSL environment variable for clarity
 - Update background colors to use gray-50 for consistency in auth views
+- *(modal-confirmation)* Improve mobile responsiveness
 
 ### 🧪 Testing
 
@@ -5989,6 +6039,7 @@ All notable changes to this project will be documented in this file.
 - *(rollback)* Verify shell metacharacter escaping in git commit parameter
 - *(factories)* Add missing model factories for app test suite
 - *(magic-variables)* Add feature tests for SERVICE_URL/FQDN variable handling
+- Add behavioral ssh key stale-file regression
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -6786,6 +6837,10 @@ All notable changes to this project will be documented in this file.
 - *(service)* Pin imgcompress to a static version instead of latest
 - *(service)* Update SeaweedFS images to version 4.13 (#8738)
 - *(templates)* Bump databasus image version
+- Remove coolify-examples-1 submodule
+- *(versions)* Bump coolify, sentinel, and traefik versions
+- *(versions)* Bump sentinel to 0.0.21
+- *(service)* Disable Booklore service (#9105)
 
 ### ◀️ Revert
 
