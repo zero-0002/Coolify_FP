@@ -73,7 +73,7 @@ npm run build                   # production build
 - PHP 8.4: constructor property promotion, explicit return types, type hints
 - Always create Form Request classes for validation
 - Run `vendor/bin/pint --dirty --format agent` before finalizing changes
-- Every change must have tests — write or update tests, then run them
+- Every change must have tests — write or update tests, then run them. For bug fixes, follow TDD: write a failing test first, then fix the bug (see Test Enforcement below)
 - Check sibling files for conventions before creating new files
 
 ## Git Workflow
@@ -230,6 +230,16 @@ protected function isAccessible(User $user, ?string $path = null): bool
 
 - Every change must be programmatically tested. Write a new test or update an existing test, then run the affected tests to make sure they pass.
 - Run the minimum number of tests needed to ensure code quality and speed. Use `php artisan test --compact` with a specific filename or filter.
+
+## Bug Fix Workflow (TDD)
+
+When fixing a bug, follow this strict test-driven workflow:
+
+1. **Write a test first** that asserts the correct (expected) behavior — this test should reproduce the bug.
+2. **Run the test** and confirm it **fails**. If it passes, the test does not cover the bug — rewrite it.
+3. **Fix the bug** in the source code.
+4. **Re-run the exact same test without any modifications** and confirm it **passes**.
+5. **Never modify the test between steps 2 and 4.** The same test must go from red to green purely from the bug fix.
 
 === laravel/core rules ===
 
