@@ -37,11 +37,13 @@ class ValidationPatterns
 
     /**
      * Pattern for shell-safe command strings (docker compose commands, docker run options)
-     * Blocks dangerous shell metacharacters: ; & | ` $ ( ) > < newlines and carriage returns
-     * Also blocks backslashes, single quotes, and double quotes to prevent escape-sequence attacks
+     * Blocks dangerous shell metacharacters: ; | ` $ ( ) > < newlines and carriage returns
+     * Allows & for command chaining (&&) which is common in multi-step build commands
+     * Allows double quotes for build args with spaces (e.g. --build-arg KEY="value")
+     * Blocks backslashes and single quotes to prevent escape-sequence attacks
      * Uses [ \t] instead of \s to explicitly exclude \n and \r (which act as command separators)
      */
-    public const SHELL_SAFE_COMMAND_PATTERN = '/^[a-zA-Z0-9 \t._\-\/=:@,+\[\]{}#%^~]+$/';
+    public const SHELL_SAFE_COMMAND_PATTERN = '/^[a-zA-Z0-9 \t._\-\/=:@,+\[\]{}#%^~&"]+$/';
 
     /**
      * Pattern for Docker container names
