@@ -792,6 +792,18 @@ class DatabasesController extends Controller
             }
         }
 
+        // Validate databases_to_backup input
+        if (! empty($backupData['databases_to_backup'])) {
+            try {
+                validateDatabasesBackupInput($backupData['databases_to_backup']);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => ['databases_to_backup' => [$e->getMessage()]],
+                ], 422);
+            }
+        }
+
         // Add required fields
         $backupData['database_id'] = $database->id;
         $backupData['database_type'] = $database->getMorphClass();
@@ -995,6 +1007,18 @@ class DatabasesController extends Controller
                 ], 422);
             }
             unset($backupData['s3_storage_uuid']);
+        }
+
+        // Validate databases_to_backup input
+        if (! empty($backupData['databases_to_backup'])) {
+            try {
+                validateDatabasesBackupInput($backupData['databases_to_backup']);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => ['databases_to_backup' => [$e->getMessage()]],
+                ], 422);
+            }
         }
 
         $backupConfig->update($backupData);

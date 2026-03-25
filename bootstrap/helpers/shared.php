@@ -149,6 +149,59 @@ function validateShellSafePath(string $input, string $context = 'path'): string
 }
 
 /**
+ * Validate that a databases_to_backup input string is safe from command injection.
+ *
+ * Supports all database formats:
+ * - PostgreSQL/MySQL/MariaDB: "db1,db2,db3"
+ * - MongoDB: "db1:col1,col2|db2:col3,col4"
+ *
+ * Validates each database name AND collection name individually against shell metacharacters.
+ *
+ * @param  string  $input  The databases_to_backup string
+ * @return string The validated input
+ *
+ * @throws \Exception If any component contains dangerous characters
+ */
+function validateDatabasesBackupInput(string $input): string
+{
+    // Split by pipe (MongoDB multi-db separator)
+    $databaseEntries = explode('|', $input);
+
+    foreach ($databaseEntries as $entry) {
+        $entry = trim($entry);
+        if ($entry === '' || $entry === 'all' || $entry === '*') {
+            continue;
+        }
+
+        if (str_contains($entry, ':')) {
+            // MongoDB format: dbname:collection1,collection2
+            $databaseName = str($entry)->before(':')->value();
+            $collections = str($entry)->after(':')->explode(',');
+
+            validateShellSafePath($databaseName, 'database name');
+
+            foreach ($collections as $collection) {
+                $collection = trim($collection);
+                if ($collection !== '') {
+                    validateShellSafePath($collection, 'collection name');
+                }
+            }
+        } else {
+            // Simple format: just a database name (may contain commas for non-Mongo)
+            $databases = explode(',', $entry);
+            foreach ($databases as $db) {
+                $db = trim($db);
+                if ($db !== '' && $db !== 'all' && $db !== '*') {
+                    validateShellSafePath($db, 'database name');
+                }
+            }
+        }
+    }
+
+    return $input;
+}
+
+/**
  * Validate that a string is a safe git ref (commit SHA, branch name, tag, or HEAD).
  *
  * Prevents command injection by enforcing an allowlist of characters valid for git refs.
