@@ -334,7 +334,7 @@ class DatabasesController extends Controller
 
         // this check if the request is a valid json
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
         $validator = customApiValidator($request->all(), [
@@ -685,7 +685,7 @@ class DatabasesController extends Controller
 
         // Validate incoming request is valid JSON
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
 
@@ -914,7 +914,7 @@ class DatabasesController extends Controller
         }
         // this check if the request is a valid json
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
         $validator = customApiValidator($request->all(), [
@@ -1590,7 +1590,7 @@ class DatabasesController extends Controller
         $this->authorize('create', StandalonePostgresql::class);
 
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
 
@@ -3554,6 +3554,9 @@ class DatabasesController extends Controller
             ]);
         } else {
             $mountPath = str($request->mount_path)->trim()->start('/')->value();
+
+            validateShellSafePath($mountPath, 'file storage path');
+
             $fsPath = database_configuration_dir().'/'.$database->uuid.$mountPath;
 
             $storage = LocalFileVolume::create([
@@ -3646,7 +3649,7 @@ class DatabasesController extends Controller
         }
 
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
 
