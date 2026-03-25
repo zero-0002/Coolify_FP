@@ -399,7 +399,15 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                             's3_uploaded' => null,
                         ]);
                     }
-                    $this->team?->notify(new BackupFailed($this->backup, $this->database, $this->error_output ?? $this->backup_output ?? $e->getMessage(), $database));
+                    try {
+                        $this->team?->notify(new BackupFailed($this->backup, $this->database, $this->error_output ?? $this->backup_output ?? $e->getMessage(), $database));
+                    } catch (\Throwable $notifyException) {
+                        Log::channel('scheduled-errors')->warning('Failed to send backup failure notification', [
+                            'backup_id' => $this->backup->uuid,
+                            'database' => $database,
+                            'error' => $notifyException->getMessage(),
+                        ]);
+                    }
 
                     continue;
                 }
@@ -439,11 +447,20 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                         'local_storage_deleted' => $localStorageDeleted,
                     ]);
 
-                    // Send appropriate notification
-                    if ($s3UploadError) {
-                        $this->team->notify(new BackupSuccessWithS3Warning($this->backup, $this->database, $database, $s3UploadError));
-                    } else {
-                        $this->team->notify(new BackupSuccess($this->backup, $this->database, $database));
+                    // Send appropriate notification (wrapped in try-catch so notification
+                    // failures never affect backup status — see GitHub issue #9088)
+                    try {
+                        if ($s3UploadError) {
+                            $this->team->notify(new BackupSuccessWithS3Warning($this->backup, $this->database, $database, $s3UploadError));
+                        } else {
+                            $this->team->notify(new BackupSuccess($this->backup, $this->database, $database));
+                        }
+                    } catch (\Throwable $e) {
+                        Log::channel('scheduled-errors')->warning('Failed to send backup success notification', [
+                            'backup_id' => $this->backup->uuid,
+                            'database' => $database,
+                            'error' => $e->getMessage(),
+                        ]);
                     }
                 }
             }
@@ -710,20 +727,32 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
         $log = ScheduledDatabaseBackupExecution::where('uuid', $this->backup_log_uuid)->first();
 
         if ($log) {
-            $log->update([
-                'status' => 'failed',
-                'message' => 'Job permanently failed after '.$this->attempts().' attempts: '.($exception?->getMessage() ?? 'Unknown error'),
-                'size' => 0,
-                'filename' => null,
-                'finished_at' => Carbon::now(),
-            ]);
+            // Don't overwrite a successful backup status — a post-backup error
+            // (e.g. notification failure) should not retroactively mark the backup
+            // as failed (see GitHub issue #9088)
+            if ($log->status !== 'success') {
+                $log->update([
+                    'status' => 'failed',
+                    'message' => 'Job permanently failed after '.$this->attempts().' attempts: '.($exception?->getMessage() ?? 'Unknown error'),
+                    'size' => 0,
+                    'filename' => null,
+                    'finished_at' => Carbon::now(),
+                ]);
+            }
         }
 
-        // Notify team about permanent failure
-        if ($this->team) {
+        // Notify team about permanent failure (only if backup didn't already succeed)
+        if ($this->team && $log?->status !== 'success') {
             $databaseName = $log?->database_name ?? 'unknown';
             $output = $this->backup_output ?? $exception?->getMessage() ?? 'Unknown error';
-            $this->team->notify(new BackupFailed($this->backup, $this->database, $output, $databaseName));
+            try {
+                $this->team->notify(new BackupFailed($this->backup, $this->database, $output, $databaseName));
+            } catch (\Throwable $e) {
+                Log::channel('scheduled-errors')->warning('Failed to send backup permanent failure notification', [
+                    'backup_id' => $this->backup->uuid,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 }

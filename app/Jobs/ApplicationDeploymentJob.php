@@ -1333,6 +1333,22 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             foreach ($runtime_environment_variables_preview as $env) {
                 $envs->push($env->key.'='.$env->real_value);
             }
+
+            // Fall back to production env vars for keys not overridden by preview vars,
+            // but only when preview vars are configured. This ensures variables like
+            // DB_PASSWORD that are only set for production will be available in the
+            // preview .env file (fixing ${VAR} interpolation in docker-compose YAML),
+            // while avoiding leaking production values when previews aren't configured.
+            if ($runtime_environment_variables_preview->isNotEmpty()) {
+                $previewKeys = $runtime_environment_variables_preview->pluck('key')->toArray();
+                $fallback_production_vars = $sorted_environment_variables->filter(function ($env) use ($previewKeys) {
+                    return $env->is_runtime && ! in_array($env->key, $previewKeys);
+                });
+                foreach ($fallback_production_vars as $env) {
+                    $envs->push($env->key.'='.$env->real_value);
+                }
+            }
+
             // Add PORT if not exists, use the first port as default
             if ($this->build_pack !== 'dockercompose') {
                 if ($this->application->environment_variables_preview->where('key', 'PORT')->isEmpty()) {
