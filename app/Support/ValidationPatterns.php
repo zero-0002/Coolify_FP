@@ -164,6 +164,14 @@ class ValidationPatterns
     }
 
     /**
+     * Check if a string is a valid Docker container name.
+     */
+    public static function isValidContainerName(string $name): bool
+    {
+        return preg_match(self::CONTAINER_NAME_PATTERN, $name) === 1;
+    }
+
+    /**
      * Get combined validation messages for both name and description fields
      */
     public static function combinedMessages(): array
