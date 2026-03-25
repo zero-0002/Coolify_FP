@@ -19,6 +19,7 @@ use App\Models\StandaloneDocker;
 use App\Models\SwarmDocker;
 use App\Notifications\Application\DeploymentFailed;
 use App\Notifications\Application\DeploymentSuccess;
+use App\Support\ValidationPatterns;
 use App\Traits\EnvironmentVariableAnalyzer;
 use App\Traits\ExecuteRemoteCommand;
 use Carbon\Carbon;
@@ -317,7 +318,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
             if ($this->application->dockerfile_target_build) {
                 $target = $this->application->dockerfile_target_build;
-                if (! preg_match(\App\Support\ValidationPatterns::DOCKER_TARGET_PATTERN, $target)) {
+                if (! preg_match(ValidationPatterns::DOCKER_TARGET_PATTERN, $target)) {
                     throw new \RuntimeException('Invalid dockerfile_target_build: contains forbidden characters.');
                 }
                 $this->buildTarget = " --target {$target} ";
@@ -451,7 +452,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     $this->application_deployment_queue->addLogEntry("Docker on {$serverName} does not support build secrets. Using traditional build arguments.");
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->dockerBuildkitSupported = false;
             $this->dockerSecretsSupported = false;
             $this->application_deployment_queue->addLogEntry("Could not detect BuildKit capabilities on {$serverName}: {$e->getMessage()}");
@@ -491,7 +492,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         // Then handle side effects - these should not fail the deployment
         try {
             GetContainersStatus::dispatch($this->server);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             \Log::warning('Failed to dispatch GetContainersStatus for deployment '.$this->deployment_uuid.': '.$e->getMessage());
         }
 
@@ -499,7 +500,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             if ($this->application->is_github_based()) {
                 try {
                     ApplicationPullRequestUpdateJob::dispatch(application: $this->application, preview: $this->preview, deployment_uuid: $this->deployment_uuid, status: ProcessStatus::FINISHED);
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     \Log::warning('Failed to dispatch PR update for deployment '.$this->deployment_uuid.': '.$e->getMessage());
                 }
             }
@@ -507,13 +508,13 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         try {
             $this->run_post_deployment_command();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             \Log::warning('Post deployment command failed for '.$this->deployment_uuid.': '.$e->getMessage());
         }
 
         try {
             $this->application->isConfigurationChanged(true);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             \Log::warning('Failed to mark configuration as changed for deployment '.$this->deployment_uuid.': '.$e->getMessage());
         }
     }
@@ -695,7 +696,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
 
             // Inject build arguments after build subcommand if not using build secrets
-            if (! $this->application->settings->use_build_secrets && $this->build_args instanceof \Illuminate\Support\Collection && $this->build_args->isNotEmpty()) {
+            if (! $this->application->settings->use_build_secrets && $this->build_args instanceof Collection && $this->build_args->isNotEmpty()) {
                 $build_args_string = $this->build_args->implode(' ');
 
                 // Inject build args right after 'build' subcommand (not at the end)
@@ -733,7 +734,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $command .= " --project-name {$this->application->uuid} --project-directory {$this->workdir} -f {$this->workdir}{$this->docker_compose_location} build --pull";
             }
 
-            if (! $this->application->settings->use_build_secrets && $this->build_args instanceof \Illuminate\Support\Collection && $this->build_args->isNotEmpty()) {
+            if (! $this->application->settings->use_build_secrets && $this->build_args instanceof Collection && $this->build_args->isNotEmpty()) {
                 $build_args_string = $this->build_args->implode(' ');
                 $command .= " {$build_args_string}";
                 $this->application_deployment_queue->addLogEntry('Adding build arguments to Docker Compose build command.');
@@ -2128,7 +2129,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private function check_git_if_build_needed()
     {
-        if (is_object($this->source) && $this->source->getMorphClass() === \App\Models\GithubApp::class && $this->source->is_public === false) {
+        if (is_object($this->source) && $this->source->getMorphClass() === GithubApp::class && $this->source->is_public === false) {
             $repository = githubApi($this->source, "repos/{$this->customRepository}");
             $data = data_get($repository, 'data');
             $repository_project_id = data_get($data, 'id');
@@ -2964,7 +2965,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         }
 
         // Always convert build_args Collection to string for command interpolation
-        $this->build_args = $this->build_args instanceof \Illuminate\Support\Collection
+        $this->build_args = $this->build_args instanceof Collection
             ? $this->build_args->implode(' ')
             : (string) $this->build_args;
 
@@ -3965,7 +3966,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
         $composeFile['services'] = $services;
         $existingSecrets = data_get($composeFile, 'secrets', []);
-        if ($existingSecrets instanceof \Illuminate\Support\Collection) {
+        if ($existingSecrets instanceof Collection) {
             $existingSecrets = $existingSecrets->toArray();
         }
         $composeFile['secrets'] = array_replace($existingSecrets, $secrets);
@@ -3977,7 +3978,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
     private function validatePathField(string $value, string $fieldName): string
     {
-        if (! preg_match(\App\Support\ValidationPatterns::FILE_PATH_PATTERN, $value)) {
+        if (! preg_match(ValidationPatterns::FILE_PATH_PATTERN, $value)) {
             throw new \RuntimeException("Invalid {$fieldName}: contains forbidden characters.");
         }
         if (str_contains($value, '..')) {
@@ -3989,7 +3990,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
     private function validateShellSafeCommand(string $value, string $fieldName): string
     {
-        if (! preg_match(\App\Support\ValidationPatterns::SHELL_SAFE_COMMAND_PATTERN, $value)) {
+        if (! preg_match(ValidationPatterns::SHELL_SAFE_COMMAND_PATTERN, $value)) {
             throw new \RuntimeException("Invalid {$fieldName}: contains forbidden shell characters.");
         }
 
@@ -3998,7 +3999,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
     private function validateContainerName(string $value): string
     {
-        if (! preg_match(\App\Support\ValidationPatterns::CONTAINER_NAME_PATTERN, $value)) {
+        if (! preg_match(ValidationPatterns::CONTAINER_NAME_PATTERN, $value)) {
             throw new \RuntimeException('Invalid container name: contains forbidden characters.');
         }
 
@@ -4029,7 +4030,10 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 // members can set these commands, and execution is scoped to the application's own container.
                 // The single-quote escaping here prevents breaking out of the sh -c wrapper, but does not
                 // restrict the command itself. Container names are validated separately via validateContainerName().
-                $cmd = "sh -c '".str_replace("'", "'\''", $this->application->pre_deployment_command)."'";
+                // Newlines are normalized to spaces to prevent injection via SSH heredoc transport
+                // (matches the pattern used for health_check_command at line ~2824).
+                $preCommand = str_replace(["\r\n", "\r", "\n"], ' ', $this->application->pre_deployment_command);
+                $cmd = "sh -c '".str_replace("'", "'\''", $preCommand)."'";
                 $exec = "docker exec {$containerName} {$cmd}";
                 $this->execute_remote_command(
                     [
@@ -4061,7 +4065,9 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
             if ($containers->count() == 1 || str_starts_with($containerName, $this->application->post_deployment_command_container.'-'.$this->application->uuid)) {
                 // Security: post_deployment_command is intentionally treated as arbitrary shell input.
                 // See the equivalent comment in run_pre_deployment_command() for the full security rationale.
-                $cmd = "sh -c '".str_replace("'", "'\''", $this->application->post_deployment_command)."'";
+                // Newlines are normalized to spaces to prevent injection via SSH heredoc transport.
+                $postCommand = str_replace(["\r\n", "\r", "\n"], ' ', $this->application->post_deployment_command);
+                $cmd = "sh -c '".str_replace("'", "'\''", $postCommand)."'";
                 $exec = "docker exec {$containerName} {$cmd}";
                 try {
                     $this->execute_remote_command(
