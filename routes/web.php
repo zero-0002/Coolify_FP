@@ -164,7 +164,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         }
 
         return response()->json(['authenticated' => false], 401);
-    })->name('terminal.auth');
+    })->name('terminal.auth')->middleware('can.access.terminal');
 
     Route::post('/terminal/auth/ips', function () {
         if (auth()->check()) {
@@ -189,7 +189,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         }
 
         return response()->json(['ipAddresses' => []], 401);
-    })->name('terminal.auth.ips');
+    })->name('terminal.auth.ips')->middleware('can.access.terminal');
 
     Route::prefix('invitations')->group(function () {
         Route::get('/{uuid}', [Controller::class, 'acceptInvitation'])->name('team.invitation.accept');
