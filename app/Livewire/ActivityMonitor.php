@@ -55,7 +55,18 @@ class ActivityMonitor extends Component
             return;
         }
 
-        $this->activity = Activity::find($this->activityId);
+        $activity = Activity::find($this->activityId);
+
+        if ($activity) {
+            $teamId = data_get($activity, 'properties.team_id');
+            if ($teamId && $teamId !== currentTeam()?->id) {
+                $this->activity = null;
+
+                return;
+            }
+        }
+
+        $this->activity = $activity;
     }
 
     public function updatedActivityId($value)
