@@ -1002,7 +1002,7 @@ class ApplicationsController extends Controller
         $this->authorize('create', Application::class);
 
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
         $allowedFields = ['project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'type', 'name', 'description', 'is_static', 'is_spa', 'is_auto_deploy_enabled', 'is_force_https_enabled', 'domains', 'git_repository', 'git_branch', 'git_commit_sha', 'private_key_uuid', 'docker_registry_image_name', 'docker_registry_image_tag', 'build_pack', 'install_command', 'build_command', 'start_command', 'ports_exposes', 'ports_mappings', 'custom_network_aliases', 'base_directory', 'publish_directory', 'health_check_enabled', 'health_check_type', 'health_check_command', 'health_check_path', 'health_check_port', 'health_check_host', 'health_check_method', 'health_check_return_code', 'health_check_scheme', 'health_check_response_text', 'health_check_interval', 'health_check_timeout', 'health_check_retries', 'health_check_start_period', 'limits_memory', 'limits_memory_swap', 'limits_memory_swappiness', 'limits_memory_reservation', 'limits_cpus', 'limits_cpuset', 'limits_cpu_shares', 'custom_labels', 'custom_docker_run_options', 'post_deployment_command', 'post_deployment_command_container', 'pre_deployment_command', 'pre_deployment_command_container',  'manual_webhook_secret_github', 'manual_webhook_secret_gitlab', 'manual_webhook_secret_bitbucket', 'manual_webhook_secret_gitea', 'redirect', 'github_app_uuid', 'instant_deploy', 'dockerfile', 'dockerfile_location', 'docker_compose_location', 'docker_compose_raw', 'docker_compose_custom_start_command', 'docker_compose_custom_build_command', 'docker_compose_domains', 'watch_paths', 'use_build_server', 'static_image', 'custom_nginx_configuration', 'is_http_basic_auth_enabled', 'http_basic_auth_username', 'http_basic_auth_password', 'connect_to_docker_network', 'force_domain_override', 'autogenerate_domain', 'is_container_label_escape_enabled'];
@@ -1150,7 +1150,7 @@ class ApplicationsController extends Controller
                 $request->offsetSet('name', generate_application_name($request->git_repository, $request->git_branch));
             }
             $return = $this->validateDataApplications($request, $server);
-            if ($return instanceof \Illuminate\Http\JsonResponse) {
+            if ($return instanceof JsonResponse) {
                 return $return;
             }
 
@@ -1345,7 +1345,7 @@ class ApplicationsController extends Controller
             }
 
             $return = $this->validateDataApplications($request, $server);
-            if ($return instanceof \Illuminate\Http\JsonResponse) {
+            if ($return instanceof JsonResponse) {
                 return $return;
             }
             $githubApp = GithubApp::whereTeamId($teamId)->where('uuid', $githubAppUuid)->first();
@@ -1573,7 +1573,7 @@ class ApplicationsController extends Controller
             }
 
             $return = $this->validateDataApplications($request, $server);
-            if ($return instanceof \Illuminate\Http\JsonResponse) {
+            if ($return instanceof JsonResponse) {
                 return $return;
             }
             $privateKey = PrivateKey::whereTeamId($teamId)->where('uuid', $request->private_key_uuid)->first();
@@ -1742,7 +1742,7 @@ class ApplicationsController extends Controller
             }
 
             $return = $this->validateDataApplications($request, $server);
-            if ($return instanceof \Illuminate\Http\JsonResponse) {
+            if ($return instanceof JsonResponse) {
                 return $return;
             }
             if (! isBase64Encoded($request->dockerfile)) {
@@ -1850,7 +1850,7 @@ class ApplicationsController extends Controller
                 $request->offsetSet('name', 'docker-image-'.new Cuid2);
             }
             $return = $this->validateDataApplications($request, $server);
-            if ($return instanceof \Illuminate\Http\JsonResponse) {
+            if ($return instanceof JsonResponse) {
                 return $return;
             }
             // Process docker image name and tag using DockerImageParser
@@ -1974,7 +1974,7 @@ class ApplicationsController extends Controller
                 ], 422);
             }
             $return = $this->validateDataApplications($request, $server);
-            if ($return instanceof \Illuminate\Http\JsonResponse) {
+            if ($return instanceof JsonResponse) {
                 return $return;
             }
             if (! isBase64Encoded($request->docker_compose_raw)) {
@@ -2460,7 +2460,7 @@ class ApplicationsController extends Controller
             return invalidTokenResponse();
         }
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
 
@@ -2530,7 +2530,7 @@ class ApplicationsController extends Controller
             }
         }
         $return = $this->validateDataApplications($request, $server);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
@@ -2956,7 +2956,7 @@ class ApplicationsController extends Controller
         }
 
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
         $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->route('uuid'))->first();
@@ -3157,7 +3157,7 @@ class ApplicationsController extends Controller
         }
 
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
         $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->route('uuid'))->first();
@@ -4077,7 +4077,7 @@ class ApplicationsController extends Controller
         }
 
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
 
@@ -4361,6 +4361,9 @@ class ApplicationsController extends Controller
             ]);
         } else {
             $mountPath = str($request->mount_path)->trim()->start('/')->value();
+
+            validateShellSafePath($mountPath, 'file storage path');
+
             $fsPath = application_configuration_dir().'/'.$application->uuid.$mountPath;
 
             $storage = LocalFileVolume::create([

@@ -302,7 +302,7 @@ class ServicesController extends Controller
         $this->authorize('create', Service::class);
 
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
         $validationRules = [
@@ -925,7 +925,7 @@ class ServicesController extends Controller
         }
 
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
 
@@ -2110,6 +2110,9 @@ class ServicesController extends Controller
             ]);
         } else {
             $mountPath = str($request->mount_path)->trim()->start('/')->value();
+
+            validateShellSafePath($mountPath, 'file storage path');
+
             $fsPath = service_configuration_dir().'/'.$service->uuid.$mountPath;
 
             $storage = LocalFileVolume::create([
