@@ -46,6 +46,13 @@ class ValidationPatterns
     public const SHELL_SAFE_COMMAND_PATTERN = '/^[a-zA-Z0-9 \t._\-\/=:@,+\[\]{}#%^~&"]+$/';
 
     /**
+     * Pattern for Docker volume names
+     * Must start with alphanumeric, followed by alphanumeric, dots, hyphens, or underscores
+     * Matches Docker's volume naming rules
+     */
+    public const VOLUME_NAME_PATTERN = '/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/';
+
+    /**
      * Pattern for Docker container names
      * Must start with alphanumeric, followed by alphanumeric, dots, hyphens, or underscores
      */
@@ -155,6 +162,36 @@ class ValidationPatterns
     public static function shellSafeCommandRules(int $maxLength = 1000): array
     {
         return ['nullable', 'string', 'max:'.$maxLength, 'regex:'.self::SHELL_SAFE_COMMAND_PATTERN];
+    }
+
+    /**
+     * Get validation rules for Docker volume name fields
+     */
+    public static function volumeNameRules(bool $required = true, int $maxLength = 255): array
+    {
+        $rules = [];
+
+        if ($required) {
+            $rules[] = 'required';
+        } else {
+            $rules[] = 'nullable';
+        }
+
+        $rules[] = 'string';
+        $rules[] = "max:$maxLength";
+        $rules[] = 'regex:'.self::VOLUME_NAME_PATTERN;
+
+        return $rules;
+    }
+
+    /**
+     * Get validation messages for volume name fields
+     */
+    public static function volumeNameMessages(string $field = 'name'): array
+    {
+        return [
+            "{$field}.regex" => 'The volume name must start with an alphanumeric character and contain only alphanumeric characters, dots, hyphens, and underscores.',
+        ];
     }
 
     /**

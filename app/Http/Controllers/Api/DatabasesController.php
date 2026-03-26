@@ -19,6 +19,7 @@ use App\Models\S3Storage;
 use App\Models\ScheduledDatabaseBackup;
 use App\Models\Server;
 use App\Models\StandalonePostgresql;
+use App\Support\ValidationPatterns;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -3467,7 +3468,7 @@ class DatabasesController extends Controller
 
         $validator = customApiValidator($request->all(), [
             'type' => 'required|string|in:persistent,file',
-            'name' => 'string',
+            'name' => ['string', 'regex:'.ValidationPatterns::VOLUME_NAME_PATTERN],
             'mount_path' => 'required|string',
             'host_path' => 'string|nullable',
             'content' => 'string|nullable',
@@ -3665,7 +3666,7 @@ class DatabasesController extends Controller
             'id' => 'integer',
             'type' => 'required|string|in:persistent,file',
             'is_preview_suffix_enabled' => 'boolean',
-            'name' => 'string',
+            'name' => ['string', 'regex:'.ValidationPatterns::VOLUME_NAME_PATTERN],
             'mount_path' => 'string',
             'host_path' => 'string|nullable',
             'content' => 'string|nullable',
