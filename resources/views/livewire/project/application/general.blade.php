@@ -492,7 +492,7 @@
                         </div>
                     @endif
                 @endif
-                @if (empty($portsExposes) || $portsExposes === '0')
+                @if ((empty($portsExposes) || $portsExposes === '0') && !empty($fqdn))
                     <x-callout type="info" title="No ports exposed" class="mb-4">
                         This application does not expose any ports and will not be reachable through the proxy or your domains.
                         This behavior is normal for background workers, bots, or scheduled tasks.
