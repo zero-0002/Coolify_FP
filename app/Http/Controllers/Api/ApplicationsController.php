@@ -20,6 +20,7 @@ use App\Models\Service;
 use App\Rules\ValidGitBranch;
 use App\Rules\ValidGitRepositoryUrl;
 use App\Services\DockerImageParser;
+use App\Support\ValidationPatterns;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -4096,7 +4097,7 @@ class ApplicationsController extends Controller
             'id' => 'integer',
             'type' => 'required|string|in:persistent,file',
             'is_preview_suffix_enabled' => 'boolean',
-            'name' => 'string',
+            'name' => ['string', 'regex:'.ValidationPatterns::VOLUME_NAME_PATTERN],
             'mount_path' => 'string',
             'host_path' => 'string|nullable',
             'content' => 'string|nullable',
@@ -4274,7 +4275,7 @@ class ApplicationsController extends Controller
 
         $validator = customApiValidator($request->all(), [
             'type' => 'required|string|in:persistent,file',
-            'name' => 'string',
+            'name' => ['string', 'regex:'.ValidationPatterns::VOLUME_NAME_PATTERN],
             'mount_path' => 'required|string',
             'host_path' => 'string|nullable',
             'content' => 'string|nullable',
