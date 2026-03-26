@@ -30,14 +30,44 @@ class TrustHosts extends Middleware
             return $next($request);
         }
 
+        // Eagerly call hosts() to populate the cache (fixes circular dependency
+        // where handle() checked cache before hosts() could populate it via
+        // Cache::remember, causing host validation to never activate)
+        $this->hosts();
+
         // Skip host validation if no FQDN is configured (initial setup)
         $fqdnHost = Cache::get('instance_settings_fqdn_host');
         if ($fqdnHost === '' || $fqdnHost === null) {
             return $next($request);
         }
 
-        // For all other routes, use parent's host validation
-        return parent::handle($request, $next);
+        // Validate the request host against trusted hosts explicitly.
+        // We check manually instead of relying on Symfony's lazy getHost() validation,
+        // which can be bypassed if getHost() was already called earlier in the pipeline.
+        $trustedHosts = array_filter($this->hosts());
+
+        // Collect all hosts to validate: the actual Host header, plus X-Forwarded-Host
+        // if present. We must check X-Forwarded-Host here because this middleware runs
+        // BEFORE TrustProxies, which would later apply X-Forwarded-Host to the request.
+        $hostsToValidate = [strtolower(trim($request->getHost()))];
+
+        $forwardedHost = $request->headers->get('X-Forwarded-Host');
+        if ($forwardedHost) {
+            // X-Forwarded-Host can be a comma-separated list; validate the first (client-facing) value.
+            // Strip port if present (e.g. "coolify.example.com:443" → "coolify.example.com")
+            // to match the trusted hosts list which stores hostnames without ports.
+            $forwardedHostValue = strtolower(trim(explode(',', $forwardedHost)[0]));
+            $forwardedHostValue = preg_replace('/:\d+$/', '', $forwardedHostValue);
+            $hostsToValidate[] = $forwardedHostValue;
+        }
+
+        foreach ($hostsToValidate as $hostToCheck) {
+            if (! $this->isHostTrusted($hostToCheck, $trustedHosts)) {
+                return response('Bad Host', 400);
+            }
+        }
+
+        return $next($request);
     }
 
     /**
@@ -99,5 +129,30 @@ class TrustHosts extends Middleware
         }
 
         return array_filter($trustedHosts);
+    }
+
+    /**
+     * Check if a host matches the trusted hosts list.
+     *
+     * Regex patterns (from allSubdomainsOfApplicationUrl, starting with ^)
+     * are matched with preg_match. Literal hostnames use exact comparison
+     * only — they are NOT passed to preg_match, which would treat unescaped
+     * dots as wildcards and match unanchored substrings.
+     *
+     * @param  array<int, string>  $trustedHosts
+     */
+    protected function isHostTrusted(string $host, array $trustedHosts): bool
+    {
+        foreach ($trustedHosts as $pattern) {
+            if (str_starts_with($pattern, '^')) {
+                if (@preg_match('{'.$pattern.'}i', $host)) {
+                    return true;
+                }
+            } elseif ($host === $pattern) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

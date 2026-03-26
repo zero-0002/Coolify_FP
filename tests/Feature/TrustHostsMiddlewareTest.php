@@ -2,13 +2,16 @@
 
 use App\Http\Middleware\TrustHosts;
 use App\Models\InstanceSettings;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Once;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    // Clear cache before each test to ensure isolation
+    // Clear cache and once() memoization to ensure isolation between tests
     Cache::forget('instance_settings_fqdn_host');
+    Once::flush();
 });
 
 it('trusts the configured FQDN from InstanceSettings', function () {
@@ -84,7 +87,7 @@ it('extracts host from FQDN with protocol and port', function () {
 
 it('handles exception during InstanceSettings fetch', function () {
     // Drop the instance_settings table to simulate installation
-    \Schema::dropIfExists('instance_settings');
+    Schema::dropIfExists('instance_settings');
 
     $middleware = new TrustHosts($this->app);
 
@@ -248,19 +251,142 @@ it('skips host validation for terminal auth ips route', function () {
     expect($response->status())->not->toBe(400);
 });
 
+it('populates cache on first request via handle() — no circular dependency', function () {
+    // Regression test: handle() used to check cache before hosts() could
+    // populate it, so host validation never activated.
+    InstanceSettings::updateOrCreate(
+        ['id' => 0],
+        ['fqdn' => 'https://coolify.example.com']
+    );
+
+    // Clear cache to simulate cold start
+    Cache::forget('instance_settings_fqdn_host');
+
+    // Make a request — handle() should eagerly call hosts() to populate cache
+    $this->get('/', ['Host' => 'localhost']);
+
+    // Cache should now be populated by the middleware
+    expect(Cache::get('instance_settings_fqdn_host'))->toBe('coolify.example.com');
+});
+
+it('rejects host that is a superstring of trusted FQDN via suffix', function () {
+    InstanceSettings::updateOrCreate(
+        ['id' => 0],
+        ['fqdn' => 'https://coolify.example.com']
+    );
+
+    // coolify.example.com.evil.com contains "coolify.example.com" as a substring —
+    // must NOT match. Literal hosts use exact comparison, not regex substring matching.
+    $response = $this->get('http://coolify.example.com.evil.com/');
+
+    expect($response->status())->toBe(400);
+});
+
+it('rejects host that is a superstring of trusted FQDN via prefix', function () {
+    InstanceSettings::updateOrCreate(
+        ['id' => 0],
+        ['fqdn' => 'https://coolify.example.com']
+    );
+
+    // evil-coolify.example.com also contains the FQDN as a substring
+    $response = $this->get('http://evil-coolify.example.com/');
+
+    expect($response->status())->toBe(400);
+});
+
+it('rejects X-Forwarded-Host that is a superstring of trusted FQDN', function () {
+    InstanceSettings::updateOrCreate(
+        ['id' => 0],
+        ['fqdn' => 'https://coolify.example.com']
+    );
+
+    $response = $this->get('/', [
+        'X-Forwarded-Host' => 'coolify.example.com.evil.com',
+    ]);
+
+    expect($response->status())->toBe(400);
+});
+
+it('rejects host containing localhost as substring', function () {
+    InstanceSettings::updateOrCreate(
+        ['id' => 0],
+        ['fqdn' => 'https://coolify.example.com']
+    );
+
+    // "evil-localhost" contains "localhost" — must not match the literal entry
+    $response = $this->get('http://evil-localhost/');
+
+    expect($response->status())->toBe(400);
+});
+
+it('allows subdomain of APP_URL via regex pattern', function () {
+    InstanceSettings::updateOrCreate(
+        ['id' => 0],
+        ['fqdn' => 'https://coolify.example.com']
+    );
+
+    // sub.localhost should match ^(.+\.)?localhost$ from allSubdomainsOfApplicationUrl
+    $response = $this->get('http://sub.localhost/');
+
+    expect($response->status())->not->toBe(400);
+});
+
 it('still enforces host validation for non-terminal routes', function () {
     InstanceSettings::updateOrCreate(
         ['id' => 0],
         ['fqdn' => 'https://coolify.example.com']
     );
 
-    // Regular routes should still validate Host header
-    $response = $this->get('/', [
-        'Host' => 'evil.com',
-    ]);
+    // Use full URL so Laravel's test client doesn't override Host with APP_URL
+    $response = $this->get('http://evil.com/');
 
     // Should get 400 Bad Host for untrusted host
     expect($response->status())->toBe(400);
+});
+
+it('rejects requests with spoofed X-Forwarded-Host header', function () {
+    InstanceSettings::updateOrCreate(
+        ['id' => 0],
+        ['fqdn' => 'https://coolify.example.com']
+    );
+
+    // Host header is trusted (localhost), but X-Forwarded-Host is spoofed.
+    // TrustHosts must reject this BEFORE TrustProxies can apply the spoofed host.
+    $response = $this->get('/', [
+        'X-Forwarded-Host' => 'evil.com',
+    ]);
+
+    expect($response->status())->toBe(400);
+});
+
+it('allows legitimate X-Forwarded-Host from reverse proxy matching configured FQDN', function () {
+    InstanceSettings::updateOrCreate(
+        ['id' => 0],
+        ['fqdn' => 'https://coolify.example.com']
+    );
+
+    // Legitimate request from Cloudflare/Traefik — X-Forwarded-Host matches the configured FQDN
+    $response = $this->get('/', [
+        'X-Forwarded-Host' => 'coolify.example.com',
+    ]);
+
+    // Should NOT be rejected (would be 400 for Bad Host)
+    expect($response->status())->not->toBe(400);
+});
+
+it('allows X-Forwarded-Host with port matching configured FQDN', function () {
+    InstanceSettings::updateOrCreate(
+        ['id' => 0],
+        ['fqdn' => 'https://coolify.example.com']
+    );
+
+    // Some proxies include the port in X-Forwarded-Host
+    $response = $this->get('/', [
+        'X-Forwarded-Host' => 'coolify.example.com:443',
+    ]);
+
+    // Should NOT be rejected — port is stripped before matching
+    expect($response->status())->not->toBe(400);
 });
 
 it('skips host validation for API routes', function () {
@@ -352,9 +478,10 @@ it('skips host validation for webhook endpoints', function () {
     ]);
     expect($response->status())->not->toBe(400);
 
-    // Test Stripe webhook
+    // Test Stripe webhook — may return 400 from Stripe signature validation,
+    // but the response should NOT contain "Bad Host" (host validation error)
     $response = $this->post('/webhooks/payments/stripe/events', [], [
         'Host' => 'stripe-webhook-forwarder.local',
     ]);
-    expect($response->status())->not->toBe(400);
+    expect($response->content())->not->toContain('Bad Host');
 });
