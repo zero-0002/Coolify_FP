@@ -103,6 +103,46 @@ it('is immune to X-Forwarded-Host header poisoning when using IP only', function
         ->not->toContain('evil.com');
 });
 
+it('generates reset URL with bracketed IPv6 when no FQDN is configured', function () {
+    InstanceSettings::updateOrCreate(
+        ['id' => 0],
+        ['fqdn' => null, 'public_ipv4' => null, 'public_ipv6' => '2001:db8::1']
+    );
+    Once::flush();
+
+    $user = User::factory()->create();
+    $notification = new ResetPassword('ipv6-token', isTransactionalEmail: false);
+
+    $url = callResetUrl($notification, $user);
+
+    expect($url)
+        ->toContain('[2001:db8::1]')
+        ->toContain('ipv6-token')
+        ->toContain(urlencode($user->email));
+});
+
+it('is immune to X-Forwarded-Host header poisoning when using IPv6 only', function () {
+    InstanceSettings::updateOrCreate(
+        ['id' => 0],
+        ['fqdn' => null, 'public_ipv4' => null, 'public_ipv6' => '2001:db8::1']
+    );
+    Once::flush();
+
+    $user = User::factory()->create();
+
+    $this->withHeaders([
+        'X-Forwarded-Host' => 'evil.com',
+    ])->get('/');
+
+    $notification = new ResetPassword('poisoned-token', isTransactionalEmail: false);
+    $url = callResetUrl($notification, $user);
+
+    expect($url)
+        ->toContain('[2001:db8::1]')
+        ->toContain('poisoned-token')
+        ->not->toContain('evil.com');
+});
+
 it('generates a valid route path in the reset URL', function () {
     InstanceSettings::updateOrCreate(
         ['id' => 0],
