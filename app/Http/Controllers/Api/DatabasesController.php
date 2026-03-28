@@ -641,6 +641,7 @@ class DatabasesController extends Controller
                         'database_backup_retention_amount_s3' => ['type' => 'integer', 'description' => 'Number of backups to retain in S3'],
                         'database_backup_retention_days_s3' => ['type' => 'integer', 'description' => 'Number of days to retain backups in S3'],
                         'database_backup_retention_max_storage_s3' => ['type' => 'integer', 'description' => 'Max storage (MB) for S3 backups'],
+                        'timeout' => ['type' => 'integer', 'description' => 'Backup job timeout in seconds (min: 60, max: 36000)', 'default' => 3600],
                     ],
                 ),
             )
@@ -677,7 +678,7 @@ class DatabasesController extends Controller
     )]
     public function create_backup(Request $request)
     {
-        $backupConfigFields = ['save_s3', 'enabled', 'dump_all', 'frequency', 'databases_to_backup', 'database_backup_retention_amount_locally', 'database_backup_retention_days_locally', 'database_backup_retention_max_storage_locally', 'database_backup_retention_amount_s3', 'database_backup_retention_days_s3', 'database_backup_retention_max_storage_s3', 's3_storage_uuid'];
+        $backupConfigFields = ['save_s3', 'enabled', 'dump_all', 'frequency', 'databases_to_backup', 'database_backup_retention_amount_locally', 'database_backup_retention_days_locally', 'database_backup_retention_max_storage_locally', 'database_backup_retention_amount_s3', 'database_backup_retention_days_s3', 'database_backup_retention_max_storage_s3', 's3_storage_uuid', 'timeout'];
 
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -704,6 +705,7 @@ class DatabasesController extends Controller
             'database_backup_retention_amount_s3' => 'integer|min:0',
             'database_backup_retention_days_s3' => 'integer|min:0',
             'database_backup_retention_max_storage_s3' => 'integer|min:0',
+            'timeout' => 'integer|min:60|max:36000',
         ]);
 
         if ($validator->fails()) {
@@ -878,6 +880,7 @@ class DatabasesController extends Controller
                         'database_backup_retention_amount_s3' => ['type' => 'integer', 'description' => 'Retention amount of the backup in s3'],
                         'database_backup_retention_days_s3' => ['type' => 'integer', 'description' => 'Retention days of the backup in s3'],
                         'database_backup_retention_max_storage_s3' => ['type' => 'integer', 'description' => 'Max storage of the backup in S3'],
+                        'timeout' => ['type' => 'integer', 'description' => 'Backup job timeout in seconds (min: 60, max: 36000)', 'default' => 3600],
                     ],
                 ),
             )
@@ -907,7 +910,7 @@ class DatabasesController extends Controller
     )]
     public function update_backup(Request $request)
     {
-        $backupConfigFields = ['save_s3', 'enabled', 'dump_all', 'frequency', 'databases_to_backup', 'database_backup_retention_amount_locally', 'database_backup_retention_days_locally', 'database_backup_retention_max_storage_locally', 'database_backup_retention_amount_s3', 'database_backup_retention_days_s3', 'database_backup_retention_max_storage_s3', 's3_storage_uuid'];
+        $backupConfigFields = ['save_s3', 'enabled', 'dump_all', 'frequency', 'databases_to_backup', 'database_backup_retention_amount_locally', 'database_backup_retention_days_locally', 'database_backup_retention_max_storage_locally', 'database_backup_retention_amount_s3', 'database_backup_retention_days_s3', 'database_backup_retention_max_storage_s3', 's3_storage_uuid', 'timeout'];
 
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -932,6 +935,7 @@ class DatabasesController extends Controller
             'database_backup_retention_amount_s3' => 'integer|min:0',
             'database_backup_retention_days_s3' => 'integer|min:0',
             'database_backup_retention_max_storage_s3' => 'integer|min:0',
+            'timeout' => 'integer|min:60|max:36000',
         ]);
         if ($validator->fails()) {
             return response()->json([
