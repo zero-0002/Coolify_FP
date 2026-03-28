@@ -928,7 +928,7 @@ class DatabasesController extends Controller
             'dump_all' => 'boolean',
             's3_storage_uuid' => 'string|exists:s3_storages,uuid|nullable',
             'databases_to_backup' => 'string|nullable',
-            'frequency' => 'string|in:every_minute,hourly,daily,weekly,monthly,yearly',
+            'frequency' => 'string',
             'database_backup_retention_amount_locally' => 'integer|min:0',
             'database_backup_retention_days_locally' => 'integer|min:0',
             'database_backup_retention_max_storage_locally' => 'integer|min:0',
@@ -961,6 +961,17 @@ class DatabasesController extends Controller
         }
 
         $this->authorize('update', $database);
+
+        // Validate frequency is a valid cron expression
+        if ($request->filled('frequency')) {
+            $isValid = validate_cron_expression($request->frequency);
+            if (! $isValid) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => ['frequency' => ['Invalid cron expression or frequency format.']],
+                ], 422);
+            }
+        }
 
         if ($request->boolean('save_s3') && ! $request->filled('s3_storage_uuid')) {
             return response()->json([
