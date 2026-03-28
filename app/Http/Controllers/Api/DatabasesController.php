@@ -1740,7 +1740,7 @@ class DatabasesController extends Controller
                 }
                 $request->offsetSet('postgres_conf', $postgresConf);
             }
-            $database = create_standalone_postgresql($environment->id, $destination->uuid, $request->all());
+            $database = create_standalone_postgresql($environment->id, $destination->uuid, $request->only($allowedFields));
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
@@ -1795,7 +1795,7 @@ class DatabasesController extends Controller
                 }
                 $request->offsetSet('mariadb_conf', $mariadbConf);
             }
-            $database = create_standalone_mariadb($environment->id, $destination->uuid, $request->all());
+            $database = create_standalone_mariadb($environment->id, $destination->uuid, $request->only($allowedFields));
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
@@ -1854,7 +1854,7 @@ class DatabasesController extends Controller
                 }
                 $request->offsetSet('mysql_conf', $mysqlConf);
             }
-            $database = create_standalone_mysql($environment->id, $destination->uuid, $request->all());
+            $database = create_standalone_mysql($environment->id, $destination->uuid, $request->only($allowedFields));
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
@@ -1910,7 +1910,7 @@ class DatabasesController extends Controller
                 }
                 $request->offsetSet('redis_conf', $redisConf);
             }
-            $database = create_standalone_redis($environment->id, $destination->uuid, $request->all());
+            $database = create_standalone_redis($environment->id, $destination->uuid, $request->only($allowedFields));
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
@@ -1947,7 +1947,7 @@ class DatabasesController extends Controller
             }
 
             removeUnnecessaryFieldsFromRequest($request);
-            $database = create_standalone_dragonfly($environment->id, $destination->uuid, $request->all());
+            $database = create_standalone_dragonfly($environment->id, $destination->uuid, $request->only($allowedFields));
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
@@ -1996,7 +1996,7 @@ class DatabasesController extends Controller
                 }
                 $request->offsetSet('keydb_conf', $keydbConf);
             }
-            $database = create_standalone_keydb($environment->id, $destination->uuid, $request->all());
+            $database = create_standalone_keydb($environment->id, $destination->uuid, $request->only($allowedFields));
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
@@ -2032,7 +2032,7 @@ class DatabasesController extends Controller
                 ], 422);
             }
             removeUnnecessaryFieldsFromRequest($request);
-            $database = create_standalone_clickhouse($environment->id, $destination->uuid, $request->all());
+            $database = create_standalone_clickhouse($environment->id, $destination->uuid, $request->only($allowedFields));
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
@@ -2090,7 +2090,7 @@ class DatabasesController extends Controller
                 }
                 $request->offsetSet('mongo_conf', $mongoConf);
             }
-            $database = create_standalone_mongodb($environment->id, $destination->uuid, $request->all());
+            $database = create_standalone_mongodb($environment->id, $destination->uuid, $request->only($allowedFields));
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
