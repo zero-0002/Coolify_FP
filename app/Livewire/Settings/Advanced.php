@@ -3,6 +3,7 @@
 namespace App\Livewire\Settings;
 
 use App\Models\InstanceSettings;
+use App\Rules\ValidDnsServers;
 use App\Rules\ValidIpOrCidr;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
@@ -20,7 +21,6 @@ class Advanced extends Component
     #[Validate('boolean')]
     public bool $is_dns_validation_enabled;
 
-    #[Validate('nullable|string')]
     public ?string $custom_dns_servers = null;
 
     #[Validate('boolean')]
@@ -43,7 +43,7 @@ class Advanced extends Component
             'is_registration_enabled' => 'boolean',
             'do_not_track' => 'boolean',
             'is_dns_validation_enabled' => 'boolean',
-            'custom_dns_servers' => 'nullable|string',
+            'custom_dns_servers' => ['nullable', 'string', new ValidDnsServers],
             'is_api_enabled' => 'boolean',
             'allowed_ips' => ['nullable', 'string', new ValidIpOrCidr],
             'is_sponsorship_popup_enabled' => 'boolean',
