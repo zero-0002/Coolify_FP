@@ -702,6 +702,13 @@ class ServersController extends Controller
             ]);
         }
 
+        if ($request->has('server_disk_usage_check_frequency') && ! validate_cron_expression($request->server_disk_usage_check_frequency)) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => ['server_disk_usage_check_frequency' => ['Invalid Cron / Human expression for Disk Usage Check Frequency.']],
+            ], 422);
+        }
+
         $advancedSettings = $request->only(['concurrent_builds', 'dynamic_timeout', 'deployment_queue_limit', 'server_disk_usage_notification_threshold', 'server_disk_usage_check_frequency']);
         if (! empty($advancedSettings)) {
             $server->settings()->update(array_filter($advancedSettings, fn ($value) => ! is_null($value)));
