@@ -660,11 +660,11 @@ class ServersController extends Controller
             'is_build_server' => 'boolean|nullable',
             'instant_validate' => 'boolean|nullable',
             'proxy_type' => 'string|nullable',
-            'concurrent_builds' => 'integer|nullable|min:1',
-            'dynamic_timeout' => 'integer|nullable|min:1',
-            'deployment_queue_limit' => 'integer|nullable|min:1',
-            'server_disk_usage_notification_threshold' => 'integer|nullable|min:1|max:100',
-            'server_disk_usage_check_frequency' => 'string|nullable',
+            'concurrent_builds' => 'integer|min:1',
+            'dynamic_timeout' => 'integer|min:1',
+            'deployment_queue_limit' => 'integer|min:1',
+            'server_disk_usage_notification_threshold' => 'integer|min:1|max:100',
+            'server_disk_usage_check_frequency' => 'string',
         ]);
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);

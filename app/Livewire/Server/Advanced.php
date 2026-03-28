@@ -16,16 +16,16 @@ class Advanced extends Component
     public string $serverDiskUsageCheckFrequency = '0 23 * * *';
 
     #[Validate(['required', 'integer', 'min:1', 'max:99'])]
-    public ?int $serverDiskUsageNotificationThreshold = 50;
+    public int|string $serverDiskUsageNotificationThreshold = 50;
 
     #[Validate(['required', 'integer', 'min:1'])]
-    public ?int $concurrentBuilds = 1;
+    public int|string $concurrentBuilds = 1;
 
     #[Validate(['required', 'integer', 'min:1'])]
-    public ?int $dynamicTimeout = 1;
+    public int|string $dynamicTimeout = 1;
 
     #[Validate(['required', 'integer', 'min:1'])]
-    public ?int $deploymentQueueLimit = 25;
+    public int|string $deploymentQueueLimit = 25;
 
     public function mount(string $server_uuid)
     {
