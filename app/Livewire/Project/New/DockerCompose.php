@@ -41,7 +41,7 @@ class DockerCompose extends Component
             // Validate for command injection BEFORE saving to database
             validateDockerComposeForInjection($this->dockerComposeRaw);
 
-            $project = Project::where('uuid', $this->parameters['project_uuid'])->first();
+            $project = Project::ownedByCurrentTeam()->where('uuid', $this->parameters['project_uuid'])->first();
             $environment = $project->load(['environments'])->environments->where('uuid', $this->parameters['environment_uuid'])->first();
 
             $destination_uuid = $this->query['destination'];

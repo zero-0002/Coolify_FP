@@ -278,7 +278,7 @@ class PublicGitRepository extends Component
             }
             $destination_class = $destination->getMorphClass();
 
-            $project = Project::where('uuid', $project_uuid)->first();
+            $project = Project::ownedByCurrentTeam()->where('uuid', $project_uuid)->first();
             $environment = $project->load(['environments'])->environments->where('uuid', $environment_uuid)->first();
 
             if ($this->build_pack === 'dockercompose' && isDev() && $this->new_compose_services) {

@@ -45,7 +45,7 @@ CMD ["nginx", "-g", "daemon off;"]
         }
         $destination_class = $destination->getMorphClass();
 
-        $project = Project::where('uuid', $this->parameters['project_uuid'])->first();
+        $project = Project::ownedByCurrentTeam()->where('uuid', $this->parameters['project_uuid'])->first();
         $environment = $project->load(['environments'])->environments->where('uuid', $this->parameters['environment_uuid'])->first();
 
         $port = get_port_from_dockerfile($this->dockerfile);
