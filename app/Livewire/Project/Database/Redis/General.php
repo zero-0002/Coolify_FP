@@ -73,7 +73,7 @@ class General extends Component
             'description' => ValidationPatterns::descriptionRules(),
             'redisConf' => 'nullable',
             'image' => 'required',
-            'portsMappings' => 'nullable',
+            'portsMappings' => ValidationPatterns::portMappingRules(),
             'isPublic' => 'nullable|boolean',
             'publicPort' => 'nullable|integer',
             'publicPortTimeout' => 'nullable|integer|min:1',
@@ -89,6 +89,7 @@ class General extends Component
     {
         return array_merge(
             ValidationPatterns::combinedMessages(),
+            ValidationPatterns::portMappingMessages(),
             [
                 'name.required' => 'The Name field is required.',
                 'image.required' => 'The Docker Image field is required.',
@@ -201,6 +202,9 @@ class General extends Component
         try {
             $this->authorize('manageEnvironment', $this->database);
 
+            if ($this->portsMappings) {
+                $this->portsMappings = str($this->portsMappings)->replace(' ', '')->trim()->toString();
+            }
             $this->syncData(true);
 
             if (version_compare($this->redisVersion, '6.0', '>=')) {

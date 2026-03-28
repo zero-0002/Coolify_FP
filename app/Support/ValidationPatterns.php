@@ -195,11 +195,35 @@ class ValidationPatterns
     }
 
     /**
+     * Pattern for port mappings (e.g. 3000:3000, 8080:80, 8000-8010:8000-8010)
+     * Each entry requires host:container format, where each side can be a number or a range (number-number)
+     */
+    public const PORT_MAPPINGS_PATTERN = '/^(\d+(-\d+)?:\d+(-\d+)?)(,\d+(-\d+)?:\d+(-\d+)?)*$/';
+
+    /**
      * Get validation rules for container name fields
      */
     public static function containerNameRules(int $maxLength = 255): array
     {
         return ['string', 'max:'.$maxLength, 'regex:'.self::CONTAINER_NAME_PATTERN];
+    }
+
+    /**
+     * Get validation rules for port mapping fields
+     */
+    public static function portMappingRules(): array
+    {
+        return ['nullable', 'string', 'regex:'.self::PORT_MAPPINGS_PATTERN];
+    }
+
+    /**
+     * Get validation messages for port mapping fields
+     */
+    public static function portMappingMessages(string $field = 'portsMappings'): array
+    {
+        return [
+            "{$field}.regex" => 'Port mappings must be a comma-separated list of port pairs or ranges (e.g. 3000:3000,8080:80,8000-8010:8000-8010).',
+        ];
     }
 
     /**

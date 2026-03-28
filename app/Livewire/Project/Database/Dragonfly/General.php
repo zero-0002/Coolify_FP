@@ -90,7 +90,7 @@ class General extends Component
             'description' => ValidationPatterns::descriptionRules(),
             'dragonflyPassword' => 'required|string',
             'image' => 'required|string',
-            'portsMappings' => 'nullable|string',
+            'portsMappings' => ValidationPatterns::portMappingRules(),
             'isPublic' => 'nullable|boolean',
             'publicPort' => 'nullable|integer',
             'publicPortTimeout' => 'nullable|integer|min:1',
@@ -106,6 +106,7 @@ class General extends Component
     {
         return array_merge(
             ValidationPatterns::combinedMessages(),
+            ValidationPatterns::portMappingMessages(),
             [
                 'dragonflyPassword.required' => 'The Dragonfly Password field is required.',
                 'dragonflyPassword.string' => 'The Dragonfly Password must be a string.',
@@ -217,6 +218,9 @@ class General extends Component
         try {
             $this->authorize('update', $this->database);
 
+            if ($this->portsMappings) {
+                $this->portsMappings = str($this->portsMappings)->replace(' ', '')->trim()->toString();
+            }
             if (str($this->publicPort)->isEmpty()) {
                 $this->publicPort = null;
             }

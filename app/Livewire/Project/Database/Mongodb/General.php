@@ -77,7 +77,7 @@ class General extends Component
             'mongoInitdbRootPassword' => 'required',
             'mongoInitdbDatabase' => 'required',
             'image' => 'required',
-            'portsMappings' => 'nullable',
+            'portsMappings' => ValidationPatterns::portMappingRules(),
             'isPublic' => 'nullable|boolean',
             'publicPort' => 'nullable|integer',
             'publicPortTimeout' => 'nullable|integer|min:1',
@@ -92,6 +92,7 @@ class General extends Component
     {
         return array_merge(
             ValidationPatterns::combinedMessages(),
+            ValidationPatterns::portMappingMessages(),
             [
                 'name.required' => 'The Name field is required.',
                 'mongoInitdbRootUsername.required' => 'The Root Username field is required.',
@@ -213,6 +214,9 @@ class General extends Component
         try {
             $this->authorize('update', $this->database);
 
+            if ($this->portsMappings) {
+                $this->portsMappings = str($this->portsMappings)->replace(' ', '')->trim()->toString();
+            }
             if (str($this->publicPort)->isEmpty()) {
                 $this->publicPort = null;
             }

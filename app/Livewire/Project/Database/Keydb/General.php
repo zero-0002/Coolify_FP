@@ -93,7 +93,7 @@ class General extends Component
             'keydbConf' => 'nullable|string',
             'keydbPassword' => 'required|string',
             'image' => 'required|string',
-            'portsMappings' => 'nullable|string',
+            'portsMappings' => ValidationPatterns::portMappingRules(),
             'isPublic' => 'nullable|boolean',
             'publicPort' => 'nullable|integer',
             'publicPortTimeout' => 'nullable|integer|min:1',
@@ -111,6 +111,7 @@ class General extends Component
     {
         return array_merge(
             ValidationPatterns::combinedMessages(),
+            ValidationPatterns::portMappingMessages(),
             [
                 'keydbPassword.required' => 'The KeyDB Password field is required.',
                 'keydbPassword.string' => 'The KeyDB Password must be a string.',
@@ -224,6 +225,9 @@ class General extends Component
         try {
             $this->authorize('manageEnvironment', $this->database);
 
+            if ($this->portsMappings) {
+                $this->portsMappings = str($this->portsMappings)->replace(' ', '')->trim()->toString();
+            }
             if (str($this->publicPort)->isEmpty()) {
                 $this->publicPort = null;
             }
