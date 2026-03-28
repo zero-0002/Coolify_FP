@@ -76,7 +76,7 @@ class BackupEdit extends Component
     public bool $dumpAll = false;
 
     #[Validate(['required', 'int', 'min:60', 'max:36000'])]
-    public int $timeout = 3600;
+    public int|string $timeout = 3600;
 
     public function mount()
     {
