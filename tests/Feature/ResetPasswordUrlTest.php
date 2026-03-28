@@ -143,6 +143,30 @@ it('is immune to X-Forwarded-Host header poisoning when using IPv6 only', functi
         ->not->toContain('evil.com');
 });
 
+it('uses APP_URL fallback when no FQDN or public IPs are configured', function () {
+    InstanceSettings::updateOrCreate(
+        ['id' => 0],
+        ['fqdn' => null, 'public_ipv4' => null, 'public_ipv6' => null]
+    );
+    Once::flush();
+
+    config(['app.url' => 'http://my-coolify.local']);
+
+    $user = User::factory()->create();
+
+    $this->withHeaders([
+        'X-Forwarded-Host' => 'evil.com',
+    ])->get('/');
+
+    $notification = new ResetPassword('fallback-token', isTransactionalEmail: false);
+    $url = callResetUrl($notification, $user);
+
+    expect($url)
+        ->toStartWith('http://my-coolify.local/')
+        ->toContain('fallback-token')
+        ->not->toContain('evil.com');
+});
+
 it('generates a valid route path in the reset URL', function () {
     InstanceSettings::updateOrCreate(
         ['id' => 0],

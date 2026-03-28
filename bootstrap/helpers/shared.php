@@ -491,7 +491,7 @@ function base_url(bool $withPort = true): string
         return "http://[$settings->public_ipv6]";
     }
 
-    return url('/');
+    return config('app.url');
 }
 
 function isSubscribed()
