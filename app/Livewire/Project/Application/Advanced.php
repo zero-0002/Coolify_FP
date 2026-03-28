@@ -82,6 +82,9 @@ class Advanced extends Component
     #[Validate(['boolean'])]
     public bool $isConnectToDockerNetworkEnabled = false;
 
+    #[Validate(['integer', 'min:0'])]
+    public int $maxRestartCount = 10;
+
     public function mount()
     {
         try {
@@ -144,6 +147,7 @@ class Advanced extends Component
             $this->disableBuildCache = $this->application->settings->disable_build_cache;
             $this->injectBuildArgsToDockerfile = $this->application->settings->inject_build_args_to_dockerfile ?? true;
             $this->includeSourceCommitInBuild = $this->application->settings->include_source_commit_in_build ?? false;
+            $this->maxRestartCount = $this->application->max_restart_count ?? 10;
         }
     }
 
@@ -247,6 +251,21 @@ class Advanced extends Component
             }
             $this->syncData(true);
             $this->dispatch('success', 'Custom name saved.');
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
+    }
+
+    public function saveMaxRestartCount()
+    {
+        try {
+            $this->authorize('update', $this->application);
+            $this->validate([
+                'maxRestartCount' => 'integer|min:0',
+            ]);
+            $this->application->max_restart_count = $this->maxRestartCount;
+            $this->application->save();
+            $this->dispatch('success', 'Max restart count saved.');
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
