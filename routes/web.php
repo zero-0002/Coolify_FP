@@ -90,8 +90,6 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-Route::get('/admin', AdminIndex::class)->name('admin.index');
-
 Route::post('/forgot-password', [Controller::class, 'forgot_password'])->name('password.forgot')->middleware('throttle:forgot-password');
 Route::get('/realtime', [Controller::class, 'realtime_test'])->middleware('auth');
 Route::get('/verify', [Controller::class, 'verify'])->middleware('auth')->name('verify.email');
@@ -109,6 +107,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::get('/', Dashboard::class)->name('dashboard');
+    Route::get('/admin', AdminIndex::class)->name('admin.index');
     Route::get('/onboarding', BoardingIndex::class)->name('onboarding');
 
     Route::get('/subscription', SubscriptionShow::class)->name('subscription.show');
