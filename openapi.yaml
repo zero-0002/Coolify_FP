@@ -2873,6 +2873,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3189,6 +3192,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3281,6 +3287,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3370,6 +3379,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3462,6 +3474,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3554,6 +3569,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3655,6 +3673,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3756,6 +3777,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3848,6 +3872,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
