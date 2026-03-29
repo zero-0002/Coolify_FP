@@ -23,9 +23,9 @@
                     step2ButtonText="Permanently Delete" />
 
             </div>
+            <h3 class="pt-4">Configuration</h3>
             <div class="flex gap-2 w-full">
                 <x-forms.input placeholder="Name" id="name" label="Name" required />
-                <x-forms.input placeholder="php artisan schedule:run" id="command" label="Command" required />
                 <x-forms.input placeholder="0 0 * * * or daily" id="frequency" label="Frequency" required />
                 <x-forms.input type="number" placeholder="300" id="timeout"
                     helper="Maximum execution time in seconds (60-36000)." label="Timeout (seconds)" required />
@@ -39,6 +39,7 @@
                         id="container" label="Service name" />
                 @endif
             </div>
+            <x-forms.input placeholder="php artisan schedule:run" id="command" label="Command" required />
     </form>
 
     <div class="pt-4">
