@@ -49,9 +49,6 @@ class User extends Authenticatable implements SendsEmail
         'password',
         'force_password_reset',
         'marketing_emails',
-        'pending_email',
-        'email_change_code',
-        'email_change_code_expires_at',
     ];
 
     protected $hidden = [
@@ -98,7 +95,7 @@ class User extends Authenticatable implements SendsEmail
                 $team['id'] = 0;
                 $team['name'] = 'Root Team';
             }
-            $new_team = Team::create($team);
+            $new_team = Team::forceCreate($team);
             $user->teams()->attach($new_team, ['role' => 'owner']);
         });
 
@@ -201,7 +198,7 @@ class User extends Authenticatable implements SendsEmail
             $team['id'] = 0;
             $team['name'] = 'Root Team';
         }
-        $new_team = Team::create($team);
+        $new_team = Team::forceCreate($team);
         $this->teams()->attach($new_team, ['role' => 'owner']);
 
         return $new_team;
@@ -412,11 +409,11 @@ class User extends Authenticatable implements SendsEmail
         $expiryMinutes = config('constants.email_change.verification_code_expiry_minutes', 10);
         $expiresAt = Carbon::now()->addMinutes($expiryMinutes);
 
-        $this->update([
+        $this->forceFill([
             'pending_email' => $newEmail,
             'email_change_code' => $code,
             'email_change_code_expires_at' => $expiresAt,
-        ]);
+        ])->save();
 
         // Send verification email to new address
         $this->notify(new EmailChangeVerification($this, $code, $newEmail, $expiresAt));

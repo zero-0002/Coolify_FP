@@ -16,7 +16,6 @@ class StandaloneRedis extends BaseModel
     protected $fillable = [
         'name',
         'description',
-        'redis_password',
         'redis_conf',
         'status',
         'image',

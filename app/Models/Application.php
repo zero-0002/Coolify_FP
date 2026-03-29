@@ -1767,7 +1767,7 @@ class Application extends BaseModel
         $fileList = collect([".$workdir$composeFile"]);
         $gitRemoteStatus = $this->getGitRemoteStatus(deployment_uuid: $uuid);
         if (! $gitRemoteStatus['is_accessible']) {
-            throw new RuntimeException("Failed to read Git source:\n\n{$gitRemoteStatus['error']}");
+            throw new RuntimeException('Failed to read Git source. Please verify repository access and try again.');
         }
         $getGitVersion = instant_remote_process(['git --version'], $this->destination->server, false);
         $gitVersion = str($getGitVersion)->explode(' ')->last();
@@ -1825,7 +1825,7 @@ class Application extends BaseModel
                 }
                 throw new RuntimeException('Repository does not exist. Please check your repository URL and try again.');
             }
-            throw new RuntimeException($e->getMessage());
+            throw new RuntimeException('Failed to read the Docker Compose file from the repository.');
         } finally {
             // Cleanup only - restoration happens in catch block
             $commands = collect([

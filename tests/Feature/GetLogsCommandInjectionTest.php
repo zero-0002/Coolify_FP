@@ -1,8 +1,40 @@
 <?php
 
 use App\Livewire\Project\Shared\GetLogs;
+use App\Models\Application;
+use App\Models\Environment;
+use App\Models\Project;
+use App\Models\Server;
+use App\Models\StandaloneDocker;
+use App\Models\Team;
+use App\Models\User;
 use App\Support\ValidationPatterns;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Attributes\Locked;
+use Livewire\Livewire;
+
+uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    $this->user = User::factory()->create();
+    $this->team = Team::factory()->create();
+    $this->user->teams()->attach($this->team, ['role' => 'owner']);
+
+    $this->server = Server::factory()->create(['team_id' => $this->team->id]);
+    // Server::created auto-creates a StandaloneDocker, reuse it
+    $this->destination = StandaloneDocker::where('server_id', $this->server->id)->first();
+    $this->project = Project::factory()->create(['team_id' => $this->team->id]);
+    $this->environment = Environment::factory()->create(['project_id' => $this->project->id]);
+
+    $this->application = Application::factory()->create([
+        'environment_id' => $this->environment->id,
+        'destination_id' => $this->destination->id,
+        'destination_type' => $this->destination->getMorphClass(),
+    ]);
+
+    $this->actingAs($this->user);
+    session(['currentTeam' => $this->team]);
+});
 
 describe('GetLogs locked properties', function () {
     test('container property has Locked attribute', function () {
@@ -34,47 +66,67 @@ describe('GetLogs locked properties', function () {
     });
 });
 
-describe('GetLogs container name validation in getLogs', function () {
-    test('getLogs method validates container name with ValidationPatterns', function () {
-        $method = new ReflectionMethod(GetLogs::class, 'getLogs');
-        $startLine = $method->getStartLine();
-        $endLine = $method->getEndLine();
-        $lines = array_slice(file($method->getFileName()), $startLine - 1, $endLine - $startLine + 1);
-        $methodBody = implode('', $lines);
+describe('GetLogs Livewire action validation', function () {
+    test('getLogs rejects invalid container name', function () {
+        // Make server functional by setting settings directly
+        $this->server->settings->forceFill([
+            'is_reachable' => true,
+            'is_usable' => true,
+            'force_disabled' => false,
+        ])->save();
+        // Reload server with fresh settings to ensure casted values
+        $server = Server::with('settings')->find($this->server->id);
 
-        expect($methodBody)->toContain('ValidationPatterns::isValidContainerName');
+        Livewire::test(GetLogs::class, [
+            'server' => $server,
+            'resource' => $this->application,
+            'container' => 'container;malicious-command',
+        ])
+            ->call('getLogs')
+            ->assertSet('outputs', 'Invalid container name.');
     });
 
-    test('downloadAllLogs method validates container name with ValidationPatterns', function () {
-        $method = new ReflectionMethod(GetLogs::class, 'downloadAllLogs');
-        $startLine = $method->getStartLine();
-        $endLine = $method->getEndLine();
-        $lines = array_slice(file($method->getFileName()), $startLine - 1, $endLine - $startLine + 1);
-        $methodBody = implode('', $lines);
+    test('getLogs rejects unauthorized server access', function () {
+        $otherTeam = Team::factory()->create();
+        $otherServer = Server::factory()->create(['team_id' => $otherTeam->id]);
 
-        expect($methodBody)->toContain('ValidationPatterns::isValidContainerName');
-    });
-});
-
-describe('GetLogs authorization checks', function () {
-    test('getLogs method checks server ownership via ownedByCurrentTeam', function () {
-        $method = new ReflectionMethod(GetLogs::class, 'getLogs');
-        $startLine = $method->getStartLine();
-        $endLine = $method->getEndLine();
-        $lines = array_slice(file($method->getFileName()), $startLine - 1, $endLine - $startLine + 1);
-        $methodBody = implode('', $lines);
-
-        expect($methodBody)->toContain('Server::ownedByCurrentTeam()');
+        Livewire::test(GetLogs::class, [
+            'server' => $otherServer,
+            'resource' => $this->application,
+            'container' => 'test-container',
+        ])
+            ->call('getLogs')
+            ->assertSet('outputs', 'Unauthorized.');
     });
 
-    test('downloadAllLogs method checks server ownership via ownedByCurrentTeam', function () {
-        $method = new ReflectionMethod(GetLogs::class, 'downloadAllLogs');
-        $startLine = $method->getStartLine();
-        $endLine = $method->getEndLine();
-        $lines = array_slice(file($method->getFileName()), $startLine - 1, $endLine - $startLine + 1);
-        $methodBody = implode('', $lines);
+    test('downloadAllLogs returns empty for invalid container name', function () {
+        $this->server->settings->forceFill([
+            'is_reachable' => true,
+            'is_usable' => true,
+            'force_disabled' => false,
+        ])->save();
+        $server = Server::with('settings')->find($this->server->id);
 
-        expect($methodBody)->toContain('Server::ownedByCurrentTeam()');
+        Livewire::test(GetLogs::class, [
+            'server' => $server,
+            'resource' => $this->application,
+            'container' => 'container$(whoami)',
+        ])
+            ->call('downloadAllLogs')
+            ->assertReturned('');
+    });
+
+    test('downloadAllLogs returns empty for unauthorized server', function () {
+        $otherTeam = Team::factory()->create();
+        $otherServer = Server::factory()->create(['team_id' => $otherTeam->id]);
+
+        Livewire::test(GetLogs::class, [
+            'server' => $otherServer,
+            'resource' => $this->application,
+            'container' => 'test-container',
+        ])
+            ->call('downloadAllLogs')
+            ->assertReturned('');
     });
 });
 

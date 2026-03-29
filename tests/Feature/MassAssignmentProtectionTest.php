@@ -96,6 +96,9 @@ describe('mass assignment protection', function () {
         expect($user->isFillable('remember_token'))->toBeFalse('remember_token should not be fillable');
         expect($user->isFillable('two_factor_secret'))->toBeFalse('two_factor_secret should not be fillable');
         expect($user->isFillable('two_factor_recovery_codes'))->toBeFalse('two_factor_recovery_codes should not be fillable');
+        expect($user->isFillable('pending_email'))->toBeFalse('pending_email should not be fillable');
+        expect($user->isFillable('email_change_code'))->toBeFalse('email_change_code should not be fillable');
+        expect($user->isFillable('email_change_code_expires_at'))->toBeFalse('email_change_code_expires_at should not be fillable');
     });
 
     test('User model allows mass assignment of profile fields', function () {
@@ -110,7 +113,18 @@ describe('mass assignment protection', function () {
         $team = new Team;
 
         expect($team->isFillable('id'))->toBeFalse();
-        expect($team->isFillable('personal_team'))->toBeFalse('personal_team should not be fillable');
+        expect($team->isFillable('use_instance_email_settings'))->toBeFalse('use_instance_email_settings should not be fillable (migrated to EmailNotificationSettings)');
+        expect($team->isFillable('resend_api_key'))->toBeFalse('resend_api_key should not be fillable (migrated to EmailNotificationSettings)');
+    });
+
+    test('Team model allows mass assignment of expected fields', function () {
+        $team = new Team;
+
+        expect($team->isFillable('name'))->toBeTrue();
+        expect($team->isFillable('description'))->toBeTrue();
+        expect($team->isFillable('personal_team'))->toBeTrue();
+        expect($team->isFillable('show_boarding'))->toBeTrue();
+        expect($team->isFillable('custom_server_limit'))->toBeTrue();
     });
 
     test('standalone database models block mass assignment of relationship IDs', function () {
@@ -145,7 +159,7 @@ describe('mass assignment protection', function () {
         expect($model->isFillable('limits_memory'))->toBeTrue();
 
         $model = new StandaloneRedis;
-        expect($model->isFillable('redis_password'))->toBeTrue();
+        expect($model->isFillable('redis_conf'))->toBeTrue();
 
         $model = new StandaloneMysql;
         expect($model->isFillable('mysql_root_password'))->toBeTrue();

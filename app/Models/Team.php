@@ -43,10 +43,9 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
     protected $fillable = [
         'name',
         'description',
+        'personal_team',
         'show_boarding',
         'custom_server_limit',
-        'use_instance_email_settings',
-        'resend_api_key',
     ];
 
     protected $casts = [
