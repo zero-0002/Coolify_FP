@@ -2,7 +2,7 @@
     <form wire:submit="submit" class="w-full">
         <div class="flex flex-col gap-2 pb-2">
             <div class="flex gap-2 items-end">
-                <h2>Scheduled Task</h2>
+                <h2>Task {{ $task->name }}</h2>
                 <x-forms.button type="submit">
                     Save
                 </x-forms.button>
