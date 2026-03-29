@@ -43,6 +43,7 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
     protected $fillable = [
         'name',
         'description',
+        'personal_team',
         'show_boarding',
         'custom_server_limit',
     ];

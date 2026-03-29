@@ -174,8 +174,11 @@ class Application extends BaseModel
         'manual_webhook_secret_bitbucket',
         'manual_webhook_secret_gitea',
         'docker_compose_location',
+        'docker_compose_pr_location',
         'docker_compose',
+        'docker_compose_pr',
         'docker_compose_raw',
+        'docker_compose_pr_raw',
         'docker_compose_domains',
         'docker_compose_custom_start_command',
         'docker_compose_custom_build_command',
@@ -187,21 +190,19 @@ class Application extends BaseModel
         'custom_nginx_configuration',
         'custom_network_aliases',
         'custom_healthcheck_found',
+        'nixpkgsarchive',
         'is_http_basic_auth_enabled',
         'http_basic_auth_username',
         'http_basic_auth_password',
+        'connect_to_docker_network',
+        'force_domain_override',
+        'is_container_label_escape_enabled',
+        'use_build_server',
         'config_hash',
         'last_online_at',
         'restart_count',
         'last_restart_at',
         'last_restart_type',
-        'environment_id',
-        'destination_id',
-        'destination_type',
-        'source_id',
-        'source_type',
-        'private_key_id',
-        'repository_project_id',
     ];
 
     protected $appends = ['server_status'];
@@ -1766,7 +1767,7 @@ class Application extends BaseModel
         $fileList = collect([".$workdir$composeFile"]);
         $gitRemoteStatus = $this->getGitRemoteStatus(deployment_uuid: $uuid);
         if (! $gitRemoteStatus['is_accessible']) {
-            throw new RuntimeException("Failed to read Git source:\n\n{$gitRemoteStatus['error']}");
+            throw new RuntimeException('Failed to read Git source. Please verify repository access and try again.');
         }
         $getGitVersion = instant_remote_process(['git --version'], $this->destination->server, false);
         $gitVersion = str($getGitVersion)->explode(' ')->last();
@@ -1824,7 +1825,7 @@ class Application extends BaseModel
                 }
                 throw new RuntimeException('Repository does not exist. Please check your repository URL and try again.');
             }
-            throw new RuntimeException($e->getMessage());
+            throw new RuntimeException('Failed to read the Docker Compose file from the repository.');
         } finally {
             // Cleanup only - restoration happens in catch block
             $commands = collect([

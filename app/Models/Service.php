@@ -57,11 +57,6 @@ class Service extends BaseModel
         'service_type',
         'config_hash',
         'compose_parsing_version',
-        'environment_id',
-        'server_id',
-        'destination_id',
-        'destination_type',
-        'is_container_label_escape_enabled',
     ];
 
     protected $appends = ['server_status', 'status'];

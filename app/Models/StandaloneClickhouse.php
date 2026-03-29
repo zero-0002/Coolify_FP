@@ -37,15 +37,12 @@ class StandaloneClickhouse extends BaseModel
         'last_restart_at',
         'last_restart_type',
         'last_online_at',
-        'public_port_timeout',
-        'custom_docker_run_options',
-        'clickhouse_db',
     ];
 
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
 
     protected $casts = [
-        'clickhouse_password' => 'encrypted',
+        'clickhouse_admin_password' => 'encrypted',
         'public_port_timeout' => 'integer',
         'restart_count' => 'integer',
         'last_restart_at' => 'datetime',

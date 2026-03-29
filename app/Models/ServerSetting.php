@@ -99,6 +99,7 @@ class ServerSetting extends Model
     ];
 
     protected $casts = [
+        'force_disabled' => 'boolean',
         'force_docker_cleanup' => 'boolean',
         'docker_cleanup_threshold' => 'integer',
         'sentinel_token' => 'encrypted',
