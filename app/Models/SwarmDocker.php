@@ -6,7 +6,10 @@ use App\Support\ValidationPatterns;
 
 class SwarmDocker extends BaseModel
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'name',
+        'network',
+    ];
 
     public function setNetworkAttribute(string $value): void
     {

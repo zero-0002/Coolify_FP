@@ -12,7 +12,10 @@ class StandaloneDocker extends BaseModel
     use HasFactory;
     use HasSafeStringAttribute;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'name',
+        'network',
+    ];
 
     protected static function boot()
     {

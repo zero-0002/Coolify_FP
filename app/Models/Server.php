@@ -34,6 +34,7 @@ use OpenApi\Attributes as OA;
 use Spatie\SchemalessAttributes\Casts\SchemalessAttributes;
 use Spatie\SchemalessAttributes\SchemalessAttributesTrait;
 use Spatie\Url\Url;
+use Stevebauman\Purify\Facades\Purify;
 use Symfony\Component\Yaml\Yaml;
 use Visus\Cuid2\Cuid2;
 
@@ -265,14 +266,12 @@ class Server extends BaseModel
         'server_metadata',
     ];
 
-    protected $guarded = [];
-
     use HasSafeStringAttribute;
 
     public function setValidationLogsAttribute($value): void
     {
         $this->attributes['validation_logs'] = $value !== null
-            ? \Stevebauman\Purify\Facades\Purify::config('validation_logs')->clean($value)
+            ? Purify::config('validation_logs')->clean($value)
             : null;
     }
 

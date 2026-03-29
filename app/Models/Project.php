@@ -24,7 +24,10 @@ class Project extends BaseModel
     use HasFactory;
     use HasSafeStringAttribute;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'name',
+        'description',
+    ];
 
     /**
      * Get query builder for projects owned by current team.

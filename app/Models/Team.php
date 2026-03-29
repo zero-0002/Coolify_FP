@@ -40,7 +40,12 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
 {
     use HasFactory, HasNotificationSettings, HasSafeStringAttribute, Notifiable;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'name',
+        'description',
+        'show_boarding',
+        'custom_server_limit',
+    ];
 
     protected $casts = [
         'personal_team' => 'boolean',
