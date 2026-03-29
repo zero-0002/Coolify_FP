@@ -735,6 +735,7 @@ class General extends Component
         $this->authorize('update', $this->application);
 
         try {
+            $this->application->redirect = $this->redirect;
             $has_www = collect($this->application->fqdns)->filter(fn ($fqdn) => str($fqdn)->contains('www.'))->count();
             if ($has_www === 0 && $this->application->redirect === 'www') {
                 $this->dispatch('error', 'You want to redirect to www, but you do not have a www domain set.<br><br>Please add www to your domain list and as an A DNS record (if applicable).');
