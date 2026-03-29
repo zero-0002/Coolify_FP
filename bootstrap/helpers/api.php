@@ -194,4 +194,5 @@ function removeUnnecessaryFieldsFromRequest(Request $request)
     $request->offsetUnset('autogenerate_domain');
     $request->offsetUnset('is_container_label_escape_enabled');
     $request->offsetUnset('docker_compose_raw');
+    $request->offsetUnset('tags');
 }
