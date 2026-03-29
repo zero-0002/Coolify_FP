@@ -75,6 +75,11 @@ class GithubPrivateRepository extends Component
         $this->github_apps = GithubApp::private();
     }
 
+    public function updatedSelectedRepositoryId(): void
+    {
+        $this->loadBranches();
+    }
+
     public function updatedBuildPack()
     {
         if ($this->build_pack === 'nixpacks') {
@@ -158,10 +163,12 @@ class GithubPrivateRepository extends Component
                 'selected_repository_owner' => $this->selected_repository_owner,
                 'selected_repository_repo' => $this->selected_repository_repo,
                 'selected_branch_name' => $this->selected_branch_name,
+                'docker_compose_location' => $this->docker_compose_location,
             ], [
                 'selected_repository_owner' => 'required|string|regex:/^[a-zA-Z0-9\-_]+$/',
                 'selected_repository_repo' => 'required|string|regex:/^[a-zA-Z0-9\-_\.]+$/',
                 'selected_branch_name' => ['required', 'string', new ValidGitBranch],
+                'docker_compose_location' => \App\Support\ValidationPatterns::filePathRules(),
             ]);
 
             if ($validator->fails()) {
@@ -178,8 +185,8 @@ class GithubPrivateRepository extends Component
             }
             $destination_class = $destination->getMorphClass();
 
-            $project = Project::where('uuid', $this->parameters['project_uuid'])->first();
-            $environment = $project->load(['environments'])->environments->where('uuid', $this->parameters['environment_uuid'])->first();
+            $project = Project::ownedByCurrentTeam()->where('uuid', $this->parameters['project_uuid'])->firstOrFail();
+            $environment = $project->environments()->where('uuid', $this->parameters['environment_uuid'])->firstOrFail();
 
             $application = Application::create([
                 'name' => generate_application_name($this->selected_repository_owner.'/'.$this->selected_repository_repo, $this->selected_branch_name),

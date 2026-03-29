@@ -56,6 +56,7 @@ class ServerSetting extends Model
     protected $guarded = [];
 
     protected $casts = [
+        'force_disabled' => 'boolean',
         'force_docker_cleanup' => 'boolean',
         'docker_cleanup_threshold' => 'integer',
         'sentinel_token' => 'encrypted',
@@ -90,6 +91,15 @@ class ServerSetting extends Model
                 $settings->server->restartSentinel();
             }
         });
+    }
+
+    /**
+     * Validate that a sentinel token contains only safe characters.
+     * Prevents OS command injection when the token is interpolated into shell commands.
+     */
+    public static function isValidSentinelToken(string $token): bool
+    {
+        return (bool) preg_match('/\A[a-zA-Z0-9._\-+=\/]+\z/', $token);
     }
 
     public function generateSentinelToken(bool $save = true, bool $ignoreEvent = false)
