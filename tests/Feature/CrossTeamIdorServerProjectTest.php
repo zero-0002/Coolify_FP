@@ -78,6 +78,7 @@ describe('Boarding Project IDOR (GHSA-qfcc-2fm3-9q42)', function () {
             ->call('selectExistingProject');
 
         expect($component->get('createdProject'))->toBeNull();
+        $component->assertDispatched('error');
     });
 
     test('boarding selectExistingProject can load own team project', function () {
@@ -115,8 +116,7 @@ describe('GlobalSearch Project IDOR (GHSA-qfcc-2fm3-9q42)', function () {
 describe('DeleteProject IDOR (GHSA-qfcc-2fm3-9q42)', function () {
     test('cannot mount DeleteProject with project from another team', function () {
         // Should throw ModelNotFoundException (404) because team-scoped query won't find it
-        Livewire::test(DeleteProject::class, ['project_id' => $this->projectB->id])
-            ->assertStatus(500); // findOrFail throws ModelNotFoundException
+        Livewire::test(DeleteProject::class, ['project_id' => $this->projectB->id]);
     })->throws(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
 
     test('can mount DeleteProject with own team project', function () {

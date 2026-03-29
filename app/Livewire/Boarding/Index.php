@@ -432,6 +432,9 @@ class Index extends Component
     public function selectExistingProject()
     {
         $this->createdProject = Project::ownedByCurrentTeam()->find($this->selectedProject);
+        if (! $this->createdProject) {
+            return $this->dispatch('error', 'Project not found.');
+        }
         $this->currentState = 'create-resource';
     }
 
