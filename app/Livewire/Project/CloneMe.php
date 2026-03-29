@@ -139,7 +139,7 @@ class CloneMe extends Component
                     'id',
                     'created_at',
                     'updated_at',
-                ])->fill([
+                ])->forceFill([
                     'uuid' => $uuid,
                     'status' => 'exited',
                     'started_at' => null,
@@ -187,7 +187,7 @@ class CloneMe extends Component
                         'id',
                         'created_at',
                         'updated_at',
-                    ])->fill([
+                    ])->forceFill([
                         'name' => $newName,
                         'resource_id' => $newDatabase->id,
                     ]);
@@ -216,7 +216,7 @@ class CloneMe extends Component
                         'id',
                         'created_at',
                         'updated_at',
-                    ])->fill([
+                    ])->forceFill([
                         'resource_id' => $newDatabase->id,
                     ]);
                     $newStorage->save();
@@ -229,7 +229,7 @@ class CloneMe extends Component
                         'id',
                         'created_at',
                         'updated_at',
-                    ])->fill([
+                    ])->forceFill([
                         'uuid' => $uuid,
                         'database_id' => $newDatabase->id,
                         'database_type' => $newDatabase->getMorphClass(),
@@ -247,7 +247,7 @@ class CloneMe extends Component
                         'id',
                         'created_at',
                         'updated_at',
-                    ])->fill($payload);
+                    ])->forceFill($payload);
                     $newEnvironmentVariable->save();
                 }
             }
@@ -258,7 +258,7 @@ class CloneMe extends Component
                     'id',
                     'created_at',
                     'updated_at',
-                ])->fill([
+                ])->forceFill([
                     'uuid' => $uuid,
                     'environment_id' => $environment->id,
                     'destination_id' => $this->selectedDestination,
@@ -276,7 +276,7 @@ class CloneMe extends Component
                         'id',
                         'created_at',
                         'updated_at',
-                    ])->fill([
+                    ])->forceFill([
                         'uuid' => (string) new Cuid2,
                         'service_id' => $newService->id,
                         'team_id' => currentTeam()->id,
@@ -290,7 +290,7 @@ class CloneMe extends Component
                         'id',
                         'created_at',
                         'updated_at',
-                    ])->fill([
+                    ])->forceFill([
                         'resourceable_id' => $newService->id,
                         'resourceable_type' => $newService->getMorphClass(),
                     ]);
@@ -298,9 +298,9 @@ class CloneMe extends Component
                 }
 
                 foreach ($newService->applications() as $application) {
-                    $application->update([
+                    $application->forceFill([
                         'status' => 'exited',
-                    ]);
+                    ])->save();
 
                     $persistentVolumes = $application->persistentStorages()->get();
                     foreach ($persistentVolumes as $volume) {
@@ -315,7 +315,7 @@ class CloneMe extends Component
                             'id',
                             'created_at',
                             'updated_at',
-                        ])->fill([
+                        ])->forceFill([
                             'name' => $newName,
                             'resource_id' => $application->id,
                         ]);
@@ -344,7 +344,7 @@ class CloneMe extends Component
                             'id',
                             'created_at',
                             'updated_at',
-                        ])->fill([
+                        ])->forceFill([
                             'resource_id' => $application->id,
                         ]);
                         $newStorage->save();
@@ -352,9 +352,9 @@ class CloneMe extends Component
                 }
 
                 foreach ($newService->databases() as $database) {
-                    $database->update([
+                    $database->forceFill([
                         'status' => 'exited',
-                    ]);
+                    ])->save();
 
                     $persistentVolumes = $database->persistentStorages()->get();
                     foreach ($persistentVolumes as $volume) {
@@ -369,7 +369,7 @@ class CloneMe extends Component
                             'id',
                             'created_at',
                             'updated_at',
-                        ])->fill([
+                        ])->forceFill([
                             'name' => $newName,
                             'resource_id' => $database->id,
                         ]);
@@ -398,7 +398,7 @@ class CloneMe extends Component
                             'id',
                             'created_at',
                             'updated_at',
-                        ])->fill([
+                        ])->forceFill([
                             'resource_id' => $database->id,
                         ]);
                         $newStorage->save();
@@ -411,7 +411,7 @@ class CloneMe extends Component
                             'id',
                             'created_at',
                             'updated_at',
-                        ])->fill([
+                        ])->forceFill([
                             'uuid' => $uuid,
                             'database_id' => $database->id,
                             'database_type' => $database->getMorphClass(),

@@ -1158,7 +1158,7 @@ class ApplicationsController extends Controller
             $application = new Application;
             removeUnnecessaryFieldsFromRequest($request);
 
-            $application->fill($request->all());
+            $application->fill($request->only($allowedFields));
             $dockerComposeDomainsJson = collect();
             if ($request->has('docker_compose_domains')) {
                 $dockerComposeDomains = collect($request->docker_compose_domains);
@@ -1385,7 +1385,7 @@ class ApplicationsController extends Controller
             $application = new Application;
             removeUnnecessaryFieldsFromRequest($request);
 
-            $application->fill($request->all());
+            $application->fill($request->only($allowedFields));
 
             $dockerComposeDomainsJson = collect();
             if ($request->has('docker_compose_domains')) {
@@ -1585,7 +1585,7 @@ class ApplicationsController extends Controller
             $application = new Application;
             removeUnnecessaryFieldsFromRequest($request);
 
-            $application->fill($request->all());
+            $application->fill($request->only($allowedFields));
 
             $dockerComposeDomainsJson = collect();
             if ($request->has('docker_compose_domains')) {
@@ -1772,7 +1772,7 @@ class ApplicationsController extends Controller
             }
 
             $application = new Application;
-            $application->fill($request->all());
+            $application->fill($request->only($allowedFields));
             $application->fqdn = $fqdn;
             $application->ports_exposes = $port;
             $application->build_pack = 'dockerfile';
@@ -1884,7 +1884,7 @@ class ApplicationsController extends Controller
             $application = new Application;
             removeUnnecessaryFieldsFromRequest($request);
 
-            $application->fill($request->all());
+            $application->fill($request->only($allowedFields));
             $application->fqdn = $fqdn;
             $application->build_pack = 'dockerimage';
             $application->destination_id = $destination->id;
@@ -2000,7 +2000,7 @@ class ApplicationsController extends Controller
 
             $service = new Service;
             removeUnnecessaryFieldsFromRequest($request);
-            $service->fill($request->all());
+            $service->fill($request->only($allowedFields));
 
             $service->docker_compose_raw = $dockerComposeRaw;
             $service->environment_id = $environment->id;
@@ -2760,7 +2760,7 @@ class ApplicationsController extends Controller
 
         removeUnnecessaryFieldsFromRequest($request);
 
-        $data = $request->all();
+        $data = $request->only($allowedFields);
         if ($requestHasDomains && $server->isProxyShouldRun()) {
             data_set($data, 'fqdn', $domains);
         }

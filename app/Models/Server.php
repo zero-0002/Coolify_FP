@@ -265,8 +265,6 @@ class Server extends BaseModel
         'server_metadata',
     ];
 
-    protected $guarded = [];
-
     use HasSafeStringAttribute;
 
     public function setValidationLogsAttribute($value): void
