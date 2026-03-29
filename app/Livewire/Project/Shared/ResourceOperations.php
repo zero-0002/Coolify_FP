@@ -142,6 +142,7 @@ class ResourceOperations extends Component
                     'id',
                     'created_at',
                     'updated_at',
+                    'uuid',
                 ])->forceFill([
                     'name' => $newName,
                     'resource_id' => $new_resource->id,
@@ -280,6 +281,7 @@ class ResourceOperations extends Component
                         'id',
                         'created_at',
                         'updated_at',
+                        'uuid',
                     ])->forceFill([
                         'name' => $newName,
                         'resource_id' => $application->id,
@@ -322,6 +324,7 @@ class ResourceOperations extends Component
                         'id',
                         'created_at',
                         'updated_at',
+                        'uuid',
                     ])->forceFill([
                         'name' => $newName,
                         'resource_id' => $database->id,

@@ -187,6 +187,7 @@ class CloneMe extends Component
                         'id',
                         'created_at',
                         'updated_at',
+                        'uuid',
                     ])->forceFill([
                         'name' => $newName,
                         'resource_id' => $newDatabase->id,
@@ -315,6 +316,7 @@ class CloneMe extends Component
                             'id',
                             'created_at',
                             'updated_at',
+                            'uuid',
                         ])->forceFill([
                             'name' => $newName,
                             'resource_id' => $application->id,
@@ -369,6 +371,7 @@ class CloneMe extends Component
                             'id',
                             'created_at',
                             'updated_at',
+                            'uuid',
                         ])->forceFill([
                             'name' => $newName,
                             'resource_id' => $database->id,
