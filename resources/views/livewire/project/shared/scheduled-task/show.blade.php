@@ -11,15 +11,17 @@
                         Execute Now
                     </x-forms.button>
                 @endif
+                @if (!$isEnabled)
+                    <x-forms.button wire:click="toggleEnabled" isHighlighted>Enable Task</x-forms.button>
+                @else
+                    <x-forms.button wire:click="toggleEnabled">Disable Task</x-forms.button>
+                @endif
                 <x-modal-confirmation title="Confirm Scheduled Task Deletion?" isErrorButton buttonTitle="Delete"
                     submitAction="delete({{ $task->id }})" :actions="['The selected scheduled task will be permanently deleted.']" confirmationText="{{ $task->name }}"
                     confirmationLabel="Please confirm the execution of the actions by entering the Scheduled Task Name below"
                     shortConfirmationLabel="Scheduled Task Name" :confirmWithPassword="false"
                     step2ButtonText="Permanently Delete" />
 
-            </div>
-            <div class="w-48">
-                <x-forms.checkbox instantSave id="isEnabled" label="Enabled" />
             </div>
             <div class="flex gap-2 w-full">
                 <x-forms.input placeholder="Name" id="name" label="Name" required />

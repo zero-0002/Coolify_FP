@@ -111,6 +111,19 @@ class Show extends Component
         }
     }
 
+    public function toggleEnabled()
+    {
+        try {
+            $this->authorize('update', $this->resource);
+            $this->isEnabled = ! $this->isEnabled;
+            $this->task->enabled = $this->isEnabled;
+            $this->task->save();
+            $this->dispatch('success', $this->isEnabled ? 'Scheduled task enabled.' : 'Scheduled task disabled.');
+        } catch (\Exception $e) {
+            return handleError($e);
+        }
+    }
+
     public function instantSave()
     {
         try {
