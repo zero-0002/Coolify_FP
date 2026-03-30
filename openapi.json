@@ -2722,8 +2722,7 @@
                                     },
                                     "is_preserve_repository_enabled": {
                                         "type": "boolean",
-                                        "default": false,
-                                        "description": "Preserve repository during deployment."
+                                        "description": "Preserve git repository during application update. If false, the existing repository will be removed and replaced with the new one. If true, the existing repository will be kept and the new one will be ignored. Default is false."
                                     }
                                 },
                                 "type": "object"
@@ -7274,6 +7273,22 @@
                         "description": "Pull Request Id for deploying specific PR builds. Cannot be used with tag parameter.",
                         "schema": {
                             "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "pull_request_id",
+                        "in": "query",
+                        "description": "Preview deployment identifier. Alias of pr.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "docker_tag",
+                        "in": "query",
+                        "description": "Docker image tag for Docker Image preview deployments. Requires pull_request_id.",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 ],
@@ -12734,6 +12749,10 @@
                     },
                     "pull_request_id": {
                         "type": "integer"
+                    },
+                    "docker_registry_image_tag": {
+                        "type": "string",
+                        "nullable": true
                     },
                     "force_rebuild": {
                         "type": "boolean"

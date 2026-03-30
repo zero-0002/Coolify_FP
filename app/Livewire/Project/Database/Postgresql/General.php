@@ -264,6 +264,17 @@ class General extends Component
 
             $caCert = $this->server->sslCertificates()->where('is_ca_certificate', true)->first();
 
+            if (! $caCert) {
+                $this->server->generateCaCertificate();
+                $caCert = $this->server->sslCertificates()->where('is_ca_certificate', true)->first();
+            }
+
+            if (! $caCert) {
+                $this->dispatch('error', 'No CA certificate found for this database. Please generate a CA certificate for this server in the server/advanced page.');
+
+                return;
+            }
+
             SslHelper::generateSslCertificate(
                 commonName: $existingCert->common_name,
                 subjectAlternativeNames: $existingCert->subject_alternative_names ?? [],
