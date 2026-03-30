@@ -52,7 +52,7 @@ CMD ["nginx", "-g", "daemon off;"]
         if (! $port) {
             $port = 80;
         }
-        $application = Application::create([
+        $application = Application::forceCreate([
             'name' => 'dockerfile-'.new Cuid2,
             'repository_project_id' => 0,
             'git_repository' => 'coollabsio/coolify',

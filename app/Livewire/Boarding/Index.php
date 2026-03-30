@@ -9,6 +9,7 @@ use App\Models\Server;
 use App\Models\Team;
 use App\Services\ConfigurationRepository;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Visus\Cuid2\Cuid2;
 
@@ -19,18 +20,18 @@ class Index extends Component
         'prerequisitesInstalled' => 'handlePrerequisitesInstalled',
     ];
 
-    #[\Livewire\Attributes\Url(as: 'step', history: true)]
+    #[Url(as: 'step', history: true)]
     public string $currentState = 'welcome';
 
-    #[\Livewire\Attributes\Url(keep: true)]
+    #[Url(keep: true)]
     public ?string $selectedServerType = null;
 
     public ?Collection $privateKeys = null;
 
-    #[\Livewire\Attributes\Url(keep: true)]
+    #[Url(keep: true)]
     public ?int $selectedExistingPrivateKey = null;
 
-    #[\Livewire\Attributes\Url(keep: true)]
+    #[Url(keep: true)]
     public ?string $privateKeyType = null;
 
     public ?string $privateKey = null;
@@ -45,7 +46,7 @@ class Index extends Component
 
     public ?Collection $servers = null;
 
-    #[\Livewire\Attributes\Url(keep: true)]
+    #[Url(keep: true)]
     public ?int $selectedExistingServer = null;
 
     public ?string $remoteServerName = null;
@@ -66,7 +67,7 @@ class Index extends Component
 
     public Collection $projects;
 
-    #[\Livewire\Attributes\Url(keep: true)]
+    #[Url(keep: true)]
     public ?int $selectedProject = null;
 
     public ?Project $createdProject = null;
@@ -440,7 +441,7 @@ class Index extends Component
 
     public function createNewProject()
     {
-        $this->createdProject = Project::create([
+        $this->createdProject = Project::forceCreate([
             'name' => 'My first project',
             'team_id' => currentTeam()->id,
             'uuid' => (string) new Cuid2,

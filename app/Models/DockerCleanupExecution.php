@@ -6,7 +6,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DockerCleanupExecution extends BaseModel
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'status',
+        'message',
+        'cleanup_log',
+        'finished_at',
+    ];
 
     public function server(): BelongsTo
     {

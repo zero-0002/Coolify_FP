@@ -5,7 +5,6 @@ namespace App\Livewire\Destination\New;
 use App\Models\Server;
 use App\Models\StandaloneDocker;
 use App\Models\SwarmDocker;
-use App\Support\ValidationPatterns;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Validate;
@@ -78,7 +77,7 @@ class Docker extends Component
                 if ($found) {
                     throw new \Exception('Network already added to this server.');
                 } else {
-                    $docker = SwarmDocker::create([
+                    $docker = SwarmDocker::forceCreate([
                         'name' => $this->name,
                         'network' => $this->network,
                         'server_id' => $this->selectedServer->id,
@@ -89,7 +88,7 @@ class Docker extends Component
                 if ($found) {
                     throw new \Exception('Network already added to this server.');
                 } else {
-                    $docker = StandaloneDocker::create([
+                    $docker = StandaloneDocker::forceCreate([
                         'name' => $this->name,
                         'network' => $this->network,
                         'server_id' => $this->selectedServer->id,

@@ -10,7 +10,16 @@ class ApplicationPreview extends BaseModel
 {
     use SoftDeletes;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'pull_request_id',
+        'pull_request_html_url',
+        'pull_request_issue_comment_id',
+        'fqdn',
+        'status',
+        'git_type',
+        'docker_compose_domains',
+        'last_online_at',
+    ];
 
     protected static function booted()
     {
@@ -69,7 +78,7 @@ class ApplicationPreview extends BaseModel
 
     public function persistentStorages()
     {
-        return $this->morphMany(\App\Models\LocalPersistentVolume::class, 'resource');
+        return $this->morphMany(LocalPersistentVolume::class, 'resource');
     }
 
     public function generate_preview_fqdn()
