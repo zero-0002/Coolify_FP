@@ -11,6 +11,7 @@ use App\Models\Service;
 use App\Models\ServiceApplication;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use OpenApi\Attributes as OA;
 
@@ -25,7 +26,13 @@ class ServiceApplicationsController extends Controller
             'resourceable_type',
         ]);
 
-        return serializeApiResponse($serviceApplication);
+        $serialized = serializeApiResponse($serviceApplication);
+
+        if ($serialized instanceof Collection) {
+            return $serialized->all();
+        }
+
+        return (array) $serialized;
     }
 
     private function resolveService(Request $request, int $teamId): ?Service
