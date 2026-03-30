@@ -283,8 +283,8 @@ class General extends Component
             }
 
             SslHelper::generateSslCertificate(
-                commonName: $existingCert->commonName,
-                subjectAlternativeNames: $existingCert->subjectAlternativeNames ?? [],
+                commonName: $existingCert->common_name,
+                subjectAlternativeNames: $existingCert->subject_alternative_names ?? [],
                 resourceType: $existingCert->resource_type,
                 resourceId: $existingCert->resource_id,
                 serverId: $existingCert->server_id,
