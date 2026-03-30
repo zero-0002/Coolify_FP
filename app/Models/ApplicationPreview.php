@@ -11,6 +11,7 @@ class ApplicationPreview extends BaseModel
     use SoftDeletes;
 
     protected $fillable = [
+        'application_id',
         'pull_request_id',
         'pull_request_html_url',
         'pull_request_issue_comment_id',
@@ -18,7 +19,12 @@ class ApplicationPreview extends BaseModel
         'status',
         'git_type',
         'docker_compose_domains',
+        'docker_registry_image_tag',
         'last_online_at',
+    ];
+
+    protected $casts = [
+        'pull_request_id' => 'integer',
     ];
 
     protected static function booted()

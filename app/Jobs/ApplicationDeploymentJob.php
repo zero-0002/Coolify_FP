@@ -76,6 +76,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private ?string $dockerImageTag = null;
 
+    private ?string $dockerImagePreviewTag = null;
+
     private GithubApp|GitlabApp|string $source = 'other';
 
     private StandaloneDocker|SwarmDocker $destination;
@@ -208,6 +210,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->restart_only = $this->application_deployment_queue->restart_only;
         $this->restart_only = $this->restart_only && $this->application->build_pack !== 'dockerimage' && $this->application->build_pack !== 'dockerfile';
         $this->only_this_server = $this->application_deployment_queue->only_this_server;
+        $this->dockerImagePreviewTag = $this->application_deployment_queue->docker_registry_image_tag;
 
         $this->git_type = data_get($this->application_deployment_queue, 'git_type');
 
@@ -246,6 +249,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         // Set preview fqdn
         if ($this->pull_request_id !== 0) {
             $this->preview = ApplicationPreview::findPreviewByApplicationAndPullId($this->application->id, $this->pull_request_id);
+            if ($this->application->build_pack === 'dockerimage' && str($this->dockerImagePreviewTag)->isEmpty()) {
+                $this->dockerImagePreviewTag = $this->preview?->docker_registry_image_tag;
+            }
             if ($this->preview) {
                 if ($this->application->build_pack === 'dockercompose') {
                     $this->preview->generate_preview_fqdn_compose();
@@ -466,14 +472,14 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->just_restart();
 
             return;
+        } elseif ($this->application->build_pack === 'dockerimage') {
+            $this->deploy_dockerimage_buildpack();
         } elseif ($this->pull_request_id !== 0) {
             $this->deploy_pull_request();
         } elseif ($this->application->dockerfile) {
             $this->deploy_simple_dockerfile();
         } elseif ($this->application->build_pack === 'dockercompose') {
             $this->deploy_docker_compose_buildpack();
-        } elseif ($this->application->build_pack === 'dockerimage') {
-            $this->deploy_dockerimage_buildpack();
         } elseif ($this->application->build_pack === 'dockerfile') {
             $this->deploy_dockerfile_buildpack();
         } elseif ($this->application->build_pack === 'static') {
@@ -554,11 +560,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     private function deploy_dockerimage_buildpack()
     {
         $this->dockerImage = $this->application->docker_registry_image_name;
-        if (str($this->application->docker_registry_image_tag)->isEmpty()) {
-            $this->dockerImageTag = 'latest';
-        } else {
-            $this->dockerImageTag = $this->application->docker_registry_image_tag;
-        }
+        $this->dockerImageTag = $this->resolveDockerImageTag();
 
         // Check if this is an image hash deployment
         $isImageHash = str($this->dockerImageTag)->startsWith('sha256-');
@@ -573,6 +575,19 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->save_runtime_environment_variables();
 
         $this->rolling_update();
+    }
+
+    private function resolveDockerImageTag(): string
+    {
+        if ($this->pull_request_id !== 0 && str($this->dockerImagePreviewTag)->isNotEmpty()) {
+            return $this->dockerImagePreviewTag;
+        }
+
+        if (str($this->application->docker_registry_image_tag)->isNotEmpty()) {
+            return $this->application->docker_registry_image_tag;
+        }
+
+        return 'latest';
     }
 
     private function deploy_docker_compose_buildpack()
@@ -1934,6 +1949,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private function deploy_pull_request()
     {
+        if ($this->application->build_pack === 'dockerimage') {
+            $this->deploy_dockerimage_buildpack();
+
+            return;
+        }
         if ($this->application->build_pack === 'dockercompose') {
             $this->deploy_docker_compose_buildpack();
 

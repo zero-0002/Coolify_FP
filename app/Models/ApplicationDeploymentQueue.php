@@ -16,6 +16,7 @@ use OpenApi\Attributes as OA;
         'application_id' => ['type' => 'string'],
         'deployment_uuid' => ['type' => 'string'],
         'pull_request_id' => ['type' => 'integer'],
+        'docker_registry_image_tag' => ['type' => 'string', 'nullable' => true],
         'force_rebuild' => ['type' => 'boolean'],
         'commit' => ['type' => 'string'],
         'status' => ['type' => 'string'],
@@ -67,6 +68,7 @@ class ApplicationDeploymentQueue extends Model
     ];
 
     protected $casts = [
+        'pull_request_id' => 'integer',
         'finished_at' => 'datetime',
     ];
 
