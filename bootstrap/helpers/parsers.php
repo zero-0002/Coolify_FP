@@ -504,6 +504,28 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         'is_preview' => false,
                     ]);
                 }
+
+                // Also populate docker_compose_domains for dockercompose apps (mirrors Path 1 at lines 601-627)
+                if ($resource->build_pack === 'dockercompose') {
+                    $normalizedFqdnFor = str($fqdnFor)->replace('-', '_')->replace('.', '_')->value();
+                    $serviceExists = false;
+                    foreach ($services as $serviceNameKey => $svc) {
+                        if (str($serviceNameKey)->replace('-', '_')->replace('.', '_')->value() === $normalizedFqdnFor) {
+                            $serviceExists = true;
+                            break;
+                        }
+                    }
+                    if ($serviceExists) {
+                        $domains = collect(json_decode(data_get($resource, 'docker_compose_domains'))) ?? collect([]);
+                        $domainExists = data_get($domains->get($normalizedFqdnFor), 'domain');
+                        if (is_null($domainExists)) {
+                            $domainValue = $fqdn;
+                            $domains->put($normalizedFqdnFor, ['domain' => $domainValue]);
+                            $resource->docker_compose_domains = $domains->toJson();
+                            $resource->save();
+                        }
+                    }
+                }
             }
         }
 

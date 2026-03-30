@@ -1229,7 +1229,7 @@ class ApplicationsController extends Controller
                 $request->offsetUnset('docker_compose_domains');
             }
             if ($dockerComposeDomainsJson->count() > 0) {
-                $application->docker_compose_domains = $dockerComposeDomainsJson;
+                $application->docker_compose_domains = json_encode($dockerComposeDomainsJson);
             }
             $repository_url_parsed = Url::fromString($request->git_repository);
             $git_host = $repository_url_parsed->getHost();
@@ -1461,7 +1461,7 @@ class ApplicationsController extends Controller
                 $request->offsetUnset('docker_compose_domains');
             }
             if ($dockerComposeDomainsJson->count() > 0) {
-                $application->docker_compose_domains = $dockerComposeDomainsJson;
+                $application->docker_compose_domains = json_encode($dockerComposeDomainsJson);
             }
             $application->fqdn = $fqdn;
             $application->git_repository = str($gitRepository)->trim()->toString();
@@ -1665,7 +1665,7 @@ class ApplicationsController extends Controller
                 $request->offsetUnset('docker_compose_domains');
             }
             if ($dockerComposeDomainsJson->count() > 0) {
-                $application->docker_compose_domains = $dockerComposeDomainsJson;
+                $application->docker_compose_domains = json_encode($dockerComposeDomainsJson);
             }
             $application->fqdn = $fqdn;
             $application->private_key_id = $privateKey->id;
