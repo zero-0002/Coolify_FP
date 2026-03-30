@@ -37,6 +37,9 @@ class StandaloneKeydb extends BaseModel
         'last_restart_at',
         'last_restart_type',
         'last_online_at',
+        'public_port_timeout',
+        'enable_ssl',
+        'custom_docker_run_options',
     ];
 
     protected $appends = ['internal_db_url', 'external_db_url', 'server_status'];
