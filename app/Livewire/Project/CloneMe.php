@@ -100,7 +100,7 @@ class CloneMe extends Component
                 if ($foundProject) {
                     throw new \Exception('Project with the same name already exists.');
                 }
-                $project = Project::create([
+                $project = Project::forceCreate([
                     'name' => $this->newName,
                     'team_id' => currentTeam()->id,
                     'description' => $this->project->description.' (clone)',

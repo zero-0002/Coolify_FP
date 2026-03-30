@@ -2722,8 +2722,7 @@
                                     },
                                     "is_preserve_repository_enabled": {
                                         "type": "boolean",
-                                        "default": false,
-                                        "description": "Preserve repository during deployment."
+                                        "description": "Preserve git repository during application update. If false, the existing repository will be removed and replaced with the new one. If true, the existing repository will be kept and the new one will be ignored. Default is false."
                                     }
                                 },
                                 "type": "object"

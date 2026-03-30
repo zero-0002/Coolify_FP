@@ -11,6 +11,7 @@ use App\Models\StandaloneDocker;
 use App\Models\SwarmDocker;
 use App\Rules\ValidGitBranch;
 use App\Rules\ValidGitRepositoryUrl;
+use App\Support\ValidationPatterns;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use Spatie\Url\Url;
@@ -66,7 +67,7 @@ class GithubPrivateRepositoryDeployKey extends Component
             'is_static' => 'required|boolean',
             'publish_directory' => 'nullable|string',
             'build_pack' => 'required|string',
-            'docker_compose_location' => \App\Support\ValidationPatterns::filePathRules(),
+            'docker_compose_location' => ValidationPatterns::filePathRules(),
         ];
     }
 
@@ -182,7 +183,7 @@ class GithubPrivateRepositoryDeployKey extends Component
                 $application_init['docker_compose_location'] = $this->docker_compose_location;
                 $application_init['base_directory'] = $this->base_directory;
             }
-            $application = Application::create($application_init);
+            $application = Application::forceCreate($application_init);
             $application->settings->is_static = $this->is_static;
             $application->settings->save();
 

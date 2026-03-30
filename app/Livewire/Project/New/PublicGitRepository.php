@@ -11,6 +11,7 @@ use App\Models\StandaloneDocker;
 use App\Models\SwarmDocker;
 use App\Rules\ValidGitBranch;
 use App\Rules\ValidGitRepositoryUrl;
+use App\Support\ValidationPatterns;
 use Carbon\Carbon;
 use Livewire\Component;
 use Spatie\Url\Url;
@@ -72,7 +73,7 @@ class PublicGitRepository extends Component
             'publish_directory' => 'nullable|string',
             'build_pack' => 'required|string',
             'base_directory' => 'nullable|string',
-            'docker_compose_location' => \App\Support\ValidationPatterns::filePathRules(),
+            'docker_compose_location' => ValidationPatterns::filePathRules(),
             'git_branch' => ['required', 'string', new ValidGitBranch],
         ];
     }
@@ -233,7 +234,7 @@ class PublicGitRepository extends Component
 
             return;
         }
-        if ($this->git_source->getMorphClass() === \App\Models\GithubApp::class) {
+        if ($this->git_source->getMorphClass() === GithubApp::class) {
             ['rate_limit_remaining' => $this->rate_limit_remaining, 'rate_limit_reset' => $this->rate_limit_reset] = githubApi(source: $this->git_source, endpoint: "/repos/{$this->git_repository}/branches/{$this->git_branch}");
             $this->rate_limit_reset = Carbon::parse((int) $this->rate_limit_reset)->format('Y-M-d H:i:s');
             $this->branchFound = true;
@@ -298,7 +299,7 @@ class PublicGitRepository extends Component
                     $new_service['source_id'] = $this->git_source->id;
                     $new_service['source_type'] = $this->git_source->getMorphClass();
                 }
-                $service = Service::create($new_service);
+                $service = Service::forceCreate($new_service);
 
                 return redirect()->route('project.service.configuration', [
                     'service_uuid' => $service->uuid,
@@ -345,7 +346,7 @@ class PublicGitRepository extends Component
                 $application_init['docker_compose_location'] = $this->docker_compose_location;
                 $application_init['base_directory'] = $this->base_directory;
             }
-            $application = Application::create($application_init);
+            $application = Application::forceCreate($application_init);
 
             $application->settings->is_static = $this->isStatic;
             $application->settings->save();
