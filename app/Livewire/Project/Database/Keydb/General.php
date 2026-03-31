@@ -59,7 +59,8 @@ class General extends Component
 
         return [
             "echo-private:team.{$teamId},DatabaseProxyStopped" => 'databaseProxyStopped',
-            "echo-private:user.{$userId},DatabaseStatusChanged" => '$refresh',
+            "echo-private:user.{$userId},DatabaseStatusChanged" => 'refresh',
+            "echo-private:team.{$teamId},ServiceChecked" => 'refresh',
         ];
     }
 
@@ -303,5 +304,11 @@ class General extends Component
         } catch (Exception $e) {
             handleError($e, $this);
         }
+    }
+
+    public function refresh(): void
+    {
+        $this->database->refresh();
+        $this->syncData();
     }
 }

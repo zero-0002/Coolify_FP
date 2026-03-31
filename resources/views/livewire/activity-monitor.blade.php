@@ -52,7 +52,7 @@
                 'flex-1 min-h-0' => $fullHeight,
                 'max-h-96' => !$fullHeight,
             ])>
-            <pre class="font-mono whitespace-pre-wrap" @if ($isPollingActive) wire:poll.1000ms="polling" @endif>{{ RunRemoteProcess::decodeOutput($activity) }}</pre>
+            <pre class="font-logs whitespace-pre-wrap" @if ($isPollingActive) wire:poll.1000ms="polling" @endif>{{ RunRemoteProcess::decodeOutput($activity) }}</pre>
         </div>
     @else
         @if ($showWaiting)

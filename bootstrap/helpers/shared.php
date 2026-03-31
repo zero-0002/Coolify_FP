@@ -1919,7 +1919,7 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                     // Create new serviceApplication or serviceDatabase
                     if ($isDatabase) {
                         if ($isNew) {
-                            $savedService = ServiceDatabase::create([
+                            $savedService = ServiceDatabase::forceCreate([
                                 'name' => $serviceName,
                                 'image' => $image,
                                 'service_id' => $resource->id,
@@ -1930,7 +1930,7 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                                 'service_id' => $resource->id,
                             ])->first();
                             if (is_null($savedService)) {
-                                $savedService = ServiceDatabase::create([
+                                $savedService = ServiceDatabase::forceCreate([
                                     'name' => $serviceName,
                                     'image' => $image,
                                     'service_id' => $resource->id,
@@ -1939,7 +1939,7 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                         }
                     } else {
                         if ($isNew) {
-                            $savedService = ServiceApplication::create([
+                            $savedService = ServiceApplication::forceCreate([
                                 'name' => $serviceName,
                                 'image' => $image,
                                 'service_id' => $resource->id,
@@ -1950,7 +1950,7 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                                 'service_id' => $resource->id,
                             ])->first();
                             if (is_null($savedService)) {
-                                $savedService = ServiceApplication::create([
+                                $savedService = ServiceApplication::forceCreate([
                                     'name' => $serviceName,
                                     'image' => $image,
                                     'service_id' => $resource->id,

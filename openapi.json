@@ -4331,6 +4331,11 @@
                                     "database_backup_retention_max_storage_s3": {
                                         "type": "integer",
                                         "description": "Max storage (MB) for S3 backups"
+                                    },
+                                    "timeout": {
+                                        "type": "integer",
+                                        "description": "Backup job timeout in seconds (min: 60, max: 36000)",
+                                        "default": 3600
                                     }
                                 },
                                 "type": "object"
@@ -4896,6 +4901,11 @@
                                     "database_backup_retention_max_storage_s3": {
                                         "type": "integer",
                                         "description": "Max storage of the backup in S3"
+                                    },
+                                    "timeout": {
+                                        "type": "integer",
+                                        "description": "Backup job timeout in seconds (min: 60, max: 36000)",
+                                        "default": 3600
                                     }
                                 },
                                 "type": "object"
@@ -10451,6 +10461,26 @@
                                             "none"
                                         ],
                                         "description": "The proxy type."
+                                    },
+                                    "concurrent_builds": {
+                                        "type": "integer",
+                                        "description": "Number of concurrent builds."
+                                    },
+                                    "dynamic_timeout": {
+                                        "type": "integer",
+                                        "description": "Deployment timeout in seconds."
+                                    },
+                                    "deployment_queue_limit": {
+                                        "type": "integer",
+                                        "description": "Maximum number of queued deployments."
+                                    },
+                                    "server_disk_usage_notification_threshold": {
+                                        "type": "integer",
+                                        "description": "Server disk usage notification threshold (%)."
+                                    },
+                                    "server_disk_usage_check_frequency": {
+                                        "type": "string",
+                                        "description": "Cron expression for disk usage check frequency."
                                     }
                                 },
                                 "type": "object"

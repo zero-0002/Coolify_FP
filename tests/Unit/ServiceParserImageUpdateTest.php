@@ -41,7 +41,8 @@ it('ensures parseDockerComposeFile does not create duplicates on null savedServi
     // The new code checks for null within the else block and creates only if needed
     expect($sharedFile)
         ->toContain('if (is_null($savedService)) {')
-        ->toContain('$savedService = ServiceDatabase::create([');
+        ->toContain('$savedService = ServiceDatabase::forceCreate([')
+        ->toContain('$savedService = ServiceApplication::forceCreate([');
 });
 
 it('verifies image update logic is present in parseDockerComposeFile', function () {
