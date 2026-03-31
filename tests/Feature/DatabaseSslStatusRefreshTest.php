@@ -52,7 +52,7 @@ it('reloads the mysql database model when refreshing so ssl controls follow the 
     $project = Project::factory()->create(['team_id' => $this->team->id]);
     $environment = Environment::factory()->create(['project_id' => $project->id]);
 
-    $database = StandaloneMysql::forceCreate([
+    $database = StandaloneMysql::create([
         'name' => 'test-mysql',
         'image' => 'mysql:8',
         'mysql_root_password' => 'password',
@@ -70,7 +70,7 @@ it('reloads the mysql database model when refreshing so ssl controls follow the 
     $component = Livewire::test(MysqlGeneral::class, ['database' => $database])
         ->assertDontSee('Database should be stopped to change this settings.');
 
-    $database->forceFill(['status' => 'running:healthy'])->save();
+    $database->fill(['status' => 'running:healthy'])->save();
 
     $component->call('refresh')
         ->assertSee('Database should be stopped to change this settings.');

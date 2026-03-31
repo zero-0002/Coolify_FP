@@ -10,6 +10,7 @@ class Tag extends BaseModel
 
     protected $fillable = [
         'name',
+        'team_id',
     ];
 
     protected function customizeName($value)

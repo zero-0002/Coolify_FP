@@ -14,6 +14,7 @@ class StandaloneMysql extends BaseModel
     use ClearsGlobalSearchCache, HasFactory, HasMetrics, HasSafeStringAttribute, SoftDeletes;
 
     protected $fillable = [
+        'uuid',
         'name',
         'description',
         'mysql_root_password',
@@ -44,6 +45,9 @@ class StandaloneMysql extends BaseModel
         'is_log_drain_enabled',
         'is_include_timestamps',
         'custom_docker_run_options',
+        'destination_type',
+        'destination_id',
+        'environment_id',
     ];
 
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
@@ -76,7 +80,7 @@ class StandaloneMysql extends BaseModel
         });
         static::saving(function ($database) {
             if ($database->isDirty('status')) {
-                $database->forceFill(['last_online_at' => now()]);
+                $database->last_online_at = now();
             }
         });
     }

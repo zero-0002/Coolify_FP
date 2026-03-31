@@ -14,6 +14,7 @@ class StandaloneKeydb extends BaseModel
     use ClearsGlobalSearchCache, HasFactory, HasMetrics, HasSafeStringAttribute, SoftDeletes;
 
     protected $fillable = [
+        'uuid',
         'name',
         'description',
         'keydb_password',
@@ -40,6 +41,9 @@ class StandaloneKeydb extends BaseModel
         'public_port_timeout',
         'enable_ssl',
         'custom_docker_run_options',
+        'destination_type',
+        'destination_id',
+        'environment_id',
     ];
 
     protected $appends = ['internal_db_url', 'external_db_url', 'server_status'];
@@ -71,7 +75,7 @@ class StandaloneKeydb extends BaseModel
         });
         static::saving(function ($database) {
             if ($database->isDirty('status')) {
-                $database->forceFill(['last_online_at' => now()]);
+                $database->last_online_at = now();
             }
         });
     }

@@ -5,6 +5,7 @@ namespace App\Models;
 class CloudProviderToken extends BaseModel
 {
     protected $fillable = [
+        'team_id',
         'provider',
         'token',
         'name',

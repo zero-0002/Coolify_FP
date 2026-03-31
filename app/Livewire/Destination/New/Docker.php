@@ -77,7 +77,7 @@ class Docker extends Component
                 if ($found) {
                     throw new \Exception('Network already added to this server.');
                 } else {
-                    $docker = SwarmDocker::forceCreate([
+                    $docker = SwarmDocker::create([
                         'name' => $this->name,
                         'network' => $this->network,
                         'server_id' => $this->selectedServer->id,
@@ -88,7 +88,7 @@ class Docker extends Component
                 if ($found) {
                     throw new \Exception('Network already added to this server.');
                 } else {
-                    $docker = StandaloneDocker::forceCreate([
+                    $docker = StandaloneDocker::create([
                         'name' => $this->name,
                         'network' => $this->network,
                         'server_id' => $this->selectedServer->id,

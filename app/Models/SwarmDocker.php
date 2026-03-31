@@ -7,6 +7,7 @@ use App\Support\ValidationPatterns;
 class SwarmDocker extends BaseModel
 {
     protected $fillable = [
+        'server_id',
         'name',
         'network',
     ];

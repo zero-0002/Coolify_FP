@@ -30,7 +30,7 @@ class AddEmpty extends Component
     {
         try {
             $this->validate();
-            $project = Project::forceCreate([
+            $project = Project::create([
                 'name' => $this->name,
                 'description' => $this->description,
                 'team_id' => currentTeam()->id,

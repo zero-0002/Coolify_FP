@@ -30,12 +30,16 @@ class ScheduledTask extends BaseModel
     use HasSafeStringAttribute;
 
     protected $fillable = [
+        'uuid',
         'enabled',
         'name',
         'command',
         'frequency',
         'container',
         'timeout',
+        'team_id',
+        'application_id',
+        'service_id',
     ];
 
     public static function ownedByCurrentTeamAPI(int $teamId)

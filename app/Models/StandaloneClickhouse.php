@@ -14,6 +14,7 @@ class StandaloneClickhouse extends BaseModel
     use ClearsGlobalSearchCache, HasFactory, HasMetrics, HasSafeStringAttribute, SoftDeletes;
 
     protected $fillable = [
+        'uuid',
         'name',
         'description',
         'clickhouse_admin_user',
@@ -40,6 +41,9 @@ class StandaloneClickhouse extends BaseModel
         'public_port_timeout',
         'custom_docker_run_options',
         'clickhouse_db',
+        'destination_type',
+        'destination_id',
+        'environment_id',
     ];
 
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
@@ -71,7 +75,7 @@ class StandaloneClickhouse extends BaseModel
         });
         static::saving(function ($database) {
             if ($database->isDirty('status')) {
-                $database->forceFill(['last_online_at' => now()]);
+                $database->last_online_at = now();
             }
         });
     }

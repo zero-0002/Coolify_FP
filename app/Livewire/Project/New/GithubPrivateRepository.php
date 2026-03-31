@@ -99,6 +99,8 @@ class GithubPrivateRepository extends Component
     public function loadRepositories($github_app_id)
     {
         $this->repositories = collect();
+        $this->branches = collect();
+        $this->total_branches_count = 0;
         $this->page = 1;
         $this->selected_github_app_id = $github_app_id;
         $this->github_app = GithubApp::where('id', $github_app_id)->first();
@@ -189,7 +191,7 @@ class GithubPrivateRepository extends Component
             $project = Project::ownedByCurrentTeam()->where('uuid', $this->parameters['project_uuid'])->firstOrFail();
             $environment = $project->environments()->where('uuid', $this->parameters['environment_uuid'])->firstOrFail();
 
-            $application = Application::forceCreate([
+            $application = Application::create([
                 'name' => generate_application_name($this->selected_repository_owner.'/'.$this->selected_repository_repo, $this->selected_branch_name),
                 'repository_project_id' => $this->selected_repository_id,
                 'git_repository' => str($this->selected_repository_owner)->trim()->toString().'/'.str($this->selected_repository_repo)->trim()->toString(),

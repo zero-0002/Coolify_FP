@@ -135,7 +135,7 @@ class Server extends BaseModel
                     $payload['ip_previous'] = $server->getOriginal('ip');
                 }
             }
-            $server->forceFill($payload);
+            $server->fill($payload);
         });
         static::saved(function ($server) {
             if ($server->wasChanged('private_key_id') || $server->privateKey?->isDirty()) {
@@ -143,28 +143,28 @@ class Server extends BaseModel
             }
         });
         static::created(function ($server) {
-            ServerSetting::forceCreate([
+            ServerSetting::create([
                 'server_id' => $server->id,
             ]);
             if ($server->id === 0) {
                 if ($server->isSwarm()) {
-                    SwarmDocker::forceCreate([
+                    (new SwarmDocker)->forceFill([
                         'id' => 0,
                         'name' => 'coolify',
                         'network' => 'coolify-overlay',
                         'server_id' => $server->id,
-                    ]);
+                    ])->save();
                 } else {
-                    StandaloneDocker::forceCreate([
+                    (new StandaloneDocker)->forceFill([
                         'id' => 0,
                         'name' => 'coolify',
                         'network' => 'coolify',
                         'server_id' => $server->id,
-                    ]);
+                    ])->saveQuietly();
                 }
             } else {
                 if ($server->isSwarm()) {
-                    SwarmDocker::forceCreate([
+                    SwarmDocker::create([
                         'name' => 'coolify-overlay',
                         'network' => 'coolify-overlay',
                         'server_id' => $server->id,
@@ -283,6 +283,7 @@ class Server extends BaseModel
         'detected_traefik_version',
         'traefik_outdated_info',
         'server_metadata',
+        'ip_previous',
     ];
 
     use HasSafeStringAttribute;

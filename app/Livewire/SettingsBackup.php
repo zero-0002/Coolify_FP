@@ -83,7 +83,8 @@ class SettingsBackup extends Component
             $postgres_password = $envs['POSTGRES_PASSWORD'];
             $postgres_user = $envs['POSTGRES_USER'];
             $postgres_db = $envs['POSTGRES_DB'];
-            $this->database = StandalonePostgresql::forceCreate([
+            $this->database = new StandalonePostgresql;
+            $this->database->forceFill([
                 'id' => 0,
                 'name' => 'coolify-db',
                 'description' => 'Coolify database',
@@ -94,6 +95,7 @@ class SettingsBackup extends Component
                 'destination_type' => StandaloneDocker::class,
                 'destination_id' => 0,
             ]);
+            $this->database->save();
             $this->backup = ScheduledDatabaseBackup::create([
                 'id' => 0,
                 'enabled' => true,
