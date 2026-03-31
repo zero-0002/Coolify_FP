@@ -17,6 +17,7 @@ class SharedEnvironmentVariable extends Model
         'team_id',
         'project_id',
         'environment_id',
+        'server_id',
 
         // Boolean flags
         'is_multiline',

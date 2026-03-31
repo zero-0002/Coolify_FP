@@ -1282,7 +1282,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             });
 
             foreach ($runtime_environment_variables as $env) {
-                $envs->push($env->key.'='.$env->getResolvedValueWithServer($this->server));
+                $envs->push($env->key.'='.$env->getResolvedValueWithServer($this->mainServer));
             }
 
             // Check for PORT environment variable mismatch with ports_exposes
@@ -1348,7 +1348,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             });
 
             foreach ($runtime_environment_variables_preview as $env) {
-                $envs->push($env->key.'='.$env->getResolvedValueWithServer($this->server));
+                $envs->push($env->key.'='.$env->getResolvedValueWithServer($this->mainServer));
             }
 
             // Fall back to production env vars for keys not overridden by preview vars,
@@ -1362,7 +1362,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     return $env->is_runtime && ! in_array($env->key, $previewKeys);
                 });
                 foreach ($fallback_production_vars as $env) {
-                    $envs->push($env->key.'='.$env->getResolvedValueWithServer($this->server));
+                    $envs->push($env->key.'='.$env->getResolvedValueWithServer($this->mainServer));
                 }
             }
 
@@ -1604,7 +1604,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
 
             foreach ($sorted_environment_variables as $env) {
-                $resolvedValue = $env->getResolvedValueWithServer($this->server);
+                $resolvedValue = $env->getResolvedValueWithServer($this->mainServer);
                 // For literal/multiline vars, real_value includes quotes that we need to remove
                 if ($env->is_literal || $env->is_multiline) {
                     // Strip outer quotes from real_value and apply proper bash escaping
@@ -1656,7 +1656,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
 
             foreach ($sorted_environment_variables as $env) {
-                $resolvedValue = $env->getResolvedValueWithServer($this->server);
+                $resolvedValue = $env->getResolvedValueWithServer($this->mainServer);
                 // For literal/multiline vars, real_value includes quotes that we need to remove
                 if ($env->is_literal || $env->is_multiline) {
                     // Strip outer quotes from real_value and apply proper bash escaping
@@ -2394,7 +2394,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->env_nixpacks_args = collect([]);
         if ($this->pull_request_id === 0) {
             foreach ($this->application->nixpacks_environment_variables as $env) {
-                $resolvedValue = $env->getResolvedValueWithServer($this->server);
+                $resolvedValue = $env->getResolvedValueWithServer($this->mainServer);
                 if (! is_null($resolvedValue) && $resolvedValue !== '') {
                     $value = ($env->is_literal || $env->is_multiline) ? trim($resolvedValue, "'") : $resolvedValue;
                     $this->env_nixpacks_args->push('--env '.escapeShellValue("{$env->key}={$value}"));
@@ -2402,7 +2402,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
         } else {
             foreach ($this->application->nixpacks_environment_variables_preview as $env) {
-                $resolvedValue = $env->getResolvedValueWithServer($this->server);
+                $resolvedValue = $env->getResolvedValueWithServer($this->mainServer);
                 if (! is_null($resolvedValue) && $resolvedValue !== '') {
                     $value = ($env->is_literal || $env->is_multiline) ? trim($resolvedValue, "'") : $resolvedValue;
                     $this->env_nixpacks_args->push('--env '.escapeShellValue("{$env->key}={$value}"));
@@ -2543,7 +2543,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ->get();
 
             foreach ($envs as $env) {
-                $resolvedValue = $env->getResolvedValueWithServer($this->server);
+                $resolvedValue = $env->getResolvedValueWithServer($this->mainServer);
                 if (! is_null($resolvedValue)) {
                     $this->env_args->put($env->key, $resolvedValue);
                 }
@@ -2555,7 +2555,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ->get();
 
             foreach ($envs as $env) {
-                $resolvedValue = $env->getResolvedValueWithServer($this->server);
+                $resolvedValue = $env->getResolvedValueWithServer($this->mainServer);
                 if (! is_null($resolvedValue)) {
                     $this->env_args->put($env->key, $resolvedValue);
                 }
@@ -3572,7 +3572,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         } else {
             $secrets_string = $variables
                 ->map(function ($env) {
-                    return "{$env->key}={$env->getResolvedValueWithServer($this->server)}";
+                    return "{$env->key}={$env->getResolvedValueWithServer($this->mainServer)}";
                 })
                 ->sort()
                 ->implode('|');
@@ -3638,7 +3638,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 if (data_get($env, 'is_multiline') === true) {
                     $argsToInsert->push("ARG {$env->key}");
                 } else {
-                    $argsToInsert->push("ARG {$env->key}={$env->getResolvedValueWithServer($this->server)}");
+                    $argsToInsert->push("ARG {$env->key}={$env->getResolvedValueWithServer($this->mainServer)}");
                 }
             }
             // Add Coolify variables as ARGs
@@ -3660,7 +3660,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 if (data_get($env, 'is_multiline') === true) {
                     $argsToInsert->push("ARG {$env->key}");
                 } else {
-                    $argsToInsert->push("ARG {$env->key}={$env->getResolvedValueWithServer($this->server)}");
+                    $argsToInsert->push("ARG {$env->key}={$env->getResolvedValueWithServer($this->mainServer)}");
                 }
             }
             // Add Coolify variables as ARGs
@@ -3696,7 +3696,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 }
             }
             $envs_mapped = $envs->mapWithKeys(function ($env) {
-                return [$env->key => $env->getResolvedValueWithServer($this->server)];
+                return [$env->key => $env->getResolvedValueWithServer($this->mainServer)];
             });
             $secrets_hash = $this->generate_secrets_hash($envs_mapped);
             $argsToInsert->push("ARG COOLIFY_BUILD_SECRETS_HASH={$secrets_hash}");
