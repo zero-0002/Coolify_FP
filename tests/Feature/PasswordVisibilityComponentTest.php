@@ -31,6 +31,20 @@ it('renders password textarea with Alpine-managed visibility state', function ()
         ->not->toContain('changePasswordFieldType');
 });
 
+it('renders textarea without monospace classes by default', function () {
+    $html = Blade::render('<x-forms.textarea id="notes" />');
+
+    expect($html)
+        ->toContain('class="input scrollbar"')
+        ->not->toContain('font-mono');
+});
+
+it('renders textarea with monospace classes when requested', function () {
+    $html = Blade::render('<x-forms.textarea id="variables" monospace />');
+
+    expect($html)->toContain('class="input scrollbar font-mono"');
+});
+
 it('resets password visibility on success event for env-var-input', function () {
     $html = Blade::render('<x-forms.env-var-input type="password" id="secret" />');
 
