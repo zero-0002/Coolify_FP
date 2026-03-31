@@ -46,10 +46,24 @@ class ValidationPatterns
     public const SHELL_SAFE_COMMAND_PATTERN = '/^[a-zA-Z0-9 \t._\-\/=:@,+\[\]{}#%^~&"]+$/';
 
     /**
+     * Pattern for Docker volume names
+     * Must start with alphanumeric, followed by alphanumeric, dots, hyphens, or underscores
+     * Matches Docker's volume naming rules
+     */
+    public const VOLUME_NAME_PATTERN = '/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/';
+
+    /**
      * Pattern for Docker container names
      * Must start with alphanumeric, followed by alphanumeric, dots, hyphens, or underscores
      */
     public const CONTAINER_NAME_PATTERN = '/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/';
+
+    /**
+     * Pattern for Docker network names
+     * Must start with alphanumeric, followed by alphanumeric, dots, hyphens, or underscores
+     * Matches Docker's network naming rules and prevents shell injection
+     */
+    public const DOCKER_NETWORK_PATTERN = '/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/';
 
     /**
      * Get validation rules for name fields
@@ -158,6 +172,42 @@ class ValidationPatterns
     }
 
     /**
+     * Get validation rules for Docker volume name fields
+     */
+    public static function volumeNameRules(bool $required = true, int $maxLength = 255): array
+    {
+        $rules = [];
+
+        if ($required) {
+            $rules[] = 'required';
+        } else {
+            $rules[] = 'nullable';
+        }
+
+        $rules[] = 'string';
+        $rules[] = "max:$maxLength";
+        $rules[] = 'regex:'.self::VOLUME_NAME_PATTERN;
+
+        return $rules;
+    }
+
+    /**
+     * Get validation messages for volume name fields
+     */
+    public static function volumeNameMessages(string $field = 'name'): array
+    {
+        return [
+            "{$field}.regex" => 'The volume name must start with an alphanumeric character and contain only alphanumeric characters, dots, hyphens, and underscores.',
+        ];
+    }
+
+    /**
+     * Pattern for port mappings (e.g. 3000:3000, 8080:80, 8000-8010:8000-8010)
+     * Each entry requires host:container format, where each side can be a number or a range (number-number)
+     */
+    public const PORT_MAPPINGS_PATTERN = '/^(\d+(-\d+)?:\d+(-\d+)?)(,\d+(-\d+)?:\d+(-\d+)?)*$/';
+
+    /**
      * Get validation rules for container name fields
      */
     public static function containerNameRules(int $maxLength = 255): array
@@ -166,11 +216,67 @@ class ValidationPatterns
     }
 
     /**
+     * Get validation rules for port mapping fields
+     */
+    public static function portMappingRules(): array
+    {
+        return ['nullable', 'string', 'regex:'.self::PORT_MAPPINGS_PATTERN];
+    }
+
+    /**
+     * Get validation messages for port mapping fields
+     */
+    public static function portMappingMessages(string $field = 'portsMappings'): array
+    {
+        return [
+            "{$field}.regex" => 'Port mappings must be a comma-separated list of port pairs or ranges (e.g. 3000:3000,8080:80,8000-8010:8000-8010).',
+        ];
+    }
+
+    /**
      * Check if a string is a valid Docker container name.
      */
     public static function isValidContainerName(string $name): bool
     {
         return preg_match(self::CONTAINER_NAME_PATTERN, $name) === 1;
+    }
+
+    /**
+     * Get validation rules for Docker network name fields
+     */
+    public static function dockerNetworkRules(bool $required = true, int $maxLength = 255): array
+    {
+        $rules = [];
+
+        if ($required) {
+            $rules[] = 'required';
+        } else {
+            $rules[] = 'nullable';
+        }
+
+        $rules[] = 'string';
+        $rules[] = "max:$maxLength";
+        $rules[] = 'regex:'.self::DOCKER_NETWORK_PATTERN;
+
+        return $rules;
+    }
+
+    /**
+     * Get validation messages for Docker network name fields
+     */
+    public static function dockerNetworkMessages(string $field = 'network'): array
+    {
+        return [
+            "{$field}.regex" => 'The network name must start with an alphanumeric character and contain only alphanumeric characters, dots, hyphens, and underscores.',
+        ];
+    }
+
+    /**
+     * Check if a string is a valid Docker network name.
+     */
+    public static function isValidDockerNetwork(string $name): bool
+    {
+        return preg_match(self::DOCKER_NETWORK_PATTERN, $name) === 1;
     }
 
     /**

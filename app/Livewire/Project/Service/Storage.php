@@ -5,6 +5,7 @@ namespace App\Livewire\Project\Service;
 use App\Models\Application;
 use App\Models\LocalFileVolume;
 use App\Models\LocalPersistentVolume;
+use App\Support\ValidationPatterns;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
@@ -103,10 +104,10 @@ class Storage extends Component
             $this->authorize('update', $this->resource);
 
             $this->validate([
-                'name' => 'required|string',
+                'name' => ValidationPatterns::volumeNameRules(),
                 'mount_path' => 'required|string',
                 'host_path' => $this->isSwarm ? 'required|string' : 'string|nullable',
-            ]);
+            ], ValidationPatterns::volumeNameMessages());
 
             $name = $this->resource->uuid.'-'.$this->name;
 
