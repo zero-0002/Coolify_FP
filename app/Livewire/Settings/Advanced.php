@@ -3,16 +3,13 @@
 namespace App\Livewire\Settings;
 
 use App\Models\InstanceSettings;
-use App\Models\Server;
+use App\Rules\ValidDnsServers;
 use App\Rules\ValidIpOrCidr;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 
 class Advanced extends Component
 {
-    #[Validate('required')]
-    public Server $server;
-
     public InstanceSettings $settings;
 
     #[Validate('boolean')]
@@ -24,7 +21,6 @@ class Advanced extends Component
     #[Validate('boolean')]
     public bool $is_dns_validation_enabled;
 
-    #[Validate('nullable|string')]
     public ?string $custom_dns_servers = null;
 
     #[Validate('boolean')]
@@ -44,11 +40,10 @@ class Advanced extends Component
     public function rules()
     {
         return [
-            'server' => 'required',
             'is_registration_enabled' => 'boolean',
             'do_not_track' => 'boolean',
             'is_dns_validation_enabled' => 'boolean',
-            'custom_dns_servers' => 'nullable|string',
+            'custom_dns_servers' => ['nullable', 'string', new ValidDnsServers],
             'is_api_enabled' => 'boolean',
             'allowed_ips' => ['nullable', 'string', new ValidIpOrCidr],
             'is_sponsorship_popup_enabled' => 'boolean',
@@ -62,7 +57,6 @@ class Advanced extends Component
         if (! isInstanceAdmin()) {
             return redirect()->route('dashboard');
         }
-        $this->server = Server::findOrFail(0);
         $this->settings = instanceSettings();
         $this->custom_dns_servers = $this->settings->custom_dns_servers;
         $this->allowed_ips = $this->settings->allowed_ips;
@@ -101,7 +95,9 @@ class Advanced extends Component
                     // Check if it's valid CIDR notation
                     if (str_contains($entry, '/')) {
                         [$ip, $mask] = explode('/', $entry);
-                        if (filter_var($ip, FILTER_VALIDATE_IP) && is_numeric($mask) && $mask >= 0 && $mask <= 32) {
+                        $isIpv6 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
+                        $maxMask = $isIpv6 ? 128 : 32;
+                        if (filter_var($ip, FILTER_VALIDATE_IP) && is_numeric($mask) && $mask >= 0 && $mask <= $maxMask) {
                             return $entry;
                         }
                         $invalidEntries[] = $entry;
@@ -117,7 +113,7 @@ class Advanced extends Component
                     $invalidEntries[] = $entry;
 
                     return null;
-                })->filter()->unique();
+                })->filter()->values()->all();
 
                 if (! empty($invalidEntries)) {
                     $this->dispatch('error', 'Invalid IP addresses or subnets: '.implode(', ', $invalidEntries));
@@ -125,13 +121,15 @@ class Advanced extends Component
                     return;
                 }
 
-                if ($validEntries->isEmpty()) {
+                if (empty($validEntries)) {
                     $this->dispatch('error', 'No valid IP addresses or subnets provided');
 
                     return;
                 }
 
-                $this->allowed_ips = $validEntries->implode(',');
+                $validEntries = deduplicateAllowlist($validEntries);
+
+                $this->allowed_ips = implode(',', $validEntries);
             }
 
             $this->instantSave();
@@ -157,6 +155,19 @@ class Advanced extends Component
         } catch (\Exception $e) {
             return handleError($e, $this);
         }
+    }
+
+    public function toggleRegistration($password): bool
+    {
+        if (! verifyPasswordConfirmation($password, $this)) {
+            return false;
+        }
+
+        $this->settings->is_registration_enabled = $this->is_registration_enabled = true;
+        $this->settings->save();
+        $this->dispatch('success', 'Registration has been enabled.');
+
+        return true;
     }
 
     public function toggleTwoStepConfirmation($password): bool

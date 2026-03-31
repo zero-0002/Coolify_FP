@@ -97,7 +97,7 @@ class Destination extends Component
                 return;
             }
 
-            return redirect()->route('project.application.deployment.show', [
+            return redirectRoute($this, 'project.application.deployment.show', [
                 'project_uuid' => data_get($this->resource, 'environment.project.uuid'),
                 'application_uuid' => data_get($this->resource, 'uuid'),
                 'deployment_uuid' => $deployment_uuid,
@@ -134,11 +134,11 @@ class Destination extends Component
         $this->dispatch('refresh');
     }
 
-    public function removeServer(int $network_id, int $server_id, $password)
+    public function removeServer(int $network_id, int $server_id, $password, $selectedActions = [])
     {
         try {
             if (! verifyPasswordConfirmation($password, $this)) {
-                return;
+                return 'The provided password is incorrect.';
             }
 
             if ($this->resource->destination->server->id == $server_id && $this->resource->destination->id == $network_id) {
@@ -152,6 +152,8 @@ class Destination extends Component
             $this->loadData();
             $this->dispatch('refresh');
             ApplicationStatusChanged::dispatch(data_get($this->resource, 'environment.project.team.id'));
+
+            return true;
         } catch (\Exception $e) {
             return handleError($e, $this);
         }

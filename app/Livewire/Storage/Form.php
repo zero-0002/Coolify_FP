@@ -6,6 +6,7 @@ use App\Models\S3Storage;
 use App\Support\ValidationPatterns;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class Form extends Component
@@ -50,8 +51,6 @@ class Form extends Component
         return array_merge(
             ValidationPatterns::combinedMessages(),
             [
-                'name.regex' => 'The Name may only contain letters, numbers, spaces, dashes (-), underscores (_), dots (.), slashes (/), colons (:), and parentheses ().',
-                'description.regex' => 'The Description contains invalid characters. Only letters, numbers, spaces, and common punctuation (- _ . : / () \' " , ! ? @ # % & + = [] {} | ~ ` *) are allowed.',
                 'region.required' => 'The Region field is required.',
                 'region.max' => 'The Region may not be greater than 255 characters.',
                 'key.required' => 'The Access Key field is required.',
@@ -133,19 +132,7 @@ class Form extends Component
         }
     }
 
-    public function delete()
-    {
-        try {
-            $this->authorize('delete', $this->storage);
-
-            $this->storage->delete();
-
-            return redirect()->route('storage.index');
-        } catch (\Throwable $e) {
-            return handleError($e, $this);
-        }
-    }
-
+    #[On('submitStorage')]
     public function submit()
     {
         try {

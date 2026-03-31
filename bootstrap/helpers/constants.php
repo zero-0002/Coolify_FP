@@ -72,7 +72,7 @@ const SUPPORTED_OS = [
 
 const NEEDS_TO_CONNECT_TO_PREDEFINED_NETWORK = [
     'pgadmin',
-    'postgresus',
+    'databasus',
     'redis-insight',
 ];
 const NEEDS_TO_DISABLE_GZIP = [
@@ -81,4 +81,4 @@ const NEEDS_TO_DISABLE_GZIP = [
 const NEEDS_TO_DISABLE_STRIPPREFIX = [
     'appwrite' => ['appwrite', 'appwrite-console', 'appwrite-realtime'],
 ];
-const SHARED_VARIABLE_TYPES = ['team', 'project', 'environment'];
+const SHARED_VARIABLE_TYPES = ['team', 'project', 'environment', 'server'];
