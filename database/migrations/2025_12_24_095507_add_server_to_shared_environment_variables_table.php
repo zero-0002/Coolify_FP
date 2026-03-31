@@ -13,8 +13,10 @@ return new class extends Migration
     public function up(): void
     {
         DB::transaction(function () {
-            DB::statement('ALTER TABLE shared_environment_variables DROP CONSTRAINT IF EXISTS shared_environment_variables_type_check');
-            DB::statement("ALTER TABLE shared_environment_variables ADD CONSTRAINT shared_environment_variables_type_check CHECK (type IN ('team', 'project', 'environment', 'server'))");
+            if (DB::getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE shared_environment_variables DROP CONSTRAINT IF EXISTS shared_environment_variables_type_check');
+                DB::statement("ALTER TABLE shared_environment_variables ADD CONSTRAINT shared_environment_variables_type_check CHECK (type IN ('team', 'project', 'environment', 'server'))");
+            }
             Schema::table('shared_environment_variables', function (Blueprint $table) {
                 $table->foreignId('server_id')->nullable()->constrained()->onDelete('cascade');
                 // NULL != NULL in PostgreSQL unique indexes, so this only enforces uniqueness
@@ -36,8 +38,10 @@ return new class extends Migration
                 $table->dropForeign(['server_id']);
                 $table->dropColumn('server_id');
             });
-            DB::statement('ALTER TABLE shared_environment_variables DROP CONSTRAINT IF EXISTS shared_environment_variables_type_check');
-            DB::statement("ALTER TABLE shared_environment_variables ADD CONSTRAINT shared_environment_variables_type_check CHECK (type IN ('team', 'project', 'environment'))");
+            if (DB::getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE shared_environment_variables DROP CONSTRAINT IF EXISTS shared_environment_variables_type_check');
+                DB::statement("ALTER TABLE shared_environment_variables ADD CONSTRAINT shared_environment_variables_type_check CHECK (type IN ('team', 'project', 'environment'))");
+            }
         });
     }
 };

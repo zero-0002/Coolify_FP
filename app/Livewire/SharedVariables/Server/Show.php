@@ -37,6 +37,7 @@ class Show extends Component
                 'value' => $data['value'],
                 'is_multiline' => $data['is_multiline'],
                 'is_literal' => $data['is_literal'],
+                'comment' => $data['comment'] ?? null,
                 'type' => 'server',
                 'team_id' => currentTeam()->id,
             ]);
@@ -47,9 +48,9 @@ class Show extends Component
         }
     }
 
-    public function mount()
+    public function mount(?string $server_uuid = null)
     {
-        $serverUuid = request()->route('server_uuid');
+        $serverUuid = $server_uuid ?? request()->route('server_uuid');
         $teamId = currentTeam()->id;
         $server = Server::where('team_id', $teamId)->where('uuid', $serverUuid)->first();
         if (! $server) {
@@ -140,7 +141,10 @@ class Show extends Component
     private function updateOrCreateVariables($variables)
     {
         $count = 0;
-        foreach ($variables as $key => $value) {
+        foreach ($variables as $key => $data) {
+            $value = is_array($data) ? ($data['value'] ?? '') : $data;
+            $comment = is_array($data) ? ($data['comment'] ?? null) : null;
+
             // Skip predefined variables
             if (in_array($key, ['COOLIFY_SERVER_UUID', 'COOLIFY_SERVER_NAME'])) {
                 continue;
@@ -149,8 +153,9 @@ class Show extends Component
 
             if ($found) {
                 if (! $found->is_shown_once && ! $found->is_multiline) {
-                    if ($found->value !== $value) {
+                    if ($found->value !== $value || $found->comment !== $comment) {
                         $found->value = $value;
+                        $found->comment = $comment;
                         $found->save();
                         $count++;
                     }
@@ -159,6 +164,7 @@ class Show extends Component
                 $this->server->environment_variables()->create([
                     'key' => $key,
                     'value' => $value,
+                    'comment' => $comment,
                     'is_multiline' => false,
                     'is_literal' => false,
                     'type' => 'server',
