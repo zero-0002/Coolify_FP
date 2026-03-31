@@ -99,6 +99,8 @@ class GithubPrivateRepository extends Component
     public function loadRepositories($github_app_id)
     {
         $this->repositories = collect();
+        $this->branches = collect();
+        $this->total_branches_count = 0;
         $this->page = 1;
         $this->selected_github_app_id = $github_app_id;
         $this->github_app = GithubApp::where('id', $github_app_id)->first();
