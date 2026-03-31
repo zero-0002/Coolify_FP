@@ -4036,6 +4036,51 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         return $value;
     }
 
+    /**
+     * Resolve which container to execute a deployment command in.
+     *
+     * For single-container apps, returns the sole container.
+     * For multi-container apps, matches by the user-specified container name.
+     * If no container name is specified for multi-container apps, logs available containers and returns null.
+     */
+    private function resolveCommandContainer(Collection $containers, ?string $specifiedContainerName, string $commandType): ?array
+    {
+        if ($containers->count() === 0) {
+            return null;
+        }
+
+        if ($containers->count() === 1) {
+            return $containers->first();
+        }
+
+        // Multi-container: require a container name to be specified
+        if (empty($specifiedContainerName)) {
+            $available = $containers->map(fn ($c) => data_get($c, 'Names'))->implode(', ');
+            $this->application_deployment_queue->addLogEntry(
+                "{$commandType} command: Multiple containers found but no container name specified. Available: {$available}"
+            );
+
+            return null;
+        }
+
+        // Multi-container: match by specified name prefix
+        $prefix = $specifiedContainerName.'-'.$this->application->uuid;
+        foreach ($containers as $container) {
+            $containerName = data_get($container, 'Names');
+            if (str_starts_with($containerName, $prefix)) {
+                return $container;
+            }
+        }
+
+        // No match found — log available containers to help the user debug
+        $available = $containers->map(fn ($c) => data_get($c, 'Names'))->implode(', ');
+        $this->application_deployment_queue->addLogEntry(
+            "{$commandType} command: Container '{$specifiedContainerName}' not found. Available: {$available}"
+        );
+
+        return null;
+    }
+
     private function run_pre_deployment_command()
     {
         if (empty($this->application->pre_deployment_command)) {
@@ -4043,39 +4088,39 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         }
         $containers = getCurrentApplicationContainerStatus($this->server, $this->application->id, $this->pull_request_id);
         if ($containers->count() == 0) {
+            $this->application_deployment_queue->addLogEntry('Pre-deployment command: No running containers found. Skipping.');
+
             return;
         }
         $this->application_deployment_queue->addLogEntry('Executing pre-deployment command (see debug log for output/errors).');
 
-        foreach ($containers as $container) {
-            $containerName = data_get($container, 'Names');
-            if ($containerName) {
-                $this->validateContainerName($containerName);
-            }
-            if ($containers->count() == 1 || str_starts_with($containerName, $this->application->pre_deployment_command_container.'-'.$this->application->uuid)) {
-                // Security: pre_deployment_command is intentionally treated as arbitrary shell input.
-                // Users (team members with deployment access) need full shell flexibility to run commands
-                // like "php artisan migrate", "npm run build", etc. inside their own application containers.
-                // The trust boundary is at the application/team ownership level — only authenticated team
-                // members can set these commands, and execution is scoped to the application's own container.
-                // The single-quote escaping here prevents breaking out of the sh -c wrapper, but does not
-                // restrict the command itself. Container names are validated separately via validateContainerName().
-                // Newlines are normalized to spaces to prevent injection via SSH heredoc transport
-                // (matches the pattern used for health_check_command at line ~2824).
-                $preCommand = str_replace(["\r\n", "\r", "\n"], ' ', $this->application->pre_deployment_command);
-                $cmd = "sh -c '".str_replace("'", "'\''", $preCommand)."'";
-                $exec = "docker exec {$containerName} {$cmd}";
-                $this->execute_remote_command(
-                    [
-                        'command' => $exec,
-                        'hidden' => true,
-                    ],
-                );
-
-                return;
-            }
+        $container = $this->resolveCommandContainer($containers, $this->application->pre_deployment_command_container, 'Pre-deployment');
+        if ($container === null) {
+            throw new DeploymentException('Pre-deployment command: Could not find a valid container. Is the container name correct?');
         }
-        throw new DeploymentException('Pre-deployment command: Could not find a valid container. Is the container name correct?');
+
+        $containerName = data_get($container, 'Names');
+        if ($containerName) {
+            $this->validateContainerName($containerName);
+        }
+        // Security: pre_deployment_command is intentionally treated as arbitrary shell input.
+        // Users (team members with deployment access) need full shell flexibility to run commands
+        // like "php artisan migrate", "npm run build", etc. inside their own application containers.
+        // The trust boundary is at the application/team ownership level — only authenticated team
+        // members can set these commands, and execution is scoped to the application's own container.
+        // The single-quote escaping here prevents breaking out of the sh -c wrapper, but does not
+        // restrict the command itself. Container names are validated separately via validateContainerName().
+        // Newlines are normalized to spaces to prevent injection via SSH heredoc transport
+        // (matches the pattern used for health_check_command at line ~2824).
+        $preCommand = str_replace(["\r\n", "\r", "\n"], ' ', $this->application->pre_deployment_command);
+        $cmd = "sh -c '".str_replace("'", "'\''", $preCommand)."'";
+        $exec = "docker exec {$containerName} {$cmd}";
+        $this->execute_remote_command(
+            [
+                'command' => $exec,
+                'hidden' => true,
+            ],
+        );
     }
 
     private function run_post_deployment_command()
@@ -4087,38 +4132,42 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         $this->application_deployment_queue->addLogEntry('Executing post-deployment command (see debug log for output).');
 
         $containers = getCurrentApplicationContainerStatus($this->server, $this->application->id, $this->pull_request_id);
-        foreach ($containers as $container) {
-            $containerName = data_get($container, 'Names');
-            if ($containerName) {
-                $this->validateContainerName($containerName);
-            }
-            if ($containers->count() == 1 || str_starts_with($containerName, $this->application->post_deployment_command_container.'-'.$this->application->uuid)) {
-                // Security: post_deployment_command is intentionally treated as arbitrary shell input.
-                // See the equivalent comment in run_pre_deployment_command() for the full security rationale.
-                // Newlines are normalized to spaces to prevent injection via SSH heredoc transport.
-                $postCommand = str_replace(["\r\n", "\r", "\n"], ' ', $this->application->post_deployment_command);
-                $cmd = "sh -c '".str_replace("'", "'\''", $postCommand)."'";
-                $exec = "docker exec {$containerName} {$cmd}";
-                try {
-                    $this->execute_remote_command(
-                        [
-                            'command' => $exec,
-                            'hidden' => true,
-                            'save' => 'post-deployment-command-output',
-                        ],
-                    );
-                } catch (Exception $e) {
-                    $post_deployment_command_output = $this->saved_outputs->get('post-deployment-command-output');
-                    if ($post_deployment_command_output) {
-                        $this->application_deployment_queue->addLogEntry('Post-deployment command failed.');
-                        $this->application_deployment_queue->addLogEntry($post_deployment_command_output, 'stderr');
-                    }
-                }
+        if ($containers->count() == 0) {
+            $this->application_deployment_queue->addLogEntry('Post-deployment command: No running containers found. Skipping.');
 
-                return;
+            return;
+        }
+
+        $container = $this->resolveCommandContainer($containers, $this->application->post_deployment_command_container, 'Post-deployment');
+        if ($container === null) {
+            throw new DeploymentException('Post-deployment command: Could not find a valid container. Is the container name correct?');
+        }
+
+        $containerName = data_get($container, 'Names');
+        if ($containerName) {
+            $this->validateContainerName($containerName);
+        }
+        // Security: post_deployment_command is intentionally treated as arbitrary shell input.
+        // See the equivalent comment in run_pre_deployment_command() for the full security rationale.
+        // Newlines are normalized to spaces to prevent injection via SSH heredoc transport.
+        $postCommand = str_replace(["\r\n", "\r", "\n"], ' ', $this->application->post_deployment_command);
+        $cmd = "sh -c '".str_replace("'", "'\''", $postCommand)."'";
+        $exec = "docker exec {$containerName} {$cmd}";
+        try {
+            $this->execute_remote_command(
+                [
+                    'command' => $exec,
+                    'hidden' => true,
+                    'save' => 'post-deployment-command-output',
+                ],
+            );
+        } catch (Exception $e) {
+            $post_deployment_command_output = $this->saved_outputs->get('post-deployment-command-output');
+            if ($post_deployment_command_output) {
+                $this->application_deployment_queue->addLogEntry('Post-deployment command failed.');
+                $this->application_deployment_queue->addLogEntry($post_deployment_command_output, 'stderr');
             }
         }
-        throw new DeploymentException('Post-deployment command: Could not find a valid container. Is the container name correct?');
     }
 
     /**
