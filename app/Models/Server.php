@@ -158,6 +158,7 @@ class Server extends BaseModel
                     (new StandaloneDocker)->forceFill([
                         'id' => 0,
                         'name' => 'coolify',
+                        'uuid' => (string) new Cuid2,
                         'network' => 'coolify',
                         'server_id' => $server->id,
                     ])->saveQuietly();
