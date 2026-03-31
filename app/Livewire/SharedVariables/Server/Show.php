@@ -1,9 +1,8 @@
 <?php
 
-namespace App\Livewire\SharedVariables\Environment;
+namespace App\Livewire\SharedVariables\Server;
 
-use App\Models\Application;
-use App\Models\Project;
+use App\Models\Server;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -12,66 +11,66 @@ class Show extends Component
 {
     use AuthorizesRequests;
 
-    public Project $project;
-
-    public Application $application;
-
-    public $environment;
-
-    public array $parameters;
+    public Server $server;
 
     public string $view = 'normal';
 
     public ?string $variables = null;
 
-    protected $listeners = ['refreshEnvs' => 'refreshEnvs', 'saveKey', 'environmentVariableDeleted' => 'refreshEnvs'];
+    protected $listeners = ['refreshEnvs' => 'refreshEnvs', 'saveKey' => 'saveKey', 'environmentVariableDeleted' => 'refreshEnvs'];
 
     public function saveKey($data)
     {
         try {
-            $this->authorize('update', $this->environment);
+            $this->authorize('update', $this->server);
 
-            $found = $this->environment->environment_variables()->where('key', $data['key'])->first();
+            if (in_array($data['key'], ['COOLIFY_SERVER_UUID', 'COOLIFY_SERVER_NAME'])) {
+                throw new \Exception('Cannot create predefined variable.');
+            }
+
+            $found = $this->server->environment_variables()->where('key', $data['key'])->first();
             if ($found) {
                 throw new \Exception('Variable already exists.');
             }
-            $this->environment->environment_variables()->create([
+            $this->server->environment_variables()->create([
                 'key' => $data['key'],
                 'value' => $data['value'],
                 'is_multiline' => $data['is_multiline'],
                 'is_literal' => $data['is_literal'],
                 'comment' => $data['comment'] ?? null,
-                'type' => 'environment',
+                'type' => 'server',
                 'team_id' => currentTeam()->id,
             ]);
-            $this->environment->refresh();
+            $this->server->refresh();
             $this->getDevView();
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
     }
 
-    public function mount(?string $project_uuid = null, ?string $environment_uuid = null)
+    public function mount(?string $server_uuid = null)
     {
-        $this->parameters = get_route_parameters();
-        $projectUuid = $project_uuid ?? request()->route('project_uuid');
-        $environmentUuid = $environment_uuid ?? request()->route('environment_uuid');
-
-        $this->project = Project::ownedByCurrentTeam()->where('uuid', $projectUuid)->firstOrFail();
-        $this->environment = $this->project->environments()->where('uuid', $environmentUuid)->firstOrFail();
+        $serverUuid = $server_uuid ?? request()->route('server_uuid');
+        $teamId = currentTeam()->id;
+        $server = Server::where('team_id', $teamId)->where('uuid', $serverUuid)->first();
+        if (! $server) {
+            return redirect()->route('dashboard');
+        }
+        $this->authorize('view', $server);
+        $this->server = $server;
         $this->getDevView();
     }
 
     public function switch()
     {
-        $this->authorize('view', $this->environment);
+        $this->authorize('view', $this->server);
         $this->view = $this->view === 'normal' ? 'dev' : 'normal';
         $this->getDevView();
     }
 
     public function getDevView()
     {
-        $this->variables = $this->formatEnvironmentVariables($this->environment->environment_variables->sortBy('key'));
+        $this->variables = $this->formatEnvironmentVariables($this->server->environment_variables->whereNotIn('key', ['COOLIFY_SERVER_UUID', 'COOLIFY_SERVER_NAME'])->sortBy('key'));
     }
 
     private function formatEnvironmentVariables($variables)
@@ -91,7 +90,7 @@ class Show extends Component
     public function submit()
     {
         try {
-            $this->authorize('update', $this->environment);
+            $this->authorize('update', $this->server);
             $this->handleBulkSubmit();
             $this->getDevView();
         } catch (\Throwable $e) {
@@ -104,23 +103,17 @@ class Show extends Component
     private function handleBulkSubmit()
     {
         $variables = parseEnvFormatToArray($this->variables);
-        $changesMade = false;
 
-        DB::transaction(function () use ($variables, &$changesMade) {
+        $changesMade = DB::transaction(function () use ($variables) {
             // Delete removed variables
             $deletedCount = $this->deleteRemovedVariables($variables);
-            if ($deletedCount > 0) {
-                $changesMade = true;
-            }
 
             // Update or create variables
             $updatedCount = $this->updateOrCreateVariables($variables);
-            if ($updatedCount > 0) {
-                $changesMade = true;
-            }
+
+            return $deletedCount > 0 || $updatedCount > 0;
         });
 
-        // Only dispatch success after transaction has committed
         if ($changesMade) {
             $this->dispatch('success', 'Environment variables updated.');
         }
@@ -128,13 +121,19 @@ class Show extends Component
 
     private function deleteRemovedVariables($variables)
     {
-        $variablesToDelete = $this->environment->environment_variables()->whereNotIn('key', array_keys($variables))->get();
+        $variablesToDelete = $this->server->environment_variables()
+            ->whereNotIn('key', array_keys($variables))
+            ->whereNotIn('key', ['COOLIFY_SERVER_UUID', 'COOLIFY_SERVER_NAME'])
+            ->get();
 
         if ($variablesToDelete->isEmpty()) {
             return 0;
         }
 
-        $this->environment->environment_variables()->whereNotIn('key', array_keys($variables))->delete();
+        $this->server->environment_variables()
+            ->whereNotIn('key', array_keys($variables))
+            ->whereNotIn('key', ['COOLIFY_SERVER_UUID', 'COOLIFY_SERVER_NAME'])
+            ->delete();
 
         return $variablesToDelete->count();
     }
@@ -144,24 +143,31 @@ class Show extends Component
         $count = 0;
         foreach ($variables as $key => $data) {
             $value = is_array($data) ? ($data['value'] ?? '') : $data;
+            $comment = is_array($data) ? ($data['comment'] ?? null) : null;
 
-            $found = $this->environment->environment_variables()->where('key', $key)->first();
+            // Skip predefined variables
+            if (in_array($key, ['COOLIFY_SERVER_UUID', 'COOLIFY_SERVER_NAME'])) {
+                continue;
+            }
+            $found = $this->server->environment_variables()->where('key', $key)->first();
 
             if ($found) {
                 if (! $found->is_shown_once && ! $found->is_multiline) {
-                    if ($found->value !== $value) {
+                    if ($found->value !== $value || $found->comment !== $comment) {
                         $found->value = $value;
+                        $found->comment = $comment;
                         $found->save();
                         $count++;
                     }
                 }
             } else {
-                $this->environment->environment_variables()->create([
+                $this->server->environment_variables()->create([
                     'key' => $key,
                     'value' => $value,
+                    'comment' => $comment,
                     'is_multiline' => false,
                     'is_literal' => false,
-                    'type' => 'environment',
+                    'type' => 'server',
                     'team_id' => currentTeam()->id,
                 ]);
                 $count++;
@@ -173,12 +179,12 @@ class Show extends Component
 
     public function refreshEnvs()
     {
-        $this->environment->refresh();
+        $this->server->refresh();
         $this->getDevView();
     }
 
     public function render()
     {
-        return view('livewire.shared-variables.environment.show');
+        return view('livewire.shared-variables.server.show');
     }
 }

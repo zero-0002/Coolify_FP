@@ -129,7 +129,14 @@
                     <div class="flex flex-col w-full gap-2">
                         <div class="flex flex-col w-full gap-2 lg:flex-row">
                             <x-forms.input disabled id="key" />
-                            <x-forms.input disabled type="password" id="value" />
+                            <x-forms.env-var-input
+                                disabled
+                                type="password"
+                                id="value"
+                                :availableVars="$isSharedVariable ? [] : $this->availableSharedVariables"
+                                :projectUuid="data_get($parameters, 'project_uuid')"
+                                :environmentUuid="data_get($parameters, 'environment_uuid')"
+                                :serverUuid="data_get($parameters, 'server_uuid')" />
                             @if ($is_shared)
                                 <x-forms.input disabled type="password" id="real_value" />
                             @endif
@@ -146,7 +153,14 @@
                                 <x-forms.textarea :required="$is_redis_credential" type="password" id="value" />
                             @else
                                 <x-forms.input :disabled="$is_redis_credential" :required="$is_redis_credential" id="key" />
-                                <x-forms.input :required="$is_redis_credential" type="password" id="value" />
+                                <x-forms.env-var-input
+                                    :required="$is_redis_credential"
+                                    type="password"
+                                    id="value"
+                                    :availableVars="$isSharedVariable ? [] : $this->availableSharedVariables"
+                                    :projectUuid="data_get($parameters, 'project_uuid')"
+                                    :environmentUuid="data_get($parameters, 'environment_uuid')"
+                                    :serverUuid="data_get($parameters, 'server_uuid')" />
                             @endif
                             @if ($is_shared)
                                 <x-forms.input :disabled="$is_redis_credential" :required="$is_redis_credential" disabled
@@ -161,7 +175,14 @@
                 <div class="flex flex-col w-full gap-2">
                     <div class="flex flex-col w-full gap-2 lg:flex-row">
                         <x-forms.input disabled id="key" />
-                        <x-forms.input disabled type="password" id="value" />
+                        <x-forms.env-var-input
+                            disabled
+                            type="password"
+                            id="value"
+                            :availableVars="$isSharedVariable ? [] : $this->availableSharedVariables"
+                            :projectUuid="data_get($parameters, 'project_uuid')"
+                            :environmentUuid="data_get($parameters, 'environment_uuid')"
+                            :serverUuid="data_get($parameters, 'server_uuid')" />
                         @if ($is_shared)
                             <x-forms.input disabled type="password" id="real_value" />
                         @endif

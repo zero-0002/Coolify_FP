@@ -1282,7 +1282,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             });
 
             foreach ($runtime_environment_variables as $env) {
-                $envs->push($env->key.'='.$env->real_value);
+                $envs->push($env->key.'='.$env->getResolvedValueWithServer($this->mainServer));
             }
 
             // Check for PORT environment variable mismatch with ports_exposes
@@ -1348,7 +1348,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             });
 
             foreach ($runtime_environment_variables_preview as $env) {
-                $envs->push($env->key.'='.$env->real_value);
+                $envs->push($env->key.'='.$env->getResolvedValueWithServer($this->mainServer));
             }
 
             // Fall back to production env vars for keys not overridden by preview vars,
@@ -1362,7 +1362,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     return $env->is_runtime && ! in_array($env->key, $previewKeys);
                 });
                 foreach ($fallback_production_vars as $env) {
-                    $envs->push($env->key.'='.$env->real_value);
+                    $envs->push($env->key.'='.$env->getResolvedValueWithServer($this->mainServer));
                 }
             }
 
@@ -1604,10 +1604,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
 
             foreach ($sorted_environment_variables as $env) {
+                $resolvedValue = $env->getResolvedValueWithServer($this->mainServer);
                 // For literal/multiline vars, real_value includes quotes that we need to remove
                 if ($env->is_literal || $env->is_multiline) {
                     // Strip outer quotes from real_value and apply proper bash escaping
-                    $value = trim($env->real_value, "'");
+                    $value = trim($resolvedValue, "'");
                     $escapedValue = escapeBashEnvValue($value);
 
                     if (isDev() && isset($envs_dict[$env->key])) {
@@ -1619,13 +1620,13 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     if (isDev()) {
                         $this->application_deployment_queue->addLogEntry("[DEBUG] Build-time env: {$env->key}");
                         $this->application_deployment_queue->addLogEntry('[DEBUG]   Type: literal/multiline');
-                        $this->application_deployment_queue->addLogEntry("[DEBUG]   raw real_value: {$env->real_value}");
+                        $this->application_deployment_queue->addLogEntry("[DEBUG]   raw real_value: {$resolvedValue}");
                         $this->application_deployment_queue->addLogEntry("[DEBUG]   stripped value: {$value}");
                         $this->application_deployment_queue->addLogEntry("[DEBUG]   final escaped: {$escapedValue}");
                     }
                 } else {
                     // For normal vars, use double quotes to allow $VAR expansion
-                    $escapedValue = escapeBashDoubleQuoted($env->real_value);
+                    $escapedValue = escapeBashDoubleQuoted($resolvedValue);
 
                     if (isDev() && isset($envs_dict[$env->key])) {
                         $this->application_deployment_queue->addLogEntry("[DEBUG] User override: {$env->key} (was: {$envs_dict[$env->key]}, now: {$escapedValue})");
@@ -1636,7 +1637,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     if (isDev()) {
                         $this->application_deployment_queue->addLogEntry("[DEBUG] Build-time env: {$env->key}");
                         $this->application_deployment_queue->addLogEntry('[DEBUG]   Type: normal (allows expansion)');
-                        $this->application_deployment_queue->addLogEntry("[DEBUG]   real_value: {$env->real_value}");
+                        $this->application_deployment_queue->addLogEntry("[DEBUG]   real_value: {$resolvedValue}");
                         $this->application_deployment_queue->addLogEntry("[DEBUG]   final escaped: {$escapedValue}");
                     }
                 }
@@ -1655,10 +1656,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
 
             foreach ($sorted_environment_variables as $env) {
+                $resolvedValue = $env->getResolvedValueWithServer($this->mainServer);
                 // For literal/multiline vars, real_value includes quotes that we need to remove
                 if ($env->is_literal || $env->is_multiline) {
                     // Strip outer quotes from real_value and apply proper bash escaping
-                    $value = trim($env->real_value, "'");
+                    $value = trim($resolvedValue, "'");
                     $escapedValue = escapeBashEnvValue($value);
 
                     if (isDev() && isset($envs_dict[$env->key])) {
@@ -1670,13 +1672,13 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     if (isDev()) {
                         $this->application_deployment_queue->addLogEntry("[DEBUG] Build-time env: {$env->key}");
                         $this->application_deployment_queue->addLogEntry('[DEBUG]   Type: literal/multiline');
-                        $this->application_deployment_queue->addLogEntry("[DEBUG]   raw real_value: {$env->real_value}");
+                        $this->application_deployment_queue->addLogEntry("[DEBUG]   raw real_value: {$resolvedValue}");
                         $this->application_deployment_queue->addLogEntry("[DEBUG]   stripped value: {$value}");
                         $this->application_deployment_queue->addLogEntry("[DEBUG]   final escaped: {$escapedValue}");
                     }
                 } else {
                     // For normal vars, use double quotes to allow $VAR expansion
-                    $escapedValue = escapeBashDoubleQuoted($env->real_value);
+                    $escapedValue = escapeBashDoubleQuoted($resolvedValue);
 
                     if (isDev() && isset($envs_dict[$env->key])) {
                         $this->application_deployment_queue->addLogEntry("[DEBUG] User override: {$env->key} (was: {$envs_dict[$env->key]}, now: {$escapedValue})");
@@ -1687,7 +1689,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     if (isDev()) {
                         $this->application_deployment_queue->addLogEntry("[DEBUG] Build-time env: {$env->key}");
                         $this->application_deployment_queue->addLogEntry('[DEBUG]   Type: normal (allows expansion)');
-                        $this->application_deployment_queue->addLogEntry("[DEBUG]   real_value: {$env->real_value}");
+                        $this->application_deployment_queue->addLogEntry("[DEBUG]   real_value: {$resolvedValue}");
                         $this->application_deployment_queue->addLogEntry("[DEBUG]   final escaped: {$escapedValue}");
                     }
                 }
@@ -2392,15 +2394,17 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->env_nixpacks_args = collect([]);
         if ($this->pull_request_id === 0) {
             foreach ($this->application->nixpacks_environment_variables as $env) {
-                if (! is_null($env->real_value) && $env->real_value !== '') {
-                    $value = ($env->is_literal || $env->is_multiline) ? trim($env->real_value, "'") : $env->real_value;
+                $resolvedValue = $env->getResolvedValueWithServer($this->mainServer);
+                if (! is_null($resolvedValue) && $resolvedValue !== '') {
+                    $value = ($env->is_literal || $env->is_multiline) ? trim($resolvedValue, "'") : $resolvedValue;
                     $this->env_nixpacks_args->push('--env '.escapeShellValue("{$env->key}={$value}"));
                 }
             }
         } else {
             foreach ($this->application->nixpacks_environment_variables_preview as $env) {
-                if (! is_null($env->real_value) && $env->real_value !== '') {
-                    $value = ($env->is_literal || $env->is_multiline) ? trim($env->real_value, "'") : $env->real_value;
+                $resolvedValue = $env->getResolvedValueWithServer($this->mainServer);
+                if (! is_null($resolvedValue) && $resolvedValue !== '') {
+                    $value = ($env->is_literal || $env->is_multiline) ? trim($resolvedValue, "'") : $resolvedValue;
                     $this->env_nixpacks_args->push('--env '.escapeShellValue("{$env->key}={$value}"));
                 }
             }
@@ -2539,8 +2543,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ->get();
 
             foreach ($envs as $env) {
-                if (! is_null($env->real_value)) {
-                    $this->env_args->put($env->key, $env->real_value);
+                $resolvedValue = $env->getResolvedValueWithServer($this->mainServer);
+                if (! is_null($resolvedValue)) {
+                    $this->env_args->put($env->key, $resolvedValue);
                 }
             }
         } else {
@@ -2550,8 +2555,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ->get();
 
             foreach ($envs as $env) {
-                if (! is_null($env->real_value)) {
-                    $this->env_args->put($env->key, $env->real_value);
+                $resolvedValue = $env->getResolvedValueWithServer($this->mainServer);
+                if (! is_null($resolvedValue)) {
+                    $this->env_args->put($env->key, $resolvedValue);
                 }
             }
         }
@@ -3566,7 +3572,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         } else {
             $secrets_string = $variables
                 ->map(function ($env) {
-                    return "{$env->key}={$env->real_value}";
+                    return "{$env->key}={$env->getResolvedValueWithServer($this->mainServer)}";
                 })
                 ->sort()
                 ->implode('|');
@@ -3632,7 +3638,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 if (data_get($env, 'is_multiline') === true) {
                     $argsToInsert->push("ARG {$env->key}");
                 } else {
-                    $argsToInsert->push("ARG {$env->key}={$env->real_value}");
+                    $argsToInsert->push("ARG {$env->key}={$env->getResolvedValueWithServer($this->mainServer)}");
                 }
             }
             // Add Coolify variables as ARGs
@@ -3654,7 +3660,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 if (data_get($env, 'is_multiline') === true) {
                     $argsToInsert->push("ARG {$env->key}");
                 } else {
-                    $argsToInsert->push("ARG {$env->key}={$env->real_value}");
+                    $argsToInsert->push("ARG {$env->key}={$env->getResolvedValueWithServer($this->mainServer)}");
                 }
             }
             // Add Coolify variables as ARGs
@@ -3690,7 +3696,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 }
             }
             $envs_mapped = $envs->mapWithKeys(function ($env) {
-                return [$env->key => $env->real_value];
+                return [$env->key => $env->getResolvedValueWithServer($this->mainServer)];
             });
             $secrets_hash = $this->generate_secrets_hash($envs_mapped);
             $argsToInsert->push("ARG COOLIFY_BUILD_SECRETS_HASH={$secrets_hash}");
