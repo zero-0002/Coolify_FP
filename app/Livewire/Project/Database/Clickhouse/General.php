@@ -79,7 +79,7 @@ class General extends Component
             'clickhouseAdminUser' => 'required|string',
             'clickhouseAdminPassword' => 'required|string',
             'image' => 'required|string',
-            'portsMappings' => 'nullable|string',
+            'portsMappings' => ValidationPatterns::portMappingRules(),
             'isPublic' => 'nullable|boolean',
             'publicPort' => 'nullable|integer|min:1|max:65535',
             'publicPortTimeout' => 'nullable|integer|min:1',
@@ -94,6 +94,7 @@ class General extends Component
     {
         return array_merge(
             ValidationPatterns::combinedMessages(),
+            ValidationPatterns::portMappingMessages(),
             [
                 'clickhouseAdminUser.required' => 'The Admin User field is required.',
                 'clickhouseAdminUser.string' => 'The Admin User must be a string.',
@@ -209,6 +210,9 @@ class General extends Component
         try {
             $this->authorize('update', $this->database);
 
+            if ($this->portsMappings) {
+                $this->portsMappings = str($this->portsMappings)->replace(' ', '')->trim()->toString();
+            }
             if (str($this->publicPort)->isEmpty()) {
                 $this->publicPort = null;
             }

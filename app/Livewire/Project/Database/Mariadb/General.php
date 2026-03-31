@@ -61,9 +61,11 @@ class General extends Component
     public function getListeners()
     {
         $userId = Auth::id();
+        $teamId = Auth::user()->currentTeam()->id;
 
         return [
-            "echo-private:user.{$userId},DatabaseStatusChanged" => '$refresh',
+            "echo-private:user.{$userId},DatabaseStatusChanged" => 'refresh',
+            "echo-private:team.{$teamId},ServiceChecked" => 'refresh',
         ];
     }
 
@@ -78,7 +80,7 @@ class General extends Component
             'mariadbDatabase' => 'required',
             'mariadbConf' => 'nullable',
             'image' => 'required',
-            'portsMappings' => 'nullable',
+            'portsMappings' => ValidationPatterns::portMappingRules(),
             'isPublic' => 'nullable|boolean',
             'publicPort' => 'nullable|integer|min:1|max:65535',
             'publicPortTimeout' => 'nullable|integer|min:1',
@@ -92,6 +94,7 @@ class General extends Component
     {
         return array_merge(
             ValidationPatterns::combinedMessages(),
+            ValidationPatterns::portMappingMessages(),
             [
                 'name.required' => 'The Name field is required.',
                 'mariadbRootPassword.required' => 'The Root Password field is required.',
@@ -215,6 +218,9 @@ class General extends Component
         try {
             $this->authorize('update', $this->database);
 
+            if ($this->portsMappings) {
+                $this->portsMappings = str($this->portsMappings)->replace(' ', '')->trim()->toString();
+            }
             if (str($this->publicPort)->isEmpty()) {
                 $this->publicPort = null;
             }

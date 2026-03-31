@@ -237,10 +237,11 @@ function clone_application(Application $source, $destination, array $overrides =
             'id',
             'created_at',
             'updated_at',
-        ])->fill([
+        ])->forceFill([
             'application_id' => $newApplication->id,
         ]);
         $newApplicationSettings->save();
+        $newApplication->setRelation('settings', $newApplicationSettings->fresh());
     }
 
     // Clone tags
@@ -256,7 +257,7 @@ function clone_application(Application $source, $destination, array $overrides =
             'id',
             'created_at',
             'updated_at',
-        ])->fill([
+        ])->forceFill([
             'uuid' => (string) new Cuid2,
             'application_id' => $newApplication->id,
             'team_id' => currentTeam()->id,
@@ -271,7 +272,7 @@ function clone_application(Application $source, $destination, array $overrides =
             'id',
             'created_at',
             'updated_at',
-        ])->fill([
+        ])->forceFill([
             'uuid' => (string) new Cuid2,
             'application_id' => $newApplication->id,
             'status' => 'exited',
@@ -303,7 +304,7 @@ function clone_application(Application $source, $destination, array $overrides =
             'created_at',
             'updated_at',
             'uuid',
-        ])->fill([
+        ])->forceFill([
             'name' => $newName,
             'resource_id' => $newApplication->id,
         ]);
@@ -339,7 +340,7 @@ function clone_application(Application $source, $destination, array $overrides =
             'id',
             'created_at',
             'updated_at',
-        ])->fill([
+        ])->forceFill([
             'resource_id' => $newApplication->id,
         ]);
         $newStorage->save();
@@ -353,7 +354,7 @@ function clone_application(Application $source, $destination, array $overrides =
                 'id',
                 'created_at',
                 'updated_at',
-            ])->fill([
+            ])->forceFill([
                 'resourceable_id' => $newApplication->id,
                 'resourceable_type' => $newApplication->getMorphClass(),
                 'is_preview' => false,
@@ -370,7 +371,7 @@ function clone_application(Application $source, $destination, array $overrides =
                 'id',
                 'created_at',
                 'updated_at',
-            ])->fill([
+            ])->forceFill([
                 'resourceable_id' => $newApplication->id,
                 'resourceable_type' => $newApplication->getMorphClass(),
                 'is_preview' => true,
