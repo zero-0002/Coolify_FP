@@ -155,12 +155,7 @@ class Server extends BaseModel
                         'server_id' => $server->id,
                     ])->save();
                 } else {
-                    (new StandaloneDocker)->forceFill([
-                        'id' => 0,
-                        'name' => 'coolify',
-                        'network' => 'coolify',
-                        'server_id' => $server->id,
-                    ])->saveQuietly();
+                    (new StandaloneDocker)->forceFill($server->defaultStandaloneDockerAttributes(id: 0))->saveQuietly();
                 }
             } else {
                 if ($server->isSwarm()) {
@@ -171,12 +166,7 @@ class Server extends BaseModel
                     ]);
                 } else {
                     $standaloneDocker = new StandaloneDocker;
-                    $standaloneDocker->forceFill([
-                        'name' => 'coolify',
-                        'uuid' => (string) new Cuid2,
-                        'network' => 'coolify',
-                        'server_id' => $server->id,
-                    ]);
+                    $standaloneDocker->forceFill($server->defaultStandaloneDockerAttributes());
                     $standaloneDocker->saveQuietly();
                 }
             }
@@ -1041,6 +1031,25 @@ $schema://$host {
     public function team()
     {
         return $this->belongsTo(Team::class);
+    }
+
+    /**
+     * @return array{id?: int, name: string, uuid: string, network: string, server_id: int}
+     */
+    public function defaultStandaloneDockerAttributes(?int $id = null): array
+    {
+        $attributes = [
+            'name' => 'coolify',
+            'uuid' => (string) new Cuid2,
+            'network' => 'coolify',
+            'server_id' => $this->id,
+        ];
+
+        if (! is_null($id)) {
+            $attributes['id'] = $id;
+        }
+
+        return $attributes;
     }
 
     public function environment_variables()
