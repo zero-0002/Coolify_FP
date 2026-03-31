@@ -4,27 +4,18 @@
         <x-modal-input buttonTitle="+ Add GitHub App" title="New GitHub App" closeOutside="false">
             <livewire:source.github.create />
         </x-modal-input>
+        @if ($repositories->count() > 0)
+            <x-forms.button wire:click.prevent="loadRepositories({{ $github_app->id }})">
+                Refresh Repository List
+            </x-forms.button>
+            <a target="_blank" class="inline-flex items-center self-center gap-1 text-sm hover:underline dark:text-neutral-400"
+                href="{{ getInstallationPath($github_app) }}">
+                Change Repositories on GitHub
+                <x-external-link />
+            </a>
+        @endif
     </div>
     <div class="pb-4">Deploy any public or private Git repositories through a GitHub App.</div>
-    @if ($repositories->count() > 0)
-        <div class="flex items-center gap-2 pb-4">
-            <a target="_blank" class="flex hover:no-underline" href="{{ getInstallationPath($github_app) }}">
-                <x-forms.button>
-                    Change Repositories on GitHub
-                    <x-external-link />
-                </x-forms.button>
-            </a>
-            <x-forms.button :showLoadingIndicator="false" wire:click.prevent="loadRepositories({{ $github_app->id }})" title="Refresh Repository List">
-                <svg class="w-4 h-4" wire:loading.remove wire:target="loadRepositories({{ $github_app->id }})" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                </svg>
-                <svg class="w-4 h-4 animate-spin" wire:loading wire:target="loadRepositories({{ $github_app->id }})" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </x-forms.button>
-        </div>
-    @endif
     @if ($github_apps->count() !== 0)
         <div class="flex flex-col gap-2">
             @if ($current_step === 'github_apps')
@@ -62,7 +53,10 @@
                                 @endforeach
                             </x-forms.datalist>
                         </div>
-                        <x-forms.button wire:click.prevent="loadBranches"> Load Repository </x-forms.button>
+                        <x-forms.button :showLoadingIndicator="false" wire:click.prevent="loadBranches" wire:target="loadBranches, selected_repository_id">
+                            Load Repository
+                            <x-loading-on-button wire:loading.delay wire:target="loadBranches, selected_repository_id" />
+                        </x-forms.button>
                     </div>
                 @else
                     <div>No repositories found. Check your GitHub App configuration.</div>

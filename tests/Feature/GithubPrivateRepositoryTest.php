@@ -31,7 +31,7 @@ beforeEach(function () {
         'team_id' => $this->team->id,
     ]);
 
-    $this->githubApp = GithubApp::create([
+    $this->githubApp = GithubApp::forceCreate([
         'name' => 'Test GitHub App',
         'api_url' => 'https://api.github.com',
         'html_url' => 'https://github.com',
@@ -86,25 +86,63 @@ describe('GitHub Private Repository Component', function () {
             ['id' => 1, 'name' => 'alpha-repo', 'owner' => ['login' => 'testuser']],
         ];
 
-        fakeGithubHttp($initialRepos);
-
-        $component = Livewire::test(GithubPrivateRepository::class, ['type' => 'private-gh-app'])
-            ->call('loadRepositories', $this->githubApp->id)
-            ->assertSet('total_repositories_count', 1);
-
-        // Simulate new repos becoming available after changing access on GitHub
         $updatedRepos = [
             ['id' => 1, 'name' => 'alpha-repo', 'owner' => ['login' => 'testuser']],
             ['id' => 2, 'name' => 'beta-repo', 'owner' => ['login' => 'testuser']],
             ['id' => 3, 'name' => 'gamma-repo', 'owner' => ['login' => 'testuser']],
         ];
 
-        fakeGithubHttp($updatedRepos);
+        $callCount = 0;
+        Http::fake([
+            'https://api.github.com/zen' => Http::response('Keep it logically awesome.', 200, [
+                'Date' => now()->toRfc7231String(),
+            ]),
+            'https://api.github.com/app/installations/67890/access_tokens' => Http::response([
+                'token' => 'fake-installation-token',
+            ], 201),
+            'https://api.github.com/installation/repositories*' => function () use (&$callCount, $initialRepos, $updatedRepos) {
+                $callCount++;
+                $repos = $callCount === 1 ? $initialRepos : $updatedRepos;
 
+                return Http::response([
+                    'total_count' => count($repos),
+                    'repositories' => $repos,
+                ], 200);
+            },
+        ]);
+
+        $component = Livewire::test(GithubPrivateRepository::class, ['type' => 'private-gh-app'])
+            ->call('loadRepositories', $this->githubApp->id)
+            ->assertSet('total_repositories_count', 1);
+
+        // Simulate new repos becoming available after changing access on GitHub
         $component
             ->call('loadRepositories', $this->githubApp->id)
             ->assertSet('total_repositories_count', 3)
             ->assertSet('current_step', 'repository');
+    });
+
+    test('loadRepositories resets branches when refreshing', function () {
+        $repos = [
+            ['id' => 1, 'name' => 'alpha-repo', 'owner' => ['login' => 'testuser']],
+        ];
+
+        fakeGithubHttp($repos);
+
+        $component = Livewire::test(GithubPrivateRepository::class, ['type' => 'private-gh-app'])
+            ->call('loadRepositories', $this->githubApp->id);
+
+        // Manually set branches to simulate a previous branch load
+        $component->set('branches', collect([['name' => 'main'], ['name' => 'develop']]));
+        $component->set('total_branches_count', 2);
+
+        // Refresh repositories should reset branches
+        fakeGithubHttp($repos);
+
+        $component
+            ->call('loadRepositories', $this->githubApp->id)
+            ->assertSet('total_branches_count', 0)
+            ->assertSet('branches', collect());
     });
 
     test('refresh button is visible when repositories are loaded', function () {
@@ -116,11 +154,11 @@ describe('GitHub Private Repository Component', function () {
 
         Livewire::test(GithubPrivateRepository::class, ['type' => 'private-gh-app'])
             ->call('loadRepositories', $this->githubApp->id)
-            ->assertSeeHtml('title="Refresh Repository List"');
+            ->assertSee('Refresh Repository List');
     });
 
     test('refresh button is not visible before repositories are loaded', function () {
         Livewire::test(GithubPrivateRepository::class, ['type' => 'private-gh-app'])
-            ->assertDontSeeHtml('title="Refresh Repository List"');
+            ->assertDontSee('Refresh Repository List');
     });
 });
