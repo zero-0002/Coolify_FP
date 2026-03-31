@@ -143,28 +143,28 @@ class Server extends BaseModel
             }
         });
         static::created(function ($server) {
-            ServerSetting::forceCreate([
+            ServerSetting::create([
                 'server_id' => $server->id,
             ]);
             if ($server->id === 0) {
                 if ($server->isSwarm()) {
-                    SwarmDocker::forceCreate([
+                    (new SwarmDocker)->forceFill([
                         'id' => 0,
                         'name' => 'coolify',
                         'network' => 'coolify-overlay',
                         'server_id' => $server->id,
-                    ]);
+                    ])->save();
                 } else {
-                    StandaloneDocker::forceCreate([
+                    (new StandaloneDocker)->forceFill([
                         'id' => 0,
                         'name' => 'coolify',
                         'network' => 'coolify',
                         'server_id' => $server->id,
-                    ]);
+                    ])->saveQuietly();
                 }
             } else {
                 if ($server->isSwarm()) {
-                    SwarmDocker::forceCreate([
+                    SwarmDocker::create([
                         'name' => 'coolify-overlay',
                         'network' => 'coolify-overlay',
                         'server_id' => $server->id,
