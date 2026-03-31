@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasSafeStringAttribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use OpenApi\Attributes as OA;
 
 #[OA\Schema(
@@ -21,9 +22,13 @@ use OpenApi\Attributes as OA;
 class Environment extends BaseModel
 {
     use ClearsGlobalSearchCache;
+    use HasFactory;
     use HasSafeStringAttribute;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'name',
+        'description',
+    ];
 
     protected static function booted()
     {

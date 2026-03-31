@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use OpenApi\Attributes as OA;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Url\Url;
+use Symfony\Component\Yaml\Yaml;
 use Visus\Cuid2\Cuid2;
 
 #[OA\Schema(
@@ -47,7 +48,17 @@ class Service extends BaseModel
 
     private static $parserVersion = '5';
 
-    protected $guarded = [];
+    protected $fillable = [
+        'name',
+        'description',
+        'docker_compose_raw',
+        'docker_compose',
+        'connect_to_docker_network',
+        'service_type',
+        'config_hash',
+        'compose_parsing_version',
+        'is_container_label_escape_enabled',
+    ];
 
     protected $appends = ['server_status', 'status'];
 
@@ -881,7 +892,7 @@ class Service extends BaseModel
                             ],
                         ]);
                     }
-                        if ($SERVICE_PASSWORD_LINKDING) {
+                    if ($SERVICE_PASSWORD_LINKDING) {
                         $data = $data->merge([
                             'Superuser Password' => [
                                 'key' => data_get($SERVICE_PASSWORD_LINKDING, 'key'),
@@ -1117,6 +1128,40 @@ class Service extends BaseModel
                         ]);
                     }
                     $fields->put('Sessy', $data->toArray());
+                    break;
+                case $image->contains('coollabsio/openclaw'):
+                    $data = collect([]);
+                    $username = $this->environment_variables()->where('key', 'AUTH_USERNAME')->first();
+                    $password = $this->environment_variables()->where('key', 'SERVICE_PASSWORD_OPENCLAW')->first();
+                    $gateway_token = $this->environment_variables()->where('key', 'SERVICE_PASSWORD_64_GATEWAYTOKEN')->first();
+                    if ($username) {
+                        $data = $data->merge([
+                            'Username' => [
+                                'key' => data_get($username, 'key'),
+                                'value' => data_get($username, 'value'),
+                                'readonly' => true,
+                            ],
+                        ]);
+                    }
+                    if ($password) {
+                        $data = $data->merge([
+                            'Password' => [
+                                'key' => data_get($password, 'key'),
+                                'value' => data_get($password, 'value'),
+                                'isPassword' => true,
+                            ],
+                        ]);
+                    }
+                    if ($gateway_token) {
+                        $data = $data->merge([
+                            'Gateway Token' => [
+                                'key' => data_get($gateway_token, 'key'),
+                                'value' => data_get($gateway_token, 'value'),
+                                'isPassword' => true,
+                            ],
+                        ]);
+                    }
+                    $fields->put('Openclaw', $data->toArray());
                     break;
                 default:
                     $data = collect([]);
@@ -1518,7 +1563,7 @@ class Service extends BaseModel
         // Generate SERVICE_NAME_* environment variables from docker-compose services
         if ($this->docker_compose) {
             try {
-                $dockerCompose = \Symfony\Component\Yaml\Yaml::parse($this->docker_compose);
+                $dockerCompose = Yaml::parse($this->docker_compose);
                 $services = data_get($dockerCompose, 'services', []);
                 foreach ($services as $serviceName => $_) {
                     $envs->push('SERVICE_NAME_'.str($serviceName)->replace('-', '_')->replace('.', '_')->upper().'='.$serviceName);

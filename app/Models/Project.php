@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasSafeStringAttribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use OpenApi\Attributes as OA;
 use Visus\Cuid2\Cuid2;
 
@@ -20,9 +21,13 @@ use Visus\Cuid2\Cuid2;
 class Project extends BaseModel
 {
     use ClearsGlobalSearchCache;
+    use HasFactory;
     use HasSafeStringAttribute;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'name',
+        'description',
+    ];
 
     /**
      * Get query builder for projects owned by current team.
@@ -46,10 +51,10 @@ class Project extends BaseModel
     protected static function booted()
     {
         static::created(function ($project) {
-            ProjectSetting::create([
+            ProjectSetting::forceCreate([
                 'project_id' => $project->id,
             ]);
-            Environment::create([
+            Environment::forceCreate([
                 'name' => 'production',
                 'project_id' => $project->id,
                 'uuid' => (string) new Cuid2,

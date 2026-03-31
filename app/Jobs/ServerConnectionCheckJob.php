@@ -101,22 +101,34 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                 'is_usable' => false,
             ]);
 
-            throw $e;
+            return;
+        }
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        if ($exception instanceof \Illuminate\Queue\TimeoutExceededException) {
+            $this->server->settings->update([
+                'is_reachable' => false,
+                'is_usable' => false,
+            ]);
+
+            // Delete the queue job so it doesn't appear in Horizon's failed list.
+            $this->job?->delete();
         }
     }
 
     private function checkHetznerStatus(): void
     {
+        $status = null;
+
         try {
             $hetznerService = new \App\Services\HetznerService($this->server->cloudProviderToken->token);
             $serverData = $hetznerService->getServer($this->server->hetzner_server_id);
             $status = $serverData['status'] ?? null;
 
-        } catch (\Throwable $e) {
-            Log::debug('ServerConnectionCheck: Hetzner status check failed', [
-                'server_id' => $this->server->id,
-                'error' => $e->getMessage(),
-            ]);
+        } catch (\Throwable) {
+            // Silently ignore — server may have been deleted from Hetzner.
         }
         if ($this->server->hetzner_server_status !== $status) {
             $this->server->update(['hetzner_server_status' => $status]);

@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\StandaloneDocker;
 use App\Models\SwarmDocker;
 use App\Rules\ValidGitBranch;
+use App\Support\ValidationPatterns;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Livewire\Component;
@@ -73,6 +74,11 @@ class GithubPrivateRepository extends Component
         $this->query = request()->query();
         $this->repositories = $this->branches = collect();
         $this->github_apps = GithubApp::private();
+    }
+
+    public function updatedSelectedRepositoryId(): void
+    {
+        $this->loadBranches();
     }
 
     public function updatedBuildPack()
@@ -158,10 +164,12 @@ class GithubPrivateRepository extends Component
                 'selected_repository_owner' => $this->selected_repository_owner,
                 'selected_repository_repo' => $this->selected_repository_repo,
                 'selected_branch_name' => $this->selected_branch_name,
+                'docker_compose_location' => $this->docker_compose_location,
             ], [
                 'selected_repository_owner' => 'required|string|regex:/^[a-zA-Z0-9\-_]+$/',
                 'selected_repository_repo' => 'required|string|regex:/^[a-zA-Z0-9\-_\.]+$/',
                 'selected_branch_name' => ['required', 'string', new ValidGitBranch],
+                'docker_compose_location' => ValidationPatterns::filePathRules(),
             ]);
 
             if ($validator->fails()) {
@@ -178,10 +186,10 @@ class GithubPrivateRepository extends Component
             }
             $destination_class = $destination->getMorphClass();
 
-            $project = Project::where('uuid', $this->parameters['project_uuid'])->first();
-            $environment = $project->load(['environments'])->environments->where('uuid', $this->parameters['environment_uuid'])->first();
+            $project = Project::ownedByCurrentTeam()->where('uuid', $this->parameters['project_uuid'])->firstOrFail();
+            $environment = $project->environments()->where('uuid', $this->parameters['environment_uuid'])->firstOrFail();
 
-            $application = Application::create([
+            $application = Application::forceCreate([
                 'name' => generate_application_name($this->selected_repository_owner.'/'.$this->selected_repository_repo, $this->selected_branch_name),
                 'repository_project_id' => $this->selected_repository_id,
                 'git_repository' => str($this->selected_repository_owner)->trim()->toString().'/'.str($this->selected_repository_repo)->trim()->toString(),

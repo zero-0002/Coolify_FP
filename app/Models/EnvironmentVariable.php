@@ -24,6 +24,7 @@ use OpenApi\Attributes as OA;
         'key' => ['type' => 'string'],
         'value' => ['type' => 'string'],
         'real_value' => ['type' => 'string'],
+        'comment' => ['type' => 'string', 'nullable' => true],
         'version' => ['type' => 'string'],
         'created_at' => ['type' => 'string'],
         'updated_at' => ['type' => 'string'],
@@ -31,7 +32,35 @@ use OpenApi\Attributes as OA;
 )]
 class EnvironmentVariable extends BaseModel
 {
-    protected $guarded = [];
+    protected $attributes = [
+        'is_runtime' => true,
+        'is_buildtime' => true,
+    ];
+
+    protected $fillable = [
+        // Core identification
+        'key',
+        'value',
+        'comment',
+
+        // Polymorphic relationship
+        'resourceable_type',
+        'resourceable_id',
+
+        // Boolean flags
+        'is_preview',
+        'is_multiline',
+        'is_literal',
+        'is_runtime',
+        'is_buildtime',
+        'is_shown_once',
+        'is_shared',
+        'is_required',
+
+        // Metadata
+        'version',
+        'order',
+    ];
 
     protected $casts = [
         'key' => 'string',
@@ -67,6 +96,7 @@ class EnvironmentVariable extends BaseModel
                             'is_literal' => $environment_variable->is_literal ?? false,
                             'is_runtime' => $environment_variable->is_runtime ?? false,
                             'is_buildtime' => $environment_variable->is_buildtime ?? false,
+                            'comment' => $environment_variable->comment,
                             'resourceable_type' => Application::class,
                             'resourceable_id' => $environment_variable->resourceable_id,
                             'is_preview' => true,
@@ -134,6 +164,12 @@ class EnvironmentVariable extends BaseModel
                 }
 
                 $real_value = $this->get_real_environment_variables($this->value, $resource);
+
+                // Skip escaping for valid JSON objects/arrays to prevent quote corruption (see #6160)
+                if (json_validate($real_value) && (str_starts_with($real_value, '{') || str_starts_with($real_value, '['))) {
+                    return $real_value;
+                }
+
                 if ($this->is_literal || $this->is_multiline) {
                     $real_value = '\''.$real_value.'\'';
                 } else {
@@ -219,6 +255,12 @@ class EnvironmentVariable extends BaseModel
         }
 
         $real_value = $this->get_real_environment_variables_internal($this->value, $resource, $server);
+
+        // Skip escaping for valid JSON objects/arrays to prevent quote corruption (see #6160)
+        if (json_validate($real_value) && (str_starts_with($real_value, '{') || str_starts_with($real_value, '['))) {
+            return $real_value;
+        }
+
         if ($this->is_literal || $this->is_multiline) {
             $real_value = '\''.$real_value.'\'';
         } else {
@@ -228,10 +270,15 @@ class EnvironmentVariable extends BaseModel
         return $real_value;
     }
 
+    private function get_real_environment_variables(?string $environment_variable = null, $resource = null)
+    {
+        return $this->get_real_environment_variables_internal($environment_variable, $resource);
+    }
+
     private function get_real_environment_variables_internal(?string $environment_variable = null, $resource = null, $serverOverride = null)
     {
-        if ((is_null($environment_variable) && $environment_variable === '') || is_null($resource)) {
-            return null;
+        if (is_null($environment_variable) || $environment_variable === '' || is_null($resource)) {
+            return $environment_variable;
         }
         $environment_variable = trim($environment_variable);
         $sharedEnvsFound = str($environment_variable)->matchAll('/{{(.*?)}}/');
@@ -244,6 +291,7 @@ class EnvironmentVariable extends BaseModel
                 continue;
             }
             $variable = str($sharedEnv)->trim()->match('/\.(.*)/');
+            $id = null;
             if ($type->value() === 'environment') {
                 $id = $resource->environment->id;
             } elseif ($type->value() === 'project') {
@@ -251,32 +299,28 @@ class EnvironmentVariable extends BaseModel
             } elseif ($type->value() === 'team') {
                 $id = $resource->team()->id;
             } elseif ($type->value() === 'server') {
-                // Use server override if provided (for deployment context), otherwise use resource's server
                 if ($serverOverride) {
                     $id = $serverOverride->id;
                 } elseif (isset($resource->server) && $resource->server) {
                     $id = $resource->server->id;
                 } elseif (isset($resource->destination) && $resource->destination && isset($resource->destination->server)) {
                     $id = $resource->destination->server->id;
-                } else {
-                    $id = null;
                 }
             }
             if (is_null($id)) {
                 continue;
             }
-            $environment_variable_found = SharedEnvironmentVariable::where('type', $type)->where('key', $variable)->where('team_id', $resource->team()->id)->where("{$type}_id", $id)->first();
-            if ($environment_variable_found) {
-                $environment_variable = str($environment_variable)->replace("{{{$sharedEnv}}}", $environment_variable_found->value);
+            $found = SharedEnvironmentVariable::where('type', $type)
+                ->where('key', $variable)
+                ->where('team_id', $resource->team()->id)
+                ->where("{$type}_id", $id)
+                ->first();
+            if ($found) {
+                $environment_variable = str($environment_variable)->replace("{{{$sharedEnv}}}", $found->value);
             }
         }
 
         return str($environment_variable)->value();
-    }
-
-    private function get_real_environment_variables(?string $environment_variable = null, $resource = null)
-    {
-        return $this->get_real_environment_variables_internal($environment_variable, $resource);
     }
 
     private function get_environment_variables(?string $environment_variable = null): ?string

@@ -5,10 +5,12 @@ namespace App\Livewire\Project\Database;
 use App\Models\S3Storage;
 use App\Models\Server;
 use App\Models\Service;
+use App\Support\ValidationPatterns;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class Import extends Component
@@ -104,17 +106,22 @@ class Import extends Component
     public bool $unsupported = false;
 
     // Store IDs instead of models for proper Livewire serialization
+    #[Locked]
     public ?int $resourceId = null;
 
+    #[Locked]
     public ?string $resourceType = null;
 
+    #[Locked]
     public ?int $serverId = null;
 
     // View-friendly properties to avoid computed property access in Blade
+    #[Locked]
     public string $resourceUuid = '';
 
     public string $resourceStatus = '';
 
+    #[Locked]
     public string $resourceDbType = '';
 
     public array $parameters = [];
@@ -135,6 +142,7 @@ class Import extends Component
 
     public bool $error = false;
 
+    #[Locked]
     public string $container;
 
     public array $importCommands = [];
@@ -147,7 +155,7 @@ class Import extends Component
 
     public ?int $activityId = null;
 
-    public string $postgresqlRestoreCommand = 'pg_restore -U $POSTGRES_USER -d ${POSTGRES_DB:\${POSTGRES_USER:-postgres}}';
+    public string $postgresqlRestoreCommand = 'pg_restore -U $POSTGRES_USER -d ${POSTGRES_DB:-${POSTGRES_USER:-postgres}}';
 
     public string $mysqlRestoreCommand = 'mysql -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE';
 
@@ -181,7 +189,7 @@ class Import extends Component
             return null;
         }
 
-        return Server::find($this->serverId);
+        return Server::ownedByCurrentTeam()->find($this->serverId);
     }
 
     public function getListeners()
@@ -261,11 +269,11 @@ EOD;
                     $this->postgresqlRestoreCommand = <<<'EOD'
 psql -U ${POSTGRES_USER} -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IS NOT NULL AND pid <> pg_backend_pid()" && \
 psql -U ${POSTGRES_USER} -t -c "SELECT datname FROM pg_database WHERE NOT datistemplate" | xargs -I {} dropdb -U ${POSTGRES_USER} --if-exists {} && \
-createdb -U ${POSTGRES_USER} ${POSTGRES_DB:\${POSTGRES_USER:-postgres}}
+createdb -U ${POSTGRES_USER} ${POSTGRES_DB:-${POSTGRES_USER:-postgres}}
 EOD;
-                    $this->restoreCommandText = $this->postgresqlRestoreCommand.' && (gunzip -cf <temp_backup_file> 2>/dev/null || cat <temp_backup_file>) | psql -U ${POSTGRES_USER} -d ${POSTGRES_DB:\${POSTGRES_USER:-postgres}}';
+                    $this->restoreCommandText = $this->postgresqlRestoreCommand.' && (gunzip -cf <temp_backup_file> 2>/dev/null || cat <temp_backup_file>) | psql -U ${POSTGRES_USER} -d ${POSTGRES_DB:-${POSTGRES_USER:-postgres}}';
                 } else {
-                    $this->postgresqlRestoreCommand = 'pg_restore -U ${POSTGRES_USER} -d ${POSTGRES_DB:\${POSTGRES_USER:-postgres}}';
+                    $this->postgresqlRestoreCommand = 'pg_restore -U ${POSTGRES_USER} -d ${POSTGRES_DB:-${POSTGRES_USER:-postgres}}';
                 }
                 break;
         }
@@ -401,20 +409,30 @@ EOD;
         }
     }
 
-    public function runImport()
+    public function runImport(string $password = ''): bool|string
     {
+        if (! verifyPasswordConfirmation($password, $this)) {
+            return 'The provided password is incorrect.';
+        }
+
         $this->authorize('update', $this->resource);
+
+        if (! ValidationPatterns::isValidContainerName($this->container)) {
+            $this->dispatch('error', 'Invalid container name.');
+
+            return true;
+        }
 
         if ($this->filename === '') {
             $this->dispatch('error', 'Please select a file to import.');
 
-            return;
+            return true;
         }
 
         if (! $this->server) {
             $this->dispatch('error', 'Server not found. Please refresh the page.');
 
-            return;
+            return true;
         }
 
         try {
@@ -434,7 +452,7 @@ EOD;
                 if (! $this->validateServerPath($this->customLocation)) {
                     $this->dispatch('error', 'Invalid file path. Path must be absolute and contain only safe characters.');
 
-                    return;
+                    return true;
                 }
                 $tmpPath = '/tmp/restore_'.$this->resourceUuid;
                 $escapedCustomLocation = escapeshellarg($this->customLocation);
@@ -442,7 +460,7 @@ EOD;
             } else {
                 $this->dispatch('error', 'The file does not exist or has been deleted.');
 
-                return;
+                return true;
             }
 
             // Copy the restore command to a script file
@@ -474,11 +492,15 @@ EOD;
                 $this->dispatch('databaserestore');
             }
         } catch (\Throwable $e) {
-            return handleError($e, $this);
+            handleError($e, $this);
+
+            return true;
         } finally {
             $this->filename = null;
             $this->importCommands = [];
         }
+
+        return true;
     }
 
     public function loadAvailableS3Storages()
@@ -577,26 +599,36 @@ EOD;
         }
     }
 
-    public function restoreFromS3()
+    public function restoreFromS3(string $password = ''): bool|string
     {
+        if (! verifyPasswordConfirmation($password, $this)) {
+            return 'The provided password is incorrect.';
+        }
+
         $this->authorize('update', $this->resource);
+
+        if (! ValidationPatterns::isValidContainerName($this->container)) {
+            $this->dispatch('error', 'Invalid container name.');
+
+            return true;
+        }
 
         if (! $this->s3StorageId || blank($this->s3Path)) {
             $this->dispatch('error', 'Please select S3 storage and provide a path first.');
 
-            return;
+            return true;
         }
 
         if (is_null($this->s3FileSize)) {
             $this->dispatch('error', 'Please check the file first by clicking "Check File".');
 
-            return;
+            return true;
         }
 
         if (! $this->server) {
             $this->dispatch('error', 'Server not found. Please refresh the page.');
 
-            return;
+            return true;
         }
 
         try {
@@ -613,7 +645,7 @@ EOD;
             if (! $this->validateBucketName($bucket)) {
                 $this->dispatch('error', 'Invalid S3 bucket name. Bucket name must contain only alphanumerics, dots, dashes, and underscores.');
 
-                return;
+                return true;
             }
 
             // Clean the S3 path
@@ -623,7 +655,7 @@ EOD;
             if (! $this->validateS3Path($cleanPath)) {
                 $this->dispatch('error', 'Invalid S3 path. Path must contain only safe characters (alphanumerics, dots, dashes, underscores, slashes).');
 
-                return;
+                return true;
             }
 
             // Get helper image
@@ -711,9 +743,12 @@ EOD;
             $this->dispatch('info', 'Restoring database from S3. Progress will be shown in the activity monitor...');
         } catch (\Throwable $e) {
             $this->importRunning = false;
+            handleError($e, $this);
 
-            return handleError($e, $this);
+            return true;
         }
+
+        return true;
     }
 
     public function buildRestoreCommand(string $tmpPath): string
@@ -757,7 +792,7 @@ EOD;
             case 'postgresql':
                 $restoreCommand = $this->postgresqlRestoreCommand;
                 if ($this->dumpAll) {
-                    $restoreCommand .= " && (gunzip -cf {$tmpPath} 2>/dev/null || cat {$tmpPath}) | psql -U \${POSTGRES_USER} -d \${POSTGRES_DB:\${POSTGRES_USER:-postgres}}";
+                    $restoreCommand .= " && (gunzip -cf {$tmpPath} 2>/dev/null || cat {$tmpPath}) | psql -U \${POSTGRES_USER} -d \${POSTGRES_DB:-\${POSTGRES_USER:-postgres}}";
                 } else {
                     $restoreCommand .= " {$tmpPath}";
                 }

@@ -10,7 +10,22 @@ class ApplicationPreview extends BaseModel
 {
     use SoftDeletes;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'application_id',
+        'pull_request_id',
+        'pull_request_html_url',
+        'pull_request_issue_comment_id',
+        'fqdn',
+        'status',
+        'git_type',
+        'docker_compose_domains',
+        'docker_registry_image_tag',
+        'last_online_at',
+    ];
+
+    protected $casts = [
+        'pull_request_id' => 'integer',
+    ];
 
     protected static function booted()
     {
@@ -37,7 +52,7 @@ class ApplicationPreview extends BaseModel
                 $persistentStorages = $preview->persistentStorages()->get() ?? collect();
                 if ($persistentStorages->count() > 0) {
                     foreach ($persistentStorages as $storage) {
-                        instant_remote_process(["docker volume rm -f $storage->name"], $server, false);
+                        instant_remote_process(['docker volume rm -f '.escapeshellarg($storage->name)], $server, false);
                     }
                 }
             }
@@ -69,7 +84,7 @@ class ApplicationPreview extends BaseModel
 
     public function persistentStorages()
     {
-        return $this->morphMany(\App\Models\LocalPersistentVolume::class, 'resource');
+        return $this->morphMany(LocalPersistentVolume::class, 'resource');
     }
 
     public function generate_preview_fqdn()
@@ -166,6 +181,16 @@ class ApplicationPreview extends BaseModel
         }
 
         $this->docker_compose_domains = json_encode($docker_compose_domains);
+
+        // Populate fqdn from generated domains so webhook notifications can read it
+        $allDomains = collect($docker_compose_domains)
+            ->pluck('domain')
+            ->filter(fn ($d) => ! empty($d))
+            ->flatMap(fn ($d) => explode(',', $d))
+            ->implode(',');
+
+        $this->fqdn = ! empty($allDomains) ? $allDomains : null;
+
         $this->save();
     }
 }

@@ -6,7 +6,26 @@ use Illuminate\Database\Eloquent\Model;
 
 class SharedEnvironmentVariable extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        // Core identification
+        'key',
+        'value',
+        'comment',
+
+        // Type and relationships
+        'type',
+        'team_id',
+        'project_id',
+        'environment_id',
+
+        // Boolean flags
+        'is_multiline',
+        'is_literal',
+        'is_shown_once',
+
+        // Metadata
+        'version',
+    ];
 
     protected $casts = [
         'key' => 'string',
