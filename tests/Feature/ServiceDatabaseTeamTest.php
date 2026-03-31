@@ -14,18 +14,18 @@ uses(RefreshDatabase::class);
 it('returns the correct team through the service relationship chain', function () {
     $team = Team::factory()->create();
 
-    $project = Project::forceCreate([
+    $project = Project::create([
         'uuid' => (string) Str::uuid(),
         'name' => 'Test Project',
         'team_id' => $team->id,
     ]);
 
-    $environment = Environment::forceCreate([
+    $environment = Environment::create([
         'name' => 'test-env-'.Str::random(8),
         'project_id' => $project->id,
     ]);
 
-    $service = Service::forceCreate([
+    $service = Service::create([
         'uuid' => (string) Str::uuid(),
         'name' => 'supabase',
         'environment_id' => $environment->id,
@@ -34,7 +34,7 @@ it('returns the correct team through the service relationship chain', function (
         'docker_compose_raw' => 'version: "3"',
     ]);
 
-    $serviceDatabase = ServiceDatabase::forceCreate([
+    $serviceDatabase = ServiceDatabase::create([
         'uuid' => (string) Str::uuid(),
         'name' => 'supabase-db',
         'service_id' => $service->id,
@@ -47,18 +47,18 @@ it('returns the correct team through the service relationship chain', function (
 it('returns the correct team for ServiceApplication through the service relationship chain', function () {
     $team = Team::factory()->create();
 
-    $project = Project::forceCreate([
+    $project = Project::create([
         'uuid' => (string) Str::uuid(),
         'name' => 'Test Project',
         'team_id' => $team->id,
     ]);
 
-    $environment = Environment::forceCreate([
+    $environment = Environment::create([
         'name' => 'test-env-'.Str::random(8),
         'project_id' => $project->id,
     ]);
 
-    $service = Service::forceCreate([
+    $service = Service::create([
         'uuid' => (string) Str::uuid(),
         'name' => 'supabase',
         'environment_id' => $environment->id,
@@ -67,7 +67,7 @@ it('returns the correct team for ServiceApplication through the service relation
         'docker_compose_raw' => 'version: "3"',
     ]);
 
-    $serviceApplication = ServiceApplication::forceCreate([
+    $serviceApplication = ServiceApplication::create([
         'uuid' => (string) Str::uuid(),
         'name' => 'supabase-studio',
         'service_id' => $service->id,

@@ -203,6 +203,14 @@ class Application extends BaseModel
         'restart_count',
         'last_restart_at',
         'last_restart_type',
+        'uuid',
+        'environment_id',
+        'destination_id',
+        'destination_type',
+        'source_id',
+        'source_type',
+        'repository_project_id',
+        'private_key_id',
     ];
 
     protected $appends = ['server_status'];
@@ -262,7 +270,7 @@ class Application extends BaseModel
                 }
             }
             if (count($payload) > 0) {
-                $application->forceFill($payload);
+                $application->fill($payload);
             }
 
             // Buildpack switching cleanup logic
@@ -299,7 +307,7 @@ class Application extends BaseModel
             }
         });
         static::created(function ($application) {
-            ApplicationSetting::forceCreate([
+            ApplicationSetting::create([
                 'application_id' => $application->id,
             ]);
             $application->compose_parsing_version = self::$parserVersion;

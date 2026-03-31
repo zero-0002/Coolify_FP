@@ -135,7 +135,7 @@ class Server extends BaseModel
                     $payload['ip_previous'] = $server->getOriginal('ip');
                 }
             }
-            $server->forceFill($payload);
+            $server->fill($payload);
         });
         static::saved(function ($server) {
             if ($server->wasChanged('private_key_id') || $server->privateKey?->isDirty()) {
@@ -265,6 +265,7 @@ class Server extends BaseModel
         'detected_traefik_version',
         'traefik_outdated_info',
         'server_metadata',
+        'ip_previous',
     ];
 
     use HasSafeStringAttribute;

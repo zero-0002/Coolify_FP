@@ -15,6 +15,7 @@ class StandaloneMariadb extends BaseModel
     use ClearsGlobalSearchCache, HasFactory, HasMetrics, HasSafeStringAttribute, SoftDeletes;
 
     protected $fillable = [
+        'uuid',
         'name',
         'description',
         'mariadb_root_password',
@@ -43,6 +44,9 @@ class StandaloneMariadb extends BaseModel
         'enable_ssl',
         'is_log_drain_enabled',
         'custom_docker_run_options',
+        'destination_type',
+        'destination_id',
+        'environment_id',
     ];
 
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
@@ -74,7 +78,7 @@ class StandaloneMariadb extends BaseModel
         });
         static::saving(function ($database) {
             if ($database->isDirty('status')) {
-                $database->forceFill(['last_online_at' => now()]);
+                $database->last_online_at = now();
             }
         });
     }

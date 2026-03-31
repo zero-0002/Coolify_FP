@@ -42,7 +42,7 @@ class Show extends Component
     {
         try {
             $this->validate();
-            $environment = Environment::forceCreate([
+            $environment = Environment::create([
                 'name' => $this->name,
                 'project_id' => $this->project->id,
                 'uuid' => (string) new Cuid2,

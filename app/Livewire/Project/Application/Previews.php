@@ -196,7 +196,7 @@ class Previews extends Component
                 $this->setDeploymentUuid();
                 $found = ApplicationPreview::where('application_id', $this->application->id)->where('pull_request_id', $pull_request_id)->first();
                 if (! $found && ! is_null($pull_request_html_url)) {
-                    $found = ApplicationPreview::forceCreate([
+                    $found = ApplicationPreview::create([
                         'application_id' => $this->application->id,
                         'pull_request_id' => $pull_request_id,
                         'pull_request_html_url' => $pull_request_html_url,
@@ -210,7 +210,7 @@ class Previews extends Component
                 $this->setDeploymentUuid();
                 $found = ApplicationPreview::where('application_id', $this->application->id)->where('pull_request_id', $pull_request_id)->first();
                 if (! $found && (! is_null($pull_request_html_url) || ($this->application->build_pack === 'dockerimage' && str($docker_registry_image_tag)->isNotEmpty()))) {
-                    $found = ApplicationPreview::forceCreate([
+                    $found = ApplicationPreview::create([
                         'application_id' => $this->application->id,
                         'pull_request_id' => $pull_request_id,
                         'pull_request_html_url' => $pull_request_html_url ?? '',
@@ -262,7 +262,7 @@ class Previews extends Component
             $this->setDeploymentUuid();
             $found = ApplicationPreview::where('application_id', $this->application->id)->where('pull_request_id', $pull_request_id)->first();
             if (! $found && (! is_null($pull_request_html_url) || ($this->application->build_pack === 'dockerimage' && str($docker_registry_image_tag)->isNotEmpty()))) {
-                $found = ApplicationPreview::forceCreate([
+                $found = ApplicationPreview::create([
                     'application_id' => $this->application->id,
                     'pull_request_id' => $pull_request_id,
                     'pull_request_html_url' => $pull_request_html_url ?? '',

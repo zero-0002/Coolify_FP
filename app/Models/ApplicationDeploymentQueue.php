@@ -44,6 +44,7 @@ class ApplicationDeploymentQueue extends Model
         'application_id',
         'deployment_uuid',
         'pull_request_id',
+        'docker_registry_image_tag',
         'force_rebuild',
         'commit',
         'status',

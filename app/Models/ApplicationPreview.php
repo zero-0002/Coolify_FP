@@ -11,6 +11,7 @@ class ApplicationPreview extends BaseModel
     use SoftDeletes;
 
     protected $fillable = [
+        'uuid',
         'application_id',
         'pull_request_id',
         'pull_request_html_url',
@@ -62,7 +63,7 @@ class ApplicationPreview extends BaseModel
         });
         static::saving(function ($preview) {
             if ($preview->isDirty('status')) {
-                $preview->forceFill(['last_online_at' => now()]);
+                $preview->last_online_at = now();
             }
         });
     }

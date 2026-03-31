@@ -31,7 +31,7 @@ beforeEach(function () {
         );
     });
 
-    $this->project = Project::forceCreate([
+    $this->project = Project::create([
         'uuid' => (string) new Cuid2,
         'name' => 'test-project',
         'team_id' => $this->team->id,

@@ -27,6 +27,8 @@ class Project extends BaseModel
     protected $fillable = [
         'name',
         'description',
+        'team_id',
+        'uuid',
     ];
 
     /**
@@ -51,10 +53,10 @@ class Project extends BaseModel
     protected static function booted()
     {
         static::created(function ($project) {
-            ProjectSetting::forceCreate([
+            ProjectSetting::create([
                 'project_id' => $project->id,
             ]);
-            Environment::forceCreate([
+            Environment::create([
                 'name' => 'production',
                 'project_id' => $project->id,
                 'uuid' => (string) new Cuid2,

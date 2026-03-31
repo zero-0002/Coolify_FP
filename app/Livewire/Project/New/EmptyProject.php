@@ -10,7 +10,7 @@ class EmptyProject extends Component
 {
     public function createEmptyProject()
     {
-        $project = Project::forceCreate([
+        $project = Project::create([
             'name' => generate_random_name(),
             'team_id' => currentTeam()->id,
             'uuid' => (string) new Cuid2,

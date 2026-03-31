@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 class GithubApp extends BaseModel
 {
     protected $fillable = [
+        'team_id',
+        'private_key_id',
         'name',
         'organization',
         'api_url',

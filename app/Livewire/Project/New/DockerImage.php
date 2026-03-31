@@ -133,7 +133,7 @@ class DockerImage extends Component
         // Determine the image tag based on whether it's a hash or regular tag
         $imageTag = $parser->isImageHash() ? 'sha256-'.$parser->getTag() : $parser->getTag();
 
-        $application = Application::forceCreate([
+        $application = Application::create([
             'name' => 'docker-image-'.new Cuid2,
             'repository_project_id' => 0,
             'git_repository' => 'coollabsio/coolify',

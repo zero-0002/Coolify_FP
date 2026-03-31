@@ -299,7 +299,7 @@ class PublicGitRepository extends Component
                     $new_service['source_id'] = $this->git_source->id;
                     $new_service['source_type'] = $this->git_source->getMorphClass();
                 }
-                $service = Service::forceCreate($new_service);
+                $service = Service::create($new_service);
 
                 return redirect()->route('project.service.configuration', [
                     'service_uuid' => $service->uuid,
@@ -346,7 +346,7 @@ class PublicGitRepository extends Component
                 $application_init['docker_compose_location'] = $this->docker_compose_location;
                 $application_init['base_directory'] = $this->base_directory;
             }
-            $application = Application::forceCreate($application_init);
+            $application = Application::create($application_init);
 
             $application->settings->is_static = $this->isStatic;
             $application->settings->save();

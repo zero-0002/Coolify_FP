@@ -31,7 +31,7 @@ beforeEach(function () {
         'team_id' => $this->team->id,
     ]);
 
-    $this->githubApp = GithubApp::forceCreate([
+    $this->githubApp = GithubApp::create([
         'name' => 'Test GitHub App',
         'api_url' => 'https://api.github.com',
         'html_url' => 'https://github.com',

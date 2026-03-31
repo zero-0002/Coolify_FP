@@ -441,7 +441,7 @@ class Index extends Component
 
     public function createNewProject()
     {
-        $this->createdProject = Project::forceCreate([
+        $this->createdProject = Project::create([
             'name' => 'My first project',
             'team_id' => currentTeam()->id,
             'uuid' => (string) new Cuid2,

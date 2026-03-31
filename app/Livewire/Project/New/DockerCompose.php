@@ -54,7 +54,7 @@ class DockerCompose extends Component
             }
             $destination_class = $destination->getMorphClass();
 
-            $service = Service::forceCreate([
+            $service = Service::create([
                 'docker_compose_raw' => $this->dockerComposeRaw,
                 'environment_id' => $environment->id,
                 'server_id' => (int) $server_id,

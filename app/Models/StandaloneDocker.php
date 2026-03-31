@@ -13,6 +13,7 @@ class StandaloneDocker extends BaseModel
     use HasSafeStringAttribute;
 
     protected $fillable = [
+        'server_id',
         'name',
         'network',
     ];

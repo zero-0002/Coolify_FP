@@ -49,6 +49,9 @@ class User extends Authenticatable implements SendsEmail
         'password',
         'force_password_reset',
         'marketing_emails',
+        'pending_email',
+        'email_change_code',
+        'email_change_code_expires_at',
     ];
 
     protected $hidden = [
@@ -409,7 +412,7 @@ class User extends Authenticatable implements SendsEmail
         $expiryMinutes = config('constants.email_change.verification_code_expiry_minutes', 10);
         $expiresAt = Carbon::now()->addMinutes($expiryMinutes);
 
-        $this->forceFill([
+        $this->fill([
             'pending_email' => $newEmail,
             'email_change_code' => $code,
             'email_change_code_expires_at' => $expiresAt,

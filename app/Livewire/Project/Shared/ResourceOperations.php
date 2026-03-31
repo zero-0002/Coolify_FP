@@ -94,7 +94,7 @@ class ResourceOperations extends Component
                 'id',
                 'created_at',
                 'updated_at',
-            ])->forceFill([
+            ])->fill([
                 'uuid' => $uuid,
                 'name' => $this->resource->name.'-clone-'.$uuid,
                 'status' => 'exited',
@@ -143,7 +143,7 @@ class ResourceOperations extends Component
                     'created_at',
                     'updated_at',
                     'uuid',
-                ])->forceFill([
+                ])->fill([
                     'name' => $newName,
                     'resource_id' => $new_resource->id,
                 ]);
@@ -172,7 +172,7 @@ class ResourceOperations extends Component
                     'id',
                     'created_at',
                     'updated_at',
-                ])->forceFill([
+                ])->fill([
                     'resource_id' => $new_resource->id,
                 ]);
                 $newStorage->save();
@@ -185,7 +185,7 @@ class ResourceOperations extends Component
                     'id',
                     'created_at',
                     'updated_at',
-                ])->forceFill([
+                ])->fill([
                     'uuid' => $uuid,
                     'database_id' => $new_resource->id,
                     'database_type' => $new_resource->getMorphClass(),
@@ -204,7 +204,7 @@ class ResourceOperations extends Component
                     'id',
                     'created_at',
                     'updated_at',
-                ])->forceFill($payload);
+                ])->fill($payload);
                 $newEnvironmentVariable->save();
             }
 
@@ -221,7 +221,7 @@ class ResourceOperations extends Component
                 'id',
                 'created_at',
                 'updated_at',
-            ])->forceFill([
+            ])->fill([
                 'uuid' => $uuid,
                 'name' => $this->resource->name.'-clone-'.$uuid,
                 'destination_id' => $new_destination->id,
@@ -242,7 +242,7 @@ class ResourceOperations extends Component
                     'id',
                     'created_at',
                     'updated_at',
-                ])->forceFill([
+                ])->fill([
                     'uuid' => (string) new Cuid2,
                     'service_id' => $new_resource->id,
                     'team_id' => currentTeam()->id,
@@ -256,7 +256,7 @@ class ResourceOperations extends Component
                     'id',
                     'created_at',
                     'updated_at',
-                ])->forceFill([
+                ])->fill([
                     'resourceable_id' => $new_resource->id,
                     'resourceable_type' => $new_resource->getMorphClass(),
                 ]);
@@ -264,7 +264,7 @@ class ResourceOperations extends Component
             }
 
             foreach ($new_resource->applications() as $application) {
-                $application->forceFill([
+                $application->fill([
                     'status' => 'exited',
                 ])->save();
 
@@ -282,7 +282,7 @@ class ResourceOperations extends Component
                         'created_at',
                         'updated_at',
                         'uuid',
-                    ])->forceFill([
+                    ])->fill([
                         'name' => $newName,
                         'resource_id' => $application->id,
                     ]);
@@ -307,7 +307,7 @@ class ResourceOperations extends Component
             }
 
             foreach ($new_resource->databases() as $database) {
-                $database->forceFill([
+                $database->fill([
                     'status' => 'exited',
                 ])->save();
 
@@ -325,7 +325,7 @@ class ResourceOperations extends Component
                         'created_at',
                         'updated_at',
                         'uuid',
-                    ])->forceFill([
+                    ])->fill([
                         'name' => $newName,
                         'resource_id' => $database->id,
                     ]);
@@ -366,7 +366,7 @@ class ResourceOperations extends Component
         try {
             $this->authorize('update', $this->resource);
             $new_environment = Environment::ownedByCurrentTeam()->findOrFail($environment_id);
-            $this->resource->forceFill([
+            $this->resource->fill([
                 'environment_id' => $environment_id,
             ])->save();
             if ($this->resource->type() === 'application') {

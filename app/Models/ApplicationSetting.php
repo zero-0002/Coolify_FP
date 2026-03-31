@@ -29,6 +29,7 @@ class ApplicationSetting extends Model
     ];
 
     protected $fillable = [
+        'application_id',
         'is_static',
         'is_git_submodules_enabled',
         'is_git_lfs_enabled',

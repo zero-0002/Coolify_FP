@@ -258,7 +258,7 @@ class ProjectController extends Controller
             ], 422);
         }
 
-        $project = Project::forceCreate([
+        $project = Project::create([
             'name' => $request->name,
             'description' => $request->description,
             'team_id' => $teamId,

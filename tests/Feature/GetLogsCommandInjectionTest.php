@@ -69,7 +69,7 @@ describe('GetLogs locked properties', function () {
 describe('GetLogs Livewire action validation', function () {
     test('getLogs rejects invalid container name', function () {
         // Make server functional by setting settings directly
-        $this->server->settings->forceFill([
+        $this->server->settings->fill([
             'is_reachable' => true,
             'is_usable' => true,
             'force_disabled' => false,
@@ -100,7 +100,7 @@ describe('GetLogs Livewire action validation', function () {
     });
 
     test('downloadAllLogs returns empty for invalid container name', function () {
-        $this->server->settings->forceFill([
+        $this->server->settings->fill([
             'is_reachable' => true,
             'is_usable' => true,
             'force_disabled' => false,

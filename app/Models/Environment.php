@@ -28,6 +28,8 @@ class Environment extends BaseModel
     protected $fillable = [
         'name',
         'description',
+        'project_id',
+        'uuid',
     ];
 
     protected static function booted()

@@ -49,6 +49,7 @@ class Service extends BaseModel
     private static $parserVersion = '5';
 
     protected $fillable = [
+        'uuid',
         'name',
         'description',
         'docker_compose_raw',
@@ -58,6 +59,10 @@ class Service extends BaseModel
         'config_hash',
         'compose_parsing_version',
         'is_container_label_escape_enabled',
+        'environment_id',
+        'server_id',
+        'destination_id',
+        'destination_type',
     ];
 
     protected $appends = ['server_status', 'status'];

@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class ScheduledDatabaseBackup extends BaseModel
 {
     protected $fillable = [
+        'uuid',
+        'team_id',
         'description',
         'enabled',
         'save_s3',

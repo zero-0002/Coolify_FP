@@ -33,7 +33,7 @@ beforeEach(function () {
 
 function createDatabase($context): StandalonePostgresql
 {
-    return StandalonePostgresql::forceCreate([
+    return StandalonePostgresql::create([
         'name' => 'test-postgres',
         'image' => 'postgres:15-alpine',
         'postgres_user' => 'postgres',
