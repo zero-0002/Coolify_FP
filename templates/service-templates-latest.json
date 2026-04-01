@@ -2837,7 +2837,7 @@
         "tags": [
             "minecraft"
         ],
-        "category": "media",
+        "category": "games",
         "logo": "svgs/minecraft.svg",
         "minversion": "0.0.0",
         "port": "25565"
