@@ -20,3 +20,12 @@ it('uses distinct keyed branches for the edit value field modes', function () {
         ->toContain('wire:key="env-show-value-textarea-{{ $env->id }}"')
         ->toContain('wire:key="env-show-value-input-{{ $env->id }}"');
 });
+
+it('uses sans font for the developer bulk environment variable editor', function () {
+    $view = file_get_contents(resource_path('views/livewire/project/shared/environment-variable/all.blade.php'));
+
+    expect($view)
+        ->toContain('class="whitespace-pre-wrap font-sans"')
+        ->not->toContain('wire:model="variables" monospace')
+        ->not->toContain('wire:model="variablesPreview" monospace');
+});

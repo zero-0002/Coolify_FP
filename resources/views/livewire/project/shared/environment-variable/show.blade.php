@@ -155,7 +155,7 @@
                                 </div>
                             @else
                                 <x-forms.input :disabled="$is_redis_credential" :required="$is_redis_credential" id="key" />
-                                <div class="flex-1" wire:key="env-show-value-input-{{ $env->id }}">
+                                <div class="w-full" wire:key="env-show-value-input-{{ $env->id }}">
                                     <x-forms.env-var-input
                                         :required="$is_redis_credential"
                                         type="password"
