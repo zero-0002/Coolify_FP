@@ -509,7 +509,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                 if ($resource->build_pack === 'dockercompose') {
                     $normalizedFqdnFor = str($fqdnFor)->replace('-', '_')->replace('.', '_')->value();
                     $serviceExists = false;
-                    foreach ($services as $serviceNameKey => $svc) {
+                    foreach (array_keys($services) as $serviceNameKey) {
                         if (str($serviceNameKey)->replace('-', '_')->replace('.', '_')->value() === $normalizedFqdnFor) {
                             $serviceExists = true;
                             break;
