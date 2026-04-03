@@ -107,7 +107,7 @@ services:
       retries: 15
 
   vectordb:
-    image: ankane/pgvector:latest
+    image: ankane/pgvector:v0.5.1 # pgvector by ankane is archived and not maintained, in future we have to swap this image to something else that is well maintained
     environment:
       - POSTGRES_DB=rag
       - POSTGRES_USER=${SERVICE_USER_POSTGRES}
