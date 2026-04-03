@@ -22,25 +22,25 @@ use Visus\Cuid2\Cuid2;
  *
  * @param  string  $composeYaml  The raw Docker Compose YAML content
  *
- * @throws \Exception If the compose file contains command injection attempts
+ * @throws Exception If the compose file contains command injection attempts
  */
 function validateDockerComposeForInjection(string $composeYaml): void
 {
     try {
         $parsed = Yaml::parse($composeYaml);
-    } catch (\Exception $e) {
-        throw new \Exception('Invalid YAML format: '.$e->getMessage(), 0, $e);
+    } catch (Exception $e) {
+        throw new Exception('Invalid YAML format: '.$e->getMessage(), 0, $e);
     }
 
     if (! is_array($parsed) || ! isset($parsed['services']) || ! is_array($parsed['services'])) {
-        throw new \Exception('Docker Compose file must contain a "services" section');
+        throw new Exception('Docker Compose file must contain a "services" section');
     }
     // Validate service names
     foreach ($parsed['services'] as $serviceName => $serviceConfig) {
         try {
             validateShellSafePath($serviceName, 'service name');
-        } catch (\Exception $e) {
-            throw new \Exception(
+        } catch (Exception $e) {
+            throw new Exception(
                 'Invalid Docker Compose service name: '.$e->getMessage().
                 ' Service names must not contain shell metacharacters.',
                 0,
@@ -68,8 +68,8 @@ function validateDockerComposeForInjection(string $composeYaml): void
                             if (! $isSimpleEnvVar && ! $isEnvVarWithDefault && ! $isEnvVarWithPath) {
                                 try {
                                     validateShellSafePath($source, 'volume source');
-                                } catch (\Exception $e) {
-                                    throw new \Exception(
+                                } catch (Exception $e) {
+                                    throw new Exception(
                                         'Invalid Docker volume definition (array syntax): '.$e->getMessage().
                                         ' Please use safe path names without shell metacharacters.',
                                         0,
@@ -84,8 +84,8 @@ function validateDockerComposeForInjection(string $composeYaml): void
                         if (is_string($target)) {
                             try {
                                 validateShellSafePath($target, 'volume target');
-                            } catch (\Exception $e) {
-                                throw new \Exception(
+                            } catch (Exception $e) {
+                                throw new Exception(
                                     'Invalid Docker volume definition (array syntax): '.$e->getMessage().
                                     ' Please use safe path names without shell metacharacters.',
                                     0,
@@ -105,7 +105,7 @@ function validateDockerComposeForInjection(string $composeYaml): void
  *
  * @param  string  $volumeString  The volume string to validate
  *
- * @throws \Exception If the volume string contains command injection attempts
+ * @throws Exception If the volume string contains command injection attempts
  */
 function validateVolumeStringForInjection(string $volumeString): void
 {
@@ -325,9 +325,9 @@ function parseDockerVolumeString(string $volumeString): array
         if (! $isSimpleEnvVar && ! $isEnvVarWithPath) {
             try {
                 validateShellSafePath($sourceStr, 'volume source');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Re-throw with more context about the volume string
-                throw new \Exception(
+                throw new Exception(
                     'Invalid Docker volume definition: '.$e->getMessage().
                     ' Please use safe path names without shell metacharacters.'
                 );
@@ -343,8 +343,8 @@ function parseDockerVolumeString(string $volumeString): array
         // Still, defense in depth is important
         try {
             validateShellSafePath($targetStr, 'volume target');
-        } catch (\Exception $e) {
-            throw new \Exception(
+        } catch (Exception $e) {
+            throw new Exception(
                 'Invalid Docker volume definition: '.$e->getMessage().
                 ' Please use safe path names without shell metacharacters.'
             );
@@ -375,7 +375,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
 
     try {
         $yaml = Yaml::parse($compose);
-    } catch (\Exception) {
+    } catch (Exception) {
         return collect([]);
     }
     $services = data_get($yaml, 'services', collect([]));
@@ -409,8 +409,8 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
         // Validate service name for command injection
         try {
             validateShellSafePath($serviceName, 'service name');
-        } catch (\Exception $e) {
-            throw new \Exception(
+        } catch (Exception $e) {
+            throw new Exception(
                 'Invalid Docker Compose service name: '.$e->getMessage().
                 ' Service names must not contain shell metacharacters.'
             );
@@ -465,7 +465,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     $fqdn = generateFqdn(server: $server, random: "$uuid", parserVersion: $resource->compose_parsing_version);
                 }
 
-                if ($value && get_class($value) === \Illuminate\Support\Stringable::class && $value->startsWith('/')) {
+                if ($value && get_class($value) === Illuminate\Support\Stringable::class && $value->startsWith('/')) {
                     $path = $value->value();
                     if ($path !== '/') {
                         $fqdn = "$fqdn$path";
@@ -738,8 +738,8 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         if (! $isSimpleEnvVar && ! $isEnvVarWithDefault && ! $isEnvVarWithPath) {
                             try {
                                 validateShellSafePath($sourceValue, 'volume source');
-                            } catch (\Exception $e) {
-                                throw new \Exception(
+                            } catch (Exception $e) {
+                                throw new Exception(
                                     'Invalid Docker volume definition (array syntax): '.$e->getMessage().
                                     ' Please use safe path names without shell metacharacters.'
                                 );
@@ -749,8 +749,8 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     if ($target !== null && ! empty($target->value())) {
                         try {
                             validateShellSafePath($target->value(), 'volume target');
-                        } catch (\Exception $e) {
-                            throw new \Exception(
+                        } catch (Exception $e) {
+                            throw new Exception(
                                 'Invalid Docker volume definition (array syntax): '.$e->getMessage().
                                 ' Please use safe path names without shell metacharacters.'
                             );
@@ -789,7 +789,10 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                             $mainDirectory = str(base_configuration_dir().'/applications/'.$uuid);
                         }
                         $source = replaceLocalSource($source, $mainDirectory);
-                        if ($isPullRequest) {
+                        $isPreviewSuffixEnabled = $foundConfig
+                            ? (bool) data_get($foundConfig, 'is_preview_suffix_enabled', true)
+                            : true;
+                        if ($isPullRequest && $isPreviewSuffixEnabled) {
                             $source = addPreviewDeploymentSuffix($source, $pull_request_id);
                         }
                         LocalFileVolume::updateOrCreate(
@@ -987,16 +990,17 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
             }
             if ($key->value() === $parsedValue->value()) {
                 // Simple variable reference (e.g. DATABASE_URL: ${DATABASE_URL})
-                // Use firstOrCreate to avoid overwriting user-saved values on redeploy
-                $envVar = $resource->environment_variables()->firstOrCreate([
+                // Ensure the variable exists in DB for .env generation and UI display
+                $resource->environment_variables()->firstOrCreate([
                     'key' => $key,
                     'resourceable_type' => get_class($resource),
                     'resourceable_id' => $resource->id,
                 ], [
                     'is_preview' => false,
                 ]);
-                // Add the variable to the environment using the saved DB value
-                $environment[$key->value()] = $envVar->value;
+                // Keep the ${VAR} reference in compose — Docker Compose resolves from .env at deploy time.
+                // Do NOT replace with DB value: if user updates env var without re-parsing compose,
+                // a stale resolved value in environment: would override the correct .env value.
             } else {
                 if ($value->startsWith('$')) {
                     $isRequired = false;
@@ -1294,6 +1298,13 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     // Otherwise keep empty string as-is
                 }
 
+                // Resolve shared variable patterns like {{environment.VAR}}, {{project.VAR}}, {{team.VAR}}
+                // Without this, literal {{...}} strings end up in the compose environment: section,
+                // which takes precedence over the resolved values in the .env file (env_file:)
+                if (is_string($value) && str_contains($value, '{{')) {
+                    $value = resolveSharedEnvironmentVariables($value, $resource);
+                }
+
                 return $value;
             });
         }
@@ -1308,19 +1319,19 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
         }
         if (! $isDatabase && $fqdns instanceof Collection && $fqdns->count() > 0) {
             $shouldGenerateLabelsExactly = $resource->destination->server->settings->generate_exact_labels;
-            $uuid = $resource->uuid;
-            $network = data_get($resource, 'destination.network');
+            $labelUuid = $resource->uuid;
+            $labelNetwork = data_get($resource, 'destination.network');
             if ($isPullRequest) {
-                $uuid = "{$resource->uuid}-{$pullRequestId}";
+                $labelUuid = "{$resource->uuid}-{$pullRequestId}";
             }
             if ($isPullRequest) {
-                $network = "{$resource->destination->network}-{$pullRequestId}";
+                $labelNetwork = "{$resource->destination->network}-{$pullRequestId}";
             }
             if ($shouldGenerateLabelsExactly) {
                 switch ($server->proxyType()) {
                     case ProxyTypes::TRAEFIK->value:
                         $serviceLabels = $serviceLabels->merge(fqdnLabelsForTraefik(
-                            uuid: $uuid,
+                            uuid: $labelUuid,
                             domains: $fqdns,
                             is_force_https_enabled: $originalResource->isForceHttpsEnabled(),
                             serviceLabels: $serviceLabels,
@@ -1332,8 +1343,8 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         break;
                     case ProxyTypes::CADDY->value:
                         $serviceLabels = $serviceLabels->merge(fqdnLabelsForCaddy(
-                            network: $network,
-                            uuid: $uuid,
+                            network: $labelNetwork,
+                            uuid: $labelUuid,
                             domains: $fqdns,
                             is_force_https_enabled: $originalResource->isForceHttpsEnabled(),
                             serviceLabels: $serviceLabels,
@@ -1347,7 +1358,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                 }
             } else {
                 $serviceLabels = $serviceLabels->merge(fqdnLabelsForTraefik(
-                    uuid: $uuid,
+                    uuid: $labelUuid,
                     domains: $fqdns,
                     is_force_https_enabled: $originalResource->isForceHttpsEnabled(),
                     serviceLabels: $serviceLabels,
@@ -1357,8 +1368,8 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     image: $image
                 ));
                 $serviceLabels = $serviceLabels->merge(fqdnLabelsForCaddy(
-                    network: $network,
-                    uuid: $uuid,
+                    network: $labelNetwork,
+                    uuid: $labelUuid,
                     domains: $fqdns,
                     is_force_https_enabled: $originalResource->isForceHttpsEnabled(),
                     serviceLabels: $serviceLabels,
@@ -1478,7 +1489,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
             }
         }
         $resource->docker_compose_raw = Yaml::dump($originalYaml, 10, 2);
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         // If parsing fails, keep the original docker_compose_raw unchanged
         ray('Failed to update docker_compose_raw in applicationParser: '.$e->getMessage());
     }
@@ -1508,7 +1519,7 @@ function serviceParser(Service $resource): Collection
 
     try {
         $yaml = Yaml::parse($compose);
-    } catch (\Exception) {
+    } catch (Exception) {
         return collect([]);
     }
     $services = data_get($yaml, 'services', collect([]));
@@ -1555,8 +1566,8 @@ function serviceParser(Service $resource): Collection
         // Validate service name for command injection
         try {
             validateShellSafePath($serviceName, 'service name');
-        } catch (\Exception $e) {
-            throw new \Exception(
+        } catch (Exception $e) {
+            throw new Exception(
                 'Invalid Docker Compose service name: '.$e->getMessage().
                 ' Service names must not contain shell metacharacters.'
             );
@@ -1582,20 +1593,25 @@ function serviceParser(Service $resource): Collection
             // Use image detection for non-migrated services
             $isDatabase = isDatabaseImage($image, $service);
             if ($isDatabase) {
-                $applicationFound = ServiceApplication::where('name', $serviceName)->where('service_id', $resource->id)->first();
-                if ($applicationFound) {
-                    $savedService = $applicationFound;
+                $databaseFound = ServiceDatabase::where('name', $serviceName)->where('service_id', $resource->id)->first();
+                if ($databaseFound) {
+                    $savedService = $databaseFound;
                 } else {
-                    $savedService = ServiceDatabase::firstOrCreate([
+                    $savedService = ServiceDatabase::create([
                         'name' => $serviceName,
                         'service_id' => $resource->id,
                     ]);
                 }
             } else {
-                $savedService = ServiceApplication::firstOrCreate([
-                    'name' => $serviceName,
-                    'service_id' => $resource->id,
-                ]);
+                $applicationFound = ServiceApplication::where('name', $serviceName)->where('service_id', $resource->id)->first();
+                if ($applicationFound) {
+                    $savedService = $applicationFound;
+                } else {
+                    $savedService = ServiceApplication::create([
+                        'name' => $serviceName,
+                        'service_id' => $resource->id,
+                    ]);
+                }
             }
         }
         // Update image if it changed
@@ -1761,7 +1777,7 @@ function serviceParser(Service $resource): Collection
                 // Strip scheme for environment variable values
                 $fqdnValueForEnv = str($fqdn)->after('://')->value();
 
-                if ($value && get_class($value) === \Illuminate\Support\Stringable::class && $value->startsWith('/')) {
+                if ($value && get_class($value) === Illuminate\Support\Stringable::class && $value->startsWith('/')) {
                     $path = $value->value();
                     if ($path !== '/') {
                         // Only add path if it's not already present (prevents duplication on subsequent parse() calls)
@@ -1875,8 +1891,9 @@ function serviceParser(Service $resource): Collection
                         $serviceExists->fqdn = $url;
                         $serviceExists->save();
                     }
-                    // Create FQDN variable
-                    $resource->environment_variables()->updateOrCreate([
+                    // Create FQDN variable (use firstOrCreate to avoid overwriting values
+                    // already set by direct template declarations or updateCompose)
+                    $resource->environment_variables()->firstOrCreate([
                         'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
@@ -1888,7 +1905,7 @@ function serviceParser(Service $resource): Collection
 
                     // Also create the paired SERVICE_URL_* variable
                     $urlKey = 'SERVICE_URL_'.strtoupper($fqdnFor);
-                    $resource->environment_variables()->updateOrCreate([
+                    $resource->environment_variables()->firstOrCreate([
                         'key' => $urlKey,
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
@@ -1918,8 +1935,9 @@ function serviceParser(Service $resource): Collection
                         $serviceExists->fqdn = $url;
                         $serviceExists->save();
                     }
-                    // Create URL variable
-                    $resource->environment_variables()->updateOrCreate([
+                    // Create URL variable (use firstOrCreate to avoid overwriting values
+                    // already set by direct template declarations or updateCompose)
+                    $resource->environment_variables()->firstOrCreate([
                         'key' => $key->value(),
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
@@ -1931,7 +1949,7 @@ function serviceParser(Service $resource): Collection
 
                     // Also create the paired SERVICE_FQDN_* variable
                     $fqdnKey = 'SERVICE_FQDN_'.strtoupper($urlFor);
-                    $resource->environment_variables()->updateOrCreate([
+                    $resource->environment_variables()->firstOrCreate([
                         'key' => $fqdnKey,
                         'resourceable_type' => get_class($resource),
                         'resourceable_id' => $resource->id,
@@ -2107,8 +2125,8 @@ function serviceParser(Service $resource): Collection
                         if (! $isSimpleEnvVar && ! $isEnvVarWithDefault && ! $isEnvVarWithPath) {
                             try {
                                 validateShellSafePath($sourceValue, 'volume source');
-                            } catch (\Exception $e) {
-                                throw new \Exception(
+                            } catch (Exception $e) {
+                                throw new Exception(
                                     'Invalid Docker volume definition (array syntax): '.$e->getMessage().
                                     ' Please use safe path names without shell metacharacters.'
                                 );
@@ -2118,8 +2136,8 @@ function serviceParser(Service $resource): Collection
                     if ($target !== null && ! empty($target->value())) {
                         try {
                             validateShellSafePath($target->value(), 'volume target');
-                        } catch (\Exception $e) {
-                            throw new \Exception(
+                        } catch (Exception $e) {
+                            throw new Exception(
                                 'Invalid Docker volume definition (array syntax): '.$e->getMessage().
                                 ' Please use safe path names without shell metacharacters.'
                             );
@@ -2329,8 +2347,8 @@ function serviceParser(Service $resource): Collection
             }
             if ($key->value() === $parsedValue->value()) {
                 // Simple variable reference (e.g. DATABASE_URL: ${DATABASE_URL})
-                // Use firstOrCreate to avoid overwriting user-saved values on redeploy
-                $envVar = $resource->environment_variables()->firstOrCreate([
+                // Ensure the variable exists in DB for .env generation and UI display
+                $resource->environment_variables()->firstOrCreate([
                     'key' => $key,
                     'resourceable_type' => get_class($resource),
                     'resourceable_id' => $resource->id,
@@ -2338,8 +2356,9 @@ function serviceParser(Service $resource): Collection
                     'is_preview' => false,
                     'comment' => $envComments[$originalKey] ?? null,
                 ]);
-                // Add the variable to the environment using the saved DB value
-                $environment[$key->value()] = $envVar->value;
+                // Keep the ${VAR} reference in compose — Docker Compose resolves from .env at deploy time.
+                // Do NOT replace with DB value: if user updates env var without re-parsing compose,
+                // a stale resolved value in environment: would override the correct .env value.
             } else {
                 if ($value->startsWith('$')) {
                     $isRequired = false;
@@ -2556,6 +2575,13 @@ function serviceParser(Service $resource): Collection
                     // Otherwise keep empty string as-is
                 }
 
+                // Resolve shared variable patterns like {{environment.VAR}}, {{project.VAR}}, {{team.VAR}}
+                // Without this, literal {{...}} strings end up in the compose environment: section,
+                // which takes precedence over the resolved values in the .env file (env_file:)
+                if (is_string($value) && str_contains($value, '{{')) {
+                    $value = resolveSharedEnvironmentVariables($value, $resource);
+                }
+
                 return $value;
             });
         }
@@ -2720,7 +2746,7 @@ function serviceParser(Service $resource): Collection
             }
         }
         $resource->docker_compose_raw = Yaml::dump($originalYaml, 10, 2);
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         // If parsing fails, keep the original docker_compose_raw unchanged
         ray('Failed to update docker_compose_raw in serviceParser: '.$e->getMessage());
     }
