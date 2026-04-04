@@ -10,7 +10,8 @@ ARG TARGETPLATFORM
 ARG CLOUDFLARED_VERSION
 
 WORKDIR /terminal
-RUN apk add --no-cache openssh-client make g++ python3 curl
+RUN apk upgrade --no-cache && \
+    apk add --no-cache openssh-client make g++ python3 curl
 COPY docker/coolify-realtime/package.json ./
 RUN npm i
 RUN npm rebuild node-pty --update-binary
