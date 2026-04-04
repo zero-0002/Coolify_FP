@@ -60,3 +60,11 @@ test('convertGitUrlsForSourceAndSshUrlWithCustomPort', function () {
         'port' => '766',
     ]);
 });
+
+test('convertGitUrlsForSourceAndSshUrlSchemeWithCustomPort', function () {
+    $result = convertGitUrl('ssh://git@192.168.56.11:22222/User/Repo.git', 'source', null);
+    expect($result)->toBe([
+        'repository' => 'ssh://git@192.168.56.11:22222/User/Repo.git',
+        'port' => '22222',
+    ]);
+});
