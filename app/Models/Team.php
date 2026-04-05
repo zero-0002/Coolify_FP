@@ -76,8 +76,10 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
             foreach ($keys as $key) {
                 $key->delete();
             }
-            $sources = $team->sources();
-            foreach ($sources as $source) {
+            // Only delete sources owned by this team, not system-wide ones from other teams
+            $teamSources = GithubApp::where('team_id', $team->id)->get()
+                ->merge(GitlabApp::where('team_id', $team->id)->get());
+            foreach ($teamSources as $source) {
                 $source->delete();
             }
             $tags = Tag::whereTeamId($team->id)->get();

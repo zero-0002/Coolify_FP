@@ -176,6 +176,23 @@ class User extends Authenticatable implements SendsEmail
             $project->forceDelete();
         }
 
+        // Detach applications from other teams that reference this team's sources,
+        // so the GithubApp/GitlabApp deleting guard doesn't block team deletion
+        $githubAppIds = GithubApp::where('team_id', $team->id)->pluck('id');
+        $gitlabAppIds = GitlabApp::where('team_id', $team->id)->pluck('id');
+
+        if ($githubAppIds->isNotEmpty()) {
+            Application::where('source_type', GithubApp::class)
+                ->whereIn('source_id', $githubAppIds)
+                ->update(['source_id' => null, 'source_type' => null]);
+        }
+
+        if ($gitlabAppIds->isNotEmpty()) {
+            Application::where('source_type', GitlabApp::class)
+                ->whereIn('source_id', $gitlabAppIds)
+                ->update(['source_id' => null, 'source_type' => null]);
+        }
+
         $team->members()->detach($user->id);
         $team->delete();
     }
