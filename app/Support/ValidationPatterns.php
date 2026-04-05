@@ -10,7 +10,7 @@ class ValidationPatterns
     /**
      * Pattern for names excluding all dangerous characters
      */
-    public const NAME_PATTERN = '/^[\p{L}\p{M}\p{N}\s\-_.@\/&]+$/u';
+    public const NAME_PATTERN = '/^[\p{L}\p{M}\p{N}\s\-_.@\/&()#,:+]+$/u';
 
     /**
      * Pattern for descriptions excluding all dangerous characters with some additional allowed characters
@@ -37,17 +37,33 @@ class ValidationPatterns
 
     /**
      * Pattern for shell-safe command strings (docker compose commands, docker run options)
-     * Blocks dangerous shell metacharacters: ; & | ` $ ( ) > < newlines and carriage returns
-     * Also blocks backslashes, single quotes, and double quotes to prevent escape-sequence attacks
+     * Blocks dangerous shell metacharacters: ; | ` $ ( ) > < newlines and carriage returns
+     * Allows & for command chaining (&&) which is common in multi-step build commands
+     * Allows double quotes for build args with spaces (e.g. --build-arg KEY="value")
+     * Blocks backslashes and single quotes to prevent escape-sequence attacks
      * Uses [ \t] instead of \s to explicitly exclude \n and \r (which act as command separators)
      */
-    public const SHELL_SAFE_COMMAND_PATTERN = '/^[a-zA-Z0-9 \t._\-\/=:@,+\[\]{}#%^~]+$/';
+    public const SHELL_SAFE_COMMAND_PATTERN = '/^[a-zA-Z0-9 \t._\-\/=:@,+\[\]{}#%^~&"]+$/';
+
+    /**
+     * Pattern for Docker volume names
+     * Must start with alphanumeric, followed by alphanumeric, dots, hyphens, or underscores
+     * Matches Docker's volume naming rules
+     */
+    public const VOLUME_NAME_PATTERN = '/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/';
 
     /**
      * Pattern for Docker container names
      * Must start with alphanumeric, followed by alphanumeric, dots, hyphens, or underscores
      */
     public const CONTAINER_NAME_PATTERN = '/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/';
+
+    /**
+     * Pattern for Docker network names
+     * Must start with alphanumeric, followed by alphanumeric, dots, hyphens, or underscores
+     * Matches Docker's network naming rules and prevents shell injection
+     */
+    public const DOCKER_NETWORK_PATTERN = '/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/';
 
     /**
      * Get validation rules for name fields
@@ -96,7 +112,7 @@ class ValidationPatterns
     public static function nameMessages(): array
     {
         return [
-            'name.regex' => 'The name may only contain letters (including Unicode), numbers, spaces, and these characters: - _ . / @ &',
+            'name.regex' => 'The name may only contain letters (including Unicode), numbers, spaces, and these characters: - _ . / @ & ( ) # , : +',
             'name.min' => 'The name must be at least :min characters.',
             'name.max' => 'The name may not be greater than :max characters.',
         ];
@@ -156,11 +172,111 @@ class ValidationPatterns
     }
 
     /**
+     * Get validation rules for Docker volume name fields
+     */
+    public static function volumeNameRules(bool $required = true, int $maxLength = 255): array
+    {
+        $rules = [];
+
+        if ($required) {
+            $rules[] = 'required';
+        } else {
+            $rules[] = 'nullable';
+        }
+
+        $rules[] = 'string';
+        $rules[] = "max:$maxLength";
+        $rules[] = 'regex:'.self::VOLUME_NAME_PATTERN;
+
+        return $rules;
+    }
+
+    /**
+     * Get validation messages for volume name fields
+     */
+    public static function volumeNameMessages(string $field = 'name'): array
+    {
+        return [
+            "{$field}.regex" => 'The volume name must start with an alphanumeric character and contain only alphanumeric characters, dots, hyphens, and underscores.',
+        ];
+    }
+
+    /**
+     * Pattern for port mappings (e.g. 3000:3000, 8080:80, 8000-8010:8000-8010)
+     * Each entry requires host:container format, where each side can be a number or a range (number-number)
+     */
+    public const PORT_MAPPINGS_PATTERN = '/^(\d+(-\d+)?:\d+(-\d+)?)(,\d+(-\d+)?:\d+(-\d+)?)*$/';
+
+    /**
      * Get validation rules for container name fields
      */
     public static function containerNameRules(int $maxLength = 255): array
     {
         return ['string', 'max:'.$maxLength, 'regex:'.self::CONTAINER_NAME_PATTERN];
+    }
+
+    /**
+     * Get validation rules for port mapping fields
+     */
+    public static function portMappingRules(): array
+    {
+        return ['nullable', 'string', 'regex:'.self::PORT_MAPPINGS_PATTERN];
+    }
+
+    /**
+     * Get validation messages for port mapping fields
+     */
+    public static function portMappingMessages(string $field = 'portsMappings'): array
+    {
+        return [
+            "{$field}.regex" => 'Port mappings must be a comma-separated list of port pairs or ranges (e.g. 3000:3000,8080:80,8000-8010:8000-8010).',
+        ];
+    }
+
+    /**
+     * Check if a string is a valid Docker container name.
+     */
+    public static function isValidContainerName(string $name): bool
+    {
+        return preg_match(self::CONTAINER_NAME_PATTERN, $name) === 1;
+    }
+
+    /**
+     * Get validation rules for Docker network name fields
+     */
+    public static function dockerNetworkRules(bool $required = true, int $maxLength = 255): array
+    {
+        $rules = [];
+
+        if ($required) {
+            $rules[] = 'required';
+        } else {
+            $rules[] = 'nullable';
+        }
+
+        $rules[] = 'string';
+        $rules[] = "max:$maxLength";
+        $rules[] = 'regex:'.self::DOCKER_NETWORK_PATTERN;
+
+        return $rules;
+    }
+
+    /**
+     * Get validation messages for Docker network name fields
+     */
+    public static function dockerNetworkMessages(string $field = 'network'): array
+    {
+        return [
+            "{$field}.regex" => 'The network name must start with an alphanumeric character and contain only alphanumeric characters, dots, hyphens, and underscores.',
+        ];
+    }
+
+    /**
+     * Check if a string is a valid Docker network name.
+     */
+    public static function isValidDockerNetwork(string $name): bool
+    {
+        return preg_match(self::DOCKER_NETWORK_PATTERN, $name) === 1;
     }
 
     /**
