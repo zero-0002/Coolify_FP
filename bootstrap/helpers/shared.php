@@ -3660,14 +3660,16 @@ function convertGitUrl(string $gitRepository, string $deploymentType, GithubApp|
         }
     }
 
-    if (str($gitRepository)->contains('://')) {
-        $parsedRepository = parse_url($gitRepository);
+    $normalizedRepository = $repository;
+
+    if (str($normalizedRepository)->contains('://')) {
+        $parsedRepository = parse_url($normalizedRepository);
 
         if ($parsedRepository !== false && array_key_exists('port', $parsedRepository)) {
             $providerInfo['port'] = (string) $parsedRepository['port'];
         }
     } else {
-        preg_match('/^(?<host>[^:]+):(?<port>\d+)\/(?<path>.+)$/', $gitRepository, $matches);
+        preg_match('/^(?<host>[^:]+):(?<port>\d+)\/(?<path>.+)$/', $normalizedRepository, $matches);
 
         if (! empty($matches['port'])) {
             $providerInfo['port'] = $matches['port'];
