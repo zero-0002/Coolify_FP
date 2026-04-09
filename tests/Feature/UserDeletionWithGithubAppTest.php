@@ -118,49 +118,101 @@ it('does not delete system-wide github apps when deleting a different team', fun
     expect(GithubApp::find($systemGithubApp->id))->not->toBeNull();
 });
 
-it('nullifies source references on other teams apps when deleting a user', function () {
-    // Create the user to be deleted with their own team
+it('transfers instance-wide github app to root team when owning user is deleted', function () {
+    // Create a user whose team owns an instance-wide GitHub App
     $targetUser = User::factory()->create();
     $targetTeam = $targetUser->teams()->first();
 
-    // Create a GitHub App owned by the target team
     $targetPrivateKey = PrivateKey::factory()->create(['team_id' => $targetTeam->id]);
-    $githubApp = GithubApp::create([
-        'name' => 'Target GitHub App',
+    $instanceWideApp = GithubApp::create([
+        'name' => 'Instance-Wide GitHub App',
         'team_id' => $targetTeam->id,
         'private_key_id' => $targetPrivateKey->id,
         'api_url' => 'https://api.github.com',
         'html_url' => 'https://github.com',
         'is_public' => false,
+        'is_system_wide' => true,
     ]);
 
-    // Create an application on the ADMIN's team that uses the target team's GitHub App
-    $adminPrivateKey = PrivateKey::factory()->create(['team_id' => $this->rootTeam->id]);
-    $adminServer = Server::factory()->create([
+    // Create an application on the ROOT team that uses this instance-wide GitHub App
+    $rootPrivateKey = PrivateKey::factory()->create(['team_id' => $this->rootTeam->id]);
+    $rootServer = Server::factory()->create([
         'team_id' => $this->rootTeam->id,
-        'private_key_id' => $adminPrivateKey->id,
+        'private_key_id' => $rootPrivateKey->id,
     ]);
-    $adminDestination = StandaloneDocker::factory()->create(['server_id' => $adminServer->id]);
-    $adminProject = Project::factory()->create(['team_id' => $this->rootTeam->id]);
-    $adminEnvironment = Environment::factory()->create(['project_id' => $adminProject->id]);
+    $rootDestination = StandaloneDocker::factory()->create(['server_id' => $rootServer->id]);
+    $rootProject = Project::factory()->create(['team_id' => $this->rootTeam->id]);
+    $rootEnvironment = Environment::factory()->create(['project_id' => $rootProject->id]);
 
     $otherTeamApp = Application::factory()->create([
-        'environment_id' => $adminEnvironment->id,
-        'destination_id' => $adminDestination->id,
+        'environment_id' => $rootEnvironment->id,
+        'destination_id' => $rootDestination->id,
         'destination_type' => StandaloneDocker::class,
-        'source_id' => $githubApp->id,
+        'source_id' => $instanceWideApp->id,
         'source_type' => GithubApp::class,
     ]);
 
-    // Delete the target user — should succeed, nullifying the source reference
+    // Delete the user — should succeed and transfer the instance-wide app to root team
     $targetUser->delete();
 
     // Assert user is deleted
     expect(User::find($targetUser->id))->toBeNull();
 
-    // Assert the other team's application still exists but source is nullified
+    // Assert the instance-wide GitHub App is preserved and transferred to root team
+    $instanceWideApp->refresh();
+    expect($instanceWideApp)->not->toBeNull();
+    expect($instanceWideApp->team_id)->toBe($this->rootTeam->id);
+
+    // Assert the other team's application still has its source intact
     $otherTeamApp->refresh();
-    expect($otherTeamApp)->not->toBeNull();
-    expect($otherTeamApp->source_id)->toBeNull();
-    expect($otherTeamApp->source_type)->toBeNull();
+    expect($otherTeamApp->source_id)->toBe($instanceWideApp->id);
+    expect($otherTeamApp->source_type)->toBe(GithubApp::class);
+});
+
+it('transfers instance-wide github app to root team when team is deleted directly', function () {
+    // Create a team that owns an instance-wide GitHub App
+    $targetUser = User::factory()->create();
+    $targetTeam = $targetUser->teams()->first();
+
+    $targetPrivateKey = PrivateKey::factory()->create(['team_id' => $targetTeam->id]);
+    $instanceWideApp = GithubApp::create([
+        'name' => 'Instance-Wide GitHub App',
+        'team_id' => $targetTeam->id,
+        'private_key_id' => $targetPrivateKey->id,
+        'api_url' => 'https://api.github.com',
+        'html_url' => 'https://github.com',
+        'is_public' => false,
+        'is_system_wide' => true,
+    ]);
+
+    // Create an application on the ROOT team that uses this instance-wide GitHub App
+    $rootPrivateKey = PrivateKey::factory()->create(['team_id' => $this->rootTeam->id]);
+    $rootServer = Server::factory()->create([
+        'team_id' => $this->rootTeam->id,
+        'private_key_id' => $rootPrivateKey->id,
+    ]);
+    $rootDestination = StandaloneDocker::factory()->create(['server_id' => $rootServer->id]);
+    $rootProject = Project::factory()->create(['team_id' => $this->rootTeam->id]);
+    $rootEnvironment = Environment::factory()->create(['project_id' => $rootProject->id]);
+
+    $otherTeamApp = Application::factory()->create([
+        'environment_id' => $rootEnvironment->id,
+        'destination_id' => $rootDestination->id,
+        'destination_type' => StandaloneDocker::class,
+        'source_id' => $instanceWideApp->id,
+        'source_type' => GithubApp::class,
+    ]);
+
+    // Delete the team directly — should transfer instance-wide app to root team
+    $targetTeam->delete();
+
+    // Assert the instance-wide GitHub App is preserved and transferred to root team
+    $instanceWideApp->refresh();
+    expect($instanceWideApp)->not->toBeNull();
+    expect($instanceWideApp->team_id)->toBe($this->rootTeam->id);
+
+    // Assert the other team's application still has its source intact
+    $otherTeamApp->refresh();
+    expect($otherTeamApp->source_id)->toBe($instanceWideApp->id);
+    expect($otherTeamApp->source_type)->toBe(GithubApp::class);
 });
