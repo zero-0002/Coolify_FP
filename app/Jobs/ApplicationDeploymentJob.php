@@ -2498,10 +2498,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $prepare_command .= " {$this->env_railpack_args}";
         }
         if ($this->application->build_command) {
-            $prepare_command .= ' --build-cmd '.escapeShellValue($this->application->build_command);
+            $prepare_command .= ' --env '.escapeShellValue("RAILPACK_BUILD_CMD={$this->application->build_command}");
         }
         if ($this->application->start_command) {
-            $prepare_command .= ' --start-cmd '.escapeShellValue($this->application->start_command);
+            $prepare_command .= ' --env '.escapeShellValue("RAILPACK_START_CMD={$this->application->start_command}");
         }
         if ($this->application->install_command) {
             $prepare_command .= ' --env '.escapeShellValue("RAILPACK_INSTALL_CMD={$this->application->install_command}");
