@@ -2540,25 +2540,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         return [];
     }
 
-    private function railpack_prepare_environment_variables(): Collection
-    {
-        $variables = collect([]);
-
-        if ($this->application->install_command) {
-            $variables->put('RAILPACK_INSTALL_CMD', $this->application->install_command);
-        }
-
-        if ($this->application->build_command) {
-            $variables->put('RAILPACK_BUILD_CMD', $this->application->build_command);
-        }
-
-        if ($this->application->start_command) {
-            $variables->put('RAILPACK_START_CMD', $this->application->start_command);
-        }
-
-        return $variables;
-    }
-
     private function generated_railpack_config_relative_path(): string
     {
         return self::RAILPACK_GENERATED_CONFIG_PATH;
@@ -2627,12 +2608,17 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     private function railpack_prepare_command(?string $configFilePath = null): string
     {
         $prepare_command = 'railpack prepare';
-        $prepareEnvironmentVariables = $this->railpack_prepare_environment_variables()
-            ->map(fn ($value, $key) => "{$key}=".escapeShellValue($value))
-            ->implode(' ');
 
-        if ($prepareEnvironmentVariables !== '') {
-            $prepare_command = "{$prepareEnvironmentVariables} {$prepare_command}";
+        if ($this->application->install_command) {
+            $prepare_command .= ' --env '.escapeShellValue("RAILPACK_INSTALL_CMD={$this->application->install_command}");
+        }
+
+        if ($this->application->build_command) {
+            $prepare_command .= ' --build-cmd '.escapeShellValue($this->application->build_command);
+        }
+
+        if ($this->application->start_command) {
+            $prepare_command .= ' --start-cmd '.escapeShellValue($this->application->start_command);
         }
 
         if ($this->env_railpack_args) {
@@ -2681,11 +2667,22 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $cache_args = "--build-arg cache-key='{$this->application->uuid}'";
         }
 
+        $installCommandEnv = '';
+        $installCommandSecret = '';
+        if ($this->application->install_command) {
+            $installCommandEnv = 'env RAILPACK_INSTALL_CMD='.escapeShellValue($this->application->install_command).' ';
+            $installCommandSecret = ' --secret id=RAILPACK_INSTALL_CMD,env=RAILPACK_INSTALL_CMD';
+            $cache_args .= ' --build-arg secrets-hash='.$this->generate_secrets_hash(collect([
+                'RAILPACK_INSTALL_CMD' => $this->application->install_command,
+            ]));
+        }
+
         $build_command = 'docker buildx create --name coolify-railpack --driver docker-container 2>/dev/null || true'
-            .' && docker buildx build --builder coolify-railpack'
+            ." && {$installCommandEnv}docker buildx build --builder coolify-railpack"
             ." {$this->addHosts} --network host"
             ." --build-arg BUILDKIT_SYNTAX='ghcr.io/railwayapp/railpack-frontend'"
             ." {$cache_args}"
+            ."{$installCommandSecret}"
             .' -f /artifacts/railpack-plan.json'
             .' --progress plain'
             .' --load'

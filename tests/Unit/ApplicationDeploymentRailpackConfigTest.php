@@ -167,7 +167,7 @@ it('fails fast when repository railpack config is invalid json', function () {
         ->toThrow(DeploymentException::class, 'Invalid repository railpack.json');
 });
 
-it('builds railpack prepare command using process env vars for command overrides', function () {
+it('builds railpack prepare command using railpack env for install and cli flags for build/start overrides', function () {
     [$job, $reflection] = makeRailpackDeploymentJob(
         [
             'install_command' => 'npm ci',
@@ -183,13 +183,15 @@ it('builds railpack prepare command using process env vars for command overrides
         ['.coolify/railpack.generated.json'],
     );
 
-    expect($command)->toContain("railpack prepare --env 'RAILPACK_NODE_VERSION=22'");
-    expect($command)->toContain('RAILPACK_INSTALL_CMD='.escapeshellarg('npm ci'));
-    expect($command)->toContain('RAILPACK_BUILD_CMD='.escapeshellarg('npm run build'));
-    expect($command)->toContain('RAILPACK_START_CMD='.escapeshellarg('node server.js'));
+    expect($command)->toContain('railpack prepare');
+    expect($command)->toContain('--env '.escapeshellarg('RAILPACK_INSTALL_CMD=npm ci'));
+    expect($command)->toContain("--env 'RAILPACK_NODE_VERSION=22'");
+    expect($command)->toContain('--build-cmd '.escapeshellarg('npm run build'));
+    expect($command)->toContain('--start-cmd '.escapeshellarg('node server.js'));
     expect($command)->toContain('--config-file '.escapeshellarg('.coolify/railpack.generated.json'));
     expect($command)->toContain('--plan-out /artifacts/railpack-plan.json /artifacts/test-app');
     expect($command)->not->toContain("--env 'RAILPACK_BUILD_CMD=");
     expect($command)->not->toContain("--env 'RAILPACK_START_CMD=");
-    expect($command)->not->toContain("--env 'RAILPACK_INSTALL_CMD=");
+    expect($command)->not->toContain('RAILPACK_BUILD_CMD=');
+    expect($command)->not->toContain('RAILPACK_START_CMD=');
 });
