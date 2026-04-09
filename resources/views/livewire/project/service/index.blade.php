@@ -243,7 +243,7 @@
                             </div>
                         </div>
                         <h3 class="pt-2">Advanced</h3>
-                        <div class="w-96">
+                        <div class="w-full sm:w-96">
                             <x-forms.checkbox canGate="update" :canResource="$serviceDatabase" instantSave="instantSaveExclude"
                                 label="Exclude from service status"
                                 helper="If you do not need to monitor this resource, enable. Useful if this service is optional."

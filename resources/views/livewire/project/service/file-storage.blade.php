@@ -17,7 +17,7 @@
         </div>
         @if ($resource instanceof \App\Models\Application)
             @can('update', $resource)
-                <div class="w-96">
+                <div class="w-full sm:w-96">
                     <x-forms.checkbox instantSave canGate="update" :canResource="$resource" label="Add suffix for PR deployments"
                         id="isPreviewSuffixEnabled"
                         helper="When enabled, a -pr-N suffix is added to this volume's path for preview deployments (e.g. ./scripts becomes ./scripts-pr-1). Disable this for volumes that contain shared config or scripts from your repository."></x-forms.checkbox>
@@ -67,7 +67,7 @@
                 @if (!$fileStorage->is_directory)
                     @can('update', $resource)
                         @if (data_get($resource, 'settings.is_preserve_repository_enabled'))
-                            <div class="w-96">
+                            <div class="w-full sm:w-96">
                                 <x-forms.checkbox instantSave label="Is this based on the Git repository?"
                                     id="isBasedOnGit"></x-forms.checkbox>
                             </div>
@@ -82,7 +82,7 @@
                         @endif
                     @else
                         @if (data_get($resource, 'settings.is_preserve_repository_enabled'))
-                            <div class="w-96">
+                            <div class="w-full sm:w-96">
                                 <x-forms.checkbox disabled label="Is this based on the Git repository?"
                                     id="isBasedOnGit"></x-forms.checkbox>
                             </div>
@@ -103,7 +103,7 @@
                         </div>
                     @endcan
                     @if (data_get($resource, 'settings.is_preserve_repository_enabled'))
-                        <div class="w-96">
+                        <div class="w-full sm:w-96">
                             <x-forms.checkbox disabled label="Is this based on the Git repository?"
                                 id="isBasedOnGit"></x-forms.checkbox>
                         </div>

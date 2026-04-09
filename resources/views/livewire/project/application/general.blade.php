@@ -276,7 +276,7 @@
                                         helper="It is calculated together with the Base Directory:<br><span class='dark:text-warning'>{{ Str::start($baseDirectory . $dockerComposeLocation, '/') }}</span>"
                                         x-model="composeLocation" @blur="normalizeComposeLocation()" />
                                 </div>
-                                <div class="w-96">
+                                <div class="w-full sm:w-96">
                                     <x-forms.checkbox instantSave id="isPreserveRepositoryEnabled"
                                         label="Preserve Repository During Deployment"
                                         helper="Git repository (based on the base directory settings) will be copied to the deployment directory."
@@ -382,7 +382,7 @@
                                 x-bind:disabled="!canUpdate" />
 
                             @if ($buildPack !== 'dockercompose')
-                                <div class="pt-2 w-96">
+                                <div class="pt-2 w-full sm:w-96">
                                     <x-forms.checkbox
                                         helper="Use a build server to build your application. You can configure your build server in the Server settings. For more info, check the <a href='https://coolify.io/docs/knowledge-base/server/build-server' class='underline' target='_blank'>documentation</a>."
                                         instantSave id="isBuildServerEnabled" label="Use a Build Server?"
@@ -422,7 +422,7 @@
                                 monacoEditorLanguage="yaml" useMonacoEditor />
                         </div>
                     @endif
-                    <div class="w-96">
+                    <div class="w-full sm:w-96">
                         <x-forms.checkbox label="Escape special characters in labels?"
                             helper="By default, $ (and other chars) is escaped. So if you write $ in the labels, it will be saved as $$.<br><br>If you want to use env variables inside the labels, turn this off."
                             id="isContainerLabelEscapeEnabled" instantSave
@@ -521,7 +521,7 @@
 
                 <h3 class="pt-8">HTTP Basic Authentication</h3>
                 <div>
-                    <div class="w-96">
+                    <div class="w-full sm:w-96">
                         <x-forms.checkbox helper="This will add the proper proxy labels to the container." instantSave
                             label="Enable" id="isHttpBasicAuthEnabled" x-bind:disabled="!canUpdate" />
                     </div>
@@ -543,7 +543,7 @@
                     <x-forms.textarea label="Container Labels" rows="15" id="customLabels"
                         monacoEditorLanguage="ini" useMonacoEditor x-bind:disabled="!canUpdate"></x-forms.textarea>
                 @endif
-                <div class="w-96">
+                <div class="w-full sm:w-96">
                     <x-forms.checkbox label="Readonly labels"
                         helper="Labels are readonly by default. Readonly means that edits you do to the labels could be lost and Coolify will autogenerate the labels for you. If you want to edit the labels directly, disable this option. <br><br>Be careful, it could break the proxy configuration after you restart the container as Coolify will now NOT autogenerate the labels for you (ofc you can always reset the labels to the coolify defaults manually)."
                         id="isContainerLabelReadonlyEnabled" instantSave
