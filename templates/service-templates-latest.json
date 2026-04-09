@@ -27,7 +27,7 @@
             "expenses",
             "income"
         ],
-        "category": "productivity",
+        "category": "finance",
         "logo": "svgs/actualbudget.png",
         "minversion": "0.0.0",
         "port": "5006"
@@ -163,7 +163,7 @@
             "data-science",
             "nlp"
         ],
-        "category": "productivity",
+        "category": "ai",
         "logo": "svgs/argilla.png",
         "minversion": "0.0.0",
         "port": "6900"
@@ -216,7 +216,7 @@
             "self-hosted",
             "dbaas"
         ],
-        "category": null,
+        "category": "database",
         "logo": "svgs/autobase.svg",
         "minversion": "0.0.0",
         "port": "80"
@@ -353,7 +353,7 @@
             "budgeting",
             "expense tracking"
         ],
-        "category": "productivity",
+        "category": "finance",
         "logo": "svgs/budge.png",
         "minversion": "0.0.0"
     },
@@ -427,7 +427,7 @@
             "download",
             "downloader"
         ],
-        "category": null,
+        "category": "media",
         "logo": "svgs/calibre-web-automated-with-downloader.png",
         "minversion": "0.0.0",
         "port": "8083"
@@ -464,7 +464,7 @@
             "low",
             "code"
         ],
-        "category": null,
+        "category": "media",
         "logo": "svgs/cap.svg",
         "minversion": "0.0.0",
         "port": "5679"
@@ -520,7 +520,7 @@
             "postgresql",
             "sidekiq"
         ],
-        "category": "cms",
+        "category": "helpdesk",
         "logo": "svgs/chaskiq.png",
         "minversion": "0.0.0",
         "port": "3000"
@@ -540,7 +540,7 @@
             "postgresql",
             "sidekiq"
         ],
-        "category": "cms",
+        "category": "helpdesk",
         "logo": "svgs/chatwoot.svg",
         "minversion": "0.0.0",
         "port": "3000"
@@ -570,7 +570,7 @@
             "upload",
             "sharing"
         ],
-        "category": null,
+        "category": "storage",
         "logo": "svgs/chibisafe.svg",
         "minversion": "0.0.0",
         "port": "80"
@@ -970,7 +970,7 @@
             "crm",
             "erp"
         ],
-        "category": "cms",
+        "category": "productivity",
         "logo": "svgs/dolibarr.png",
         "minversion": "0.0.0",
         "port": "80"
@@ -1016,7 +1016,7 @@
             "open-source",
             "low-code"
         ],
-        "category": "backend",
+        "category": "devtools",
         "logo": "svgs/drizzle.jpeg",
         "minversion": "0.0.0",
         "port": "4983"
@@ -1080,7 +1080,7 @@
             "stack",
             "devops"
         ],
-        "category": null,
+        "category": "monitoring",
         "logo": "svgs/elasticsearch.svg",
         "minversion": "0.0.0",
         "port": "5601"
@@ -1215,7 +1215,7 @@
             "automation",
             "project management"
         ],
-        "category": "cms",
+        "category": "productivity",
         "logo": "svgs/espocrm.svg",
         "minversion": "0.0.0",
         "port": "80"
@@ -1322,7 +1322,7 @@
             "personal",
             "manager"
         ],
-        "category": "productivity",
+        "category": "finance",
         "logo": "svgs/firefly.svg",
         "minversion": "0.0.0",
         "port": "8080"
@@ -1501,7 +1501,7 @@
             "forms",
             "survey"
         ],
-        "category": "analytics",
+        "category": "productivity",
         "logo": "svgs/formbricks.png",
         "minversion": "0.0.0",
         "port": "3000"
@@ -1517,7 +1517,7 @@
             "ttrpg",
             "roleplaying"
         ],
-        "category": "media",
+        "category": "games",
         "logo": "svgs/foundryvtt.png",
         "minversion": "0.0.0",
         "port": "30000"
@@ -1532,7 +1532,7 @@
             "ticketing",
             "customer-support"
         ],
-        "category": "cms",
+        "category": "helpdesk",
         "logo": "svgs/freescout.png",
         "minversion": "0.0.0",
         "port": "80"
@@ -1545,7 +1545,7 @@
             "rss",
             "feed"
         ],
-        "category": "cms",
+        "category": "RSS",
         "logo": "svgs/freshrss.png",
         "minversion": "0.0.0",
         "port": "80"
@@ -1558,7 +1558,7 @@
             "rss",
             "feed"
         ],
-        "category": "cms",
+        "category": "RSS",
         "logo": "svgs/freshrss.png",
         "minversion": "0.0.0",
         "port": "80"
@@ -1571,7 +1571,7 @@
             "rss",
             "feed"
         ],
-        "category": "cms",
+        "category": "RSS",
         "logo": "svgs/freshrss.png",
         "minversion": "0.0.0",
         "port": "80"
@@ -1584,7 +1584,7 @@
             "rss",
             "feed"
         ],
-        "category": "cms",
+        "category": "RSS",
         "logo": "svgs/freshrss.png",
         "minversion": "0.0.0",
         "port": "80"
@@ -1755,7 +1755,7 @@
             "interface",
             "rrss"
         ],
-        "category": "monitoring",
+        "category": "productivity",
         "logo": "svgs/glance.png",
         "minversion": "0.0.0",
         "port": "8080"
@@ -1839,7 +1839,7 @@
             "notification",
             "collaboration"
         ],
-        "category": "productivity",
+        "category": "messaging",
         "logo": "svgs/gotify.png",
         "minversion": "0.0.0",
         "port": "80"
@@ -1855,7 +1855,7 @@
             "api",
             "go-whatsapp"
         ],
-        "category": "cms",
+        "category": "messaging",
         "logo": "svgs/gowa.svg",
         "minversion": "0.0.0",
         "port": "3000"
@@ -1960,7 +1960,7 @@
             "data-pipelines",
             "scheduling"
         ],
-        "category": null,
+        "category": "automation",
         "logo": "svgs/hatchet.svg",
         "minversion": "0.0.0",
         "port": "80"
@@ -2040,7 +2040,7 @@
             "home",
             "organize"
         ],
-        "category": "storage",
+        "category": "productivity",
         "logo": "svgs/homebox.svg",
         "minversion": "0.0.0",
         "port": "7745"
@@ -2141,7 +2141,7 @@
             "finance",
             "self-hosted"
         ],
-        "category": "productivity",
+        "category": "finance",
         "logo": "svgs/invoiceninja.png",
         "minversion": "0.0.0",
         "port": "9000"
@@ -2733,7 +2733,7 @@
             "slack",
             "alternative"
         ],
-        "category": "mattermost",
+        "category": "messaging",
         "logo": "svgs/mattermost.svg",
         "minversion": "0.0.0",
         "port": "8065"
@@ -2884,7 +2884,7 @@
             "self",
             "hosted"
         ],
-        "category": "cms",
+        "category": "RSS",
         "logo": "svgs/miniflux.svg",
         "minversion": "0.0.0",
         "port": "8080"
@@ -3029,7 +3029,7 @@
     "netbird-client": {
         "documentation": "https://docs.netbird.io/how-to/examples#net-bird-client-in-docker?utm_source=coolify.io",
         "slogan": "Connect your devices into a secure WireGuard\u00ae-based overlay network with SSO, MFA and granular access controls.",
-        "compose": "c2VydmljZXM6CiAgbmV0YmlyZC1jbGllbnQ6CiAgICBpbWFnZTogJ25ldGJpcmRpby9uZXRiaXJkOmxhdGVzdCcKICAgIG5ldHdvcmtfbW9kZTogaG9zdAogICAgZW52aXJvbm1lbnQ6CiAgICAgIC0gJ05CX1NFVFVQX0tFWT0ke05CX1NFVFVQX0tFWX0nCiAgICAgIC0gJ05CX0VOQUJMRV9ST1NFTlBBU1M9JHtOQl9FTkFCTEVfUk9TRU5QQVNTOi1mYWxzZX0nCiAgICAgIC0gJ05CX0VOQUJMRV9FWFBFUklNRU5UQUxfTEFaWV9DT05OPSR7TkJfRU5BQkxFX0VYUEVSSU1FTlRBTF9MQVpZX0NPTk46LWZhbHNlfScKICAgIHZvbHVtZXM6CiAgICAgIC0gJ25ldGJpcmQtY2xpZW50Oi9ldGMvbmV0YmlyZCcKICAgIGNhcF9hZGQ6CiAgICAgIC0gTkVUX0FETUlOCiAgICAgIC0gU1lTX0FETUlOCiAgICAgIC0gU1lTX1JFU09VUkNFCiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gbmV0YmlyZAogICAgICAgIC0gdmVyc2lvbgogICAgICBpbnRlcnZhbDogNXMKICAgICAgdGltZW91dDogMjBzCiAgICAgIHJldHJpZXM6IDEwCg==",
+        "compose": "c2VydmljZXM6CiAgbmV0YmlyZC1jbGllbnQ6CiAgICBpbWFnZTogJ25ldGJpcmRpby9uZXRiaXJkOmxhdGVzdCcKICAgIG5ldHdvcmtfbW9kZTogaG9zdAogICAgZW52aXJvbm1lbnQ6CiAgICAgIC0gJ05CX1NFVFVQX0tFWT0ke05CX1NFVFVQX0tFWX0nCiAgICAgIC0gJ05CX0VOQUJMRV9ST1NFTlBBU1M9JHtOQl9FTkFCTEVfUk9TRU5QQVNTOi1mYWxzZX0nCiAgICAgIC0gJ05CX0VOQUJMRV9FWFBFUklNRU5UQUxfTEFaWV9DT05OPSR7TkJfRU5BQkxFX0VYUEVSSU1FTlRBTF9MQVpZX0NPTk46LWZhbHNlfScKICAgIHZvbHVtZXM6CiAgICAgIC0gJ25ldGJpcmQtY2xpZW50Oi92YXIvbGliL25ldGJpcmQnCiAgICBjYXBfYWRkOgogICAgICAtIE5FVF9BRE1JTgogICAgICAtIFNZU19BRE1JTgogICAgICAtIFNZU19SRVNPVVJDRQogICAgaGVhbHRoY2hlY2s6CiAgICAgIHRlc3Q6CiAgICAgICAgLSBDTUQKICAgICAgICAtIG5ldGJpcmQKICAgICAgICAtIHZlcnNpb24KICAgICAgaW50ZXJ2YWw6IDVzCiAgICAgIHRpbWVvdXQ6IDIwcwogICAgICByZXRyaWVzOiAxMAo=",
         "tags": [
             "wireguard",
             "mesh-networks",
@@ -3067,7 +3067,7 @@
             "zero-trust-network-access",
             "open source"
         ],
-        "category": null,
+        "category": "proxy",
         "logo": "svgs/pangolin-logo.png",
         "minversion": "0.0.0"
     },
@@ -3089,7 +3089,7 @@
     "nextcloud-with-mariadb": {
         "documentation": "https://docs.nextcloud.com?utm_source=coolify.io",
         "slogan": "NextCloud is a self-hosted, open-source platform that provides file storage, collaboration, and communication tools for seamless data management.",
-        "compose": "c2VydmljZXM6CiAgbmV4dGNsb3VkOgogICAgaW1hZ2U6ICdsc2NyLmlvL2xpbnV4c2VydmVyL25leHRjbG91ZDpsYXRlc3QnCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBTRVJWSUNFX1VSTF9ORVhUQ0xPVURfODAKICAgICAgLSBQVUlEPTEwMDAKICAgICAgLSBQR0lEPTEwMDAKICAgICAgLSAnVFo9JHtUWjotRXVyb3BlL1BhcmlzfScKICAgICAgLSAnTVlTUUxfREFUQUJBU0U9JHtNQVJJQURCX0RBVEFCQVNFOi1uZXh0Y2xvdWR9JwogICAgICAtICdNWVNRTF9VU0VSPSR7U0VSVklDRV9VU0VSX01BUklBREJ9JwogICAgICAtICdNWVNRTF9QQVNTV09SRD0ke1NFUlZJQ0VfUEFTU1dPUkRfTUFSSUFEQn0nCiAgICAgIC0gTVlTUUxfSE9TVD1uZXh0Y2xvdWQtZGIKICAgICAgLSBSRURJU19IT1NUPXJlZGlzCiAgICAgIC0gUkVESVNfUE9SVD02Mzc5CiAgICB2b2x1bWVzOgogICAgICAtICduZXh0Y2xvdWQtY29uZmlnOi9jb25maWcnCiAgICAgIC0gJ25leHRjbG91ZC1kYXRhOi9kYXRhJwogICAgZGVwZW5kc19vbjoKICAgICAgbmV4dGNsb3VkLWRiOgogICAgICAgIGNvbmRpdGlvbjogc2VydmljZV9oZWFsdGh5CiAgICAgIHJlZGlzOgogICAgICAgIGNvbmRpdGlvbjogc2VydmljZV9oZWFsdGh5CiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gY3VybAogICAgICAgIC0gJy1mJwogICAgICAgIC0gJ2h0dHA6Ly8xMjcuMC4wLjE6ODAnCiAgICAgIGludGVydmFsOiAzMHMKICAgICAgdGltZW91dDogMTBzCiAgICAgIHJldHJpZXM6IDE1CiAgbmV4dGNsb3VkLWRiOgogICAgaW1hZ2U6ICdtYXJpYWRiOjExJwogICAgdm9sdW1lczoKICAgICAgLSAnbmV4dGNsb3VkLW1hcmlhZGItZGF0YTovdmFyL2xpYi9teXNxbCcKICAgIGVudmlyb25tZW50OgogICAgICAtICdNWVNRTF9ST09UX1BBU1NXT1JEPSR7U0VSVklDRV9QQVNTV09SRF9ST09UfScKICAgICAgLSAnTVlTUUxfREFUQUJBU0U9JHtNQVJJQURCX0RBVEFCQVNFOi1uZXh0Y2xvdWR9JwogICAgICAtICdNWVNRTF9VU0VSPSR7U0VSVklDRV9VU0VSX01BUklBREJ9JwogICAgICAtICdNWVNRTF9QQVNTV09SRD0ke1NFUlZJQ0VfUEFTU1dPUkRfTUFSSUFEQn0nCiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gaGVhbHRoY2hlY2suc2gKICAgICAgICAtICctLWNvbm5lY3QnCiAgICAgICAgLSAnLS1pbm5vZGJfaW5pdGlhbGl6ZWQnCiAgICAgIGludGVydmFsOiA1cwogICAgICB0aW1lb3V0OiAyMHMKICAgICAgcmV0cmllczogMTAKICByZWRpczoKICAgIGltYWdlOiAncmVkaXM6Ny40LWFscGluZScKICAgIHZvbHVtZXM6CiAgICAgIC0gJ25leHRjbG91ZC1yZWRpcy1kYXRhOi9kYXRhJwogICAgaGVhbHRoY2hlY2s6CiAgICAgIHRlc3Q6CiAgICAgICAgLSBDTUQKICAgICAgICAtIHJlZGlzLWNsaQogICAgICAgIC0gUElORwogICAgICBpbnRlcnZhbDogNXMKICAgICAgdGltZW91dDogMTBzCiAgICAgIHJldHJpZXM6IDIwCg==",
+        "compose": "c2VydmljZXM6CiAgbmV4dGNsb3VkOgogICAgaW1hZ2U6ICdsc2NyLmlvL2xpbnV4c2VydmVyL25leHRjbG91ZDpsYXRlc3QnCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBTRVJWSUNFX1VSTF9ORVhUQ0xPVURfODAKICAgICAgLSBQVUlEPTEwMDAKICAgICAgLSBQR0lEPTEwMDAKICAgICAgLSAnVFo9JHtUWjotRXVyb3BlL1BhcmlzfScKICAgICAgLSAnTVlTUUxfREFUQUJBU0U9JHtNQVJJQURCX0RBVEFCQVNFOi1uZXh0Y2xvdWR9JwogICAgICAtICdNWVNRTF9VU0VSPSR7U0VSVklDRV9VU0VSX01BUklBREJ9JwogICAgICAtICdNWVNRTF9QQVNTV09SRD0ke1NFUlZJQ0VfUEFTU1dPUkRfTUFSSUFEQn0nCiAgICAgIC0gTVlTUUxfSE9TVD1uZXh0Y2xvdWQtZGIKICAgICAgLSBSRURJU19IT1NUPXJlZGlzCiAgICAgIC0gUkVESVNfUE9SVD02Mzc5CiAgICB2b2x1bWVzOgogICAgICAtICduZXh0Y2xvdWQtY29uZmlnOi9jb25maWcnCiAgICAgIC0gJ25leHRjbG91ZC1kYXRhOi9kYXRhJwogICAgZGVwZW5kc19vbjoKICAgICAgbmV4dGNsb3VkLWRiOgogICAgICAgIGNvbmRpdGlvbjogc2VydmljZV9oZWFsdGh5CiAgICAgIHJlZGlzOgogICAgICAgIGNvbmRpdGlvbjogc2VydmljZV9oZWFsdGh5CiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gY3VybAogICAgICAgIC0gJy1mJwogICAgICAgIC0gJ2h0dHA6Ly8xMjcuMC4wLjE6ODAvc3RhdHVzLnBocCcKICAgICAgaW50ZXJ2YWw6IDMwcwogICAgICB0aW1lb3V0OiAxMHMKICAgICAgcmV0cmllczogMTUKICBuZXh0Y2xvdWQtZGI6CiAgICBpbWFnZTogJ21hcmlhZGI6MTEnCiAgICB2b2x1bWVzOgogICAgICAtICduZXh0Y2xvdWQtbWFyaWFkYi1kYXRhOi92YXIvbGliL215c3FsJwogICAgZW52aXJvbm1lbnQ6CiAgICAgIC0gJ01ZU1FMX1JPT1RfUEFTU1dPUkQ9JHtTRVJWSUNFX1BBU1NXT1JEX1JPT1R9JwogICAgICAtICdNWVNRTF9EQVRBQkFTRT0ke01BUklBREJfREFUQUJBU0U6LW5leHRjbG91ZH0nCiAgICAgIC0gJ01ZU1FMX1VTRVI9JHtTRVJWSUNFX1VTRVJfTUFSSUFEQn0nCiAgICAgIC0gJ01ZU1FMX1BBU1NXT1JEPSR7U0VSVklDRV9QQVNTV09SRF9NQVJJQURCfScKICAgIGhlYWx0aGNoZWNrOgogICAgICB0ZXN0OgogICAgICAgIC0gQ01ECiAgICAgICAgLSBoZWFsdGhjaGVjay5zaAogICAgICAgIC0gJy0tY29ubmVjdCcKICAgICAgICAtICctLWlubm9kYl9pbml0aWFsaXplZCcKICAgICAgaW50ZXJ2YWw6IDVzCiAgICAgIHRpbWVvdXQ6IDIwcwogICAgICByZXRyaWVzOiAxMAogIHJlZGlzOgogICAgaW1hZ2U6ICdyZWRpczo3LjQtYWxwaW5lJwogICAgdm9sdW1lczoKICAgICAgLSAnbmV4dGNsb3VkLXJlZGlzLWRhdGE6L2RhdGEnCiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gcmVkaXMtY2xpCiAgICAgICAgLSBQSU5HCiAgICAgIGludGVydmFsOiA1cwogICAgICB0aW1lb3V0OiAxMHMKICAgICAgcmV0cmllczogMjAK",
         "tags": [
             "cloud",
             "collaboration",
@@ -3105,7 +3105,7 @@
     "nextcloud-with-mysql": {
         "documentation": "https://docs.nextcloud.com?utm_source=coolify.io",
         "slogan": "NextCloud is a self-hosted, open-source platform that provides file storage, collaboration, and communication tools for seamless data management.",
-        "compose": "c2VydmljZXM6CiAgbmV4dGNsb3VkOgogICAgaW1hZ2U6ICdsc2NyLmlvL2xpbnV4c2VydmVyL25leHRjbG91ZDpsYXRlc3QnCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBTRVJWSUNFX1VSTF9ORVhUQ0xPVURfODAKICAgICAgLSBQVUlEPTEwMDAKICAgICAgLSBQR0lEPTEwMDAKICAgICAgLSAnVFo9JHtUWjotRXVyb3BlL1BhcmlzfScKICAgICAgLSAnTVlTUUxfREFUQUJBU0U9JHtNWVNRTF9EQVRBQkFTRTotbmV4dGNsb3VkfScKICAgICAgLSAnTVlTUUxfVVNFUj0ke1NFUlZJQ0VfVVNFUl9NWVNRTH0nCiAgICAgIC0gJ01ZU1FMX1BBU1NXT1JEPSR7U0VSVklDRV9QQVNTV09SRF9NWVNRTH0nCiAgICAgIC0gTVlTUUxfSE9TVD1uZXh0Y2xvdWQtZGIKICAgICAgLSBSRURJU19IT1NUPXJlZGlzCiAgICAgIC0gUkVESVNfUE9SVD02Mzc5CiAgICB2b2x1bWVzOgogICAgICAtICduZXh0Y2xvdWQtY29uZmlnOi9jb25maWcnCiAgICAgIC0gJ25leHRjbG91ZC1kYXRhOi9kYXRhJwogICAgZGVwZW5kc19vbjoKICAgICAgbmV4dGNsb3VkLWRiOgogICAgICAgIGNvbmRpdGlvbjogc2VydmljZV9oZWFsdGh5CiAgICAgIHJlZGlzOgogICAgICAgIGNvbmRpdGlvbjogc2VydmljZV9oZWFsdGh5CiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gY3VybAogICAgICAgIC0gJy1mJwogICAgICAgIC0gJ2h0dHA6Ly8xMjcuMC4wLjE6ODAnCiAgICAgIGludGVydmFsOiAzMHMKICAgICAgdGltZW91dDogMTBzCiAgICAgIHJldHJpZXM6IDE1CiAgbmV4dGNsb3VkLWRiOgogICAgaW1hZ2U6ICdteXNxbDo4LjQuMicKICAgIHZvbHVtZXM6CiAgICAgIC0gJ25leHRjbG91ZC1teXNxbC1kYXRhOi92YXIvbGliL215c3FsJwogICAgZW52aXJvbm1lbnQ6CiAgICAgIC0gJ01ZU1FMX1JPT1RfUEFTU1dPUkQ9JHtTRVJWSUNFX1BBU1NXT1JEX1JPT1R9JwogICAgICAtICdNWVNRTF9EQVRBQkFTRT0ke01ZU1FMX0RBVEFCQVNFOi1uZXh0Y2xvdWR9JwogICAgICAtICdNWVNRTF9VU0VSPSR7U0VSVklDRV9VU0VSX01ZU1FMfScKICAgICAgLSAnTVlTUUxfUEFTU1dPUkQ9JHtTRVJWSUNFX1BBU1NXT1JEX01ZU1FMfScKICAgIGhlYWx0aGNoZWNrOgogICAgICB0ZXN0OgogICAgICAgIC0gQ01ECiAgICAgICAgLSBteXNxbGFkbWluCiAgICAgICAgLSBwaW5nCiAgICAgICAgLSAnLWgnCiAgICAgICAgLSAxMjcuMC4wLjEKICAgICAgaW50ZXJ2YWw6IDVzCiAgICAgIHRpbWVvdXQ6IDIwcwogICAgICByZXRyaWVzOiAxMAogIHJlZGlzOgogICAgaW1hZ2U6ICdyZWRpczo3LjQtYWxwaW5lJwogICAgdm9sdW1lczoKICAgICAgLSAnbmV4dGNsb3VkLXJlZGlzLWRhdGE6L2RhdGEnCiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gcmVkaXMtY2xpCiAgICAgICAgLSBQSU5HCiAgICAgIGludGVydmFsOiA1cwogICAgICB0aW1lb3V0OiAxMHMKICAgICAgcmV0cmllczogMjAK",
+        "compose": "c2VydmljZXM6CiAgbmV4dGNsb3VkOgogICAgaW1hZ2U6ICdsc2NyLmlvL2xpbnV4c2VydmVyL25leHRjbG91ZDpsYXRlc3QnCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBTRVJWSUNFX1VSTF9ORVhUQ0xPVURfODAKICAgICAgLSBQVUlEPTEwMDAKICAgICAgLSBQR0lEPTEwMDAKICAgICAgLSAnVFo9JHtUWjotRXVyb3BlL1BhcmlzfScKICAgICAgLSAnTVlTUUxfREFUQUJBU0U9JHtNWVNRTF9EQVRBQkFTRTotbmV4dGNsb3VkfScKICAgICAgLSAnTVlTUUxfVVNFUj0ke1NFUlZJQ0VfVVNFUl9NWVNRTH0nCiAgICAgIC0gJ01ZU1FMX1BBU1NXT1JEPSR7U0VSVklDRV9QQVNTV09SRF9NWVNRTH0nCiAgICAgIC0gTVlTUUxfSE9TVD1uZXh0Y2xvdWQtZGIKICAgICAgLSBSRURJU19IT1NUPXJlZGlzCiAgICAgIC0gUkVESVNfUE9SVD02Mzc5CiAgICB2b2x1bWVzOgogICAgICAtICduZXh0Y2xvdWQtY29uZmlnOi9jb25maWcnCiAgICAgIC0gJ25leHRjbG91ZC1kYXRhOi9kYXRhJwogICAgZGVwZW5kc19vbjoKICAgICAgbmV4dGNsb3VkLWRiOgogICAgICAgIGNvbmRpdGlvbjogc2VydmljZV9oZWFsdGh5CiAgICAgIHJlZGlzOgogICAgICAgIGNvbmRpdGlvbjogc2VydmljZV9oZWFsdGh5CiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gY3VybAogICAgICAgIC0gJy1mJwogICAgICAgIC0gJ2h0dHA6Ly8xMjcuMC4wLjE6ODAvc3RhdHVzLnBocCcKICAgICAgaW50ZXJ2YWw6IDMwcwogICAgICB0aW1lb3V0OiAxMHMKICAgICAgcmV0cmllczogMTUKICBuZXh0Y2xvdWQtZGI6CiAgICBpbWFnZTogJ215c3FsOjguNC4yJwogICAgdm9sdW1lczoKICAgICAgLSAnbmV4dGNsb3VkLW15c3FsLWRhdGE6L3Zhci9saWIvbXlzcWwnCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSAnTVlTUUxfUk9PVF9QQVNTV09SRD0ke1NFUlZJQ0VfUEFTU1dPUkRfUk9PVH0nCiAgICAgIC0gJ01ZU1FMX0RBVEFCQVNFPSR7TVlTUUxfREFUQUJBU0U6LW5leHRjbG91ZH0nCiAgICAgIC0gJ01ZU1FMX1VTRVI9JHtTRVJWSUNFX1VTRVJfTVlTUUx9JwogICAgICAtICdNWVNRTF9QQVNTV09SRD0ke1NFUlZJQ0VfUEFTU1dPUkRfTVlTUUx9JwogICAgaGVhbHRoY2hlY2s6CiAgICAgIHRlc3Q6CiAgICAgICAgLSBDTUQKICAgICAgICAtIG15c3FsYWRtaW4KICAgICAgICAtIHBpbmcKICAgICAgICAtICctaCcKICAgICAgICAtIDEyNy4wLjAuMQogICAgICBpbnRlcnZhbDogNXMKICAgICAgdGltZW91dDogMjBzCiAgICAgIHJldHJpZXM6IDEwCiAgcmVkaXM6CiAgICBpbWFnZTogJ3JlZGlzOjcuNC1hbHBpbmUnCiAgICB2b2x1bWVzOgogICAgICAtICduZXh0Y2xvdWQtcmVkaXMtZGF0YTovZGF0YScKICAgIGhlYWx0aGNoZWNrOgogICAgICB0ZXN0OgogICAgICAgIC0gQ01ECiAgICAgICAgLSByZWRpcy1jbGkKICAgICAgICAtIFBJTkcKICAgICAgaW50ZXJ2YWw6IDVzCiAgICAgIHRpbWVvdXQ6IDEwcwogICAgICByZXRyaWVzOiAyMAo=",
         "tags": [
             "cloud",
             "collaboration",
@@ -3121,7 +3121,7 @@
     "nextcloud-with-postgres": {
         "documentation": "https://docs.nextcloud.com?utm_source=coolify.io",
         "slogan": "NextCloud is a self-hosted, open-source platform that provides file storage, collaboration, and communication tools for seamless data management.",
-        "compose": "c2VydmljZXM6CiAgbmV4dGNsb3VkOgogICAgaW1hZ2U6ICdsc2NyLmlvL2xpbnV4c2VydmVyL25leHRjbG91ZDpsYXRlc3QnCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBTRVJWSUNFX1VSTF9ORVhUQ0xPVURfODAKICAgICAgLSBQVUlEPTEwMDAKICAgICAgLSBQR0lEPTEwMDAKICAgICAgLSAnVFo9JHtUWjotRXVyb3BlL1BhcmlzfScKICAgICAgLSAnUE9TVEdSRVNfREI9JHtQT1NUR1JFU19EQjotbmV4dGNsb3VkfScKICAgICAgLSAnUE9TVEdSRVNfVVNFUj0ke1NFUlZJQ0VfVVNFUl9QT1NUR1JFU30nCiAgICAgIC0gJ1BPU1RHUkVTX1BBU1NXT1JEPSR7U0VSVklDRV9QQVNTV09SRF9QT1NUR1JFU30nCiAgICAgIC0gUE9TVEdSRVNfSE9TVD1uZXh0Y2xvdWQtZGIKICAgICAgLSBSRURJU19IT1NUPXJlZGlzCiAgICAgIC0gUkVESVNfUE9SVD02Mzc5CiAgICB2b2x1bWVzOgogICAgICAtICduZXh0Y2xvdWQtY29uZmlnOi9jb25maWcnCiAgICAgIC0gJ25leHRjbG91ZC1kYXRhOi9kYXRhJwogICAgZGVwZW5kc19vbjoKICAgICAgbmV4dGNsb3VkLWRiOgogICAgICAgIGNvbmRpdGlvbjogc2VydmljZV9oZWFsdGh5CiAgICAgIHJlZGlzOgogICAgICAgIGNvbmRpdGlvbjogc2VydmljZV9oZWFsdGh5CiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gY3VybAogICAgICAgIC0gJy1mJwogICAgICAgIC0gJ2h0dHA6Ly8xMjcuMC4wLjE6ODAnCiAgICAgIGludGVydmFsOiAzMHMKICAgICAgdGltZW91dDogMTBzCiAgICAgIHJldHJpZXM6IDE1CiAgbmV4dGNsb3VkLWRiOgogICAgaW1hZ2U6ICdwb3N0Z3JlczoxNi1hbHBpbmUnCiAgICB2b2x1bWVzOgogICAgICAtICduZXh0Y2xvdWQtcG9zdGdyZXNxbC1kYXRhOi92YXIvbGliL3Bvc3RncmVzcWwvZGF0YScKICAgIGVudmlyb25tZW50OgogICAgICAtICdQT1NUR1JFU19VU0VSPSR7U0VSVklDRV9VU0VSX1BPU1RHUkVTfScKICAgICAgLSAnUE9TVEdSRVNfUEFTU1dPUkQ9JHtTRVJWSUNFX1BBU1NXT1JEX1BPU1RHUkVTfScKICAgICAgLSAnUE9TVEdSRVNfREI9JHtQT1NUR1JFU19EQjotbmV4dGNsb3VkfScKICAgIGhlYWx0aGNoZWNrOgogICAgICB0ZXN0OgogICAgICAgIC0gQ01ELVNIRUxMCiAgICAgICAgLSAncGdfaXNyZWFkeSAtVSAkJHtQT1NUR1JFU19VU0VSfSAtZCAkJHtQT1NUR1JFU19EQn0nCiAgICAgIGludGVydmFsOiA1cwogICAgICB0aW1lb3V0OiAyMHMKICAgICAgcmV0cmllczogMTAKICByZWRpczoKICAgIGltYWdlOiAncmVkaXM6Ny40LWFscGluZScKICAgIHZvbHVtZXM6CiAgICAgIC0gJ25leHRjbG91ZC1yZWRpcy1kYXRhOi9kYXRhJwogICAgaGVhbHRoY2hlY2s6CiAgICAgIHRlc3Q6CiAgICAgICAgLSBDTUQKICAgICAgICAtIHJlZGlzLWNsaQogICAgICAgIC0gUElORwogICAgICBpbnRlcnZhbDogNXMKICAgICAgdGltZW91dDogMTBzCiAgICAgIHJldHJpZXM6IDIwCg==",
+        "compose": "c2VydmljZXM6CiAgbmV4dGNsb3VkOgogICAgaW1hZ2U6ICdsc2NyLmlvL2xpbnV4c2VydmVyL25leHRjbG91ZDpsYXRlc3QnCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBTRVJWSUNFX1VSTF9ORVhUQ0xPVURfODAKICAgICAgLSBQVUlEPTEwMDAKICAgICAgLSBQR0lEPTEwMDAKICAgICAgLSAnVFo9JHtUWjotRXVyb3BlL1BhcmlzfScKICAgICAgLSAnUE9TVEdSRVNfREI9JHtQT1NUR1JFU19EQjotbmV4dGNsb3VkfScKICAgICAgLSAnUE9TVEdSRVNfVVNFUj0ke1NFUlZJQ0VfVVNFUl9QT1NUR1JFU30nCiAgICAgIC0gJ1BPU1RHUkVTX1BBU1NXT1JEPSR7U0VSVklDRV9QQVNTV09SRF9QT1NUR1JFU30nCiAgICAgIC0gUE9TVEdSRVNfSE9TVD1uZXh0Y2xvdWQtZGIKICAgICAgLSBSRURJU19IT1NUPXJlZGlzCiAgICAgIC0gUkVESVNfUE9SVD02Mzc5CiAgICB2b2x1bWVzOgogICAgICAtICduZXh0Y2xvdWQtY29uZmlnOi9jb25maWcnCiAgICAgIC0gJ25leHRjbG91ZC1kYXRhOi9kYXRhJwogICAgZGVwZW5kc19vbjoKICAgICAgbmV4dGNsb3VkLWRiOgogICAgICAgIGNvbmRpdGlvbjogc2VydmljZV9oZWFsdGh5CiAgICAgIHJlZGlzOgogICAgICAgIGNvbmRpdGlvbjogc2VydmljZV9oZWFsdGh5CiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gY3VybAogICAgICAgIC0gJy1mJwogICAgICAgIC0gJ2h0dHA6Ly8xMjcuMC4wLjE6ODAvc3RhdHVzLnBocCcKICAgICAgaW50ZXJ2YWw6IDMwcwogICAgICB0aW1lb3V0OiAxMHMKICAgICAgcmV0cmllczogMTUKICBuZXh0Y2xvdWQtZGI6CiAgICBpbWFnZTogJ3Bvc3RncmVzOjE2LWFscGluZScKICAgIHZvbHVtZXM6CiAgICAgIC0gJ25leHRjbG91ZC1wb3N0Z3Jlc3FsLWRhdGE6L3Zhci9saWIvcG9zdGdyZXNxbC9kYXRhJwogICAgZW52aXJvbm1lbnQ6CiAgICAgIC0gJ1BPU1RHUkVTX1VTRVI9JHtTRVJWSUNFX1VTRVJfUE9TVEdSRVN9JwogICAgICAtICdQT1NUR1JFU19QQVNTV09SRD0ke1NFUlZJQ0VfUEFTU1dPUkRfUE9TVEdSRVN9JwogICAgICAtICdQT1NUR1JFU19EQj0ke1BPU1RHUkVTX0RCOi1uZXh0Y2xvdWR9JwogICAgaGVhbHRoY2hlY2s6CiAgICAgIHRlc3Q6CiAgICAgICAgLSBDTUQtU0hFTEwKICAgICAgICAtICdwZ19pc3JlYWR5IC1VICQke1BPU1RHUkVTX1VTRVJ9IC1kICQke1BPU1RHUkVTX0RCfScKICAgICAgaW50ZXJ2YWw6IDVzCiAgICAgIHRpbWVvdXQ6IDIwcwogICAgICByZXRyaWVzOiAxMAogIHJlZGlzOgogICAgaW1hZ2U6ICdyZWRpczo3LjQtYWxwaW5lJwogICAgdm9sdW1lczoKICAgICAgLSAnbmV4dGNsb3VkLXJlZGlzLWRhdGE6L2RhdGEnCiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRAogICAgICAgIC0gcmVkaXMtY2xpCiAgICAgICAgLSBQSU5HCiAgICAgIGludGVydmFsOiA1cwogICAgICB0aW1lb3V0OiAxMHMKICAgICAgcmV0cmllczogMjAK",
         "tags": [
             "cloud",
             "collaboration",
@@ -3137,7 +3137,7 @@
     "nextcloud": {
         "documentation": "https://docs.nextcloud.com?utm_source=coolify.io",
         "slogan": "NextCloud is a self-hosted, open-source platform that provides file storage, collaboration, and communication tools for seamless data management.",
-        "compose": "c2VydmljZXM6CiAgbmV4dGNsb3VkOgogICAgaW1hZ2U6ICdsc2NyLmlvL2xpbnV4c2VydmVyL25leHRjbG91ZDpsYXRlc3QnCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBTRVJWSUNFX1VSTF9ORVhUQ0xPVURfODAKICAgICAgLSBQVUlEPTEwMDAKICAgICAgLSBQR0lEPTEwMDAKICAgICAgLSAnVFo9JHtUWjotRXVyb3BlL01hZHJpZH0nCiAgICB2b2x1bWVzOgogICAgICAtICduZXh0Y2xvdWQtY29uZmlnOi9jb25maWcnCiAgICAgIC0gJ25leHRjbG91ZC1kYXRhOi9kYXRhJwogICAgaGVhbHRoY2hlY2s6CiAgICAgIHRlc3Q6CiAgICAgICAgLSBDTUQKICAgICAgICAtIGN1cmwKICAgICAgICAtICctZicKICAgICAgICAtICdodHRwOi8vMTI3LjAuMC4xOjgwJwogICAgICBpbnRlcnZhbDogMzBzCiAgICAgIHRpbWVvdXQ6IDEwcwogICAgICByZXRyaWVzOiAxNQo=",
+        "compose": "c2VydmljZXM6CiAgbmV4dGNsb3VkOgogICAgaW1hZ2U6ICdsc2NyLmlvL2xpbnV4c2VydmVyL25leHRjbG91ZDpsYXRlc3QnCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBTRVJWSUNFX1VSTF9ORVhUQ0xPVURfODAKICAgICAgLSBQVUlEPTEwMDAKICAgICAgLSBQR0lEPTEwMDAKICAgICAgLSAnVFo9JHtUWjotRXVyb3BlL01hZHJpZH0nCiAgICB2b2x1bWVzOgogICAgICAtICduZXh0Y2xvdWQtY29uZmlnOi9jb25maWcnCiAgICAgIC0gJ25leHRjbG91ZC1kYXRhOi9kYXRhJwogICAgaGVhbHRoY2hlY2s6CiAgICAgIHRlc3Q6CiAgICAgICAgLSBDTUQKICAgICAgICAtIGN1cmwKICAgICAgICAtICctZicKICAgICAgICAtICdodHRwOi8vMTI3LjAuMC4xOjgwL3N0YXR1cy5waHAnCiAgICAgIGludGVydmFsOiAzMHMKICAgICAgdGltZW91dDogMTBzCiAgICAgIHJldHJpZXM6IDE1Cg==",
         "tags": [
             "cloud",
             "collaboration",
@@ -3250,7 +3250,7 @@
             "sqlite",
             "mariadb"
         ],
-        "category": "automation",
+        "category": "productivity",
         "logo": "svgs/nocodb.svg",
         "minversion": "0.0.0",
         "port": "8080"
@@ -3313,7 +3313,7 @@
             "project management",
             "open-source"
         ],
-        "category": "cms",
+        "category": "productivity",
         "logo": "svgs/odoo.svg",
         "minversion": "0.0.0",
         "port": "8069"
@@ -3399,7 +3399,7 @@
             "compliance",
             "search"
         ],
-        "category": null,
+        "category": "email",
         "logo": "svgs/openarchiver.svg",
         "minversion": "0.0.0",
         "port": "3000"
@@ -3451,7 +3451,7 @@
             "google",
             "alternative"
         ],
-        "category": "devtools",
+        "category": "analytics",
         "logo": "svgs/openpanel.svg",
         "minversion": "0.0.0",
         "port": "3000"
@@ -3471,7 +3471,7 @@
             "no-code",
             "embeddable"
         ],
-        "category": null,
+        "category": "productivity",
         "logo": "svg/opnform.svg",
         "minversion": "0.0.0",
         "port": "80"
@@ -3488,7 +3488,7 @@
             "orangehrm",
             "hr management"
         ],
-        "category": "cms",
+        "category": "productivity",
         "logo": "svgs/orangehrm.svg",
         "minversion": "0.0.0",
         "port": "80"
@@ -3515,7 +3515,7 @@
             "support",
             "open-source"
         ],
-        "category": "cms",
+        "category": "helpdesk",
         "logo": "svgs/osticket.png",
         "minversion": "0.0.0",
         "port": "80"
@@ -3572,7 +3572,7 @@
         "slogan": "Palworld.yaml",
         "compose": "c2VydmljZXM6CiAgcGFsd29ybGQ6CiAgICBpbWFnZTogJ3RoaWpzdmFubG9lZi9wYWx3b3JsZC1zZXJ2ZXItZG9ja2VyOnYxLjQuNicKICAgIHN0b3BfZ3JhY2VfcGVyaW9kOiAzMHMKICAgIHBvcnRzOgogICAgICAtICc4MjExOjgyMTEvdWRwJwogICAgICAtICcyNzAxNToyNzAxNS91ZHAnCiAgICB2b2x1bWVzOgogICAgICAtICdwYWx3b3JsZC1kYXRhOi9wYWx3b3JsZC8nCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSAnVFo9JHtUWjo/VVRDfScKICAgICAgLSAnUFVJRD0ke1BVSUQ6PzEwMDB9JwogICAgICAtICdQR0lEPSR7UEdJRDo/MTAwMH0nCiAgICAgIC0gJ01VTFRJVEhSRUFESU5HPSR7TVVMVElUSFJFQURJTkc6P2ZhbHNlfScKICAgICAgLSAnTUFYX1BMQVlFUlM9JHtQTEFZRVJTOj8xNn0nCiAgICAgIC0gJ1NFUlZFUl9OQU1FPSR7U0VSVkVSX05BTUU6P3BhbHdvcmxkLXNlcnZlci1kb2NrZXIgYnkgVGhpanMgdmFuIExvZWYgdmlhIENvb2xpZnl9JwogICAgICAtICdTRVJWRVJfREVTQ1JJUFRJT049JHtTRVJWRVJfREVTQ1JJUFRJT046P3BhbHdvcmxkLXNlcnZlci1kb2NrZXIgYnkgVGhpanMgdmFuIExvZWYgdmlhIENvb2xpZnl9JwogICAgICAtICdTRVJWRVJfUEFTU1dPUkQ9JHtTRVJWRVJfUEFTU1dPUkQ6P3dvcmxkb2ZwYWxzfScKICAgICAgLSAnQURNSU5fUEFTU1dPUkQ9JHtBRE1JTl9QQVNTV09SRDotYWRtaW5QYXNzd29yZH0nCiAgICAgIC0gJ0NPTU1VTklUWT0ke0NPTU1VTklUWTo/ZmFsc2V9JwogICAgICAtICdQVUJMSUNfSVA9JHtQVUJMSUNfSVA6LX0nCiAgICAgIC0gJ1BVQkxJQ19QT1JUPSR7UFVCTElDX1BPUlQ6PzgyMTF9JwogICAgICAtICdQT1JUPSR7UE9SVDo/ODIxMX0nCiAgICAgIC0gJ1FVRVJZX1BPUlQ9JHtRVUVSWV9QT1JUOj8yNzAxNX0nCiAgICAgIC0gJ1VQREFURV9PTl9CT09UPSR7VVBEQVRFX09OX0JPT1Q6P3RydWV9JwogICAgICAtICdSQ09OX0VOQUJMRUQ9JHtSQ09OX0VOQUJMRUQ6P3RydWV9JwogICAgICAtICdSQ09OX1BPUlQ9JHtSQ09OX1BPUlQ6PzI1NTc1fScKICAgICAgLSAnQkFDS1VQX0VOQUJMRUQ9JHtCQUNLVVBfRU5BQkxFRDo/dHJ1ZX0nCiAgICAgIC0gJ0RFTEVURV9PTERfQkFDS1VQUz0ke0RFTEVURV9PTERfQkFDS1VQUzo/ZmFsc2V9JwogICAgICAtICdPTERfQkFDS1VQX0RBWVM9JHtPTERfQkFDS1VQX0RBWVM6PzMwfScKICAgICAgLSAnQkFDS1VQX0NST05fRVhQUkVTU0lPTj0ke0JBQ0tVUF9DUk9OX0VYUFJFU1NJT046PzAgMCAqICogKn0nCiAgICAgIC0gJ0FVVE9fVVBEQVRFX0VOQUJMRUQ9JHtBVVRPX1VQREFURV9FTkFCTEVEOj9mYWxzZX0nCiAgICAgIC0gJ0FVVE9fVVBEQVRFX0NST05fRVhQUkVTU0lPTj0ke0FVVE9fVVBEQVRFX0NST05fRVhQUkVTU0lPTjo/MCAqICogKiAqfScKICAgICAgLSAnQVVUT19VUERBVEVfV0FSTl9NSU5VVEVTPSR7QVVUT19VUERBVEVfV0FSTl9NSU5VVEVTOj8zMH0nCiAgICAgIC0gJ0FVVE9fUkVCT09UX0VOQUJMRUQ9JHtBVVRPX1JFQk9PVF9FTkFCTEVEOj9mYWxzZX0nCiAgICAgIC0gJ0FVVE9fUkVCT09UX0VWRU5fSUZfUExBWUVSU19PTkxJTkU9JHtBVVRPX1JFQk9PVF9FVkVOX0lGX1BMQVlFUlNfT05MSU5FOj9mYWxzZX0nCiAgICAgIC0gJ0FVVE9fUkVCT09UX1dBUk5fTUlOVVRFUz0ke0FVVE9fUkVCT09UX1dBUk5fTUlOVVRFUzo/NX0nCiAgICAgIC0gJ0FVVE9fUkVCT09UX0NST05fRVhQUkVTU0lPTj0ke0FVVE9fUkVCT09UX0NST05fRVhQUkVTU0lPTjo/MCAwICogKiAqfScKICAgICAgLSAnQVVUT19QQVVTRV9FTkFCTEVEPSR7QVVUT19QQVVTRV9FTkFCTEVEOj9mYWxzZX0nCiAgICAgIC0gJ0FVVE9fUEFVU0VfVElNRU9VVF9FU1Q9JHtBVVRPX1BBVVNFX1RJTUVPVVRfRVNUOj8xODB9JwogICAgICAtICdBVVRPX1BBVVNFX0xPRz0ke0FVVE9fUEFVU0VfTE9HOj90cnVlfScKICAgICAgLSAnQVVUT19QQVVTRV9ERUJVRz0ke0FVVE9fUEFVU0VfREVCVUc6P2ZhbHNlfScKICAgICAgLSAnRU5BQkxFX1BMQVlFUl9MT0dHSU5HPSR7RU5BQkxFX1BMQVlFUl9MT0dHSU5HOj90cnVlfScKICAgICAgLSAnUExBWUVSX0xPR0dJTkdfUE9MTF9QRVJJT0Q9JHtQTEFZRVJfTE9HR0lOR19QT0xMX1BFUklPRDo/NX0nCiAgICAgIC0gJ0RJRkZJQ1VMVFk9JHtESUZGSUNVTFRZOj9Ob25lfScKICAgICAgLSAnUkFORE9NSVpFUl9UWVBFPSR7UkFORE9NSVpFUl9UWVBFOi19JwogICAgICAtICdSQU5ET01JWkVSX1NFRUQ9JHtSQU5ET01JWkVSX1NFRUQ6P25vbmV9JwogICAgICAtICdEQVlUSU1FX1NQRUVEUkFURT0ke0RBWVRJTUVfU1BFRURSQVRFOj8xLjAwMDAwMH0nCiAgICAgIC0gJ05JR0hUVElNRV9TUEVFRFJBVEU9JHtOSUdIVFRJTUVfU1BFRURSQVRFOj8xLjAwMDAwMH0nCiAgICAgIC0gJ0VYUF9SQVRFPSR7RVhQX1JBVEU6PzEuMDAwMDAwfScKICAgICAgLSAnUEFMX0NBUFRVUkVfUkFURT0ke1BBTF9DQVBUVVJFX1JBVEU6PzEuMDAwMDAwfScKICAgICAgLSAnUEFMX1NQQVdOX05VTV9SQVRFPSR7UEFMX1NQQVdOX05VTV9SQVRFOj8xLjAwMDAwMH0nCiAgICAgIC0gJ1BBTF9EQU1BR0VfUkFURV9BVFRBQ0s9JHtQQUxfREFNQUdFX1JBVEVfQVRUQUNLOj8xLjAwMDAwMH0nCiAgICAgIC0gJ1BBTF9EQU1BR0VfUkFURV9ERUZFTlNFPSR7UEFMX0RBTUFHRV9SQVRFX0RFRkVOU0U6PzEuMDAwMDAwfScKICAgICAgLSAnUExBWUVSX0RBTUFHRV9SQVRFX0FUVEFDSz0ke1BMQVlFUl9EQU1BR0VfUkFURV9BVFRBQ0s6PzEuMDAwMDAwfScKICAgICAgLSAnUExBWUVSX0RBTUFHRV9SQVRFX0RFRkVOU0U9JHtQTEFZRVJfREFNQUdFX1JBVEVfREVGRU5TRTo/MS4wMDAwMDB9JwogICAgICAtICdQTEFZRVJfU1RPTUFDSF9ERUNSRUFTRV9SQVRFPSR7UExBWUVSX1NUT01BQ0hfREVDUkVBU0VfUkFURTo/MS4wMDAwMDB9JwogICAgICAtICdQTEFZRVJfU1RBTUlOQV9ERUNSRUFTRV9SQVRFPSR7UExBWUVSX1NUQU1JTkFfREVDUkVBU0VfUkFURTo/MS4wMDAwMDB9JwogICAgICAtICdQTEFZRVJfQVVUT19IUF9SRUdFTl9SQVRFPSR7UExBWUVSX0FVVE9fSFBfUkVHRU5fUkFURTo/MS4wMDAwMDB9JwogICAgICAtICdQTEFZRVJfQVVUT19IUF9SRUdFTl9SQVRFX0lOX1NMRUVQPSR7UExBWUVSX0FVVE9fSFBfUkVHRU5fUkFURV9JTl9TTEVFUDo/MS4wMDAwMDB9JwogICAgICAtICdQQUxfU1RPTUFDSF9ERUNSRUFTRV9SQVRFPSR7UEFMX1NUT01BQ0hfREVDUkVBU0VfUkFURTo/MS4wMDAwMDB9JwogICAgICAtICdQQUxfU1RBTUlOQV9ERUNSRUFTRV9SQVRFPSR7UEFMX1NUQU1JTkFfREVDUkVBU0VfUkFURTo/MS4wMDAwMDB9JwogICAgICAtICdQQUxfQVVUT19IUF9SRUdFTl9SQVRFPSR7UEFMX0FVVE9fSFBfUkVHRU5fUkFURTo/MS4wMDAwMDB9JwogICAgICAtICdQQUxfQVVUT19IUF9SRUdFTl9SQVRFX0lOX1NMRUVQPSR7UEFMX0FVVE9fSFBfUkVHRU5fUkFURV9JTl9TTEVFUDo/MS4wMDAwMDB9JwogICAgICAtICdCVUlMRF9PQkpFQ1RfSFBfUkFURT0ke0JVSUxEX09CSkVDVF9IUF9SQVRFOj8xLjAwMDAwMH0nCiAgICAgIC0gJ0JVSUxEX09CSkVDVF9EQU1BR0VfUkFURT0ke0JVSUxEX09CSkVDVF9EQU1BR0VfUkFURTo/MS4wMDAwMDB9JwogICAgICAtICdCVUlMRF9PQkpFQ1RfREVURVJJT1JBVElPTl9EQU1BR0VfUkFURT0ke0JVSUxEX09CSkVDVF9ERVRFUklPUkFUSU9OX0RBTUFHRV9SQVRFOj8xLjAwMDAwMH0nCiAgICAgIC0gJ0NPTExFQ1RJT05fRFJPUF9SQVRFPSR7Q09MTEVDVElPTl9EUk9QX1JBVEU6PzEuMDAwMDAwfScKICAgICAgLSAnQ09MTEVDVElPTl9PQkpFQ1RfSFBfUkFURT0ke0NPTExFQ1RJT05fT0JKRUNUX0hQX1JBVEU6PzEuMDAwMDAwfScKICAgICAgLSAnQ09MTEVDVElPTl9PQkpFQ1RfUkVTUEFXTl9TUEVFRF9SQVRFPSR7Q09MTEVDVElPTl9PQkpFQ1RfUkVTUEFXTl9TUEVFRF9SQVRFOj8xLjAwMDAwMH0nCiAgICAgIC0gJ0VORU1ZX0RST1BfSVRFTV9SQVRFPSR7RU5FTVlfRFJPUF9JVEVNX1JBVEU6PzEuMDAwMDAwfScKICAgICAgLSAnREVBVEhfUEVOQUxUWT0ke0RFQVRIX1BFTkFMVFk6P0FsbH0nCiAgICAgIC0gJ0VOQUJMRV9QTEFZRVJfVE9fUExBWUVSX0RBTUFHRT0ke0VOQUJMRV9QTEFZRVJfVE9fUExBWUVSX0RBTUFHRTo/RmFsc2V9JwogICAgICAtICdFTkFCTEVfRlJJRU5ETFlfRklSRT0ke0VOQUJMRV9GUklFTkRMWV9GSVJFOj9GYWxzZX0nCiAgICAgIC0gJ0VOQUJMRV9JTlZBREVSX0VORU1ZPSR7RU5BQkxFX0lOVkFERVJfRU5FTVk6P1RydWV9JwogICAgICAtICdBQ1RJVkVfVU5LTz0ke0FDVElWRV9VTktPOj9GYWxzZX0nCiAgICAgIC0gJ0VOQUJMRV9BSU1fQVNTSVNUX1BBRD0ke0VOQUJMRV9BSU1fQVNTSVNUX1BBRDo/VHJ1ZX0nCiAgICAgIC0gJ0VOQUJMRV9BSU1fQVNTSVNUX0tFWUJPQVJEPSR7RU5BQkxFX0FJTV9BU1NJU1RfS0VZQk9BUkQ6P0ZhbHNlfScKICAgICAgLSAnRFJPUF9JVEVNX01BWF9OVU09JHtEUk9QX0lURU1fTUFYX05VTTo/MzAwMH0nCiAgICAgIC0gJ0RST1BfSVRFTV9NQVhfTlVNX1VOS089JHtEUk9QX0lURU1fTUFYX05VTV9VTktPOj8xMDB9JwogICAgICAtICdCQVNFX0NBTVBfTUFYX05VTT0ke0JBU0VfQ0FNUF9NQVhfTlVNOj8xMjh9JwogICAgICAtICdCQVNFX0NBTVBfV09SS0VSX01BWF9OVU09JHtCQVNFX0NBTVBfV09SS0VSX01BWF9OVU06PzE1fScKICAgICAgLSAnRFJPUF9JVEVNX0FMSVZFX01BWF9IT1VSUz0ke0RST1BfSVRFTV9BTElWRV9NQVhfSE9VUlM6PzEuMDAwMDAwfScKICAgICAgLSAnQVVUT19SRVNFVF9HVUlMRF9OT19PTkxJTkVfUExBWUVSUz0ke0FVVE9fUkVTRVRfR1VJTERfTk9fT05MSU5FX1BMQVlFUlM6P0ZhbHNlfScKICAgICAgLSAnQVVUT19SRVNFVF9HVUlMRF9USU1FX05PX09OTElORV9QTEFZRVJTPSR7QVVUT19SRVNFVF9HVUlMRF9USU1FX05PX09OTElORV9QTEFZRVJTOj83Mi4wMDAwMDB9JwogICAgICAtICdHVUlMRF9QTEFZRVJfTUFYX05VTT0ke0dVSUxEX1BMQVlFUl9NQVhfTlVNOj8yMH0nCiAgICAgIC0gJ0JBU0VfQ0FNUF9NQVhfTlVNX0lOX0dVSUxEPSR7QkFTRV9DQU1QX01BWF9OVU1fSU5fR1VJTEQ6PzR9JwogICAgICAtICdQQUxfRUdHX0RFRkFVTFRfSEFUQ0hJTkdfVElNRT0ke1BBTF9FR0dfREVGQVVMVF9IQVRDSElOR19USU1FOj83Mi4wMDAwMDB9JwogICAgICAtICdXT1JLX1NQRUVEX1JBVEU9JHtXT1JLX1NQRUVEX1JBVEU6PzEuMDAwMDAwfScKICAgICAgLSAnQVVUT19TQVZFX1NQQU49JHtBVVRPX1NBVkVfU1BBTjo/MzAuMDAwMDAwfScKICAgICAgLSAnSVNfTVVMVElQTEFZPSR7SVNfTVVMVElQTEFZOj9GYWxzZX0nCiAgICAgIC0gJ0lTX1BWUD0ke0lTX1BWUDo/RmFsc2V9JwogICAgICAtICdIQVJEQ09SRT0ke0hBUkRDT1JFOj9GYWxzZX0nCiAgICAgIC0gJ1BBTF9MT1NUPSR7UEFMX0xPU1Q6P0ZhbHNlfScKICAgICAgLSAnQ0FOX1BJQ0tVUF9PVEhFUl9HVUlMRF9ERUFUSF9QRU5BTFRZX0RST1A9JHtDQU5fUElDS1VQX09USEVSX0dVSUxEX0RFQVRIX1BFTkFMVFlfRFJPUDo/RmFsc2V9JwogICAgICAtICdFTkFCTEVfTk9OX0xPR0lOX1BFTkFMVFk9JHtFTkFCTEVfTk9OX0xPR0lOX1BFTkFMVFk6P1RydWV9JwogICAgICAtICdFTkFCTEVfRkFTVF9UUkFWRUw9JHtFTkFCTEVfRkFTVF9UUkFWRUw6P1RydWV9JwogICAgICAtICdJU19TVEFSVF9MT0NBVElPTl9TRUxFQ1RfQllfTUFQPSR7SVNfU1RBUlRfTE9DQVRJT05fU0VMRUNUX0JZX01BUDo/VHJ1ZX0nCiAgICAgIC0gJ0VYSVNUX1BMQVlFUl9BRlRFUl9MT0dPVVQ9JHtFWElTVF9QTEFZRVJfQUZURVJfTE9HT1VUOj9GYWxzZX0nCiAgICAgIC0gJ0VOQUJMRV9ERUZFTlNFX09USEVSX0dVSUxEX1BMQVlFUj0ke0VOQUJMRV9ERUZFTlNFX09USEVSX0dVSUxEX1BMQVlFUjo/RmFsc2V9JwogICAgICAtICdJTlZJU0lCTEVfT1RIRVJfR1VJTERfQkFTRV9DQU1QX0FSRUFfRlg9JHtJTlZJU0lCTEVfT1RIRVJfR1VJTERfQkFTRV9DQU1QX0FSRUFfRlg6P0ZhbHNlfScKICAgICAgLSAnQlVJTERfQVJFQV9MSU1JVD0ke0JVSUxEX0FSRUFfTElNSVQ6P0ZhbHNlfScKICAgICAgLSAnSVRFTV9XRUlHSFRfUkFURT0ke0lURU1fV0VJR0hUX1JBVEU6PzEuMDAwMDAwfScKICAgICAgLSAnQ09PUF9QTEFZRVJfTUFYX05VTT0ke0NPT1BfUExBWUVSX01BWF9OVU06PzR9JwogICAgICAtICdSRUdJT049JHtSRUdJT046LX0nCiAgICAgIC0gJ1VTRUFVVEg9JHtVU0VBVVRIOj9UcnVlfScKICAgICAgLSAnQkFOX0xJU1RfVVJMPSR7QkFOX0xJU1RfVVJMOj9odHRwczovL2FwaS5wYWx3b3JsZGdhbWUuY29tL2FwaS9iYW5saXN0LnR4dH0nCiAgICAgIC0gJ1JFU1RfQVBJX0VOQUJMRUQ9JHtSRVNUX0FQSV9FTkFCTEVEOj9GYWxzZX0nCiAgICAgIC0gJ1JFU1RfQVBJX1BPUlQ9JHtSRVNUX0FQSV9QT1JUOj84MjEyfScKICAgICAgLSAnU0hPV19QTEFZRVJfTElTVD0ke1NIT1dfUExBWUVSX0xJU1Q6P1RydWV9JwogICAgICAtICdFTkFCTEVfUFJFREFUT1JfQk9TU19QQUw9JHtFTkFCTEVfUFJFREFUT1JfQk9TU19QQUw6P1RydWV9JwogICAgICAtICdNQVhfQlVJTERJTkdfTElNSVRfTlVNPSR7TUFYX0JVSUxESU5HX0xJTUlUX05VTTo/MH0nCiAgICAgIC0gJ1NFUlZFUl9SRVBMSUNBVEVfUEFXTl9DVUxMX0RJU1RBTkNFPSR7U0VSVkVSX1JFUExJQ0FURV9QQVdOX0NVTExfRElTVEFOQ0U6PzE1MDAwLjAwMDAwMH0nCiAgICAgIC0gJ1NFUlZFUl9SRVBMSUNBVEVfUEFXTl9DVUxMX0RJU1RBTkNFX0lOX0JBU0VfQ0FNUD0ke1NFUlZFUl9SRVBMSUNBVEVfUEFXTl9DVUxMX0RJU1RBTkNFX0lOX0JBU0VfQ0FNUDo/NTAwMC4wMDAwMDB9JwogICAgICAtICdDUk9TU1BMQVlfUExBVEZPUk1TPSR7Q1JPU1NQTEFZX1BMQVRGT1JNUzo/KFN0ZWFtLFhib3gsUFM1LE1hYyl9JwogICAgICAtICdVU0VfQkFDS1VQX1NBVkVfREFUQT0ke1VTRV9CQUNLVVBfU0FWRV9EQVRBOj9UcnVlfScKICAgICAgLSAnVVNFX0RFUE9UX0RPV05MT0FERVI9JHtVU0VfREVQT1RfRE9XTkxPQURFUjo/RmFsc2V9JwogICAgICAtICdJTlNUQUxMX0JFVEFfSU5TSURFUj0ke0lOU1RBTExfQkVUQV9JTlNJREVSOj9GYWxzZX0nCiAgICAgIC0gJ0FMTE9XX0dMT0JBTF9QQUxCT1hfRVhQT1JUPSR7QUxMT1dfR0xPQkFMX1BBTEJPWF9FWFBPUlQ6P1RydWV9JwogICAgICAtICdBTExPV19HTE9CQUxfUEFMQk9YX0lNUE9SVD0ke0FMTE9XX0dMT0JBTF9QQUxCT1hfSU1QT1JUOj9GYWxzZX0nCiAgICAgIC0gJ0VRVUlQTUVOVF9EVVJBQklMSVRZX0RBTUFHRV9SQVRFPSR7RVFVSVBNRU5UX0RVUkFCSUxJVFlfREFNQUdFX1JBVEU6PzEuMDAwMDAwfScKICAgICAgLSAnSVRFTV9DT05UQUlORVJfRk9SQ0VfTUFSS19ESVJUWV9JTlRFUlZBTD0ke0lURU1fQ09OVEFJTkVSX0ZPUkNFX01BUktfRElSVFlfSU5URVJWQUw6PzEuMDAwMDAwfScKICAgICAgLSAnQk9YNjRfRFlOQVJFQ19TVFJPTkdNRU09JHtCT1g2NF9EWU5BUkVDX1NUUk9OR01FTTotfScKICAgICAgLSAnQk9YNjRfRFlOQVJFQ19CSUdCTE9DSz0ke0JPWDY0X0RZTkFSRUNfQklHQkxPQ0s6LX0nCiAgICAgIC0gJ0JPWDY0X0RZTkFSRUNfU0FGRUZMQUdTPSR7Qk9YNjRfRFlOQVJFQ19TQUZFRkxBR1M6LX0nCiAgICAgIC0gJ0JPWDY0X0RZTkFSRUNfRkFTVFJPVU5EPSR7Qk9YNjRfRFlOQVJFQ19GQVNUUk9VTkQ6LX0nCiAgICAgIC0gJ0JPWDY0X0RZTkFSRUNfRkFTVE5BTj0ke0JPWDY0X0RZTkFSRUNfRkFTVE5BTjotfScKICAgICAgLSAnQk9YNjRfRFlOQVJFQ19YODdET1VCTEU9JHtCT1g2NF9EWU5BUkVDX1g4N0RPVUJMRTotfScK",
         "tags": null,
-        "category": null,
+        "category": "games",
         "logo": "svgs/default.webp",
         "minversion": "0.0.0"
     },
@@ -3610,7 +3610,7 @@
             "billing",
             "open source"
         ],
-        "category": "cms",
+        "category": "finance",
         "logo": "svgs/paymenter.svg",
         "minversion": "0.0.0",
         "port": "80"
@@ -3728,7 +3728,7 @@
             "automation",
             "aws"
         ],
-        "category": "automation",
+        "category": "email",
         "logo": "svgs/plunk.svg",
         "minversion": "0.0.0",
         "port": "3000"
@@ -3876,7 +3876,7 @@
             "hoppscotch",
             "cors"
         ],
-        "category": null,
+        "category": "proxy",
         "logo": "svgs/hoppscotch.png",
         "minversion": "0.0.0",
         "port": "9159"
@@ -4029,7 +4029,7 @@
             "redmine",
             "project management"
         ],
-        "category": null,
+        "category": "productivity",
         "logo": "svgs/redmine.svg",
         "minversion": "0.0.0",
         "port": "3000"
@@ -4211,7 +4211,7 @@
             "file",
             "webdav"
         ],
-        "category": null,
+        "category": "storage",
         "logo": "svgs/sftpgo.png",
         "minversion": "0.0.0",
         "port": "8080"
@@ -4248,7 +4248,7 @@
             "traces",
             "metrics"
         ],
-        "category": null,
+        "category": "monitoring",
         "logo": "svgs/signoz.svg",
         "minversion": "0.0.0",
         "port": "8080"
@@ -4262,7 +4262,7 @@
             "markdown",
             "pkm"
         ],
-        "category": null,
+        "category": "productivity",
         "logo": "svgs/silverbullet.png",
         "minversion": "0.0.0",
         "port": "3000"
@@ -4341,7 +4341,7 @@
             "app-manager",
             "dashboard"
         ],
-        "category": null,
+        "category": "devtools",
         "logo": "svgs/soketi-app-manager.svg",
         "minversion": "0.0.0",
         "port": "8080"
@@ -4734,7 +4734,7 @@
             "self-hosted",
             "dashboard"
         ],
-        "category": "cms",
+        "category": "productivity",
         "logo": "svgs/twenty.svg",
         "minversion": "0.0.0",
         "port": "3000"
@@ -4779,7 +4779,7 @@
             "ab testing",
             "open source"
         ],
-        "category": "productivity",
+        "category": "devtools",
         "logo": "svgs/unleash.svg",
         "minversion": "0.0.0",
         "port": "4242"
@@ -4795,7 +4795,7 @@
             "ab testing",
             "open source"
         ],
-        "category": "productivity",
+        "category": "devtools",
         "logo": "svgs/unleash.svg",
         "minversion": "0.0.0",
         "port": "4242"
@@ -4888,7 +4888,7 @@
             "self-hosting",
             "postmark"
         ],
-        "category": "messaging",
+        "category": "email",
         "logo": "svgs/usesend.svg",
         "minversion": "0.0.0",
         "port": "3000"
@@ -5298,7 +5298,7 @@
         "tags": [
             "storage"
         ],
-        "category": null,
+        "category": "storage",
         "logo": "svgs/cells.svg",
         "minversion": "0.0.0",
         "port": "8080"
