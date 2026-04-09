@@ -208,13 +208,8 @@ class PublicGitRepository extends Component
 
         if ($this->repository_url_parsed->getSegment(3) === 'tree') {
             $path = str($this->repository_url_parsed->getPath())->trim('/');
-            $this->git_branch = str($path)->after('tree/')->before('/')->value();
-            $this->base_directory = str($path)->after($this->git_branch)->after('/')->value();
-            if (filled($this->base_directory)) {
-                $this->base_directory = '/'.$this->base_directory;
-            } else {
-                $this->base_directory = '/';
-            }
+            $this->git_branch = str($path)->after('tree/')->value();
+            $this->base_directory = '/';
         } else {
             $this->git_branch = 'main';
         }
@@ -235,9 +230,32 @@ class PublicGitRepository extends Component
             return;
         }
         if ($this->git_source->getMorphClass() === GithubApp::class) {
-            ['rate_limit_remaining' => $this->rate_limit_remaining, 'rate_limit_reset' => $this->rate_limit_reset] = githubApi(source: $this->git_source, endpoint: "/repos/{$this->git_repository}/branches/{$this->git_branch}");
-            $this->rate_limit_reset = Carbon::parse((int) $this->rate_limit_reset)->format('Y-M-d H:i:s');
-            $this->branchFound = true;
+            $originalBranch = $this->git_branch;
+            $branchToTry = $originalBranch;
+
+            while (true) {
+                try {
+                    $encodedBranch = urlencode($branchToTry);
+                    ['rate_limit_remaining' => $this->rate_limit_remaining, 'rate_limit_reset' => $this->rate_limit_reset] = githubApi(source: $this->git_source, endpoint: "/repos/{$this->git_repository}/branches/{$encodedBranch}");
+                    $this->rate_limit_reset = Carbon::parse((int) $this->rate_limit_reset)->format('Y-M-d H:i:s');
+                    $this->git_branch = $branchToTry;
+
+                    $remaining = str($originalBranch)->after($branchToTry)->trim('/')->value();
+                    $this->base_directory = filled($remaining) ? '/'.$remaining : '/';
+
+                    $this->branchFound = true;
+
+                    return;
+                } catch (\Throwable $e) {
+                    if (str_contains($branchToTry, '/')) {
+                        $branchToTry = str($branchToTry)->beforeLast('/')->value();
+
+                        continue;
+                    }
+
+                    throw $e;
+                }
+            }
         }
     }
 

@@ -22,6 +22,7 @@ use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -80,6 +81,13 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
         $this->timeout = $backup->timeout ?? 3600;
     }
 
+    public function middleware(): array
+    {
+        $expireAfter = ($this->backup->timeout ?? 3600) + 300;
+
+        return [(new WithoutOverlapping('database-backup-'.$this->backup->id))->expireAfter($expireAfter)->dontRelease()];
+    }
+
     public function handle(): void
     {
         try {
@@ -106,6 +114,8 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
             if (is_null($this->database)) {
                 throw new \Exception('Database not found?!');
             }
+
+            $this->markStaleExecutionsAsFailed();
 
             BackupCreated::dispatch($this->team->id);
 
@@ -725,6 +735,31 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
         $latestVersion = getHelperVersion();
 
         return "{$helperImage}:{$latestVersion}";
+    }
+
+    private function markStaleExecutionsAsFailed(): void
+    {
+        try {
+            $timeoutSeconds = ($this->backup->timeout ?? 3600) * 2;
+
+            $staleExecutions = $this->backup->executions()
+                ->where('status', 'running')
+                ->where('created_at', '<', now()->subSeconds($timeoutSeconds))
+                ->get();
+
+            foreach ($staleExecutions as $execution) {
+                $execution->update([
+                    'status' => 'failed',
+                    'message' => 'Marked as failed - backup execution exceeded maximum allowed time',
+                    'finished_at' => now(),
+                ]);
+            }
+        } catch (Throwable $e) {
+            Log::channel('scheduled-errors')->warning('Failed to clean up stale backup executions', [
+                'backup_id' => $this->backup->uuid,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function failed(?Throwable $exception): void
