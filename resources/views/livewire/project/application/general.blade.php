@@ -31,8 +31,8 @@
                     <div class="flex gap-2">
                         <x-forms.select x-bind:disabled="shouldDisable()" wire:model.live="buildPack" label="Build Pack"
                             required>
-                            <option value="railpack">Railpack</option>
                             <option value="nixpacks">Nixpacks</option>
+                            <option value="railpack">Railpack</option>
                             <option value="static">Static</option>
                             <option value="dockerfile">Dockerfile</option>
                             <option value="dockercompose">Docker Compose</option>

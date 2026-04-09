@@ -58,7 +58,7 @@ class PublicGitRepository extends Component
 
     public string $git_repository;
 
-    public $build_pack = 'railpack';
+    public $build_pack = 'nixpacks';
 
     public bool $show_is_static = true;
 

@@ -63,7 +63,7 @@ class GithubPrivateRepository extends Component
 
     protected int $page = 1;
 
-    public $build_pack = 'railpack';
+    public $build_pack = 'nixpacks';
 
     public bool $show_is_static = true;
 
