@@ -38,6 +38,14 @@ describe('new application buildpack defaults', function () {
     test('public repository flow keeps railpack available after branch lookup', function () {
         Livewire::test(PublicGitRepository::class, ['type' => 'public'])
             ->set('branchFound', true)
-            ->assertSeeInOrder(['Nixpacks', 'Railpack']);
+            ->assertSeeInOrder(['Nixpacks', 'Railpack (Beta)'])
+            ->assertSee('Beta');
+    });
+
+    test('deploy key repository flow shows railpack beta label in build pack selector', function () {
+        Livewire::test(GithubPrivateRepositoryDeployKey::class, ['type' => 'private-deploy-key'])
+            ->set('current_step', 'repository')
+            ->assertSee('Railpack (Beta)')
+            ->assertSee('Beta');
     });
 });

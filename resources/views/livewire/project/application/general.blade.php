@@ -32,7 +32,7 @@
                         <x-forms.select x-bind:disabled="shouldDisable()" wire:model.live="buildPack" label="Build Pack"
                             required>
                             <option value="nixpacks">Nixpacks</option>
-                            <option value="railpack">Railpack</option>
+                            <option value="railpack">Railpack (Beta)</option>
                             <option value="static">Static</option>
                             <option value="dockerfile">Dockerfile</option>
                             <option value="dockercompose">Docker Compose</option>
@@ -236,11 +236,15 @@
                                 <x-forms.input helper="If you modify this, you probably need to have a {{ $buildPack === 'railpack' ? 'railpack.json' : 'nixpacks.toml' }}"
                                     id="startCommand" label="Start Command" x-bind:disabled="!canUpdate" />
                             </div>
-                            <div class="pt-1 text-xs">{{ $buildPack === 'railpack' ? 'Railpack' : 'Nixpacks' }} will detect the required configuration
-                                automatically.
+                                @if ($buildPack === 'nixpacks')
+                            <div class="pt-1 text-xs">
+
+                                    <span class="font-medium">Nixpacks</span>
+                                will detect the required configuration automatically.
                                 <a class="underline" href="https://coolify.io/docs/applications/">Framework
                                     Specific Docs</a>
                             </div>
+                                @endif
                         @endif
 
                     @endif

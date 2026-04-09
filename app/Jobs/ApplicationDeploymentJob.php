@@ -33,6 +33,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
+use JsonException;
 use Spatie\Url\Url;
 use Symfony\Component\Yaml\Yaml;
 use Throwable;
@@ -47,6 +48,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     private const BUILD_SCRIPT_PATH = '/artifacts/build.sh';
 
     private const NIXPACKS_PLAN_PATH = '/artifacts/thegameplan.json';
+
+    private const RAILPACK_REPOSITORY_CONFIG_PATH = 'railpack.json';
+
+    private const RAILPACK_GENERATED_CONFIG_PATH = '.coolify/railpack.generated.json';
 
     public $tries = 1;
 
@@ -2487,27 +2492,169 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->env_railpack_args = $this->env_railpack_args->implode(' ');
     }
 
-    private function build_railpack_image(): void
+    private function decode_railpack_config(string $config, string $source): array
     {
-        $this->generate_railpack_env_variables();
+        try {
+            $decoded = json_decode($config, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            throw new DeploymentException("Invalid {$source}: {$exception->getMessage()}", $exception->getCode(), $exception);
+        }
 
-        // Step 1: Generate build plan with railpack prepare
+        if (! is_array($decoded)) {
+            throw new DeploymentException("Invalid {$source}: expected a JSON object.");
+        }
+
+        return $decoded;
+    }
+
+    private function is_assoc_array(array $value): bool
+    {
+        if ($value === []) {
+            return false;
+        }
+
+        return array_keys($value) !== range(0, count($value) - 1);
+    }
+
+    private function merge_railpack_config(array $base, array $overrides): array
+    {
+        foreach ($overrides as $key => $value) {
+            if (
+                array_key_exists($key, $base)
+                && is_array($base[$key])
+                && is_array($value)
+                && $this->is_assoc_array($base[$key])
+                && $this->is_assoc_array($value)
+            ) {
+                $base[$key] = $this->merge_railpack_config($base[$key], $value);
+            } else {
+                $base[$key] = $value;
+            }
+        }
+
+        return $base;
+    }
+
+    private function railpack_config_overrides(): array
+    {
+        return [];
+    }
+
+    private function railpack_prepare_environment_variables(): Collection
+    {
+        $variables = collect([]);
+
+        if ($this->application->install_command) {
+            $variables->put('RAILPACK_INSTALL_CMD', $this->application->install_command);
+        }
+
+        if ($this->application->build_command) {
+            $variables->put('RAILPACK_BUILD_CMD', $this->application->build_command);
+        }
+
+        if ($this->application->start_command) {
+            $variables->put('RAILPACK_START_CMD', $this->application->start_command);
+        }
+
+        return $variables;
+    }
+
+    private function generated_railpack_config_relative_path(): string
+    {
+        return self::RAILPACK_GENERATED_CONFIG_PATH;
+    }
+
+    private function generated_railpack_config_absolute_path(): string
+    {
+        return "{$this->workdir}/".self::RAILPACK_GENERATED_CONFIG_PATH;
+    }
+
+    private function generate_railpack_config_file(): ?string
+    {
+        $repositoryConfig = [];
+        $this->execute_remote_command([
+            executeInDocker($this->deployment_uuid, "test -f {$this->workdir}/".self::RAILPACK_REPOSITORY_CONFIG_PATH." && echo 'exists' || echo 'missing'"),
+            'hidden' => true,
+            'save' => 'railpack_config_exists',
+        ]);
+
+        if (str($this->saved_outputs->get('railpack_config_exists'))->trim()->toString() === 'exists') {
+            $this->execute_remote_command([
+                executeInDocker($this->deployment_uuid, "cat {$this->workdir}/".self::RAILPACK_REPOSITORY_CONFIG_PATH),
+                'hidden' => true,
+                'save' => 'railpack_repository_config',
+            ]);
+
+            $repositoryConfig = $this->decode_railpack_config(
+                $this->saved_outputs->get('railpack_repository_config', ''),
+                'repository railpack.json'
+            );
+        }
+
+        $overrides = $this->railpack_config_overrides();
+        if ($repositoryConfig === [] && $overrides === []) {
+            return null;
+        }
+
+        $mergedConfig = $this->merge_railpack_config($repositoryConfig, $overrides);
+        if (! array_key_exists('$schema', $mergedConfig)) {
+            $mergedConfig['$schema'] = 'https://schema.railpack.com';
+        }
+
+        try {
+            $encodedConfig = json_encode($mergedConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            throw new DeploymentException("Failed to encode generated Railpack config: {$exception->getMessage()}", $exception->getCode(), $exception);
+        }
+
+        $configPath = $this->generated_railpack_config_absolute_path();
+        $encodedConfig = base64_encode($encodedConfig);
+
+        $this->execute_remote_command(
+            [
+                executeInDocker($this->deployment_uuid, "mkdir -p {$this->workdir}/.coolify"),
+                'hidden' => true,
+            ],
+            [
+                executeInDocker($this->deployment_uuid, "echo '{$encodedConfig}' | base64 -d | tee {$configPath} > /dev/null"),
+                'hidden' => true,
+            ]
+        );
+
+        return $this->generated_railpack_config_relative_path();
+    }
+
+    private function railpack_prepare_command(?string $configFilePath = null): string
+    {
         $prepare_command = 'railpack prepare';
+        $prepareEnvironmentVariables = $this->railpack_prepare_environment_variables()
+            ->map(fn ($value, $key) => "{$key}=".escapeShellValue($value))
+            ->implode(' ');
+
+        if ($prepareEnvironmentVariables !== '') {
+            $prepare_command = "{$prepareEnvironmentVariables} {$prepare_command}";
+        }
 
         if ($this->env_railpack_args) {
             $prepare_command .= " {$this->env_railpack_args}";
         }
-        if ($this->application->build_command) {
-            $prepare_command .= ' --env '.escapeShellValue("RAILPACK_BUILD_CMD={$this->application->build_command}");
-        }
-        if ($this->application->start_command) {
-            $prepare_command .= ' --env '.escapeShellValue("RAILPACK_START_CMD={$this->application->start_command}");
-        }
-        if ($this->application->install_command) {
-            $prepare_command .= ' --env '.escapeShellValue("RAILPACK_INSTALL_CMD={$this->application->install_command}");
+
+        if ($configFilePath) {
+            $prepare_command .= ' --config-file '.escapeShellValue($configFilePath);
         }
 
         $prepare_command .= " --plan-out /artifacts/railpack-plan.json {$this->workdir}";
+
+        return $prepare_command;
+    }
+
+    private function build_railpack_image(): void
+    {
+        $this->generate_railpack_env_variables();
+        $railpackConfigPath = $this->generate_railpack_config_file();
+
+        // Step 1: Generate build plan with railpack prepare
+        $prepare_command = $this->railpack_prepare_command($railpackConfigPath);
 
         $this->application_deployment_queue->addLogEntry('Generating Railpack build plan.');
         $this->execute_remote_command(

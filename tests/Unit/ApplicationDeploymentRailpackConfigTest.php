@@ -1,0 +1,195 @@
+<?php
+
+use App\Exceptions\DeploymentException;
+use App\Jobs\ApplicationDeploymentJob;
+use App\Models\Application;
+use Illuminate\Support\Collection;
+
+class TestableRailpackDeploymentJob extends ApplicationDeploymentJob
+{
+    public array $recordedCommands = [];
+
+    public function __construct() {}
+
+    public function execute_remote_command(...$commands)
+    {
+        $this->recordedCommands[] = $commands;
+    }
+}
+
+function makeRailpackDeploymentJob(array $applicationAttributes = [], array $savedOutputs = []): array
+{
+    $job = new TestableRailpackDeploymentJob;
+    $reflection = new ReflectionClass(ApplicationDeploymentJob::class);
+
+    $application = new Application($applicationAttributes);
+
+    foreach ([
+        'application' => $application,
+        'workdir' => '/artifacts/test-app',
+        'deployment_uuid' => 'deployment-uuid',
+        'saved_outputs' => new Collection($savedOutputs),
+        'env_railpack_args' => "--env 'RAILPACK_NODE_VERSION=22'",
+    ] as $property => $value) {
+        $reflectionProperty = $reflection->getProperty($property);
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($job, $value);
+    }
+
+    return [$job, $reflection];
+}
+
+function invokeRailpackMethod(object $job, ReflectionClass $reflection, string $method, array $arguments = []): mixed
+{
+    $reflectionMethod = $reflection->getMethod($method);
+    $reflectionMethod->setAccessible(true);
+
+    return $reflectionMethod->invokeArgs($job, $arguments);
+}
+
+it('deep merges repository railpack config with coolify overrides', function () {
+    $repositoryConfigJson = json_encode([
+        '$schema' => 'https://schema.railpack.com',
+        'packages' => [
+            'node' => '20',
+        ],
+        'steps' => [
+            'build' => [
+                'inputs' => [['step' => 'install']],
+                'commands' => ['npm run build'],
+            ],
+        ],
+        'deploy' => [
+            'variables' => [
+                'NODE_ENV' => 'production',
+            ],
+            'startCommand' => 'node index.js',
+        ],
+    ], JSON_THROW_ON_ERROR);
+
+    [$job, $reflection] = makeRailpackDeploymentJob(
+        [
+            'install_command' => 'npm ci',
+            'build_command' => 'npm run build:prod',
+            'start_command' => 'node server.js',
+        ],
+        [
+            'railpack_config_exists' => 'exists',
+            'railpack_repository_config' => $repositoryConfigJson,
+        ],
+    );
+
+    $repositoryConfig = invokeRailpackMethod(
+        $job,
+        $reflection,
+        'decode_railpack_config',
+        [$repositoryConfigJson, 'repository railpack.json'],
+    );
+    $overrides = [
+        'deploy' => [
+            'variables' => [
+                'APP_ENV' => 'production',
+            ],
+        ],
+        'packages' => [
+            'python' => '3.13',
+        ],
+    ];
+    $generatedConfig = invokeRailpackMethod($job, $reflection, 'merge_railpack_config', [$repositoryConfig, $overrides]);
+
+    expect($generatedConfig)->toMatchArray([
+        '$schema' => 'https://schema.railpack.com',
+        'packages' => [
+            'node' => '20',
+            'python' => '3.13',
+        ],
+        'steps' => [
+            'build' => [
+                'inputs' => [['step' => 'install']],
+                'commands' => ['npm run build'],
+            ],
+        ],
+        'deploy' => [
+            'variables' => [
+                'NODE_ENV' => 'production',
+                'APP_ENV' => 'production',
+            ],
+            'startCommand' => 'node index.js',
+        ],
+    ]);
+});
+
+it('writes a generated railpack config file when repository config exists', function () {
+    [$job, $reflection] = makeRailpackDeploymentJob(
+        ['build_command' => 'npm run build'],
+        [
+            'railpack_config_exists' => 'exists',
+            'railpack_repository_config' => json_encode([
+                '$schema' => 'https://schema.railpack.com',
+                'steps' => [
+                    'build' => [
+                        'commands' => ['npm run build'],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR),
+        ],
+    );
+
+    $configPath = invokeRailpackMethod($job, $reflection, 'generate_railpack_config_file');
+
+    expect($configPath)->toBe('.coolify/railpack.generated.json');
+    expect($job->recordedCommands)->toHaveCount(3);
+});
+
+it('does not generate a railpack config file for command overrides alone', function () {
+    [$job, $reflection] = makeRailpackDeploymentJob([
+        'install_command' => 'npm ci',
+        'build_command' => 'npm run build',
+        'start_command' => 'node server.js',
+    ]);
+
+    $configPath = invokeRailpackMethod($job, $reflection, 'generate_railpack_config_file');
+
+    expect($configPath)->toBeNull();
+    expect($job->recordedCommands)->toHaveCount(1);
+});
+
+it('fails fast when repository railpack config is invalid json', function () {
+    [$job, $reflection] = makeRailpackDeploymentJob(
+        ['build_command' => 'npm run build'],
+        [
+            'railpack_config_exists' => 'exists',
+            'railpack_repository_config' => '{"steps":{"build":',
+        ],
+    );
+
+    expect(fn () => invokeRailpackMethod($job, $reflection, 'generate_railpack_config_file'))
+        ->toThrow(DeploymentException::class, 'Invalid repository railpack.json');
+});
+
+it('builds railpack prepare command using process env vars for command overrides', function () {
+    [$job, $reflection] = makeRailpackDeploymentJob(
+        [
+            'install_command' => 'npm ci',
+            'build_command' => 'npm run build',
+            'start_command' => 'node server.js',
+        ],
+    );
+
+    $command = invokeRailpackMethod(
+        $job,
+        $reflection,
+        'railpack_prepare_command',
+        ['.coolify/railpack.generated.json'],
+    );
+
+    expect($command)->toContain("railpack prepare --env 'RAILPACK_NODE_VERSION=22'");
+    expect($command)->toContain('RAILPACK_INSTALL_CMD='.escapeshellarg('npm ci'));
+    expect($command)->toContain('RAILPACK_BUILD_CMD='.escapeshellarg('npm run build'));
+    expect($command)->toContain('RAILPACK_START_CMD='.escapeshellarg('node server.js'));
+    expect($command)->toContain('--config-file '.escapeshellarg('.coolify/railpack.generated.json'));
+    expect($command)->toContain('--plan-out /artifacts/railpack-plan.json /artifacts/test-app');
+    expect($command)->not->toContain("--env 'RAILPACK_BUILD_CMD=");
+    expect($command)->not->toContain("--env 'RAILPACK_START_CMD=");
+    expect($command)->not->toContain("--env 'RAILPACK_INSTALL_CMD=");
+});

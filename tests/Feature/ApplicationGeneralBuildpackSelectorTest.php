@@ -63,6 +63,24 @@ test('existing application buildpack selector lists nixpacks before railpack', f
         ->assertSuccessful()
         ->assertSeeInOrder([
             '<option value="nixpacks">Nixpacks</option>',
-            '<option value="railpack">Railpack</option>',
+            '<option value="railpack">Railpack (Beta)</option>',
         ], false);
+});
+
+test('existing application shows railpack beta badge in build helper copy', function () {
+    $application = Application::factory()->create([
+        'environment_id' => $this->environment->id,
+        'destination_id' => $this->destination->id,
+        'destination_type' => StandaloneDocker::class,
+        'build_pack' => 'railpack',
+        'static_image' => 'nginx:alpine',
+        'base_directory' => '/',
+        'is_http_basic_auth_enabled' => false,
+        'redirect' => 'no',
+    ]);
+
+    Livewire::test(General::class, ['application' => $application])
+        ->assertSuccessful()
+        ->assertSee('Railpack')
+        ->assertSee('Beta');
 });
