@@ -40,10 +40,11 @@ class ValidationPatterns
      * Blocks dangerous shell metacharacters: ; | ` $ ( ) > < newlines and carriage returns
      * Allows & for command chaining (&&) which is common in multi-step build commands
      * Allows double quotes for build args with spaces (e.g. --build-arg KEY="value")
-     * Blocks backslashes and single quotes to prevent escape-sequence attacks
+     * Blocks backslashes to prevent escape-sequence attacks
+     * Allows single and double quotes for quoted arguments (e.g. --entrypoint "sh -c 'npm start'")
      * Uses [ \t] instead of \s to explicitly exclude \n and \r (which act as command separators)
      */
-    public const SHELL_SAFE_COMMAND_PATTERN = '/^[a-zA-Z0-9 \t._\-\/=:@,+\[\]{}#%^~&"]+$/';
+    public const SHELL_SAFE_COMMAND_PATTERN = '/^[a-zA-Z0-9 \t._\-\/=:@,+\[\]{}#%^~&"\']+$/';
 
     /**
      * Pattern for Docker volume names
