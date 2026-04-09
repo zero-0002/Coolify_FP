@@ -512,6 +512,9 @@ describe('custom_docker_run_options validation', function () {
         '--cap-add=NET_ADMIN --cap-add=NET_RAW',
         '--privileged --init',
         '--memory=512m --cpus=2',
+        '--entrypoint "sh -c \'npm start\'"',
+        '--entrypoint "sh -c \'php artisan schedule:work\'"',
+        '--hostname "my-host"',
     ]);
 });
 
