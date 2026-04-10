@@ -44,7 +44,7 @@
                     @endif
                 </div>
                 <div class="flex flex-col gap-2">
-                    <div class="w-96">
+                    <div class="w-full sm:w-96">
                         <x-forms.checkbox canGate="update" :canResource="$server" wire:model.live="isSentinelEnabled"
                             label="Enable Sentinel" />
                         @if ($server->isSentinelEnabled())
