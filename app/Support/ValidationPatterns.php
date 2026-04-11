@@ -203,10 +203,11 @@ class ValidationPatterns
     }
 
     /**
-     * Pattern for port mappings (e.g. 3000:3000, 8080:80, 8000-8010:8000-8010)
+     * Pattern for port mappings (e.g. 3000:3000, 8080:80/udp, 8000-8010:8000-8010)
      * Each entry requires host:container format, where each side can be a number or a range (number-number)
+     * with an optional protocol suffix (/tcp, /udp, /sctp) on either or both sides
      */
-    public const PORT_MAPPINGS_PATTERN = '/^(\d+(-\d+)?:\d+(-\d+)?)(,\d+(-\d+)?:\d+(-\d+)?)*$/';
+    public const PORT_MAPPINGS_PATTERN = '/^(\d+(-\d+)?(\/(?:tcp|udp|sctp))?:\d+(-\d+)?(\/(?:tcp|udp|sctp))?)(,\d+(-\d+)?(\/(?:tcp|udp|sctp))?:\d+(-\d+)?(\/(?:tcp|udp|sctp))?)*$/';
 
     /**
      * Get validation rules for container name fields
@@ -230,7 +231,7 @@ class ValidationPatterns
     public static function portMappingMessages(string $field = 'portsMappings'): array
     {
         return [
-            "{$field}.regex" => 'Port mappings must be a comma-separated list of port pairs or ranges (e.g. 3000:3000,8080:80,8000-8010:8000-8010).',
+            "{$field}.regex" => 'Port mappings must be a comma-separated list of port pairs or ranges with optional protocol (e.g. 3000:3000,8080:80/udp,8000-8010:8000-8010).',
         ];
     }
 
