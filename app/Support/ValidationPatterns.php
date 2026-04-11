@@ -203,11 +203,24 @@ class ValidationPatterns
     }
 
     /**
-     * Pattern for port mappings (e.g. 3000:3000, 8080:80/udp, 8000-8010:8000-8010)
-     * Each entry requires host:container format, where each side can be a number or a range (number-number)
-     * with an optional protocol suffix (/tcp, /udp, /sctp) on either or both sides
+     * Pattern for port mappings with optional IP binding and protocol suffix on either side.
+     * Format: [ip:]port[:ip:port] where IP is IPv4 or [IPv6], port can be a range, protocol suffix optional.
+     * Examples: 8080:80, 127.0.0.1:8080:80, [::1]::80/udp, 127.0.0.1:8080:80/tcp
      */
-    public const PORT_MAPPINGS_PATTERN = '/^(\d+(-\d+)?(\/(?:tcp|udp|sctp))?:\d+(-\d+)?(\/(?:tcp|udp|sctp))?)(,\d+(-\d+)?(\/(?:tcp|udp|sctp))?:\d+(-\d+)?(\/(?:tcp|udp|sctp))?)*$/';
+    public const PORT_MAPPINGS_PATTERN = '/^
+        (?:(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\[[\da-fA-F:]+\]):)?  # optional IP
+        (?:\d+(?:-\d+)?(?:\/(?:tcp|udp|sctp))?)?                         # optional host port
+        :
+        (?:(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\[[\da-fA-F:]+\]):)?  # optional IP
+        \d+(?:-\d+)?(?:\/(?:tcp|udp|sctp))?                              # container port
+        (?:,
+            (?:(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\[[\da-fA-F:]+\]):)?
+            (?:\d+(?:-\d+)?(?:\/(?:tcp|udp|sctp))?)?
+            :
+            (?:(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\[[\da-fA-F:]+\]):)?
+            \d+(?:-\d+)?(?:\/(?:tcp|udp|sctp))?
+        )*
+    $/x';
 
     /**
      * Get validation rules for container name fields
@@ -231,7 +244,7 @@ class ValidationPatterns
     public static function portMappingMessages(string $field = 'portsMappings'): array
     {
         return [
-            "{$field}.regex" => 'Port mappings must be a comma-separated list of port pairs or ranges with optional protocol (e.g. 3000:3000,8080:80/udp,8000-8010:8000-8010).',
+            "{$field}.regex" => 'Port mappings must be a comma-separated list of port pairs or ranges with optional IP and protocol (e.g. 3000:3000, 8080:80/udp, 127.0.0.1:8080:80, [::1]::80).',
         ];
     }
 
