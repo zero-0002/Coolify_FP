@@ -274,7 +274,7 @@
 
                     <div class="w-full">
                         @if (!$server->isLocalhost())
-                            <div class="w-96">
+                            <div class="w-full sm:w-96">
                                 @if ($isBuildServerLocked)
                                     <x-forms.checkbox disabled instantSave id="isBuildServer"
                                         helper="You can't use this server as a build server because it has defined resources."

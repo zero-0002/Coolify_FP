@@ -28,7 +28,7 @@
                 </x-slot>
                 @if ($currentRoute === 'project.service.index.advanced')
                     <h2>Advanced</h2>
-                    <div class="w-96 flex flex-col gap-1 pt-4">
+                    <div class="w-full sm:w-96 flex flex-col gap-1 pt-4">
                         @if (str($serviceApplication->image)->contains('pocketbase'))
                             <x-forms.checkbox canGate="update" :canResource="$serviceApplication" instantSave="instantSaveApplicationSettings" id="isGzipEnabled"
                                 label="Enable Gzip Compression"
@@ -186,7 +186,7 @@
                     <livewire:project.database.import :resource="$serviceDatabase" :key="'import-' . $serviceDatabase->uuid" />
                 @elseif ($currentRoute === 'project.service.index.advanced')
                     <h2>Advanced</h2>
-                    <div class="w-96 flex flex-col gap-1 pt-4">
+                    <div class="w-full sm:w-96 flex flex-col gap-1 pt-4">
                         <x-forms.checkbox canGate="update" :canResource="$serviceDatabase" instantSave="instantSaveExclude"
                             label="Exclude from service status"
                             helper="If you do not need to monitor this resource, enable. Useful if this service is optional."
@@ -250,7 +250,7 @@
                                     <x-forms.checkbox canGate="update" :canResource="$serviceDatabase" instantSave id="isPublic"
                                         label="Make it publicly available" />
                                 </div>
-                                <x-forms.input canGate="update" :canResource="$serviceDatabase" placeholder="5432"
+                                <x-forms.input type="number" canGate="update" :canResource="$serviceDatabase" placeholder="5432"
                                     disabled="{{ $serviceDatabase->is_public }}" id="publicPort" label="Public Port" />
                                 @if ($db_url_public)
                                     <x-forms.input label="Database IP:PORT (public)"
