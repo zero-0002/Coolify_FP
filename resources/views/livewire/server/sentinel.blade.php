@@ -15,7 +15,12 @@
                 </div>
             @endif
         </div>
-        <div class="flex flex-col gap-2">
+        @if ($isSentinelEnabled && !$server->isSentinelLive())
+            <x-callout type="warning" title="Out of Sync" class="mt-2">
+                Sentinel is not in sync with your server. Click "Sync" to re-sync.
+            </x-callout>
+        @endif
+        <div class="flex flex-col gap-2 pt-2">
             @if ($isSentinelEnabled && isDev())
                 <div class="w-full sm:w-96">
                     <x-forms.checkbox canGate="update" :canResource="$server" id="isSentinelDebugEnabled"
