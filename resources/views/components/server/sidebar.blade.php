@@ -6,11 +6,6 @@
             href="{{ route('server.advanced', ['server_uuid' => $server->uuid]) }}"><span class="menu-item-label">Advanced</span>
         </a>
     @endif
-    @if ($server->isFunctional() && !$server->isSwarm() && !$server->isBuildServer())
-        <a class="sub-menu-item {{ $activeMenu === 'sentinel' ? 'menu-item-active' : '' }}" {{ wireNavigate() }}
-            href="{{ route('server.sentinel', ['server_uuid' => $server->uuid]) }}"><span class="menu-item-label">Sentinel</span>
-        </a>
-    @endif
     <a class="sub-menu-item {{ $activeMenu === 'private-key' ? 'menu-item-active' : '' }}" {{ wireNavigate() }}
         href="{{ route('server.private-key', ['server_uuid' => $server->uuid]) }}"><span class="menu-item-label">Private Key</span>
     </a>

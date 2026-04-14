@@ -2,11 +2,15 @@
 
 namespace App\Livewire\Server;
 
+use App\Actions\Server\StartSentinel;
 use App\Models\Server;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class Charts extends Component
 {
+    use AuthorizesRequests;
+
     public Server $server;
 
     public $chartId = 'server';
@@ -23,6 +27,26 @@ class Charts extends Component
     {
         try {
             $this->server = Server::ownedByCurrentTeam()->whereUuid($server_uuid)->firstOrFail();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
+    }
+
+    public function toggleMetrics()
+    {
+        try {
+            $this->authorize('update', $this->server);
+            $this->server->settings->is_metrics_enabled = ! $this->server->settings->is_metrics_enabled;
+            $this->server->settings->save();
+            $this->server->refresh();
+
+            if ($this->server->isMetricsEnabled()) {
+                StartSentinel::run($this->server, true);
+                $this->dispatch('success', 'Metrics enabled. Restarting Sentinel.');
+            } else {
+                $this->server->restartSentinel();
+                $this->dispatch('success', 'Metrics disabled. Restarting Sentinel.');
+            }
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
