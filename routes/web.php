@@ -289,7 +289,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/cloudflare-tunnel', CloudflareTunnel::class)->name('server.cloudflare-tunnel');
         Route::get('/destinations', ServerDestinations::class)->name('server.destinations');
         Route::get('/log-drains', LogDrains::class)->name('server.log-drains');
-        Route::get('/metrics', ServerCharts::class)->name('server.charts');
+        Route::get('/metrics', ServerCharts::class)->name('server.metrics');
         Route::get('/danger', DeleteServer::class)->name('server.delete');
         Route::get('/proxy', ProxyShow::class)->name('server.proxy');
         Route::get('/proxy/dynamic', ProxyDynamicConfigurations::class)->name('server.proxy.dynamic-confs');
