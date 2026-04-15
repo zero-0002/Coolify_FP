@@ -271,7 +271,7 @@
                             <div>You need to register a GitHub App before using this source.</div>
                         @endif
 
-                        <div class="flex flex-col gap-2 pt-4 w-96">
+                        <div class="flex w-full flex-col gap-2 pt-4 sm:w-96">
                             <x-forms.checkbox disabled id="default_permissions" label="Mandatory"
                                 helper="Contents: read<br>Metadata: read<br>Email: read" />
                             <x-forms.checkbox id="preview_deployment_permissions" label="Preview Deployments "

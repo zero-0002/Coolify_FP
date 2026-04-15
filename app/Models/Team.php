@@ -71,25 +71,31 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
             }
         });
 
-        static::deleting(function ($team) {
-            $keys = $team->privateKeys;
-            foreach ($keys as $key) {
+        static::deleting(function (Team $team) {
+            foreach ($team->privateKeys as $key) {
                 $key->delete();
             }
-            $sources = $team->sources();
-            foreach ($sources as $source) {
+
+            // Transfer instance-wide sources to root team so they remain available
+            GithubApp::where('team_id', $team->id)->where('is_system_wide', true)->update(['team_id' => 0]);
+            GitlabApp::where('team_id', $team->id)->where('is_system_wide', true)->update(['team_id' => 0]);
+
+            // Delete non-instance-wide sources owned by this team
+            $teamSources = GithubApp::where('team_id', $team->id)->get()
+                ->merge(GitlabApp::where('team_id', $team->id)->get());
+            foreach ($teamSources as $source) {
                 $source->delete();
             }
-            $tags = Tag::whereTeamId($team->id)->get();
-            foreach ($tags as $tag) {
+
+            foreach (Tag::whereTeamId($team->id)->get() as $tag) {
                 $tag->delete();
             }
-            $shared_variables = $team->environment_variables();
-            foreach ($shared_variables as $shared_variable) {
-                $shared_variable->delete();
+
+            foreach ($team->environment_variables()->get() as $sharedVariable) {
+                $sharedVariable->delete();
             }
-            $s3s = $team->s3s;
-            foreach ($s3s as $s3) {
+
+            foreach ($team->s3s as $s3) {
                 $s3->delete();
             }
         });
@@ -338,4 +344,5 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
     {
         return $this->hasOne(WebhookNotificationSettings::class);
     }
+
 }
