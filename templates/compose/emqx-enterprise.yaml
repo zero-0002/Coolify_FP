@@ -1,6 +1,6 @@
 # documentation: https://www.emqx.io/docs/en/latest/deploy/install-docker.html
 # slogan: Open-source MQTT broker for IoT, IIoT, and connected vehicles.
-# category: iot
+# category: Networking
 # tags: mqtt,broker,iot,messaging,emqx,iiot
 # logo: svgs/emqx-enterprise.svg
 # port: 18083
