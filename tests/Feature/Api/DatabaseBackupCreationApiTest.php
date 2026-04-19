@@ -2,6 +2,8 @@
 
 use App\Models\InstanceSettings;
 use App\Models\Project;
+use App\Models\S3Storage;
+use App\Models\ScheduledDatabaseBackup;
 use App\Models\Server;
 use App\Models\StandaloneDocker;
 use App\Models\StandalonePostgresql;
@@ -52,6 +54,17 @@ beforeEach(function () {
         'environment_id' => $this->environment->id,
         'destination_id' => $this->destination->id,
         'destination_type' => $this->destination->getMorphClass(),
+    ]);
+
+    $this->s3Storage = S3Storage::create([
+        'name' => 'test-s3',
+        'region' => 'us-east-1',
+        'key' => 'test-key',
+        'secret' => 'test-secret',
+        'bucket' => 'test-bucket',
+        'endpoint' => 'https://s3.example.com',
+        'team_id' => $this->team->id,
+        'is_usable' => true,
     ]);
 });
 
@@ -163,5 +176,102 @@ describe('POST /api/v1/databases/{uuid}/backups', function () {
 
         $response->assertStatus(404);
         $response->assertJson(['message' => 'Database not found.']);
+    });
+
+    test('creates backup with s3 storage via API token', function () {
+        $response = $this->withHeaders(backupHeaders())
+            ->postJson("/api/v1/databases/{$this->database->uuid}/backups", [
+                'frequency' => '0 2 * * 0',
+                'save_s3' => true,
+                's3_storage_uuid' => $this->s3Storage->uuid,
+                'enabled' => true,
+            ]);
+
+        $response->assertStatus(201);
+        $response->assertJsonStructure(['uuid', 'message']);
+
+        $backup = ScheduledDatabaseBackup::where('uuid', $response->json('uuid'))->first();
+        expect($backup)->not->toBeNull();
+        expect($backup->s3_storage_id)->toBe($this->s3Storage->id);
+        expect($backup->save_s3)->toBeTrue();
+        expect($backup->team_id)->toBe($this->team->id);
+    });
+
+    test('rejects s3_storage_uuid from another team', function () {
+        $otherTeam = Team::factory()->create();
+        $otherS3 = S3Storage::create([
+            'name' => 'other-s3',
+            'region' => 'us-east-1',
+            'key' => 'other-key',
+            'secret' => 'other-secret',
+            'bucket' => 'other-bucket',
+            'endpoint' => 'https://s3.example.com',
+            'team_id' => $otherTeam->id,
+            'is_usable' => true,
+        ]);
+
+        $response = $this->withHeaders(backupHeaders())
+            ->postJson("/api/v1/databases/{$this->database->uuid}/backups", [
+                'frequency' => '0 2 * * 0',
+                'save_s3' => true,
+                's3_storage_uuid' => $otherS3->uuid,
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['s3_storage_uuid']);
+    });
+});
+
+describe('PATCH /api/v1/databases/{uuid}/backups/{scheduled_backup_uuid}', function () {
+    test('updates backup to use s3 storage via API token', function () {
+        $backup = ScheduledDatabaseBackup::create([
+            'frequency' => 'daily',
+            'enabled' => true,
+            'database_id' => $this->database->id,
+            'database_type' => $this->database->getMorphClass(),
+            'team_id' => $this->team->id,
+        ]);
+
+        $response = $this->withHeaders(backupHeaders())
+            ->patchJson("/api/v1/databases/{$this->database->uuid}/backups/{$backup->uuid}", [
+                'save_s3' => true,
+                's3_storage_uuid' => $this->s3Storage->uuid,
+            ]);
+
+        $response->assertStatus(200);
+        $backup->refresh();
+        expect($backup->s3_storage_id)->toBe($this->s3Storage->id);
+        expect($backup->save_s3)->toBeTrue();
+    });
+
+    test('rejects s3_storage_uuid from another team on update', function () {
+        $otherTeam = Team::factory()->create();
+        $otherS3 = S3Storage::create([
+            'name' => 'other-s3',
+            'region' => 'us-east-1',
+            'key' => 'other-key',
+            'secret' => 'other-secret',
+            'bucket' => 'other-bucket',
+            'endpoint' => 'https://s3.example.com',
+            'team_id' => $otherTeam->id,
+            'is_usable' => true,
+        ]);
+
+        $backup = ScheduledDatabaseBackup::create([
+            'frequency' => 'daily',
+            'enabled' => true,
+            'database_id' => $this->database->id,
+            'database_type' => $this->database->getMorphClass(),
+            'team_id' => $this->team->id,
+        ]);
+
+        $response = $this->withHeaders(backupHeaders())
+            ->patchJson("/api/v1/databases/{$this->database->uuid}/backups/{$backup->uuid}", [
+                'save_s3' => true,
+                's3_storage_uuid' => $otherS3->uuid,
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['s3_storage_uuid']);
     });
 });

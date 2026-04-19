@@ -747,7 +747,7 @@ class DatabasesController extends Controller
         }
 
         if ($request->filled('s3_storage_uuid')) {
-            $existsInTeam = S3Storage::ownedByCurrentTeam()->where('uuid', $request->s3_storage_uuid)->exists();
+            $existsInTeam = S3Storage::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->s3_storage_uuid)->exists();
             if (! $existsInTeam) {
                 return response()->json([
                     'message' => 'Validation failed.',
@@ -774,7 +774,7 @@ class DatabasesController extends Controller
 
         // Convert s3_storage_uuid to s3_storage_id
         if (isset($backupData['s3_storage_uuid'])) {
-            $s3Storage = S3Storage::ownedByCurrentTeam()->where('uuid', $backupData['s3_storage_uuid'])->first();
+            $s3Storage = S3Storage::ownedByCurrentTeamAPI($teamId)->where('uuid', $backupData['s3_storage_uuid'])->first();
             if ($s3Storage) {
                 $backupData['s3_storage_id'] = $s3Storage->id;
             } elseif ($request->boolean('save_s3')) {
@@ -982,7 +982,7 @@ class DatabasesController extends Controller
             ], 422);
         }
         if ($request->filled('s3_storage_uuid')) {
-            $existsInTeam = S3Storage::ownedByCurrentTeam()->where('uuid', $request->s3_storage_uuid)->exists();
+            $existsInTeam = S3Storage::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->s3_storage_uuid)->exists();
             if (! $existsInTeam) {
                 return response()->json([
                     'message' => 'Validation failed.',
@@ -1015,7 +1015,7 @@ class DatabasesController extends Controller
 
         // Convert s3_storage_uuid to s3_storage_id
         if (isset($backupData['s3_storage_uuid'])) {
-            $s3Storage = S3Storage::ownedByCurrentTeam()->where('uuid', $backupData['s3_storage_uuid'])->first();
+            $s3Storage = S3Storage::ownedByCurrentTeamAPI($teamId)->where('uuid', $backupData['s3_storage_uuid'])->first();
             if ($s3Storage) {
                 $backupData['s3_storage_id'] = $s3Storage->id;
             } elseif ($request->boolean('save_s3')) {
