@@ -26,7 +26,8 @@ Route::group([
     Route::get('/health', [OtherController::class, 'healthcheck']);
 });
 
-Route::post('/feedback', [OtherController::class, 'feedback']);
+Route::post('/feedback', [OtherController::class, 'feedback'])
+    ->middleware('throttle:feedback');
 
 Route::group([
     'middleware' => ['auth:sanctum', 'api.ability:write'],
