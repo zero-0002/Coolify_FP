@@ -149,12 +149,12 @@ class Destination extends Component
         }
     }
 
-    public function removeServer(int $network_id, int $server_id, $password)
+    public function removeServer(int $network_id, int $server_id, $password, $selectedActions = [])
     {
         try {
             $this->authorize('update', $this->resource);
             if (! verifyPasswordConfirmation($password, $this)) {
-                return;
+                return 'The provided password is incorrect.';
             }
 
             if ($this->resource->destination->server->id == $server_id && $this->resource->destination->id == $network_id) {
@@ -168,6 +168,8 @@ class Destination extends Component
             $this->loadData();
             $this->dispatch('refresh');
             ApplicationStatusChanged::dispatch(data_get($this->resource, 'environment.project.team.id'));
+
+            return true;
         } catch (\Exception $e) {
             return handleError($e, $this);
         }

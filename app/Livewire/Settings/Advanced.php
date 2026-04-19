@@ -3,6 +3,7 @@
 namespace App\Livewire\Settings;
 
 use App\Models\InstanceSettings;
+use App\Rules\ValidDnsServers;
 use App\Rules\ValidIpOrCidr;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Validate;
@@ -23,7 +24,6 @@ class Advanced extends Component
     #[Validate('boolean')]
     public bool $is_dns_validation_enabled;
 
-    #[Validate('nullable|string')]
     public ?string $custom_dns_servers = null;
 
     #[Validate('boolean')]
@@ -46,7 +46,7 @@ class Advanced extends Component
             'is_registration_enabled' => 'boolean',
             'do_not_track' => 'boolean',
             'is_dns_validation_enabled' => 'boolean',
-            'custom_dns_servers' => 'nullable|string',
+            'custom_dns_servers' => ['nullable', 'string', new ValidDnsServers],
             'is_api_enabled' => 'boolean',
             'allowed_ips' => ['nullable', 'string', new ValidIpOrCidr],
             'is_sponsorship_popup_enabled' => 'boolean',
@@ -160,6 +160,19 @@ class Advanced extends Component
         } catch (\Exception $e) {
             return handleError($e, $this);
         }
+    }
+
+    public function toggleRegistration($password): bool
+    {
+        if (! verifyPasswordConfirmation($password, $this)) {
+            return false;
+        }
+
+        $this->settings->is_registration_enabled = $this->is_registration_enabled = true;
+        $this->settings->save();
+        $this->dispatch('success', 'Registration has been enabled.');
+
+        return true;
     }
 
     public function toggleTwoStepConfirmation($password): bool

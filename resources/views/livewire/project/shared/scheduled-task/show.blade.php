@@ -1,18 +1,8 @@
 <div>
-    <x-slot:title>
-        {{ data_get_str($resource, 'name')->limit(10) }} > Scheduled Tasks | Coolify
-    </x-slot>
-    @if ($type === 'application')
-        <h1>Scheduled Task</h1>
-        <livewire:project.application.heading :application="$resource" />
-    @elseif ($type === 'service')
-        <livewire:project.service.heading :service="$resource" :parameters="$parameters" />
-    @endif
-
     <form wire:submit="submit" class="w-full">
         <div class="flex flex-col gap-2 pb-2">
             <div class="flex gap-2 items-end">
-                <h2>Scheduled Task</h2>
+                <h2>Task {{ $task->name }}</h2>
                 <x-forms.button canGate="update" :canResource="$resource" type="submit">
                     Save
                 </x-forms.button>
@@ -24,6 +14,11 @@
                     @endcan
                 @endif
                 @can('update', $resource)
+                    @if (!$isEnabled)
+                        <x-forms.button wire:click="toggleEnabled" isHighlighted>Enable Task</x-forms.button>
+                    @else
+                        <x-forms.button wire:click="toggleEnabled">Disable Task</x-forms.button>
+                    @endif
                     <x-modal-confirmation title="Confirm Scheduled Task Deletion?" isErrorButton buttonTitle="Delete"
                         submitAction="delete({{ $task->id }})" :actions="['The selected scheduled task will be permanently deleted.']" confirmationText="{{ $task->name }}"
                         confirmationLabel="Please confirm the execution of the actions by entering the Scheduled Task Name below"
@@ -31,17 +26,11 @@
                         step2ButtonText="Permanently Delete" />
                 @endcan
             </div>
-            <div class="w-48">
-                @can('update', $resource)
-                    <x-forms.checkbox instantSave id="isEnabled" label="Enabled" />
-                @else
-                    <x-forms.checkbox disabled id="isEnabled" label="Enabled" />
-                @endcan
-            </div>
+            <h3 class="pt-4">Configuration</h3>
             <div class="flex gap-2 w-full">
                 <x-forms.input :disabled="!auth()->user()->can('update', $resource)" placeholder="Name" id="name" label="Name" required />
-                <x-forms.input :disabled="!auth()->user()->can('update', $resource)" placeholder="php artisan schedule:run" id="command" label="Command" required />
-                <x-forms.input :disabled="!auth()->user()->can('update', $resource)" placeholder="0 0 * * * or daily" id="frequency" label="Frequency" required />
+                <x-forms.input :disabled="!auth()->user()->can('update', $resource)" placeholder="0 0 * * * or daily" id="frequency" label="Frequency"
+                    helper="You can use every_minute, hourly, daily, weekly, monthly, yearly or a cron expression." required />
                 <x-forms.input :disabled="!auth()->user()->can('update', $resource)" type="number" placeholder="300" id="timeout"
                     helper="Maximum execution time in seconds (60-36000)." label="Timeout (seconds)" required />
                 @if ($type === 'application')
@@ -54,6 +43,7 @@
                         id="container" label="Service name" />
                 @endif
             </div>
+            <x-forms.input :disabled="!auth()->user()->can('update', $resource)" placeholder="php artisan schedule:run" id="command" label="Command" required />
     </form>
 
     <div class="pt-4">

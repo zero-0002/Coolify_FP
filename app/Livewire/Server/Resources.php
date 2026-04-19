@@ -3,6 +3,7 @@
 namespace App\Livewire\Server;
 
 use App\Models\Server;
+use App\Support\ValidationPatterns;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
@@ -31,6 +32,11 @@ class Resources extends Component
     {
         try {
             $this->authorize('update', $this->server);
+            if (! ValidationPatterns::isValidContainerName($id)) {
+                $this->dispatch('error', 'Invalid container identifier.');
+
+                return;
+            }
             $this->server->startUnmanaged($id);
             $this->dispatch('success', 'Container started.');
             $this->loadUnmanagedContainers();
@@ -43,6 +49,11 @@ class Resources extends Component
     {
         try {
             $this->authorize('update', $this->server);
+            if (! ValidationPatterns::isValidContainerName($id)) {
+                $this->dispatch('error', 'Invalid container identifier.');
+
+                return;
+            }
             $this->server->restartUnmanaged($id);
             $this->dispatch('success', 'Container restarted.');
             $this->loadUnmanagedContainers();
@@ -55,6 +66,11 @@ class Resources extends Component
     {
         try {
             $this->authorize('update', $this->server);
+            if (! ValidationPatterns::isValidContainerName($id)) {
+                $this->dispatch('error', 'Invalid container identifier.');
+
+                return;
+            }
             $this->server->stopUnmanaged($id);
             $this->dispatch('success', 'Container stopped.');
             $this->loadUnmanagedContainers();

@@ -10,6 +10,7 @@ use App\Models\Team;
 use App\Services\ConfigurationRepository;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Visus\Cuid2\Cuid2;
 
@@ -22,18 +23,18 @@ class Index extends Component
         'prerequisitesInstalled' => 'handlePrerequisitesInstalled',
     ];
 
-    #[\Livewire\Attributes\Url(as: 'step', history: true)]
+    #[Url(as: 'step', history: true)]
     public string $currentState = 'welcome';
 
-    #[\Livewire\Attributes\Url(keep: true)]
+    #[Url(keep: true)]
     public ?string $selectedServerType = null;
 
     public ?Collection $privateKeys = null;
 
-    #[\Livewire\Attributes\Url(keep: true)]
+    #[Url(keep: true)]
     public ?int $selectedExistingPrivateKey = null;
 
-    #[\Livewire\Attributes\Url(keep: true)]
+    #[Url(keep: true)]
     public ?string $privateKeyType = null;
 
     public ?string $privateKey = null;
@@ -48,7 +49,7 @@ class Index extends Component
 
     public ?Collection $servers = null;
 
-    #[\Livewire\Attributes\Url(keep: true)]
+    #[Url(keep: true)]
     public ?int $selectedExistingServer = null;
 
     public ?string $remoteServerName = null;
@@ -69,7 +70,7 @@ class Index extends Component
 
     public Collection $projects;
 
-    #[\Livewire\Attributes\Url(keep: true)]
+    #[Url(keep: true)]
     public ?int $selectedProject = null;
 
     public ?Project $createdProject = null;
@@ -124,7 +125,7 @@ class Index extends Component
             }
 
             if ($this->selectedExistingServer) {
-                $this->createdServer = Server::find($this->selectedExistingServer);
+                $this->createdServer = Server::ownedByCurrentTeam()->find($this->selectedExistingServer);
                 if ($this->createdServer) {
                     $this->serverPublicKey = $this->createdServer->privateKey->getPublicKey();
                     $this->updateServerDetails();
@@ -148,7 +149,7 @@ class Index extends Component
         }
 
         if ($this->selectedProject) {
-            $this->createdProject = Project::find($this->selectedProject);
+            $this->createdProject = Project::ownedByCurrentTeam()->find($this->selectedProject);
             if (! $this->createdProject) {
                 $this->projects = Project::ownedByCurrentTeam(['name'])->get();
             }
@@ -444,7 +445,10 @@ class Index extends Component
 
     public function selectExistingProject()
     {
-        $this->createdProject = Project::find($this->selectedProject);
+        $this->createdProject = Project::ownedByCurrentTeam()->find($this->selectedProject);
+        if (! $this->createdProject) {
+            return $this->dispatch('error', 'Project not found.');
+        }
         $this->currentState = 'create-resource';
     }
 

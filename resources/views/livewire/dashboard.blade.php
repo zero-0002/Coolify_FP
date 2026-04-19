@@ -11,12 +11,12 @@
     <section class="-mt-2">
         <div class="flex items-center gap-2 pb-2">
             <h3>Projects</h3>
-            @can('create', App\Models\Project::class)
+@can('create', App\Models\Project::class)
                 @if ($projects->count() > 0)
                     <x-modal-input buttonTitle="Add" title="New Project">
                         <x-slot:content>
                             <button
-                                class="flex items-center justify-center size-4 text-white rounded hover:bg-coolgray-400 dark:hover:bg-coolgray-300 cursor-pointer">
+                                class="flex items-center justify-center size-4 text-black dark:text-white rounded hover:bg-coolgray-400 dark:hover:bg-coolgray-300 cursor-pointer">
                                 <svg class="size-3" xmlns="http://www.w3.org/2000/svg" fill="none"
                                     viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -83,12 +83,12 @@
     <section>
         <div class="flex items-center gap-2 pb-2">
             <h3>Servers</h3>
-            @can('create', App\Models\Server::class)
+@can('create', App\Models\Server::class)
                 @if ($servers->count() > 0 && $privateKeys->count() > 0)
                     <x-modal-input buttonTitle="Add" title="New Server" :closeOutside="false">
                         <x-slot:content>
                             <button
-                                class="flex items-center justify-center size-4 text-white rounded hover:bg-coolgray-400 dark:hover:bg-coolgray-300 cursor-pointer">
+                                class="flex items-center justify-center size-4 text-black dark:text-white rounded hover:bg-coolgray-400 dark:hover:bg-coolgray-300 cursor-pointer">
                                 <svg class="size-3" xmlns="http://www.w3.org/2000/svg" fill="none"
                                     viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round"

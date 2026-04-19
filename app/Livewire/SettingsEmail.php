@@ -36,7 +36,7 @@ class SettingsEmail extends Component
     public ?string $smtpHost = null;
 
     #[Validate(['nullable', 'numeric', 'min:1', 'max:65535'])]
-    public ?int $smtpPort = null;
+    public ?string $smtpPort = null;
 
     #[Validate(['nullable', 'string', 'in:starttls,tls,none'])]
     public ?string $smtpEncryption = 'starttls';
@@ -48,7 +48,7 @@ class SettingsEmail extends Component
     public ?string $smtpPassword = null;
 
     #[Validate(['nullable', 'numeric'])]
-    public ?int $smtpTimeout = null;
+    public ?string $smtpTimeout = null;
 
     #[Validate(['boolean'])]
     public bool $resendEnabled = false;

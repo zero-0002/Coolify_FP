@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\PrivateKey;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
@@ -178,7 +179,7 @@ class SecurityController extends Controller
         }
         $this->authorize('create', [PrivateKey::class]);
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
         $validator = customApiValidator($request->all(), [
@@ -302,7 +303,7 @@ class SecurityController extends Controller
             return invalidTokenResponse();
         }
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
 
@@ -333,7 +334,7 @@ class SecurityController extends Controller
             ], 404);
         }
         $this->authorize('update', $foundKey);
-        $foundKey->update($request->all());
+        $foundKey->update($request->only($allowedFields));
 
         return response()->json(serializeApiResponse([
             'uuid' => $foundKey->uuid,

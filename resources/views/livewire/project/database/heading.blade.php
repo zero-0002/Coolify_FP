@@ -10,18 +10,18 @@
     </x-slide-over>
     <div class="navbar-main">
         <nav
-            class="flex overflow-x-scroll shrink-0 gap-6 items-center whitespace-nowrap sm:overflow-x-hidden scrollbar min-h-10">
-            <a class="{{ request()->routeIs('project.database.configuration') ? 'dark:text-white' : '' }}" {{ wireNavigate() }}
+            class="scrollbar flex min-h-10 w-full flex-nowrap items-center gap-6 overflow-x-scroll overflow-y-hidden pb-1 whitespace-nowrap md:w-auto md:overflow-visible">
+            <a class="shrink-0 {{ request()->routeIs('project.database.configuration') ? 'dark:text-white' : '' }}" {{ wireNavigate() }}
                 href="{{ route('project.database.configuration', $parameters) }}">
                 Configuration
             </a>
 
-            <a class="{{ request()->routeIs('project.database.logs') ? 'dark:text-white' : '' }}"
+            <a class="shrink-0 {{ request()->routeIs('project.database.logs') ? 'dark:text-white' : '' }}"
                 href="{{ route('project.database.logs', $parameters) }}">
                 Logs
             </a>
             @can('canAccessTerminal')
-                <a class="{{ request()->routeIs('project.database.command') ? 'dark:text-white' : '' }}"
+                <a class="shrink-0 {{ request()->routeIs('project.database.command') ? 'dark:text-white' : '' }}"
                     href="{{ route('project.database.command', $parameters) }}">
                     Terminal
                 </a>
@@ -31,14 +31,53 @@
                     $database->getMorphClass() === 'App\Models\StandaloneMongodb' ||
                     $database->getMorphClass() === 'App\Models\StandaloneMysql' ||
                     $database->getMorphClass() === 'App\Models\StandaloneMariadb')
-                <a class="{{ request()->routeIs('project.database.backup.index') ? 'dark:text-white' : '' }}" {{ wireNavigate() }}
+                <a class="shrink-0 {{ request()->routeIs('project.database.backup.index') ? 'dark:text-white' : '' }}" {{ wireNavigate() }}
                     href="{{ route('project.database.backup.index', $parameters) }}">
                     Backups
                 </a>
             @endif
         </nav>
         @if ($database->destination->server->isFunctional())
-                <div class="flex flex-wrap gap-2 items-center">
+            <div class="flex flex-wrap gap-2 items-center">
+                <div class="md:hidden">
+                    <x-dropdown>
+                        <x-slot:title>
+                            Actions
+                        </x-slot>
+                        @if (!str($database->status)->startsWith('exited'))
+                            <x-modal-confirmation title="Confirm Database Restart?" buttonTitle="Restart" submitAction="restart"
+                                :actions="[
+                                    'This database will be unavailable during the restart.',
+                                    'If the database is currently in use data could be lost.',
+                                ]" :confirmWithText="false" :confirmWithPassword="false" step2ButtonText="Restart Database"
+                                :dispatchEvent="true" dispatchEventType="restartEvent">
+                                <x-slot:trigger>
+                                    <div class="dropdown-item dropdown-item-touch">
+                                        Restart
+                                    </div>
+                                </x-slot:trigger>
+                            </x-modal-confirmation>
+                            <x-modal-confirmation title="Confirm Database Stopping?" buttonTitle="Stop" submitAction="stop"
+                                :checkboxes="$checkboxes" :actions="[
+                                    'This database will be stopped.',
+                                    'If the database is currently in use data could be lost.',
+                                    'All non-persistent data of this database (containers, networks, unused images) will be deleted (don\'t worry, no data is lost and you can start the database again).',
+                                ]" :confirmWithText="false" :confirmWithPassword="false"
+                                step1ButtonText="Continue" step2ButtonText="Confirm">
+                                <x-slot:trigger>
+                                    <div class="dropdown-item dropdown-item-touch text-error">
+                                        Stop
+                                    </div>
+                                </x-slot:trigger>
+                            </x-modal-confirmation>
+                        @else
+                            <div class="dropdown-item dropdown-item-touch" @click="$wire.dispatch('startEvent')">
+                                Start
+                            </div>
+                        @endif
+                    </x-dropdown>
+                </div>
+                <div class="hidden flex-wrap items-center gap-2 md:flex">
                     @if (!str($database->status)->startsWith('exited'))
                         <x-modal-confirmation :disabled="!auth()->user()->can('manage', $database)" :authDisabled="!auth()->user()->can('manage', $database)" title="Confirm Database Restart?" buttonTitle="Restart" submitAction="restart"
                             :actions="[
@@ -90,18 +129,21 @@
                             Start
                         </x-forms.button>
                     @endif
-                    @script
-                        <script>
-                            $wire.$on('startEvent', () => {
-                                $wire.$call('start');
-                            });
-                            $wire.$on('restartEvent', () => {
-                                $wire.$dispatch('info', 'Restarting database.');
-                                $wire.$call('restart');
-                            });
-                        </script>
-                    @endscript
                 </div>
+                @script
+                    <script>
+                        $wire.$on('startEvent', () => {
+                            window.dispatchEvent(new CustomEvent('startdatabase'));
+                            $wire.$call('start');
+                        });
+                        $wire.$on('restartEvent', () => {
+                            $wire.$dispatch('info', 'Restarting database.');
+                            window.dispatchEvent(new CustomEvent('startdatabase'));
+                            $wire.$call('restart');
+                        });
+                    </script>
+                @endscript
+            </div>
         @else
             <div class="text-error">Underlying server is not functional.</div>
         @endif

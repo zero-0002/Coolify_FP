@@ -3,7 +3,6 @@
 namespace App\Livewire\Destination;
 
 use App\Models\StandaloneDocker;
-use App\Models\SwarmDocker;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Validate;
@@ -19,7 +18,7 @@ class Show extends Component
     #[Validate(['string', 'required'])]
     public string $name;
 
-    #[Validate(['string', 'required'])]
+    #[Validate(['string', 'required', 'max:255', 'regex:/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/'])]
     public string $network;
 
     #[Validate(['string', 'required'])]
@@ -28,9 +27,10 @@ class Show extends Component
     public function mount(string $destination_uuid)
     {
         try {
-            $destination = StandaloneDocker::whereUuid($destination_uuid)->first() ??
-                SwarmDocker::whereUuid($destination_uuid)->firstOrFail();
-
+            $destination = find_destination_for_current_team($destination_uuid);
+            if (! $destination) {
+                return redirect()->route('destination.index');
+            }
             $this->authorize('view', $destination);
 
             $this->destination = $destination;
@@ -74,12 +74,13 @@ class Show extends Component
         try {
             $this->authorize('delete', $this->destination);
 
-            if ($this->destination->getMorphClass() === \App\Models\StandaloneDocker::class) {
+            if ($this->destination->getMorphClass() === StandaloneDocker::class) {
                 if ($this->destination->attachedTo()) {
                     return $this->dispatch('error', 'You must delete all resources before deleting this destination.');
                 }
-                instant_remote_process(["docker network disconnect {$this->destination->network} coolify-proxy"], $this->destination->server, throwError: false);
-                instant_remote_process(['docker network rm -f '.$this->destination->network], $this->destination->server);
+                $safeNetwork = escapeshellarg($this->destination->network);
+                instant_remote_process(["docker network disconnect {$safeNetwork} coolify-proxy"], $this->destination->server, throwError: false);
+                instant_remote_process(["docker network rm -f {$safeNetwork}"], $this->destination->server);
             }
             $this->destination->delete();
 
