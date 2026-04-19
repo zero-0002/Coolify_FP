@@ -26,7 +26,8 @@ Route::group([
     Route::get('/health', [OtherController::class, 'healthcheck']);
 });
 
-Route::post('/feedback', [OtherController::class, 'feedback']);
+Route::post('/feedback', [OtherController::class, 'feedback'])
+    ->middleware('throttle:feedback');
 
 Route::group([
     'middleware' => ['auth:sanctum', 'api.ability:write'],
@@ -218,7 +219,7 @@ Route::group([
         try {
             $decrypted = decrypt($naked_token);
             $decrypted_token = json_decode($decrypted, true);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json(['message' => 'Invalid token'], 401);
         }
         $server_uuid = data_get($decrypted_token, 'server_uuid');
