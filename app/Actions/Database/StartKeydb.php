@@ -166,7 +166,7 @@ class StartKeydb
             $docker_compose['volumes'] = $volume_names;
         }
 
-        if (! is_null($this->database->keydb_conf) || ! empty($this->database->keydb_conf)) {
+        if (! is_null($this->database->keydb_conf) && ! empty($this->database->keydb_conf)) {
             $docker_compose['services'][$container_name]['volumes'] = array_merge(
                 $docker_compose['services'][$container_name]['volumes'] ?? [],
                 [

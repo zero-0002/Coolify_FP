@@ -175,7 +175,7 @@ class StartMysql
             );
         }
 
-        if (! is_null($this->database->mysql_conf) || ! empty($this->database->mysql_conf)) {
+        if (! is_null($this->database->mysql_conf) && ! empty($this->database->mysql_conf)) {
             $docker_compose['services'][$container_name]['volumes'] = array_merge(
                 $docker_compose['services'][$container_name]['volumes'] ?? [],
                 [
