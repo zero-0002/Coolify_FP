@@ -111,10 +111,7 @@ class StartPostgresql
                     ],
                     'labels' => defaultDatabaseLabels($this->database)->toArray(),
                     'healthcheck' => [
-                        'test' => [
-                            'CMD-SHELL',
-                            "psql -U {$this->database->postgres_user} -d {$this->database->postgres_db} -c 'SELECT 1' || exit 1",
-                        ],
+                        'test' => ['CMD', 'psql', '-U', (string) $this->database->postgres_user, '-d', (string) $this->database->postgres_db, '-c', 'SELECT 1'],
                         'interval' => '5s',
                         'timeout' => '5s',
                         'retries' => 10,
