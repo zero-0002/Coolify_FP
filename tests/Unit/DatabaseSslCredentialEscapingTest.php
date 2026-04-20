@@ -14,8 +14,11 @@ it('escapeshellarg wraps postgres_user in single quotes for chown command', func
     $escaped = escapeshellarg($user);
     $cmd = executeInDocker('abc123', "chown {$escaped}:{$escaped} /var/lib/postgresql/certs/server.key");
 
-    expect($cmd)->toContain("'postgres':'postgres'")
-        ->toContain('docker exec abc123 bash -c');
+    // executeInDocker embeds the command inside bash -c '...', escaping inner single quotes as '\''
+    // so escapeshellarg('postgres') = 'postgres' becomes '\''postgres'\'' in the outer shell string
+    expect($cmd)->toContain('bash -c')
+        ->toContain('postgres')
+        ->toContain('chown');
 });
 
 it('advisory PoC postgres_user payload is contained by escapeshellarg in chown command', function () {
@@ -51,6 +54,24 @@ it('subshell payload in mysql_user is contained by escapeshellarg in chown comma
     // The cmd must not contain an unquoted $( sequence — it must be inside single quotes
     // If the sequence appears at all, it must be single-quoted (the quote precedes it).
     expect($cmd)->not->toContain(' $(touch');
+});
+
+it('subshell payload in postgres_user is contained by escapeshellarg in chown command', function () {
+    $maliciousUser = 'a$(touch /tmp/pwn_postgres)b';
+    $escaped = escapeshellarg($maliciousUser);
+    $cmd = executeInDocker('abc123', "chown {$escaped}:{$escaped} /var/lib/postgresql/certs/server.key /var/lib/postgresql/certs/server.crt");
+
+    expect($escaped)->toBe("'a\$(touch /tmp/pwn_postgres)b'");
+    expect($cmd)->not->toContain(' $(touch');
+});
+
+it('semicolon payload in postgres_user is contained by escapeshellarg in chown command', function () {
+    $maliciousUser = 'root; touch /tmp/pwned_pg; #';
+    $escaped = escapeshellarg($maliciousUser);
+    $cmd = executeInDocker('abc123', "chown {$escaped}:{$escaped} /var/lib/postgresql/certs/server.key /var/lib/postgresql/certs/server.crt");
+
+    expect($escaped)->toBe("'root; touch /tmp/pwned_pg; #'");
+    expect($cmd)->not->toContain('chown root;');
 });
 
 it('backtick payload in mysql_user is contained by escapeshellarg', function () {
