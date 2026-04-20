@@ -2332,7 +2332,7 @@ class DatabasesController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return response()->json(['message' => 'Failed to delete backup: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to delete backup.'], 500);
         }
     }
 
@@ -2452,7 +2452,7 @@ class DatabasesController extends Controller
                 'message' => 'Backup execution deleted.',
             ]);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Failed to delete backup execution: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to delete backup execution.'], 500);
         }
     }
 
