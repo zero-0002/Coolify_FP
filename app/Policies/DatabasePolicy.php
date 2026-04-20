@@ -88,6 +88,24 @@ class DatabasePolicy
     }
 
     /**
+     * Determine whether the user can upload a backup archive for this database.
+     */
+    public function uploadBackup(User $user, $database): Response
+    {
+        $teamId = $this->getTeamId($database);
+
+        if ($teamId === null) {
+            return Response::deny('Database team not found.');
+        }
+
+        if ($user->isAdminOfTeam($teamId)) {
+            return Response::allow();
+        }
+
+        return Response::deny('You need at least admin or owner permissions to upload backups for this database.');
+    }
+
+    /**
      * Determine whether the user can manage database backups.
      */
     public function manageBackups(User $user, $database): bool

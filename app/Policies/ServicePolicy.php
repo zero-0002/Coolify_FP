@@ -90,6 +90,16 @@ class ServicePolicy
     }
 
     /**
+     * Determine whether the user can upload a backup archive for a database within this service.
+     */
+    public function uploadBackup(User $user, Service $service): bool
+    {
+        $teamId = $this->getTeamId($service);
+
+        return $teamId !== null && $user->isAdminOfTeam($teamId);
+    }
+
+    /**
      * Determine whether the user can deploy the service.
      */
     public function deploy(User $user, Service $service): bool

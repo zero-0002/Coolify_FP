@@ -79,6 +79,24 @@ class ApplicationPolicy
     }
 
     /**
+     * Determine whether the user can upload a backup archive for this application.
+     */
+    public function uploadBackup(User $user, Application $application): Response
+    {
+        $teamId = $this->getTeamId($application);
+
+        if ($teamId === null) {
+            return Response::deny('Application team not found.');
+        }
+
+        if ($user->isAdminOfTeam($teamId)) {
+            return Response::allow();
+        }
+
+        return Response::deny('You need at least admin or owner permissions to upload backups for this application.');
+    }
+
+    /**
      * Determine whether the user can deploy the application.
      */
     public function deploy(User $user, Application $application): bool

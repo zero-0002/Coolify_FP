@@ -63,4 +63,12 @@ class ServiceDatabasePolicy
     {
         return Gate::allows('update', $serviceDatabase->service);
     }
+
+    /**
+     * Determine whether the user can upload a backup archive for this service database.
+     */
+    public function uploadBackup(User $user, ServiceDatabase $serviceDatabase): bool
+    {
+        return Gate::allows('uploadBackup', $serviceDatabase->service);
+    }
 }
