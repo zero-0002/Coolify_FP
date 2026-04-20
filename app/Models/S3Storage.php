@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Rules\SafeWebhookUrl;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class S3Storage extends BaseModel
 {
@@ -139,6 +141,14 @@ class S3Storage extends BaseModel
     public function testConnection(bool $shouldSave = false)
     {
         try {
+            $validator = Validator::make(
+                ['endpoint' => $this['endpoint']],
+                ['endpoint' => ['required', new SafeWebhookUrl]],
+            );
+            if ($validator->fails()) {
+                throw new \RuntimeException('S3 endpoint is not allowed: '.$validator->errors()->first('endpoint'));
+            }
+
             $disk = Storage::build([
                 'driver' => 's3',
                 'region' => $this['region'],
