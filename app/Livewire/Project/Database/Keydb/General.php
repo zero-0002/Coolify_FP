@@ -92,7 +92,9 @@ class General extends Component
             'name' => ValidationPatterns::nameRules(),
             'description' => ValidationPatterns::descriptionRules(),
             'keydbConf' => 'nullable|string',
-            'keydbPassword' => ValidationPatterns::databasePasswordRules(),
+            'keydbPassword' => ValidationPatterns::databasePasswordRules(
+                enforcePattern: $this->keydbPassword !== $this->database->keydb_password,
+            ),
             'image' => 'required|string',
             'portsMappings' => ValidationPatterns::portMappingRules(),
             'isPublic' => 'nullable|boolean',

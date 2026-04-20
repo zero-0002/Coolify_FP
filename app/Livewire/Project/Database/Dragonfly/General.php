@@ -89,7 +89,9 @@ class General extends Component
         return [
             'name' => ValidationPatterns::nameRules(),
             'description' => ValidationPatterns::descriptionRules(),
-            'dragonflyPassword' => ValidationPatterns::databasePasswordRules(),
+            'dragonflyPassword' => ValidationPatterns::databasePasswordRules(
+                enforcePattern: $this->dragonflyPassword !== $this->database->dragonfly_password,
+            ),
             'image' => 'required|string',
             'portsMappings' => ValidationPatterns::portMappingRules(),
             'isPublic' => 'nullable|boolean',

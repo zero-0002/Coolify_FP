@@ -81,8 +81,12 @@ class General extends Component
             'publicPortTimeout' => 'nullable|integer|min:1',
             'isLogDrainEnabled' => 'nullable|boolean',
             'customDockerRunOptions' => 'nullable',
-            'redisUsername' => ValidationPatterns::databaseIdentifierRules(),
-            'redisPassword' => ValidationPatterns::databasePasswordRules(),
+            'redisUsername' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->redisUsername !== $this->database->redis_username,
+            ),
+            'redisPassword' => ValidationPatterns::databasePasswordRules(
+                enforcePattern: $this->redisPassword !== $this->database->redis_password,
+            ),
             'enableSsl' => 'boolean',
         ];
     }

@@ -86,9 +86,15 @@ class General extends Component
         return [
             'name' => ValidationPatterns::nameRules(),
             'description' => ValidationPatterns::descriptionRules(),
-            'postgresUser' => ValidationPatterns::databaseIdentifierRules(),
-            'postgresPassword' => ValidationPatterns::databasePasswordRules(),
-            'postgresDb' => ValidationPatterns::databaseIdentifierRules(),
+            'postgresUser' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->postgresUser !== $this->database->postgres_user,
+            ),
+            'postgresPassword' => ValidationPatterns::databasePasswordRules(
+                enforcePattern: $this->postgresPassword !== $this->database->postgres_password,
+            ),
+            'postgresDb' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->postgresDb !== $this->database->postgres_db,
+            ),
             'postgresInitdbArgs' => 'nullable',
             'postgresHostAuthMethod' => 'nullable',
             'postgresConf' => 'nullable',

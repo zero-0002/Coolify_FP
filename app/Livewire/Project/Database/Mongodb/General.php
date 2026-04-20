@@ -75,9 +75,15 @@ class General extends Component
             'name' => ValidationPatterns::nameRules(),
             'description' => ValidationPatterns::descriptionRules(),
             'mongoConf' => 'nullable',
-            'mongoInitdbRootUsername' => ValidationPatterns::databaseIdentifierRules(),
-            'mongoInitdbRootPassword' => ValidationPatterns::databasePasswordRules(),
-            'mongoInitdbDatabase' => ValidationPatterns::databaseIdentifierRules(),
+            'mongoInitdbRootUsername' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->mongoInitdbRootUsername !== $this->database->mongo_initdb_root_username,
+            ),
+            'mongoInitdbRootPassword' => ValidationPatterns::databasePasswordRules(
+                enforcePattern: $this->mongoInitdbRootPassword !== $this->database->mongo_initdb_root_password,
+            ),
+            'mongoInitdbDatabase' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->mongoInitdbDatabase !== $this->database->mongo_initdb_database,
+            ),
             'image' => 'required',
             'portsMappings' => ValidationPatterns::portMappingRules(),
             'isPublic' => 'nullable|boolean',

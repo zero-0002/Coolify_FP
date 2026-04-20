@@ -82,8 +82,12 @@ class ValidationPatterns
 
     /**
      * Get validation rules for database identifier fields (username, database name).
+     *
+     * Set $enforcePattern to false to skip the regex check (for example when
+     * re-validating a legacy value on an existing record that has not been
+     * changed by the user). The length and type rules are always applied.
      */
-    public static function databaseIdentifierRules(bool $required = true, int $minLength = 1, int $maxLength = 63): array
+    public static function databaseIdentifierRules(bool $required = true, int $minLength = 1, int $maxLength = 63, bool $enforcePattern = true): array
     {
         $rules = [];
 
@@ -96,7 +100,10 @@ class ValidationPatterns
         $rules[] = 'string';
         $rules[] = "min:$minLength";
         $rules[] = "max:$maxLength";
-        $rules[] = 'regex:'.self::DB_IDENTIFIER_PATTERN;
+
+        if ($enforcePattern) {
+            $rules[] = 'regex:'.self::DB_IDENTIFIER_PATTERN;
+        }
 
         return $rules;
     }
@@ -117,8 +124,12 @@ class ValidationPatterns
 
     /**
      * Get validation rules for database password fields.
+     *
+     * Set $enforcePattern to false to skip the regex check (for example when
+     * re-validating a legacy value on an existing record that has not been
+     * changed by the user). The length and type rules are always applied.
      */
-    public static function databasePasswordRules(bool $required = true, int $minLength = 1, int $maxLength = 128): array
+    public static function databasePasswordRules(bool $required = true, int $minLength = 1, int $maxLength = 128, bool $enforcePattern = true): array
     {
         $rules = [];
 
@@ -131,7 +142,10 @@ class ValidationPatterns
         $rules[] = 'string';
         $rules[] = "min:$minLength";
         $rules[] = "max:$maxLength";
-        $rules[] = 'regex:'.self::DB_PASSWORD_PATTERN;
+
+        if ($enforcePattern) {
+            $rules[] = 'regex:'.self::DB_PASSWORD_PATTERN;
+        }
 
         return $rules;
     }

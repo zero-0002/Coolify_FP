@@ -76,10 +76,18 @@ class General extends Component
         return [
             'name' => ValidationPatterns::nameRules(),
             'description' => ValidationPatterns::descriptionRules(),
-            'mysqlRootPassword' => ValidationPatterns::databasePasswordRules(),
-            'mysqlUser' => ValidationPatterns::databaseIdentifierRules(),
-            'mysqlPassword' => ValidationPatterns::databasePasswordRules(),
-            'mysqlDatabase' => ValidationPatterns::databaseIdentifierRules(),
+            'mysqlRootPassword' => ValidationPatterns::databasePasswordRules(
+                enforcePattern: $this->mysqlRootPassword !== $this->database->mysql_root_password,
+            ),
+            'mysqlUser' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->mysqlUser !== $this->database->mysql_user,
+            ),
+            'mysqlPassword' => ValidationPatterns::databasePasswordRules(
+                enforcePattern: $this->mysqlPassword !== $this->database->mysql_password,
+            ),
+            'mysqlDatabase' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->mysqlDatabase !== $this->database->mysql_database,
+            ),
             'mysqlConf' => 'nullable',
             'image' => 'required',
             'portsMappings' => ValidationPatterns::portMappingRules(),

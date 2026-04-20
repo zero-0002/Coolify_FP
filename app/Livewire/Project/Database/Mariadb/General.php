@@ -74,10 +74,18 @@ class General extends Component
         return [
             'name' => ValidationPatterns::nameRules(),
             'description' => ValidationPatterns::descriptionRules(),
-            'mariadbRootPassword' => ValidationPatterns::databasePasswordRules(),
-            'mariadbUser' => ValidationPatterns::databaseIdentifierRules(),
-            'mariadbPassword' => ValidationPatterns::databasePasswordRules(),
-            'mariadbDatabase' => ValidationPatterns::databaseIdentifierRules(),
+            'mariadbRootPassword' => ValidationPatterns::databasePasswordRules(
+                enforcePattern: $this->mariadbRootPassword !== $this->database->mariadb_root_password,
+            ),
+            'mariadbUser' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->mariadbUser !== $this->database->mariadb_user,
+            ),
+            'mariadbPassword' => ValidationPatterns::databasePasswordRules(
+                enforcePattern: $this->mariadbPassword !== $this->database->mariadb_password,
+            ),
+            'mariadbDatabase' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->mariadbDatabase !== $this->database->mariadb_database,
+            ),
             'mariadbConf' => 'nullable',
             'image' => 'required',
             'portsMappings' => ValidationPatterns::portMappingRules(),

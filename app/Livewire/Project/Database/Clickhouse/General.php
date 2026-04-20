@@ -76,8 +76,12 @@ class General extends Component
         return [
             'name' => ValidationPatterns::nameRules(),
             'description' => ValidationPatterns::descriptionRules(),
-            'clickhouseAdminUser' => ValidationPatterns::databaseIdentifierRules(),
-            'clickhouseAdminPassword' => ValidationPatterns::databasePasswordRules(),
+            'clickhouseAdminUser' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->clickhouseAdminUser !== $this->database->clickhouse_admin_user,
+            ),
+            'clickhouseAdminPassword' => ValidationPatterns::databasePasswordRules(
+                enforcePattern: $this->clickhouseAdminPassword !== $this->database->clickhouse_admin_password,
+            ),
             'image' => 'required|string',
             'portsMappings' => ValidationPatterns::portMappingRules(),
             'isPublic' => 'nullable|boolean',
