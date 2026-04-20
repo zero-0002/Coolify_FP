@@ -676,7 +676,7 @@ describe('API route middleware for deploy actions', function () {
     });
 });
 
-describe('install/build/start command validation (GHSA-9pp4-wcmj-rq73)', function () {
+describe('install/build/start command validation', function () {
     test('rejects semicolon injection in install_command', function () {
         $rules = sharedDataApplications();
 
