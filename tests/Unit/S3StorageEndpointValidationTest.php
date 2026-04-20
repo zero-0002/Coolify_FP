@@ -8,14 +8,14 @@ use Tests\TestCase;
 uses(TestCase::class);
 
 /**
- * Regression tests for GHSA-pwm4-w33c-wjf3 — SSRF via S3 Storage endpoint.
+ * Regression tests for SSRF via S3 Storage endpoint.
  *
  * The Livewire forms (Create.php, Form.php) and the model-level defense in
  * S3Storage::testConnection() share the same SafeWebhookUrl rule. These tests
- * assert the rule rejects the concrete payloads from the advisory PoC and
- * that the model refuses to build an S3 client for an unsafe endpoint.
+ * assert the rule rejects the concrete payloads and that the model refuses to
+ * build an S3 client for an unsafe endpoint.
  */
-it('rejects SSRF payloads from the GHSA-pwm4-w33c-wjf3 advisory', function (string $endpoint) {
+it('rejects SSRF payloads on the S3 endpoint', function (string $endpoint) {
     $validator = Validator::make(
         ['endpoint' => $endpoint],
         ['endpoint' => ['required', 'max:255', new SafeWebhookUrl]],

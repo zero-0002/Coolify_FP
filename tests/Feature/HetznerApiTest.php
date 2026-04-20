@@ -447,7 +447,7 @@ describe('POST /api/v1/servers/hetzner', function () {
     });
 });
 
-describe('GHSA-m8wx-q63q-3w6c — error responses do not leak exception details', function () {
+describe('error responses do not leak exception details', function () {
     test('locations endpoint returns generic 500 message on upstream failure', function () {
         Http::fake([
             'https://api.hetzner.cloud/v1/locations*' => Http::response([

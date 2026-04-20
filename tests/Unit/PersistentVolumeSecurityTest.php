@@ -6,7 +6,6 @@
  * Tests to ensure persistent volume names are validated against command injection
  * and that shell commands properly escape volume names.
  *
- * Related Advisory: GHSA-mh8x-fppq-cp77
  * Related Files:
  *  - app/Models/LocalPersistentVolume.php
  *  - app/Support/ValidationPatterns.php
