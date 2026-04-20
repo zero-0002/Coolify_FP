@@ -36,15 +36,31 @@ class ValidationPatterns
     public const DOCKER_TARGET_PATTERN = '/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/';
 
     /**
-     * Pattern for shell-safe command strings (docker compose commands, docker run options)
-     * Blocks dangerous shell metacharacters: ; | ` $ ( ) > < newlines and carriage returns
-     * Allows & for command chaining (&&) which is common in multi-step build commands
-     * Allows double quotes for build args with spaces (e.g. --build-arg KEY="value")
-     * Blocks backslashes to prevent escape-sequence attacks
-     * Allows single and double quotes for quoted arguments (e.g. --entrypoint "sh -c 'npm start'")
-     * Uses [ \t] instead of \s to explicitly exclude \n and \r (which act as command separators)
+     * Token-aware pattern for shell-safe command strings (docker compose commands, docker run options).
+     *
+     * Accepts a sequence of the following tokens only:
+     *   [ \t]+          — whitespace (space / tab)
+     *   &&              — logical AND (matched before bare & can match anything)
+     *   ||              — logical OR  (matched before bare | can match anything)
+     *   "[^"$`\\\n\r]*" — balanced double-quoted string; blocks $, backtick, \, newlines inside
+     *   '[^'\n\r]*'     — balanced single-quoted string; blocks newlines inside (all else literal)
+     *   [safe-chars]+   — unquoted alphanumerics + safe path/arg chars (includes glob *, ?, and !)
+     *
+     * Blocked everywhere (outside and inside unquoted tokens):
+     *   bare & (background op), bare |, ;, $, `, (, ), <, >, \, newline, CR
+     *
+     * Blocked inside double-quoted spans specifically:
+     *   $ (variable/command expansion), ` (command substitution), \ (escape)
+     *
+     * Legitimate use cases preserved:
+     *   docker compose build && docker tag x && docker push y
+     *   make build || make clean
+     *   rm *.tmp      cp src/?.js dist/
+     *   ! grep -q foo && echo missing
+     *   docker compose up -d --build-arg VERSION="1.0.0"
+     *   --entrypoint "sh -c 'npm start'"
      */
-    public const SHELL_SAFE_COMMAND_PATTERN = '/^[a-zA-Z0-9 \t._\-\/=:@,+\[\]{}#%^~&"\']+$/';
+    public const SHELL_SAFE_COMMAND_PATTERN = '/^(?:[ \t]+|&&|\|\||"[^"$`\\\\\n\r]*"|\'[^\'\n\r]*\'|[a-zA-Z0-9._\-\/=:@,+\[\]{}#%^~*?!]+)+$/';
 
     /**
      * Pattern for Docker volume names
