@@ -301,9 +301,18 @@ class StartPostgresql
         foreach ($this->database->init_scripts as $init_script) {
             $filename = data_get($init_script, 'filename');
             $content = data_get($init_script, 'content');
+
+            // Normalise filename without rejecting legacy values so previously created
+            // init scripts keep deploying. basename() strips any directory components
+            // (path traversal) and escapeshellarg() contains every shell metacharacter
+            // in the tee target. Livewire / API validate new filenames up front.
+            $filename = basename((string) $filename);
+
+            $target_path = "$this->configuration_dir/docker-entrypoint-initdb.d/{$filename}";
+            $escaped_target = escapeshellarg($target_path);
             $content_base64 = base64_encode($content);
-            $this->commands[] = "echo '{$content_base64}' | base64 -d | tee $this->configuration_dir/docker-entrypoint-initdb.d/{$filename} > /dev/null";
-            $this->init_scripts[] = "$this->configuration_dir/docker-entrypoint-initdb.d/{$filename}";
+            $this->commands[] = "echo '{$content_base64}' | base64 -d | tee {$escaped_target} > /dev/null";
+            $this->init_scripts[] = $target_path;
         }
     }
 
