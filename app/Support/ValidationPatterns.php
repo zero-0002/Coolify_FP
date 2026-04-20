@@ -67,6 +67,112 @@ class ValidationPatterns
     public const DOCKER_NETWORK_PATTERN = '/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/';
 
     /**
+     * Pattern for SQL-safe unquoted database identifiers (usernames, database names).
+     * Allows letters, digits, underscore; first char must be letter or underscore.
+     * Excludes all shell metacharacters. Max 63 chars (Postgres identifier limit).
+     */
+    public const DB_IDENTIFIER_PATTERN = '/^[A-Za-z_][A-Za-z0-9_]{0,62}$/';
+
+    /**
+     * Pattern for database passwords.
+     * Excludes shell-dangerous characters: backtick, $, ;, |, &, <, >, \, ', ", space, newline, CR, tab, null.
+     * Allows a broad set of printable characters so passwords remain strong.
+     */
+    public const DB_PASSWORD_PATTERN = '/^[A-Za-z0-9!@#%^*()_+\-=\[\]{}:,.?\/~]+$/';
+
+    /**
+     * Get validation rules for database identifier fields (username, database name).
+     *
+     * Set $enforcePattern to false to skip the regex check (for example when
+     * re-validating a legacy value on an existing record that has not been
+     * changed by the user). The length and type rules are always applied.
+     */
+    public static function databaseIdentifierRules(bool $required = true, int $minLength = 1, int $maxLength = 63, bool $enforcePattern = true): array
+    {
+        $rules = [];
+
+        if ($required) {
+            $rules[] = 'required';
+        } else {
+            $rules[] = 'nullable';
+        }
+
+        $rules[] = 'string';
+        $rules[] = "min:$minLength";
+        $rules[] = "max:$maxLength";
+
+        if ($enforcePattern) {
+            $rules[] = 'regex:'.self::DB_IDENTIFIER_PATTERN;
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Get validation messages for database identifier fields.
+     */
+    public static function databaseIdentifierMessages(string $field, string $label = ''): array
+    {
+        $label = $label ?: $field;
+
+        return [
+            "{$field}.regex" => "The {$label} may only contain letters, digits, and underscores, and must start with a letter or underscore.",
+            "{$field}.min" => "The {$label} must be at least :min character.",
+            "{$field}.max" => "The {$label} may not be greater than :max characters.",
+        ];
+    }
+
+    /**
+     * Get validation rules for database password fields.
+     *
+     * Set $enforcePattern to false to skip the regex check (for example when
+     * re-validating a legacy value on an existing record that has not been
+     * changed by the user). The length and type rules are always applied.
+     */
+    public static function databasePasswordRules(bool $required = true, int $minLength = 1, int $maxLength = 128, bool $enforcePattern = true): array
+    {
+        $rules = [];
+
+        if ($required) {
+            $rules[] = 'required';
+        } else {
+            $rules[] = 'nullable';
+        }
+
+        $rules[] = 'string';
+        $rules[] = "min:$minLength";
+        $rules[] = "max:$maxLength";
+
+        if ($enforcePattern) {
+            $rules[] = 'regex:'.self::DB_PASSWORD_PATTERN;
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Get validation messages for database password fields.
+     */
+    public static function databasePasswordMessages(string $field, string $label = ''): array
+    {
+        $label = $label ?: $field;
+
+        return [
+            "{$field}.regex" => "The {$label} may not contain shell-unsafe characters (backtick, \$, ;, |, &, <, >, \\, quotes, spaces, or control characters).",
+            "{$field}.min" => "The {$label} must be at least :min character.",
+            "{$field}.max" => "The {$label} may not be greater than :max characters.",
+        ];
+    }
+
+    /**
+     * Check if a string is a valid database identifier.
+     */
+    public static function isValidDatabaseIdentifier(string $value): bool
+    {
+        return preg_match(self::DB_IDENTIFIER_PATTERN, $value) === 1;
+    }
+
+    /**
      * Get validation rules for name fields
      */
     public static function nameRules(bool $required = true, int $minLength = 3, int $maxLength = 255): array

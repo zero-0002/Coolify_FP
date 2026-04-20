@@ -86,9 +86,15 @@ class General extends Component
         return [
             'name' => ValidationPatterns::nameRules(),
             'description' => ValidationPatterns::descriptionRules(),
-            'postgresUser' => 'required',
-            'postgresPassword' => 'required',
-            'postgresDb' => 'required',
+            'postgresUser' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->postgresUser !== $this->database->postgres_user,
+            ),
+            'postgresPassword' => ValidationPatterns::databasePasswordRules(
+                enforcePattern: $this->postgresPassword !== $this->database->postgres_password,
+            ),
+            'postgresDb' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->postgresDb !== $this->database->postgres_db,
+            ),
             'postgresInitdbArgs' => 'nullable',
             'postgresHostAuthMethod' => 'nullable',
             'postgresConf' => 'nullable',
@@ -112,9 +118,9 @@ class General extends Component
             ValidationPatterns::portMappingMessages(),
             [
                 'name.required' => 'The Name field is required.',
-                'postgresUser.required' => 'The Postgres User field is required.',
-                'postgresPassword.required' => 'The Postgres Password field is required.',
-                'postgresDb.required' => 'The Postgres Database field is required.',
+                ...ValidationPatterns::databaseIdentifierMessages('postgresUser', 'Postgres User'),
+                ...ValidationPatterns::databasePasswordMessages('postgresPassword', 'Postgres Password'),
+                ...ValidationPatterns::databaseIdentifierMessages('postgresDb', 'Postgres Database'),
                 'image.required' => 'The Docker Image field is required.',
                 'publicPort.integer' => 'The Public Port must be an integer.',
                 'publicPort.min' => 'The Public Port must be at least 1.',
