@@ -158,6 +158,73 @@ function validateShellSafePath(string $input, string $context = 'path'): string
 }
 
 /**
+ * Validate that a filename is safe for use as a plain file name (no path components).
+ *
+ * Prevents path traversal attacks by rejecting directory separators, traversal
+ * sequences, and null bytes, in addition to all shell metacharacters blocked by
+ * validateShellSafePath(). Intended for user-supplied filenames such as PostgreSQL
+ * init script names that are later written to a specific directory on the host.
+ *
+ * @param  string  $input  The filename to validate
+ * @param  string  $context  Descriptive name for error messages (e.g., 'init script filename')
+ * @return string The validated input (unchanged if valid)
+ *
+ * @throws Exception If dangerous characters or path traversal sequences are detected
+ */
+function validateFilenameSafe(string $input, string $context = 'filename'): string
+{
+    // First apply shell-metachar checks
+    validateShellSafePath($input, $context);
+
+    // Reject NUL bytes (can be used to truncate path strings in some contexts)
+    if (str_contains($input, "\0")) {
+        throw new Exception(
+            "Invalid {$context}: contains null byte. ".
+            'Null bytes are not allowed in filenames for security reasons.'
+        );
+    }
+
+    // Reject directory separators — filename must be a single path component
+    if (str_contains($input, '/') || str_contains($input, '\\')) {
+        throw new Exception(
+            "Invalid {$context}: directory separators ('/' or '\\') are not allowed. ".
+            'Provide a plain filename without path components.'
+        );
+    }
+
+    // Reject path traversal sequences (catches encoded or unusual forms)
+    if (str_contains($input, '..')) {
+        throw new Exception(
+            "Invalid {$context}: path traversal sequence ('..') is not allowed."
+        );
+    }
+
+    // Reject shell globbing / expansion metacharacters and whitespace that would
+    // split the filename into additional shell arguments if ever interpolated
+    // unquoted (defence in depth on top of escapeshellarg() at call sites).
+    $shellExpansionChars = [
+        ' ' => 'whitespace',
+        '*' => 'glob wildcard',
+        '?' => 'glob wildcard',
+        '[' => 'glob character class',
+        ']' => 'glob character class',
+        '~' => 'tilde expansion',
+        '"' => 'double quote',
+        "'" => 'single quote',
+    ];
+
+    foreach ($shellExpansionChars as $char => $description) {
+        if (str_contains($input, $char)) {
+            throw new Exception(
+                "Invalid {$context}: contains forbidden character '{$char}' ({$description})."
+            );
+        }
+    }
+
+    return $input;
+}
+
+/**
  * Validate that a databases_to_backup input string is safe from command injection.
  *
  * Supports all database formats:
