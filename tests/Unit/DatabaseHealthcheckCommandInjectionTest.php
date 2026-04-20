@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Regression tests for GHSA-gvc4-f276-r88p.
+ * Regression tests for database healthcheck command injection.
  *
  * Docker CMD-SHELL healthchecks pass the string to /bin/sh -c, enabling command injection
  * via user-controlled DB username/password/database fields. The fix converts all affected
