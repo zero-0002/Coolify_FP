@@ -109,7 +109,7 @@ class StartKeydb
                     ],
                     'labels' => defaultDatabaseLabels($this->database)->toArray(),
                     'healthcheck' => [
-                        'test' => "keydb-cli --pass {$this->database->keydb_password} ping",
+                        'test' => ['CMD', 'keydb-cli', '--pass', (string) $this->database->keydb_password, 'ping'],
                         'interval' => '5s',
                         'timeout' => '5s',
                         'retries' => 10,
