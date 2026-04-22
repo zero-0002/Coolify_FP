@@ -103,3 +103,49 @@ it('casts all boolean fields correctly', function () {
             ->and($casts[$field])->toBe('boolean');
     }
 });
+
+it('casts stop_grace_period to integer', function () {
+    $setting = new ApplicationSetting;
+    $casts = $setting->getCasts();
+
+    expect($casts)->toHaveKey('stop_grace_period')
+        ->and($casts['stop_grace_period'])->toBe('integer');
+});
+
+it('handles null stop_grace_period for default behavior', function () {
+    $setting = new ApplicationSetting;
+    $setting->stop_grace_period = null;
+
+    expect($setting->stop_grace_period)->toBeNull();
+});
+
+it('casts stop_grace_period from string to integer', function () {
+    $setting = new ApplicationSetting;
+    $setting->stop_grace_period = '60';
+
+    expect($setting->stop_grace_period)->toBe(60)
+        ->and($setting->stop_grace_period)->toBeInt();
+});
+
+it('casts stop_grace_period zero to integer (documents fallback trigger)', function () {
+    // Value of 0 is not a valid grace period — consumers guard with
+    // `($value > 0) ? $value : DEFAULT_STOP_GRACE_PERIOD_SECONDS`, so
+    // the cast itself must still round-trip cleanly without throwing.
+    $setting = new ApplicationSetting;
+    $setting->stop_grace_period = 0;
+
+    expect($setting->stop_grace_period)->toBe(0)
+        ->and($setting->stop_grace_period)->toBeInt();
+});
+
+it('casts stop_grace_period negative value to integer (documents fallback trigger)', function () {
+    // Negative values should never be persisted (UI validates `min=1`),
+    // but if one slips through (direct DB write, older data), the cast
+    // must not throw and consumers will treat it as the fallback via the
+    // `> 0` guard.
+    $setting = new ApplicationSetting;
+    $setting->stop_grace_period = -10;
+
+    expect($setting->stop_grace_period)->toBe(-10)
+        ->and($setting->stop_grace_period)->toBeInt();
+});
