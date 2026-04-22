@@ -9,7 +9,7 @@ services:
   cap:
     image: tiago2/cap:latest
     environment:
-      - SERVICE_FQDN_CAP_3000
+      - SERVICE_URL_CAP_3000
       - ADMIN_KEY=$SERVICE_PASSWORD_ADMIN
       - REDIS_URL=redis://valkey:6379
     depends_on:
