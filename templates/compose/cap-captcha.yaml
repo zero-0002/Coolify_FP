@@ -7,7 +7,7 @@
 
 services:
   cap:
-    image: tiago2/cap:latest
+    image: tiago2/cap:3.0.4 # Released on 22nd April 2026
     environment:
       - SERVICE_URL_CAP_3000
       - ADMIN_KEY=$SERVICE_PASSWORD_ADMIN
