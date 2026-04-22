@@ -1,5 +1,6 @@
 # documentation: https://capjs.js.org/guide/
 # slogan: The self-hosted CAPTCHA for the modern web.
+# category: security
 # tags: captcha,security,privacy,proof-of-work
 # logo: svgs/cap-captcha.png
 # port: 3000
