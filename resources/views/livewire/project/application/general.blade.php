@@ -12,6 +12,9 @@
                 <div>{{ $application->compose_parsing_version }}</div>
             @endif
             <x-forms.button canGate="update" :canResource="$application" type="submit">Save</x-forms.button>
+            <x-modal-input title="Resource Details" buttonTitle="Details">
+                <livewire:project.shared.resource-details :resource="$application" />
+            </x-modal-input>
             @if ($buildPack === 'dockercompose')
                 <x-forms.button canGate="update" :canResource="$application" wire:target='initLoadingCompose'
                     x-on:click="$wire.dispatch('loadCompose', false)">
