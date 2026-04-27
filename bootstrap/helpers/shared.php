@@ -1463,13 +1463,13 @@ function generateEnvValue(string $command, Service|Application|null $service = n
             $generatedValue = base64_encode(Str::random(32));
             break;
         case 'HEX_32':
-            $generatedValue = bin2hex(Str::random(32));
+            $generatedValue = bin2hex(Str::random(16));
             break;
         case 'HEX_64':
-            $generatedValue = bin2hex(Str::random(64));
+            $generatedValue = bin2hex(Str::random(32));
             break;
         case 'HEX_128':
-            $generatedValue = bin2hex(Str::random(128));
+            $generatedValue = bin2hex(Str::random(64));
             break;
         case 'USER':
             $generatedValue = Str::random(16);
