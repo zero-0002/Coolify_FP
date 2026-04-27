@@ -11,6 +11,11 @@ services:
     environment:
       - SERVICE_URL_EMQX_18083
       - EMQX_DASHBOARD__DEFAULT_PASSWORD=${SERVICE_PASSWORD_EMQX}
+    ports:
+      - "1883:1883"
+      - "8083:8083"
+      - "8084:8084"
+      - "8883:8883"
     volumes:
       - emqx_data:/opt/emqx/data
       - emqx_log:/opt/emqx/log
