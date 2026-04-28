@@ -82,6 +82,12 @@ class Github extends Controller
                 foreach ($serverApplications as $application) {
                     $webhook_secret = data_get($application, 'manual_webhook_secret_github');
                     if (empty($webhook_secret)) {
+                        auditLogWebhookFailure('github', 'webhook_secret_missing', [
+                            'application_uuid' => $application->uuid,
+                            'application_name' => $application->name,
+                            'repository' => $full_name ?? null,
+                            'mode' => 'manual',
+                        ]);
                         $return_payloads->push([
                             'application' => $application->name,
                             'status' => 'failed',
@@ -92,6 +98,12 @@ class Github extends Controller
                     }
                     $hmac = hash_hmac('sha256', $request->getContent(), $webhook_secret);
                     if (! hash_equals($x_hub_signature_256, $hmac) && ! isDev()) {
+                        auditLogWebhookFailure('github', 'invalid_signature', [
+                            'application_uuid' => $application->uuid,
+                            'application_name' => $application->name,
+                            'repository' => $full_name ?? null,
+                            'mode' => 'manual',
+                        ]);
                         $return_payloads->push([
                             'application' => $application->name,
                             'status' => 'failed',
@@ -131,6 +143,15 @@ class Github extends Controller
                                         'message' => $result['message'],
                                     ]);
                                 } else {
+                                    auditLog('webhook.deployment.queued', [
+                                        'provider' => 'github',
+                                        'mode' => 'manual',
+                                        'application_uuid' => $application->uuid,
+                                        'application_name' => $application->name,
+                                        'deployment_uuid' => $result['deployment_uuid'],
+                                        'commit' => data_get($payload, 'after'),
+                                        'repository' => $full_name ?? null,
+                                    ]);
                                     $return_payloads->push([
                                         'application' => $application->name,
                                         'status' => 'success',
@@ -224,6 +245,13 @@ class Github extends Controller
             $hmac = hash_hmac('sha256', $request->getContent(), $webhook_secret);
             if (config('app.env') !== 'local') {
                 if (! hash_equals($x_hub_signature_256, $hmac)) {
+                    auditLogWebhookFailure('github', 'invalid_signature', [
+                        'mode' => 'app',
+                        'github_app_id' => $github_app->id,
+                        'github_app_name' => $github_app->name,
+                        'installation_target_id' => $x_github_hook_installation_target_id,
+                    ]);
+
                     return response('Invalid signature.');
                 }
             }
@@ -310,6 +338,17 @@ class Github extends Controller
                                 );
                                 if ($result['status'] === 'queue_full') {
                                     return response($result['message'], 429)->header('Retry-After', 60);
+                                }
+                                if ($result['status'] !== 'skipped' && ! empty($result['deployment_uuid'])) {
+                                    auditLog('webhook.deployment.queued', [
+                                        'provider' => 'github',
+                                        'mode' => 'app',
+                                        'application_uuid' => $application->uuid,
+                                        'application_name' => $application->name,
+                                        'deployment_uuid' => $result['deployment_uuid'],
+                                        'commit' => data_get($payload, 'after'),
+                                        'github_app_id' => $github_app->id,
+                                    ]);
                                 }
                                 $return_payloads->push([
                                     'status' => $result['status'],
