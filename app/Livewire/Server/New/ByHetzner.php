@@ -72,6 +72,8 @@ class ByHetzner extends Component
 
     public bool $enable_ipv6 = true;
 
+    public bool $enable_backups = false;
+
     public ?string $cloud_init_script = null;
 
     public bool $save_cloud_init_script = false;
@@ -116,6 +118,7 @@ class ByHetzner extends Component
     {
         $this->selected_token_id = null;
         $this->current_step = 1;
+        $this->enable_backups = false;
         $this->cloud_init_script = null;
         $this->save_cloud_init_script = false;
         $this->cloud_init_script_name = null;
@@ -177,6 +180,7 @@ class ByHetzner extends Component
                 'selectedHetznerNetworkIds.*' => 'integer',
                 'enable_ipv4' => 'required|boolean',
                 'enable_ipv6' => 'required|boolean',
+                'enable_backups' => 'required|boolean',
                 'cloud_init_script' => ['nullable', 'string', new ValidCloudInitYaml],
                 'save_cloud_init_script' => 'boolean',
                 'cloud_init_script_name' => 'nullable|string|max:255',
@@ -419,6 +423,23 @@ class ByHetzner extends Component
         return '€'.number_format($price, 2);
     }
 
+    public function getSelectedServerBackupSurchargeProperty(): ?string
+    {
+        if (! $this->selected_server_type) {
+            return null;
+        }
+
+        $serverType = collect($this->serverTypes)->firstWhere('name', $this->selected_server_type);
+
+        if (! $serverType || ! isset($serverType['prices'][0]['price_monthly']['gross'])) {
+            return null;
+        }
+
+        $price = (float) $serverType['prices'][0]['price_monthly']['gross'];
+
+        return '€'.number_format($price * 0.2, 2);
+    }
+
     public function updatedSelectedLocation($value)
     {
         // Reset server type and image when location changes
@@ -461,10 +482,8 @@ class ByHetzner extends Component
         $this->save_cloud_init_script = false;
     }
 
-    private function createHetznerServer(string $token): array
+    private function createHetznerServer(HetznerService $hetznerService): array
     {
-        $hetznerService = new HetznerService($token);
-
         // Get the private key and extract public key
         $privateKey = PrivateKey::ownedByCurrentTeam()->findOrFail($this->private_key_id);
 
@@ -564,9 +583,14 @@ class ByHetzner extends Component
             }
 
             $hetznerToken = $this->getHetznerToken();
+            $hetznerService = new HetznerService($hetznerToken);
 
             // Create server on Hetzner
-            $hetznerServer = $this->createHetznerServer($hetznerToken);
+            $hetznerServer = $this->createHetznerServer($hetznerService);
+
+            if ($this->enable_backups) {
+                $hetznerService->enableServerBackup((int) $hetznerServer['id']);
+            }
 
             // Determine IP address to use (prefer IPv4, fallback to IPv6)
             $ipAddress = null;

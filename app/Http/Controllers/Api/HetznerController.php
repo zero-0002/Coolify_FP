@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Server\ValidateServer;
 use App\Enums\ProxyTypes;
 use App\Exceptions\RateLimitException;
 use App\Http\Controllers\Controller;
@@ -12,6 +13,7 @@ use App\Models\Team;
 use App\Rules\ValidCloudInitYaml;
 use App\Rules\ValidHostname;
 use App\Services\HetznerService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
@@ -668,6 +670,7 @@ class HetznerController extends Controller
                         'private_key_uuid' => ['type' => 'string', 'example' => 'xyz789', 'description' => 'Private key UUID'],
                         'enable_ipv4' => ['type' => 'boolean', 'example' => true, 'description' => 'Enable IPv4 (default: true)'],
                         'enable_ipv6' => ['type' => 'boolean', 'example' => true, 'description' => 'Enable IPv6 (default: true)'],
+                        'enable_backups' => ['type' => 'boolean', 'example' => false, 'description' => 'Enable Hetzner server backups after creation (adds 20% to the monthly server fee)'],
                         'hetzner_ssh_key_ids' => ['type' => 'array', 'items' => ['type' => 'integer'], 'description' => 'Additional Hetzner SSH key IDs'],
                         'hetzner_firewall_ids' => ['type' => 'array', 'items' => ['type' => 'integer'], 'description' => 'Existing Hetzner firewall IDs to apply during server creation'],
                         'hetzner_network_ids' => ['type' => 'array', 'items' => ['type' => 'integer'], 'description' => 'Existing Hetzner network IDs to attach during server creation'],
@@ -728,6 +731,7 @@ class HetznerController extends Controller
             'private_key_uuid',
             'enable_ipv4',
             'enable_ipv6',
+            'enable_backups',
             'hetzner_ssh_key_ids',
             'hetzner_firewall_ids',
             'hetzner_network_ids',
@@ -741,7 +745,7 @@ class HetznerController extends Controller
         }
 
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
 
@@ -755,6 +759,7 @@ class HetznerController extends Controller
             'private_key_uuid' => 'required|string',
             'enable_ipv4' => 'nullable|boolean',
             'enable_ipv6' => 'nullable|boolean',
+            'enable_backups' => 'nullable|boolean',
             'hetzner_ssh_key_ids' => 'nullable|array',
             'hetzner_ssh_key_ids.*' => 'integer',
             'hetzner_firewall_ids' => 'nullable|array',
@@ -795,6 +800,9 @@ class HetznerController extends Controller
         }
         if (is_null($request->enable_ipv6)) {
             $request->offsetSet('enable_ipv6', true);
+        }
+        if (is_null($request->enable_backups)) {
+            $request->offsetSet('enable_backups', false);
         }
         if (is_null($request->hetzner_ssh_key_ids)) {
             $request->offsetSet('hetzner_ssh_key_ids', []);
@@ -900,6 +908,10 @@ class HetznerController extends Controller
             // Create server on Hetzner
             $hetznerServer = $hetznerService->createServer($params);
 
+            if ($request->enable_backups) {
+                $hetznerService->enableServerBackup((int) $hetznerServer['id']);
+            }
+
             // Determine IP address to use (prefer IPv4, fallback to IPv6)
             $ipAddress = null;
             if ($request->enable_ipv4 && isset($hetznerServer['public_net']['ipv4']['ip'])) {
@@ -930,7 +942,7 @@ class HetznerController extends Controller
 
             // Validate server if requested
             if ($request->instant_validate) {
-                \App\Actions\Server\ValidateServer::dispatch($server);
+                ValidateServer::dispatch($server);
             }
 
             return response()->json([

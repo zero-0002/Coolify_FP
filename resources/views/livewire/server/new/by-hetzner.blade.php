@@ -73,7 +73,7 @@
                                     @if (isset($serverType['cpu_vendor_info']) && $serverType['cpu_vendor_info'])
                                         ({{ $serverType['cpu_vendor_info'] }})
                                     @endif
-                                    , {{ $serverType['memory'] }}GB RAM, 
+                                    , {{ $serverType['memory'] }}GB RAM,
                                     {{ $serverType['disk'] }}GB
                                     @if (isset($serverType['architecture']))
                                         [{{ $serverType['architecture'] }}]
@@ -188,6 +188,12 @@
                             <x-forms.checkbox id="enable_ipv6" label="Enable IPv6"
                                 helper="Enable public IPv6 address for this server" />
                         </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <label class="text-sm font-medium">Backups</label>
+                        <x-forms.checkbox id="enable_backups" label="Enable Hetzner Backups"
+                            helper="Hetzner bills backups at an additional 20% of the server monthly fee{{ $this->selectedServerBackupSurcharge ? ' (about ' . $this->selectedServerBackupSurcharge . '/mo for the selected server type)' : '' }}." />
                     </div>
 
                     <div class="flex flex-col gap-2">

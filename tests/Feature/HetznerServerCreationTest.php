@@ -197,6 +197,14 @@ describe('Boarding Flow Integration', function () {
         // Boarding should still be enabled since it wasn't created from onboarding
         expect($this->team->fresh()->show_boarding)->toBeTrue();
     });
+
+    test('shows the backups option with the pricing note in the create dialog', function () {
+        Livewire::test(ByHetzner::class)
+            ->set('current_step', 2)
+            ->assertSet('enable_backups', false)
+            ->assertSee('Enable Hetzner Backups')
+            ->assertSee('additional 20% of the server monthly fee');
+    });
 });
 
 describe('Hetzner data loading', function () {

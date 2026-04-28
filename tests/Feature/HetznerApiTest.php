@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\CloudProviderToken;
+use App\Models\InstanceSettings;
 use App\Models\PrivateKey;
 use App\Models\Team;
 use App\Models\User;
@@ -11,6 +12,17 @@ use Illuminate\Support\Facades\Http;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    config()->set('cache.default', 'array');
+    config()->set('app.maintenance.driver', 'file');
+    config()->set('app.maintenance.store', 'array');
+
+    InstanceSettings::unguarded(function () {
+        InstanceSettings::query()->create([
+            'id' => 0,
+            'is_registration_enabled' => true,
+        ]);
+    });
+
     // Create a team with owner
     $this->team = Team::factory()->create();
     $this->user = User::factory()->create();
@@ -22,15 +34,25 @@ beforeEach(function () {
     $this->bearerToken = $this->token->plainTextToken;
 
     // Create a Hetzner cloud provider token
-    $this->hetznerToken = CloudProviderToken::factory()->create([
+    $this->hetznerToken = CloudProviderToken::create([
         'team_id' => $this->team->id,
         'provider' => 'hetzner',
+        'name' => 'Test Hetzner Token',
         'token' => 'test-hetzner-api-token',
     ]);
 
     // Create a private key
-    $this->privateKey = PrivateKey::factory()->create([
+    $this->privateKey = PrivateKey::create([
         'team_id' => $this->team->id,
+        'name' => 'Test Key',
+        'description' => 'Test SSH key',
+        'private_key' => '-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACBbhpqHhqv6aI67Mj9abM3DVbmcfYhZAhC7ca4d9UCevAAAAJi/QySHv0Mk
+hwAAAAtzc2gtZWQyNTUxOQAAACBbhpqHhqv6aI67Mj9abM3DVbmcfYhZAhC7ca4d9UCevA
+AAAECBQw4jg1WRT2IGHMncCiZhURCts2s24HoDS0thHnnRKVuGmoeGq/pojrsyP1pszcNV
+uZx9iFkCELtxrh31QJ68AAAAEXNhaWxANzZmZjY2ZDJlMmRkAQIDBA==
+-----END OPENSSH PRIVATE KEY-----',
     ]);
 });
 
@@ -305,6 +327,64 @@ describe('POST /api/v1/servers/hetzner', function () {
             'team_id' => $this->team->id,
             'hetzner_server_id' => 456,
         ]);
+    });
+
+    test('enables backups after creating a Hetzner server when requested', function () {
+        Http::fake(function (HttpRequest $request) {
+            if ($request->method() === 'GET' && str_starts_with($request->url(), 'https://api.hetzner.cloud/v1/ssh_keys')) {
+                return Http::response([
+                    'ssh_keys' => [],
+                    'meta' => ['pagination' => ['next_page' => null]],
+                ], 200);
+            }
+
+            if ($request->method() === 'POST' && $request->url() === 'https://api.hetzner.cloud/v1/ssh_keys') {
+                return Http::response([
+                    'ssh_key' => ['id' => 123, 'fingerprint' => 'aa:bb:cc:dd'],
+                ], 201);
+            }
+
+            if ($request->method() === 'POST' && $request->url() === 'https://api.hetzner.cloud/v1/servers') {
+                return Http::response([
+                    'server' => [
+                        'id' => 456,
+                        'name' => 'test-server',
+                        'public_net' => [
+                            'ipv4' => ['ip' => '1.2.3.4'],
+                            'ipv6' => ['ip' => '2001:db8::1'],
+                        ],
+                    ],
+                ], 201);
+            }
+
+            if ($request->method() === 'POST' && $request->url() === 'https://api.hetzner.cloud/v1/servers/456/actions/enable_backup') {
+                return Http::response([
+                    'action' => ['id' => 789, 'command' => 'enable_backup', 'status' => 'running'],
+                ], 201);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+            'Content-Type' => 'application/json',
+        ])->postJson('/api/v1/servers/hetzner', [
+            'cloud_provider_token_id' => $this->hetznerToken->uuid,
+            'location' => 'nbg1',
+            'server_type' => 'cx11',
+            'image' => 15512617,
+            'name' => 'test-server',
+            'private_key_uuid' => $this->privateKey->uuid,
+            'enable_ipv4' => true,
+            'enable_ipv6' => true,
+            'enable_backups' => true,
+        ]);
+
+        $response->assertStatus(201);
+
+        Http::assertSent(fn (HttpRequest $request) => $request->method() === 'POST'
+            && $request->url() === 'https://api.hetzner.cloud/v1/servers/456/actions/enable_backup');
     });
 
     test('generates server name if not provided', function () {
