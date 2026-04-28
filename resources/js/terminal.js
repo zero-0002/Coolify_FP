@@ -42,6 +42,10 @@ export function initializeTerminalComponent() {
             maxHeartbeatMisses: 3,
             // Command buffering for race condition prevention
             pendingCommand: null,
+            // Last successfully sent SSH command — replayed after a transient reconnect
+            // so the PTY respawns automatically. Cleared on intentional terminations
+            // (pty-exited, idle-timeout, unprocessable).
+            lastSentCommand: null,
             // Resize handling
             resizeObserver: null,
             resizeTimeout: null,
@@ -162,9 +166,17 @@ export function initializeTerminalComponent() {
 
             resetTerminal() {
                 if (this.term) {
-                    this.$wire.dispatch('error', 'Terminal websocket connection lost.');
-                    this.term.reset();
-                    this.term.clear();
+                    this.$wire.dispatch('error', 'Terminal websocket connection lost. Reconnecting...');
+                    // Preserve scrollback so the user keeps the context of their previous
+                    // session. Print a visible marker so they know where the disconnect
+                    // happened. Old PTY shell state cannot be restored — this is purely
+                    // a visual carry-over.
+                    try {
+                        const stamp = new Date().toLocaleTimeString();
+                        this.term.write(`\r\n\x1b[33m── Connection lost at ${stamp}, reconnecting... ──\x1b[0m\r\n`);
+                    } catch (_) {
+                        // ignore — terminal not ready to receive writes
+                    }
                     this.pendingWrites = 0;
                     this.paused = false;
                     this.commandBuffer = '';
@@ -277,10 +289,15 @@ export function initializeTerminalComponent() {
                     this.connectionTimeoutId = null;
                 }
 
-                // Flush any buffered command from before WebSocket was ready
+                // Flush any buffered command from before WebSocket was ready, otherwise
+                // replay the last command so a transient reconnect respawns the PTY
+                // automatically without requiring the user to click Connect again.
                 if (this.pendingCommand) {
                     this.sendMessage(this.pendingCommand);
                     this.pendingCommand = null;
+                } else if (this.lastSentCommand) {
+                    logTerminal('log', '[Terminal] Replaying last command after reconnect.');
+                    this.sendMessage(this.lastSentCommand);
                 }
 
                 // (Re)start application-level keepalive on every successful connect.
@@ -362,6 +379,9 @@ export function initializeTerminalComponent() {
             sendMessage(message) {
                 if (this.socket && this.socket.readyState === WebSocket.OPEN) {
                     this.socket.send(JSON.stringify(message));
+                    if (message && message.command) {
+                        this.lastSentCommand = message;
+                    }
                 } else {
                     logTerminal('warn', '[Terminal] WebSocket not ready, message not sent:', message);
                 }
@@ -395,7 +415,15 @@ export function initializeTerminalComponent() {
                         this.term.open(document.getElementById('terminal'));
                         this.term._initialized = true;
                     } else {
-                        this.term.reset();
+                        // Already initialized — this is a reconnect or a follow-up command.
+                        // Preserve scrollback so the user keeps context. Write a visible
+                        // separator so the new shell prompt is easy to spot.
+                        try {
+                            const stamp = new Date().toLocaleTimeString();
+                            this.term.write(`\r\n\x1b[32m── Reconnected at ${stamp} ──\x1b[0m\r\n`);
+                        } catch (_) {
+                            // ignore — fall through; xterm will render the new prompt anyway
+                        }
                     }
                     this.terminalActive = true;
                     this.term.focus();
@@ -423,6 +451,7 @@ export function initializeTerminalComponent() {
                 } else if (event.data === 'unprocessable') {
                     if (this.term) this.term.reset();
                     this.terminalActive = false;
+                    this.lastSentCommand = null;
                     this.message = '(sorry, something went wrong, please try again)';
 
                     // Notify parent component that terminal connection failed
@@ -431,8 +460,18 @@ export function initializeTerminalComponent() {
                     this.terminalActive = false;
                     this.term.reset();
                     this.commandBuffer = '';
+                    this.lastSentCommand = null;
 
                     // Notify parent component that terminal disconnected
+                    this.$wire.dispatch('terminalDisconnected');
+                } else if (event.data === 'idle-timeout') {
+                    this.$wire.dispatch('error', 'Terminal closed after 30 minutes of inactivity.');
+                    this.terminalActive = false;
+                    if (this.term) {
+                        this.term.reset();
+                    }
+                    this.commandBuffer = '';
+                    this.lastSentCommand = null;
                     this.$wire.dispatch('terminalDisconnected');
                 } else if (
                     typeof event.data === 'string' &&

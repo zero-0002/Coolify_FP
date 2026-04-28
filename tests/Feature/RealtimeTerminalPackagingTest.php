@@ -57,3 +57,50 @@ it('uses a fast probe timeout when the tab regains visibility', function () {
     expect($terminalClient)
         ->toContain("'Visibility-resume timeout'");
 });
+
+it('closes idle terminal sessions after 30 minutes on the server', function () {
+    $terminalServer = file_get_contents(base_path('docker/coolify-realtime/terminal-server.js'));
+
+    expect($terminalServer)
+        ->toContain('IDLE_TIMEOUT_MS = 30 * 60 * 1000')
+        ->toContain('lastActivityAt')
+        ->toContain("ws.send('idle-timeout');")
+        ->toContain("ws.close(1000, 'Idle timeout');");
+});
+
+it('reacts to idle-timeout sentinel on the client and shows a user-facing error', function () {
+    $terminalClient = file_get_contents(base_path('resources/js/terminal.js'));
+
+    expect($terminalClient)
+        ->toContain("event.data === 'idle-timeout'")
+        ->toContain('Terminal closed after 30 minutes of inactivity.');
+});
+
+it('replays the last command on reconnect so the PTY respawns automatically', function () {
+    $terminalClient = file_get_contents(base_path('resources/js/terminal.js'));
+
+    expect($terminalClient)
+        ->toContain('lastSentCommand')
+        ->toContain('Replaying last command after reconnect.')
+        ->toContain('this.lastSentCommand = null;');
+});
+
+it('buffers messages received before the realtime server finishes auth so the replay is not lost', function () {
+    $terminalServer = file_get_contents(base_path('docker/coolify-realtime/terminal-server.js'));
+
+    expect($terminalServer)
+        ->toContain('authReady: false')
+        ->toContain('pendingMessages: []')
+        ->toContain('userSession.pendingMessages.push(message)')
+        ->toContain('userSession.authReady = true');
+});
+
+it('preserves terminal scrollback across transient reconnects', function () {
+    $terminalClient = file_get_contents(base_path('resources/js/terminal.js'));
+
+    expect($terminalClient)
+        ->toContain('── Connection lost at')
+        ->toContain('── Reconnected at')
+        // resetTerminal must NOT call term.reset()/term.clear() any more — those wipe scrollback.
+        ->not->toContain("this.term.reset();\n                    this.term.clear();");
+});
