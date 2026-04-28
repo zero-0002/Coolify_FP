@@ -53,6 +53,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private const RAILPACK_GENERATED_CONFIG_PATH = '.coolify/railpack.generated.json';
 
+    private const RAILPACK_FRONTEND_IMAGE_ENV = '${RAILPACK_FRONTEND_IMAGE}';
+
     public $tries = 1;
 
     public $timeout = 3600;
@@ -1259,11 +1261,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $envs = collect([]);
         $sort = $this->application->settings->is_env_sorting_enabled;
         if ($sort) {
-            $sorted_environment_variables = $this->application->environment_variables->sortBy('key');
-            $sorted_environment_variables_preview = $this->application->environment_variables_preview->sortBy('key');
+            $sorted_environment_variables = $this->application->runtime_environment_variables->sortBy('key');
+            $sorted_environment_variables_preview = $this->application->runtime_environment_variables_preview->sortBy('key');
         } else {
-            $sorted_environment_variables = $this->application->environment_variables->sortBy('id');
-            $sorted_environment_variables_preview = $this->application->environment_variables_preview->sortBy('id');
+            $sorted_environment_variables = $this->application->runtime_environment_variables->sortBy('id');
+            $sorted_environment_variables_preview = $this->application->runtime_environment_variables_preview->sortBy('id');
         }
         if ($this->build_pack === 'dockercompose') {
             $sorted_environment_variables = $sorted_environment_variables->filter(function ($env) {
@@ -1634,6 +1636,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         // 4. Add user-defined build-time variables LAST (highest priority - can override everything)
         if ($this->pull_request_id === 0) {
             $sorted_environment_variables = $this->application->environment_variables()
+                ->withoutBuildpackControlVariables()
                 ->where('is_buildtime', true)  // ONLY build-time variables
                 ->orderBy($this->application->settings->is_env_sorting_enabled ? 'key' : 'id')
                 ->get();
@@ -1686,6 +1689,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
         } else {
             $sorted_environment_variables = $this->application->environment_variables_preview()
+                ->withoutBuildpackControlVariables()
                 ->where('is_buildtime', true)  // ONLY build-time variables
                 ->orderBy($this->application->settings->is_env_sorting_enabled ? 'key' : 'id')
                 ->get();
@@ -2468,28 +2472,114 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->env_nixpacks_args = $this->env_nixpacks_args->implode(' ');
     }
 
-    private function generate_railpack_env_variables(): void
+    private function generate_railpack_env_variables(): Collection
     {
-        $this->env_railpack_args = collect([]);
+        $variables = $this->railpack_build_variables();
+
+        $this->env_railpack_args = $variables
+            ->map(function ($value, $key) {
+                return '--env '.escapeShellValue("{$key}={$value}");
+            })
+            ->implode(' ');
+
+        return $variables;
+    }
+
+    private function railpack_environment_variables_collection(): Collection
+    {
         if ($this->pull_request_id === 0) {
-            foreach ($this->application->railpack_environment_variables as $env) {
-                if (! is_null($env->real_value) && $env->real_value !== '') {
-                    $this->env_railpack_args->push("--env {$env->key}={$env->real_value}");
-                }
-            }
-        } else {
-            foreach ($this->application->railpack_environment_variables_preview as $env) {
-                if (! is_null($env->real_value) && $env->real_value !== '') {
-                    $this->env_railpack_args->push("--env {$env->key}={$env->real_value}");
-                }
-            }
+            return $this->application->railpack_environment_variables;
         }
 
-        // Note: COOLIFY_* vars are NOT passed to railpack prepare because railpack treats
-        // all --env vars as secrets that must be provided during docker buildx build.
-        // COOLIFY_* vars are informational and available at runtime via .env file.
+        return $this->application->railpack_environment_variables_preview;
+    }
 
-        $this->env_railpack_args = $this->env_railpack_args->implode(' ');
+    private function normalize_resolved_build_variable_value(EnvironmentVariable $environmentVariable): ?string
+    {
+        $resolvedValue = $environmentVariable->getResolvedValueWithServer($this->mainServer);
+        if (is_null($resolvedValue) || $resolvedValue === '') {
+            return null;
+        }
+
+        if ($environmentVariable->is_literal || $environmentVariable->is_multiline) {
+            return trim($resolvedValue, "'");
+        }
+
+        return $resolvedValue;
+    }
+
+    private function railpack_build_variables(): Collection
+    {
+        $variables = $this->railpack_environment_variables_collection()
+            ->mapWithKeys(function (EnvironmentVariable $environmentVariable) {
+                $value = $this->normalize_resolved_build_variable_value($environmentVariable);
+                if (is_null($value) || $value === '') {
+                    return [];
+                }
+
+                return [$environmentVariable->key => $value];
+            });
+
+        if ($this->application->install_command) {
+            $variables->put('RAILPACK_INSTALL_CMD', $this->application->install_command);
+        }
+
+        return $variables;
+    }
+
+    private function railpack_build_environment_prefix(Collection $variables): string
+    {
+        if ($variables->isEmpty()) {
+            return '';
+        }
+
+        return 'env '.$variables
+            ->map(function ($value, $key) {
+                return "{$key}=".escapeShellValue($value);
+            })
+            ->implode(' ').' ';
+    }
+
+    private function railpack_build_secret_flags(Collection $variables): string
+    {
+        if ($variables->isEmpty()) {
+            return '';
+        }
+
+        return ' '.$variables
+            ->map(function ($value, $key) {
+                return "--secret id={$key},env={$key}";
+            })
+            ->implode(' ');
+    }
+
+    private function railpack_build_command(string $imageName, Collection $variables): string
+    {
+        $cacheArgs = '';
+        if ($this->force_rebuild) {
+            $cacheArgs = '--no-cache';
+        } else {
+            $cacheArgs = "--build-arg cache-key='{$this->application->uuid}'";
+        }
+
+        if ($variables->isNotEmpty()) {
+            $cacheArgs .= ' --build-arg secrets-hash='.$this->generate_secrets_hash($variables);
+        }
+
+        $environmentPrefix = $this->railpack_build_environment_prefix($variables);
+        $secretFlags = $this->railpack_build_secret_flags($variables);
+
+        return 'docker buildx create --name coolify-railpack --driver docker-container 2>/dev/null || true'
+            ." && {$environmentPrefix}docker buildx build --builder coolify-railpack"
+            ." {$this->addHosts} --network host"
+            .' --build-arg BUILDKIT_SYNTAX="'.self::RAILPACK_FRONTEND_IMAGE_ENV.'"'
+            ." {$cacheArgs}"
+            ."{$secretFlags}"
+            .' -f /artifacts/railpack-plan.json'
+            .' --progress plain'
+            .' --load'
+            ." -t {$imageName}"
+            ." {$this->workdir}";
     }
 
     private function decode_railpack_config(string $config, string $source): array
@@ -2609,10 +2699,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     {
         $prepare_command = 'railpack prepare';
 
-        if ($this->application->install_command) {
-            $prepare_command .= ' --env '.escapeShellValue("RAILPACK_INSTALL_CMD={$this->application->install_command}");
-        }
-
         if ($this->application->build_command) {
             $prepare_command .= ' --build-cmd '.escapeShellValue($this->application->build_command);
         }
@@ -2636,7 +2722,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private function build_railpack_image(): void
     {
-        $this->generate_railpack_env_variables();
+        $railpackVariables = $this->generate_railpack_env_variables();
         $railpackConfigPath = $this->generate_railpack_config_file();
 
         // Step 1: Generate build plan with railpack prepare
@@ -2660,34 +2746,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->pull_latest_image($this->application->static_image);
         }
 
-        $cache_args = '';
-        if ($this->force_rebuild) {
-            $cache_args = '--no-cache';
-        } else {
-            $cache_args = "--build-arg cache-key='{$this->application->uuid}'";
-        }
-
-        $installCommandEnv = '';
-        $installCommandSecret = '';
-        if ($this->application->install_command) {
-            $installCommandEnv = 'env RAILPACK_INSTALL_CMD='.escapeShellValue($this->application->install_command).' ';
-            $installCommandSecret = ' --secret id=RAILPACK_INSTALL_CMD,env=RAILPACK_INSTALL_CMD';
-            $cache_args .= ' --build-arg secrets-hash='.$this->generate_secrets_hash(collect([
-                'RAILPACK_INSTALL_CMD' => $this->application->install_command,
-            ]));
-        }
-
-        $build_command = 'docker buildx create --name coolify-railpack --driver docker-container 2>/dev/null || true'
-            ." && {$installCommandEnv}docker buildx build --builder coolify-railpack"
-            ." {$this->addHosts} --network host"
-            ." --build-arg BUILDKIT_SYNTAX='ghcr.io/railwayapp/railpack-frontend'"
-            ." {$cache_args}"
-            ."{$installCommandSecret}"
-            .' -f /artifacts/railpack-plan.json'
-            .' --progress plain'
-            .' --load'
-            ." -t {$image_name}"
-            ." {$this->workdir}";
+        $build_command = $this->railpack_build_command($image_name, $railpackVariables);
 
         $base64_build_command = base64_encode($build_command);
         $this->execute_remote_command(
@@ -2859,7 +2918,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         // For build process, include only environment variables where is_buildtime = true
         if ($this->pull_request_id === 0) {
             $envs = $this->application->environment_variables()
-                ->where('key', 'not like', 'NIXPACKS_%')
+                ->withoutBuildpackControlVariables()
                 ->where('is_buildtime', true)
                 ->get();
 
@@ -2871,7 +2930,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
             }
         } else {
             $envs = $this->application->environment_variables_preview()
-                ->where('key', 'not like', 'NIXPACKS_%')
+                ->withoutBuildpackControlVariables()
                 ->where('is_buildtime', true)
                 ->get();
 
@@ -3951,7 +4010,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         if ($this->pull_request_id === 0) {
             // Only add environment variables that are available during build
             $envs = $this->application->environment_variables()
-                ->where('key', 'not like', 'NIXPACKS_%')
+                ->withoutBuildpackControlVariables()
                 ->where('is_buildtime', true)
                 ->get();
             foreach ($envs as $env) {
@@ -3973,7 +4032,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         } else {
             // Only add preview environment variables that are available during build
             $envs = $this->application->environment_variables_preview()
-                ->where('key', 'not like', 'NIXPACKS_%')
+                ->withoutBuildpackControlVariables()
                 ->where('is_buildtime', true)
                 ->get();
             foreach ($envs as $env) {

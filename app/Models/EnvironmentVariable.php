@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\EnvironmentVariable as ModelsEnvironmentVariable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use OpenApi\Attributes as OA;
 
@@ -32,6 +33,8 @@ use OpenApi\Attributes as OA;
 )]
 class EnvironmentVariable extends BaseModel
 {
+    public const BUILDPACK_CONTROL_VARIABLE_PREFIXES = ['NIXPACKS_', 'RAILPACK_'];
+
     protected $attributes = [
         'is_runtime' => true,
         'is_buildtime' => true,
@@ -78,7 +81,7 @@ class EnvironmentVariable extends BaseModel
 
     protected static function booted()
     {
-        static::created(function (EnvironmentVariable $environment_variable) {
+        static::created(function (ModelsEnvironmentVariable $environment_variable) {
             if ($environment_variable->resourceable_type === Application::class && ! $environment_variable->is_preview) {
                 $found = ModelsEnvironmentVariable::where('key', $environment_variable->key)
                     ->where('resourceable_type', Application::class)
@@ -109,7 +112,7 @@ class EnvironmentVariable extends BaseModel
             ]);
         });
 
-        static::saving(function (EnvironmentVariable $environmentVariable) {
+        static::saving(function (ModelsEnvironmentVariable $environmentVariable) {
             $environmentVariable->updateIsShared();
         });
     }
@@ -117,6 +120,30 @@ class EnvironmentVariable extends BaseModel
     public function service()
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function scopeWithoutBuildpackControlVariables(Builder $query): Builder
+    {
+        foreach (self::BUILDPACK_CONTROL_VARIABLE_PREFIXES as $prefix) {
+            $query->where('key', 'not like', "{$prefix}%");
+        }
+
+        return $query;
+    }
+
+    public static function isBuildpackControlKey(?string $key): bool
+    {
+        if (blank($key)) {
+            return false;
+        }
+
+        foreach (self::BUILDPACK_CONTROL_VARIABLE_PREFIXES as $prefix) {
+            if (str($key)->startsWith($prefix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function value(): Attribute

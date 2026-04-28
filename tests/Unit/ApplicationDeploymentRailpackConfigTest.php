@@ -30,6 +30,9 @@ function makeRailpackDeploymentJob(array $applicationAttributes = [], array $sav
         'deployment_uuid' => 'deployment-uuid',
         'saved_outputs' => new Collection($savedOutputs),
         'env_railpack_args' => "--env 'RAILPACK_NODE_VERSION=22'",
+        'force_rebuild' => false,
+        'addHosts' => '',
+        'secrets_hash_key' => 'testing-app-key',
     ] as $property => $value) {
         $reflectionProperty = $reflection->getProperty($property);
         $reflectionProperty->setAccessible(true);
@@ -175,6 +178,9 @@ it('builds railpack prepare command using railpack env for install and cli flags
             'start_command' => 'node server.js',
         ],
     );
+    $envRailpackArgsProperty = $reflection->getProperty('env_railpack_args');
+    $envRailpackArgsProperty->setAccessible(true);
+    $envRailpackArgsProperty->setValue($job, "--env 'RAILPACK_NODE_VERSION=22' --env 'RAILPACK_INSTALL_CMD=npm ci'");
 
     $command = invokeRailpackMethod(
         $job,
@@ -184,8 +190,8 @@ it('builds railpack prepare command using railpack env for install and cli flags
     );
 
     expect($command)->toContain('railpack prepare');
-    expect($command)->toContain('--env '.escapeshellarg('RAILPACK_INSTALL_CMD=npm ci'));
     expect($command)->toContain("--env 'RAILPACK_NODE_VERSION=22'");
+    expect($command)->toContain("--env 'RAILPACK_INSTALL_CMD=npm ci'");
     expect($command)->toContain('--build-cmd '.escapeshellarg('npm run build'));
     expect($command)->toContain('--start-cmd '.escapeshellarg('node server.js'));
     expect($command)->toContain('--config-file '.escapeshellarg('.coolify/railpack.generated.json'));
@@ -194,4 +200,33 @@ it('builds railpack prepare command using railpack env for install and cli flags
     expect($command)->not->toContain("--env 'RAILPACK_START_CMD=");
     expect($command)->not->toContain('RAILPACK_BUILD_CMD=');
     expect($command)->not->toContain('RAILPACK_START_CMD=');
+});
+
+it('builds railpack docker command with matching env and secret flags for all railpack variables', function () {
+    [$job, $reflection] = makeRailpackDeploymentJob([
+        'uuid' => 'application-uuid',
+    ]);
+
+    $command = invokeRailpackMethod(
+        $job,
+        $reflection,
+        'railpack_build_command',
+        [
+            'coollabsio/coolify:test',
+            collect([
+                'RAILPACK_NODE_VERSION' => '22',
+                'RAILPACK_INSTALL_CMD' => 'npm ci && npm run postinstall',
+                'SECRET_JSON' => '{"token":"abc"}',
+            ]),
+        ],
+    );
+
+    expect($command)->toContain("env RAILPACK_NODE_VERSION='22'");
+    expect($command)->toContain("RAILPACK_INSTALL_CMD='npm ci && npm run postinstall'");
+    expect($command)->toContain("SECRET_JSON='{\"token\":\"abc\"}'");
+    expect($command)->toContain('--secret id=RAILPACK_NODE_VERSION,env=RAILPACK_NODE_VERSION');
+    expect($command)->toContain('--secret id=RAILPACK_INSTALL_CMD,env=RAILPACK_INSTALL_CMD');
+    expect($command)->toContain('--secret id=SECRET_JSON,env=SECRET_JSON');
+    expect($command)->toContain(' --build-arg secrets-hash=');
+    expect($command)->toContain('--build-arg BUILDKIT_SYNTAX="${RAILPACK_FRONTEND_IMAGE}"');
 });
