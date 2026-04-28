@@ -75,8 +75,6 @@ export function initializeTerminalComponent() {
                     focusWhenReady();
                 });
 
-                this.keepAliveInterval = setInterval(this.keepAlive.bind(this), 30000);
-
                 this.$watch('terminalActive', (active) => {
                     if (!active && this.keepAliveInterval) {
                         clearInterval(this.keepAliveInterval);
@@ -150,8 +148,11 @@ export function initializeTerminalComponent() {
             },
 
             clearAllTimers() {
-                [this.keepAliveInterval, this.reconnectInterval, this.connectionTimeoutId, this.pingTimeoutId, this.resizeTimeout]
-                    .forEach(timer => timer && clearInterval(timer));
+                if (this.keepAliveInterval) {
+                    clearInterval(this.keepAliveInterval);
+                }
+                [this.reconnectInterval, this.connectionTimeoutId, this.pingTimeoutId, this.resizeTimeout]
+                    .forEach(timer => timer && clearTimeout(timer));
                 this.keepAliveInterval = null;
                 this.reconnectInterval = null;
                 this.connectionTimeoutId = null;
@@ -280,6 +281,13 @@ export function initializeTerminalComponent() {
                 if (this.pendingCommand) {
                     this.sendMessage(this.pendingCommand);
                     this.pendingCommand = null;
+                }
+
+                // (Re)start application-level keepalive on every successful connect.
+                // Server-side WebSocket protocol pings are the primary heartbeat; this
+                // adds a JSON-level ping in case the server-side is older or restarting.
+                if (!this.keepAliveInterval) {
+                    this.keepAliveInterval = setInterval(this.keepAlive.bind(this), 30000);
                 }
 
                 // Start ping timeout monitoring
@@ -494,11 +502,6 @@ export function initializeTerminalComponent() {
             },
 
             keepAlive() {
-                // Skip keepalive when document is hidden to prevent unnecessary disconnects
-                if (!this.isDocumentVisible) {
-                    return;
-                }
-
                 if (this.socket && this.socket.readyState === WebSocket.OPEN) {
                     this.sendMessage({ ping: true });
                 } else if (this.connectionState === 'disconnected') {
@@ -524,10 +527,23 @@ export function initializeTerminalComponent() {
                     logTerminal('log', '[Terminal] Tab visible, resuming connection management');
 
                     if (this.wasConnectedBeforeHidden && this.socket && this.socket.readyState === WebSocket.OPEN) {
-                        // Send immediate ping to verify connection is still alive
+                        // Connection may be half-open after Cloudflare/proxy idle drop while hidden.
+                        // Probe with a short timeout (5s) instead of the default 35s — force a
+                        // reconnect quickly if no pong arrives so the user is not stuck typing
+                        // into a dead socket.
                         this.heartbeatMissed = 0;
                         this.sendMessage({ ping: true });
-                        this.resetPingTimeout();
+                        if (this.pingTimeoutId) {
+                            clearTimeout(this.pingTimeoutId);
+                        }
+                        this.pingTimeoutId = setTimeout(() => {
+                            logTerminal('warn', '[Terminal] Visibility-resume ping timed out, forcing reconnect.');
+                            try {
+                                this.socket.close(4000, 'Visibility-resume timeout');
+                            } catch (_) {
+                                // ignore — close handler will run on its own
+                            }
+                        }, 5000);
                     } else if (this.wasConnectedBeforeHidden && this.connectionState !== 'connected') {
                         // Was connected before but now disconnected - attempt reconnection
                         this.reconnectAttempts = 0;

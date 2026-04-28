@@ -105,7 +105,12 @@ const verifyClient = async (info, callback) => {
 
 const wss = new WebSocketServer({ server, path: '/terminal/ws', verifyClient: verifyClient });
 
+const HEARTBEAT_INTERVAL_MS = 30000;
+
 wss.on('connection', async (ws, req) => {
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
+
     const userId = generateUserId();
     const userSession = { ws, userId, ptyProcess: null, isActive: false, authorizedIPs: [] };
     const { xsrfToken, laravelSession, sessionCookieName } = getSessionCookie(req);
@@ -166,6 +171,23 @@ wss.on('connection', async (ws, req) => {
         handleClose(userId);
     });
 });
+
+const heartbeat = setInterval(() => {
+    wss.clients.forEach((ws) => {
+        if (ws.isAlive === false) {
+            logTerminal('warn', 'Terminating WS due to missed protocol pong.');
+            return ws.terminate();
+        }
+        ws.isAlive = false;
+        try {
+            ws.ping();
+        } catch (_) {
+            // ignore — close handler will follow
+        }
+    });
+}, HEARTBEAT_INTERVAL_MS);
+
+wss.on('close', () => clearInterval(heartbeat));
 
 const messageHandlers = {
     message: (session, data) => session.ptyProcess.write(data),

@@ -32,3 +32,28 @@ it('keeps realtime terminal server logging restricted to development environment
         ->toContain('if (!terminalDebugEnabled) {')
         ->not->toContain("console.log('Coolify realtime terminal server listening on port 6002. Let the hacking begin!');");
 });
+
+it('configures a server-initiated WebSocket heartbeat to survive proxy idle timeouts', function () {
+    $terminalServer = file_get_contents(base_path('docker/coolify-realtime/terminal-server.js'));
+
+    expect($terminalServer)
+        ->toContain('ws.isAlive = true;')
+        ->toContain("ws.on('pong'")
+        ->toContain('ws.ping();')
+        ->toContain('ws.terminate();')
+        ->toContain('HEARTBEAT_INTERVAL_MS');
+});
+
+it('removes the keepalive short-circuit that fired when the tab was hidden', function () {
+    $terminalClient = file_get_contents(base_path('resources/js/terminal.js'));
+
+    expect($terminalClient)
+        ->not->toContain('// Skip keepalive when document is hidden to prevent unnecessary disconnects');
+});
+
+it('uses a fast probe timeout when the tab regains visibility', function () {
+    $terminalClient = file_get_contents(base_path('resources/js/terminal.js'));
+
+    expect($terminalClient)
+        ->toContain("'Visibility-resume timeout'");
+});
