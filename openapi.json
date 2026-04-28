@@ -4381,8 +4381,8 @@
                                         "description": "Number of days to retain backups locally"
                                     },
                                     "database_backup_retention_max_storage_locally": {
-                                        "type": "integer",
-                                        "description": "Max storage (MB) for local backups"
+                                        "type": "number",
+                                        "description": "Max storage (GB) for local backups"
                                     },
                                     "database_backup_retention_amount_s3": {
                                         "type": "integer",
@@ -4393,8 +4393,8 @@
                                         "description": "Number of days to retain backups in S3"
                                     },
                                     "database_backup_retention_max_storage_s3": {
-                                        "type": "integer",
-                                        "description": "Max storage (MB) for S3 backups"
+                                        "type": "number",
+                                        "description": "Max storage (GB) for S3 backups"
                                     },
                                     "timeout": {
                                         "type": "integer",
@@ -4951,7 +4951,7 @@
                                         "description": "Retention days of the backup locally"
                                     },
                                     "database_backup_retention_max_storage_locally": {
-                                        "type": "integer",
+                                        "type": "number",
                                         "description": "Max storage of the backup locally"
                                     },
                                     "database_backup_retention_amount_s3": {
@@ -4963,7 +4963,7 @@
                                         "description": "Retention days of the backup in s3"
                                     },
                                     "database_backup_retention_max_storage_s3": {
-                                        "type": "integer",
+                                        "type": "number",
                                         "description": "Max storage of the backup in S3"
                                     },
                                     "timeout": {
