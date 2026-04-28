@@ -10545,6 +10545,10 @@
                                     "server_disk_usage_check_frequency": {
                                         "type": "string",
                                         "description": "Cron expression for disk usage check frequency."
+                                    },
+                                    "connection_timeout": {
+                                        "type": "integer",
+                                        "description": "SSH connection timeout in seconds (1-300). Default: 10."
                                     }
                                 },
                                 "type": "object"
