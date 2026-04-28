@@ -85,10 +85,14 @@ class OtherController extends Controller
             return invalidTokenResponse();
         }
         if ($teamId !== '0') {
+            auditLog('api.instance.enable_denied', ['team_id' => $teamId], 'warning');
+
             return response()->json(['message' => 'You are not allowed to enable the API.'], 403);
         }
         $settings = instanceSettings();
         $settings->update(['is_api_enabled' => true]);
+
+        auditLog('api.instance.enabled', ['team_id' => $teamId]);
 
         return response()->json(['message' => 'API enabled.'], 200);
     }
@@ -137,10 +141,14 @@ class OtherController extends Controller
             return invalidTokenResponse();
         }
         if ($teamId !== '0') {
+            auditLog('api.instance.disable_denied', ['team_id' => $teamId], 'warning');
+
             return response()->json(['message' => 'You are not allowed to disable the API.'], 403);
         }
         $settings = instanceSettings();
         $settings->update(['is_api_enabled' => false]);
+
+        auditLog('api.instance.disabled', ['team_id' => $teamId]);
 
         return response()->json(['message' => 'API disabled.'], 200);
     }

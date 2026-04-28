@@ -13,6 +13,7 @@ use App\Models\PrivateKey;
 use App\Models\Project;
 use App\Models\Server as ModelsServer;
 use App\Rules\ValidServerIp;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 use Stringable;
@@ -477,7 +478,7 @@ class ServersController extends Controller
         }
 
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
         $validator = customApiValidator($request->all(), [
@@ -564,6 +565,14 @@ class ServersController extends Controller
             ValidateServer::dispatch($server);
         }
 
+        auditLog('api.server.created', [
+            'team_id' => $teamId,
+            'server_uuid' => $server->uuid,
+            'server_name' => $server->name,
+            'ip' => $server->ip,
+            'is_build_server' => (bool) $request->is_build_server,
+        ]);
+
         return response()->json([
             'uuid' => $server->uuid,
         ])->setStatusCode(201);
@@ -647,7 +656,7 @@ class ServersController extends Controller
         }
 
         $return = validateIncomingRequest($request);
-        if ($return instanceof \Illuminate\Http\JsonResponse) {
+        if ($return instanceof JsonResponse) {
             return $return;
         }
         $validator = customApiValidator($request->all(), [
@@ -717,6 +726,13 @@ class ServersController extends Controller
         if ($request->instant_validate) {
             ValidateServer::dispatch($server);
         }
+
+        auditLog('api.server.updated', [
+            'team_id' => $teamId,
+            'server_uuid' => $server->uuid,
+            'server_name' => $server->name,
+            'changed_fields' => array_values(array_intersect($allowedFields, array_keys($request->all()))),
+        ]);
 
         return response()->json([
             'uuid' => $server->uuid,
@@ -807,6 +823,9 @@ class ServersController extends Controller
             }
         }
 
+        $deletedUuid = $server->uuid;
+        $deletedName = $server->name;
+        $deletedIp = $server->ip;
         $server->delete();
         DeleteServer::dispatch(
             $server->id,
@@ -815,6 +834,14 @@ class ServersController extends Controller
             $server->cloud_provider_token_id,
             $server->team_id
         );
+
+        auditLog('api.server.deleted', [
+            'team_id' => $teamId,
+            'server_uuid' => $deletedUuid,
+            'server_name' => $deletedName,
+            'ip' => $deletedIp,
+            'force' => $force,
+        ]);
 
         return response()->json(['message' => 'Server deleted.']);
     }
@@ -880,6 +907,12 @@ class ServersController extends Controller
             return response()->json(['message' => 'Server not found.'], 404);
         }
         ValidateServer::dispatch($server);
+
+        auditLog('api.server.validated', [
+            'team_id' => $teamId,
+            'server_uuid' => $server->uuid,
+            'server_name' => $server->name,
+        ]);
 
         return response()->json(['message' => 'Validation started.'], 201);
     }
