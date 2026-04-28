@@ -396,8 +396,6 @@ export function initializeTerminalComponent() {
             },
 
             handleSocketMessage(event) {
-                logTerminal('log', '[Terminal] Received WebSocket message:', event.data);
-
                 // Handle pong responses
                 if (event.data === 'pong') {
                     this.heartbeatMissed = 0;

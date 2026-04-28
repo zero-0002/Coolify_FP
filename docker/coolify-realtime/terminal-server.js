@@ -271,12 +271,6 @@ function handleMessage(userSession, message) {
         return;
     }
 
-    logTerminal('log', 'Received websocket message.', {
-        userId: userSession.userId,
-        keys: Object.keys(parsed),
-        isActive: userSession.isActive,
-    });
-
     Object.entries(parsed).forEach(([key, value]) => {
         const handler = messageHandlers[key];
         if (handler && (userSession.isActive || key === 'checkActive' || key === 'command' || key === 'ping')) {
