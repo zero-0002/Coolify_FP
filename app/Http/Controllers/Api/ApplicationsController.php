@@ -1309,6 +1309,15 @@ class ApplicationsController extends Controller
                 }
             }
 
+            auditLog('api.application.created', [
+                'team_id' => $teamId,
+                'application_uuid' => data_get($application, 'uuid'),
+                'application_name' => data_get($application, 'name'),
+                'application_type' => $type,
+                'build_pack' => data_get($application, 'build_pack'),
+                'instant_deploy' => (bool) ($instantDeploy ?? false),
+            ]);
+
             return response()->json(serializeApiResponse([
                 'uuid' => data_get($application, 'uuid'),
                 'domains' => data_get($application, 'fqdn'),
@@ -1539,6 +1548,15 @@ class ApplicationsController extends Controller
                 }
             }
 
+            auditLog('api.application.created', [
+                'team_id' => $teamId,
+                'application_uuid' => data_get($application, 'uuid'),
+                'application_name' => data_get($application, 'name'),
+                'application_type' => $type,
+                'build_pack' => data_get($application, 'build_pack'),
+                'instant_deploy' => (bool) ($instantDeploy ?? false),
+            ]);
+
             return response()->json(serializeApiResponse([
                 'uuid' => data_get($application, 'uuid'),
                 'domains' => data_get($application, 'fqdn'),
@@ -1739,6 +1757,15 @@ class ApplicationsController extends Controller
                 }
             }
 
+            auditLog('api.application.created', [
+                'team_id' => $teamId,
+                'application_uuid' => data_get($application, 'uuid'),
+                'application_name' => data_get($application, 'name'),
+                'application_type' => $type,
+                'build_pack' => data_get($application, 'build_pack'),
+                'instant_deploy' => (bool) ($instantDeploy ?? false),
+            ]);
+
             return response()->json(serializeApiResponse([
                 'uuid' => data_get($application, 'uuid'),
                 'domains' => data_get($application, 'fqdn'),
@@ -1845,6 +1872,15 @@ class ApplicationsController extends Controller
                     ], 200);
                 }
             }
+
+            auditLog('api.application.created', [
+                'team_id' => $teamId,
+                'application_uuid' => data_get($application, 'uuid'),
+                'application_name' => data_get($application, 'name'),
+                'application_type' => $type,
+                'build_pack' => data_get($application, 'build_pack'),
+                'instant_deploy' => (bool) ($instantDeploy ?? false),
+            ]);
 
             return response()->json(serializeApiResponse([
                 'uuid' => data_get($application, 'uuid'),
@@ -1956,6 +1992,15 @@ class ApplicationsController extends Controller
                 }
             }
 
+            auditLog('api.application.created', [
+                'team_id' => $teamId,
+                'application_uuid' => data_get($application, 'uuid'),
+                'application_name' => data_get($application, 'name'),
+                'application_type' => $type,
+                'build_pack' => data_get($application, 'build_pack'),
+                'instant_deploy' => (bool) ($instantDeploy ?? false),
+            ]);
+
             return response()->json(serializeApiResponse([
                 'uuid' => data_get($application, 'uuid'),
                 'domains' => data_get($application, 'fqdn'),
@@ -2038,6 +2083,14 @@ class ApplicationsController extends Controller
             if ($instantDeploy) {
                 StartService::dispatch($service);
             }
+
+            auditLog('api.application.created', [
+                'team_id' => $teamId,
+                'service_uuid' => data_get($service, 'uuid'),
+                'service_name' => data_get($service, 'name'),
+                'application_type' => $type,
+                'instant_deploy' => (bool) ($instantDeploy ?? false),
+            ]);
 
             return response()->json(serializeApiResponse([
                 'uuid' => data_get($service, 'uuid'),
@@ -2296,6 +2349,12 @@ class ApplicationsController extends Controller
             deleteConfigurations: $request->boolean('delete_configurations', true),
             dockerCleanup: $request->boolean('docker_cleanup', true)
         );
+
+        auditLog('api.application.deleted', [
+            'team_id' => $teamId,
+            'application_uuid' => $application->uuid,
+            'application_name' => $application->name,
+        ]);
 
         return response()->json([
             'message' => 'Application deletion request queued.',
@@ -2796,6 +2855,13 @@ class ApplicationsController extends Controller
         }
         $application->save();
 
+        auditLog('api.application.updated', [
+            'team_id' => $teamId,
+            'application_uuid' => $application->uuid,
+            'application_name' => $application->name,
+            'changed_fields' => array_values(array_intersect($allowedFields, array_keys($request->all()))),
+        ]);
+
         if ($instantDeploy) {
             $deployment_uuid = new Cuid2;
 
@@ -3048,6 +3114,14 @@ class ApplicationsController extends Controller
                 }
                 $env->save();
 
+                auditLog('api.application.env_updated', [
+                    'team_id' => $teamId,
+                    'application_uuid' => $application->uuid,
+                    'env_uuid' => $env->uuid,
+                    'env_key' => $env->key,
+                    'is_preview' => (bool) $is_preview,
+                ]);
+
                 return response()->json($this->removeSensitiveData($env))->setStatusCode(201);
             } else {
                 return response()->json([
@@ -3080,6 +3154,14 @@ class ApplicationsController extends Controller
                     $env->comment = $request->comment;
                 }
                 $env->save();
+
+                auditLog('api.application.env_updated', [
+                    'team_id' => $teamId,
+                    'application_uuid' => $application->uuid,
+                    'env_uuid' => $env->uuid,
+                    'env_key' => $env->key,
+                    'is_preview' => (bool) $is_preview,
+                ]);
 
                 return response()->json($this->removeSensitiveData($env))->setStatusCode(201);
             } else {
@@ -3307,6 +3389,12 @@ class ApplicationsController extends Controller
             $returnedEnvs->push($this->removeSensitiveData($env));
         }
 
+        auditLog('api.application.env_bulk_upserted', [
+            'team_id' => $teamId,
+            'application_uuid' => $application->uuid,
+            'env_count' => $returnedEnvs->count(),
+        ]);
+
         return response()->json($returnedEnvs)->setStatusCode(201);
     }
 
@@ -3446,6 +3534,14 @@ class ApplicationsController extends Controller
                     'resourceable_id' => $application->id,
                 ]);
 
+                auditLog('api.application.env_created', [
+                    'team_id' => $teamId,
+                    'application_uuid' => $application->uuid,
+                    'env_uuid' => $env->uuid,
+                    'env_key' => $env->key,
+                    'is_preview' => (bool) $is_preview,
+                ]);
+
                 return response()->json([
                     'uuid' => $env->uuid,
                 ])->setStatusCode(201);
@@ -3469,6 +3565,14 @@ class ApplicationsController extends Controller
                     'comment' => $request->comment ?? null,
                     'resourceable_type' => get_class($application),
                     'resourceable_id' => $application->id,
+                ]);
+
+                auditLog('api.application.env_created', [
+                    'team_id' => $teamId,
+                    'application_uuid' => $application->uuid,
+                    'env_uuid' => $env->uuid,
+                    'env_key' => $env->key,
+                    'is_preview' => (bool) $is_preview,
                 ]);
 
                 return response()->json([
@@ -3562,7 +3666,16 @@ class ApplicationsController extends Controller
                 'message' => 'Environment variable not found.',
             ], 404);
         }
+        $envKey = $found_env->key;
+        $envUuid = $found_env->uuid;
         $found_env->forceDelete();
+
+        auditLog('api.application.env_deleted', [
+            'team_id' => $teamId,
+            'application_uuid' => $application->uuid,
+            'env_uuid' => $envUuid,
+            'env_key' => $envKey,
+        ]);
 
         return response()->json([
             'message' => 'Environment variable deleted.',
@@ -3675,6 +3788,15 @@ class ApplicationsController extends Controller
             );
         }
 
+        auditLog('api.application.deployed', [
+            'team_id' => $teamId,
+            'application_uuid' => $application->uuid,
+            'application_name' => $application->name,
+            'deployment_uuid' => $deployment_uuid->toString(),
+            'force_rebuild' => $force,
+            'instant_deploy' => $instant_deploy,
+        ]);
+
         return response()->json(
             [
                 'message' => 'Deployment request queued.',
@@ -3762,6 +3884,13 @@ class ApplicationsController extends Controller
 
         $dockerCleanup = $request->boolean('docker_cleanup', true);
         StopApplication::dispatch($application, false, $dockerCleanup);
+
+        auditLog('api.application.stopped', [
+            'team_id' => $teamId,
+            'application_uuid' => $application->uuid,
+            'application_name' => $application->name,
+            'docker_cleanup' => $dockerCleanup,
+        ]);
 
         return response()->json(
             [
@@ -3852,6 +3981,13 @@ class ApplicationsController extends Controller
                 'message' => $result['message'],
             ], 200);
         }
+
+        auditLog('api.application.restarted', [
+            'team_id' => $teamId,
+            'application_uuid' => $application->uuid,
+            'application_name' => $application->name,
+            'deployment_uuid' => $deployment_uuid->toString(),
+        ]);
 
         return response()->json(
             [
@@ -4221,6 +4357,15 @@ class ApplicationsController extends Controller
 
         $storage->save();
 
+        auditLog('api.application.storage_updated', [
+            'team_id' => $teamId,
+            'application_uuid' => $application->uuid,
+            'storage_uuid' => $storage->uuid ?? null,
+            'storage_id' => $storage->id,
+            'storage_type' => $request->type,
+            'mount_path' => $storage->mount_path ?? null,
+        ]);
+
         return response()->json($storage);
     }
 
@@ -4399,6 +4544,15 @@ class ApplicationsController extends Controller
             ]);
         }
 
+        auditLog('api.application.storage_created', [
+            'team_id' => $teamId,
+            'application_uuid' => $application->uuid,
+            'storage_uuid' => $storage->uuid ?? null,
+            'storage_id' => $storage->id,
+            'storage_type' => $request->type,
+            'mount_path' => $storage->mount_path,
+        ]);
+
         return response()->json($storage, 201);
     }
 
@@ -4472,7 +4626,17 @@ class ApplicationsController extends Controller
             $storage->deleteStorageOnServer();
         }
 
+        $storageType = $storage instanceof LocalFileVolume ? 'file' : 'persistent';
+        $storageMountPath = $storage->mount_path ?? null;
         $storage->delete();
+
+        auditLog('api.application.storage_deleted', [
+            'team_id' => $teamId,
+            'application_uuid' => $application->uuid,
+            'storage_uuid' => $storageUuid,
+            'storage_type' => $storageType,
+            'mount_path' => $storageMountPath,
+        ]);
 
         return response()->json(['message' => 'Storage deleted.']);
     }
@@ -4542,6 +4706,12 @@ class ApplicationsController extends Controller
 
         $preview->delete();
         CleanupPreviewDeployment::run($application, $pullRequestId, $preview);
+
+        auditLog('api.application.preview_deleted', [
+            'team_id' => $teamId,
+            'application_uuid' => $application->uuid,
+            'pull_request_id' => $pullRequestId,
+        ]);
 
         return response()->json(['message' => 'Preview deletion request queued.']);
     }

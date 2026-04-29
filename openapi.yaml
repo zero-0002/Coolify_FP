@@ -6734,6 +6734,9 @@ paths:
                 server_disk_usage_check_frequency:
                   type: string
                   description: 'Cron expression for disk usage check frequency.'
+                connection_timeout:
+                  type: integer
+                  description: 'SSH connection timeout in seconds (1-300). Default: 10.'
               type: object
       responses:
         '201':
@@ -8539,6 +8542,9 @@ components:
         delete_unused_networks:
           type: boolean
           description: 'The flag to indicate if the unused networks should be deleted.'
+        connection_timeout:
+          type: integer
+          description: 'SSH connection timeout in seconds.'
       type: object
     Service:
       description: 'Service model'
