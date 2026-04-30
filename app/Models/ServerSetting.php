@@ -6,7 +6,6 @@ use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use OpenApi\Attributes as OA;
 
 #[OA\Schema(
@@ -189,7 +188,10 @@ class ServerSetting extends Model
 
     public function generateSentinelToken(bool $save = true, bool $ignoreEvent = false): string
     {
-        $token = Str::random(64);
+        $data = [
+            'server_uuid' => $this->server->uuid,
+        ];
+        $token = encrypt(json_encode($data));
         $this->sentinel_token = $token;
         if ($save) {
             if ($ignoreEvent) {

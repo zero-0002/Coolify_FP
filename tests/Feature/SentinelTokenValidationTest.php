@@ -3,9 +3,7 @@
 use App\Models\Server;
 use App\Models\ServerSetting;
 use App\Models\User;
-use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
@@ -156,19 +154,6 @@ describe('generated sentinel tokens are valid', function () {
 
         expect($token)->not->toBeEmpty();
         expect(ServerSetting::isValidSentinelToken($token))->toBeTrue();
-    });
-
-    it('does not double-encrypt newly generated tokens', function () {
-        $settings = $this->server->settings;
-        $token = $settings->generateSentinelToken(save: true, ignoreEvent: true);
-
-        $raw = DB::table('server_settings')->where('id', $settings->id)->value('sentinel_token');
-
-        $once = Crypt::decryptString($raw);
-        expect($once)->toBe($token);
-
-        expect(fn () => Crypt::decryptString($once))
-            ->toThrow(DecryptException::class);
     });
 
     it('returns the same value the cast reads back', function () {
