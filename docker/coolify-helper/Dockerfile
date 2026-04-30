@@ -35,7 +35,6 @@ ARG MISE_VERSION
 USER root
 WORKDIR /artifacts
 ENV RAILPACK_VERSION=${RAILPACK_VERSION}
-ENV RAILPACK_FRONTEND_IMAGE=ghcr.io/railwayapp/railpack-frontend:v${RAILPACK_VERSION}
 RUN apk upgrade --no-cache && \
     apk add --no-cache bash curl git git-lfs openssh-client tar tini
 RUN mkdir -p ~/.docker/cli-plugins

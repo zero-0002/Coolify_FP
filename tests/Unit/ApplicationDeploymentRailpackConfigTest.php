@@ -4,6 +4,9 @@ use App\Exceptions\DeploymentException;
 use App\Jobs\ApplicationDeploymentJob;
 use App\Models\Application;
 use Illuminate\Support\Collection;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 class TestableRailpackDeploymentJob extends ApplicationDeploymentJob
 {
@@ -228,5 +231,5 @@ it('builds railpack docker command with matching env and secret flags for all ra
     expect($command)->toContain('--secret id=RAILPACK_INSTALL_CMD,env=RAILPACK_INSTALL_CMD');
     expect($command)->toContain('--secret id=SECRET_JSON,env=SECRET_JSON');
     expect($command)->toContain(' --build-arg secrets-hash=');
-    expect($command)->toContain('--build-arg BUILDKIT_SYNTAX="${RAILPACK_FRONTEND_IMAGE}"');
+    expect($command)->toContain('--build-arg BUILDKIT_SYNTAX="ghcr.io/railwayapp/railpack-frontend:v'.config('constants.coolify.railpack_version').'"');
 });

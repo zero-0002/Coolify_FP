@@ -53,8 +53,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private const RAILPACK_GENERATED_CONFIG_PATH = '.coolify/railpack.generated.json';
 
-    private const RAILPACK_FRONTEND_IMAGE_ENV = '${RAILPACK_FRONTEND_IMAGE}';
-
     public $tries = 1;
 
     public $timeout = 3600;
@@ -2568,11 +2566,12 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         $environmentPrefix = $this->railpack_build_environment_prefix($variables);
         $secretFlags = $this->railpack_build_secret_flags($variables);
+        $frontendImage = 'ghcr.io/railwayapp/railpack-frontend:v'.config('constants.coolify.railpack_version');
 
         return 'docker buildx create --name coolify-railpack --driver docker-container 2>/dev/null || true'
             ." && {$environmentPrefix}docker buildx build --builder coolify-railpack"
             ." {$this->addHosts} --network host"
-            .' --build-arg BUILDKIT_SYNTAX="'.self::RAILPACK_FRONTEND_IMAGE_ENV.'"'
+            ." --build-arg BUILDKIT_SYNTAX=\"{$frontendImage}\""
             ." {$cacheArgs}"
             ."{$secretFlags}"
             .' -f /artifacts/railpack-plan.json'
