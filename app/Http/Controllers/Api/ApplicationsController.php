@@ -57,6 +57,7 @@ class ApplicationsController extends Controller
                 'value',
                 'real_value',
             ]);
+            $this->exposeNestedServerSecrets($application);
         } else {
             $application->makeHidden([
                 'private_key_id',
@@ -64,6 +65,34 @@ class ApplicationsController extends Controller
         }
 
         return serializeApiResponse($application);
+    }
+
+    /**
+     * Expose sensitive fields on eager-loaded nested Server + ServerSetting
+     * relations for callers with the `read:sensitive` or `root` token ability.
+     * Models hide these by default via $hidden; this re-exposes them per-request.
+     */
+    private function exposeNestedServerSecrets($model): void
+    {
+        $server = $model->destination?->server ?? null;
+        if (! $server) {
+            return;
+        }
+        $server->makeVisible([
+            'logdrain_axiom_api_key',
+            'logdrain_newrelic_license_key',
+        ]);
+        $settings = $server->settings ?? null;
+        if ($settings) {
+            $settings->makeVisible([
+                'sentinel_token',
+                'sentinel_custom_url',
+                'logdrain_newrelic_license_key',
+                'logdrain_axiom_api_key',
+                'logdrain_custom_config',
+                'logdrain_custom_config_parser',
+            ]);
+        }
     }
 
     #[OA\Get(

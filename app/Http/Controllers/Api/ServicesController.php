@@ -16,6 +16,7 @@ use App\Models\Service;
 use App\Support\ValidationPatterns;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Yaml\Yaml;
@@ -37,9 +38,46 @@ class ServicesController extends Controller
                 'value',
                 'real_value',
             ]);
+            $this->exposeNestedServerSecrets($service);
         }
 
         return serializeApiResponse($service);
+    }
+
+    /**
+     * Expose sensitive fields on eager-loaded nested Server + ServerSetting
+     * relations for callers with the `read:sensitive` or `root` token ability.
+     * Handles both single models and Eloquent Collections (the listing endpoint
+     * passes a Collection of Services per project to removeSensitiveData()).
+     */
+    private function exposeNestedServerSecrets($model): void
+    {
+        if ($model instanceof Collection || $model instanceof \Illuminate\Database\Eloquent\Collection) {
+            foreach ($model as $item) {
+                $this->exposeNestedServerSecrets($item);
+            }
+
+            return;
+        }
+        $server = $model->destination?->server ?? $model->server ?? null;
+        if (! $server) {
+            return;
+        }
+        $server->makeVisible([
+            'logdrain_axiom_api_key',
+            'logdrain_newrelic_license_key',
+        ]);
+        $settings = $server->settings ?? null;
+        if ($settings) {
+            $settings->makeVisible([
+                'sentinel_token',
+                'sentinel_custom_url',
+                'logdrain_newrelic_license_key',
+                'logdrain_axiom_api_key',
+                'logdrain_custom_config',
+                'logdrain_custom_config_parser',
+            ]);
+        }
     }
 
     private function applyServiceUrls(Service $service, array $urlsArray, string $teamId, bool $forceDomainOverride = false): ?array

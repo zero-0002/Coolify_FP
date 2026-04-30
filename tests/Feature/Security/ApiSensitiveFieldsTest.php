@@ -128,9 +128,23 @@ describe('GET /api/v1/applications nested-relation scrubbing', function () {
         $response->assertStatus(200);
 
         $body = $response->getContent();
-        expect($body)->not->toContain('sentinel_token');
-        expect($body)->not->toContain('sentinel_custom_url');
-        expect($body)->not->toContain('logdrain_axiom_api_key');
+        expect($body)->not->toContain('"sentinel_token":');
+        expect($body)->not->toContain('"sentinel_custom_url":');
+        expect($body)->not->toContain('"logdrain_axiom_api_key":');
+    });
+
+    test('read-sensitive token sees nested sentinel_token via destination.server.settings', function () {
+        $token = makeApiToken($this->user, $this->team, ['read', 'read:sensitive']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/v1/applications');
+
+        $response->assertStatus(200);
+
+        $body = $response->getContent();
+        expect($body)->toContain('"sentinel_token":');
+        expect($body)->toContain('"sentinel_custom_url":');
     });
 });
 
@@ -168,7 +182,7 @@ describe('GET /api/v1/databases sensitive field gating', function () {
         expect($body)->not->toContain('external_db_url');
     });
 
-    test('read sensitive token sees postgres_password', function () {
+    test('read sensitive token sees postgres_password and nested sentinel_token', function () {
         $token = makeApiToken($this->user, $this->team, ['read', 'read:sensitive']);
 
         $response = $this->withHeaders([
@@ -178,7 +192,8 @@ describe('GET /api/v1/databases sensitive field gating', function () {
         $response->assertStatus(200);
 
         $body = $response->getContent();
-        expect($body)->toContain('postgres_password');
-        expect($body)->toContain('internal_db_url');
+        expect($body)->toContain('"postgres_password":');
+        expect($body)->toContain('"internal_db_url":');
+        expect($body)->toContain('"sentinel_token":');
     });
 });
