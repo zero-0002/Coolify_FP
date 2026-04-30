@@ -2483,15 +2483,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         return $variables;
     }
 
-    private function railpack_environment_variables_collection(): Collection
-    {
-        if ($this->pull_request_id === 0) {
-            return $this->application->railpack_environment_variables;
-        }
-
-        return $this->application->railpack_environment_variables_preview;
-    }
-
     private function normalize_resolved_build_variable_value(EnvironmentVariable $environmentVariable): ?string
     {
         $resolvedValue = $environmentVariable->getResolvedValueWithServer($this->mainServer);
@@ -2506,9 +2497,23 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         return $resolvedValue;
     }
 
+    /**
+     * All buildtime variables that must reach the Railpack build.
+     *
+     * Railpack's BuildKit frontend treats every `--env` passed to `railpack prepare`
+     * as a build secret entry in the generated plan, then pairs it with `--secret id=,env=`
+     * on `docker buildx build`. Because Railpack's schema disallows top-level `variables`
+     * (unlike Nixpacks, which bakes variables into the plan), this `--env` → `--secret`
+     * channel is the only way user-defined buildtime variables become available to
+     * commands declared with `useSecrets: true`.
+     */
     private function railpack_build_variables(): Collection
     {
-        $variables = $this->railpack_environment_variables_collection()
+        $envCollection = $this->pull_request_id === 0
+            ? $this->application->environment_variables()->where('is_buildtime', true)->get()
+            : $this->application->environment_variables_preview()->where('is_buildtime', true)->get();
+
+        $variables = $envCollection
             ->mapWithKeys(function (EnvironmentVariable $environmentVariable) {
                 $value = $this->normalize_resolved_build_variable_value($environmentVariable);
                 if (is_null($value) || $value === '') {

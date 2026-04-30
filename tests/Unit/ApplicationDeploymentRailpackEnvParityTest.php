@@ -41,9 +41,10 @@ it('generates escaped railpack env args from resolved values and includes instal
     ]);
     $nullValue->shouldReceive('getResolvedValueWithServer')->once()->with(Mockery::type(Server::class))->andReturn(null);
 
-    $application->shouldReceive('getAttribute')
-        ->with('railpack_environment_variables')
-        ->andReturn(collect([$nodeVersion, $literalValue, $jsonValue, $nullValue]));
+    $envQuery = Mockery::mock();
+    $envQuery->shouldReceive('where')->with('is_buildtime', true)->once()->andReturnSelf();
+    $envQuery->shouldReceive('get')->once()->andReturn(collect([$nodeVersion, $literalValue, $jsonValue, $nullValue]));
+    $application->shouldReceive('environment_variables')->once()->andReturn($envQuery);
 
     $job = Mockery::mock(ApplicationDeploymentJob::class)->makePartial();
     $job->shouldAllowMockingProtectedMethods();
@@ -94,9 +95,10 @@ it('uses preview railpack environment variables for preview deployments', functi
     ]);
     $previewValue->shouldReceive('getResolvedValueWithServer')->once()->with(Mockery::type(Server::class))->andReturn('preview-value');
 
-    $application->shouldReceive('getAttribute')
-        ->with('railpack_environment_variables_preview')
-        ->andReturn(collect([$previewValue]));
+    $previewQuery = Mockery::mock();
+    $previewQuery->shouldReceive('where')->with('is_buildtime', true)->once()->andReturnSelf();
+    $previewQuery->shouldReceive('get')->once()->andReturn(collect([$previewValue]));
+    $application->shouldReceive('environment_variables_preview')->once()->andReturn($previewQuery);
 
     $job = Mockery::mock(ApplicationDeploymentJob::class)->makePartial();
     $job->shouldAllowMockingProtectedMethods();
