@@ -2692,6 +2692,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             ]
         );
 
+        if (isDev()) {
+            $this->application_deployment_queue->addLogEntry('Generated Railpack config: '.json_encode($mergedConfig, JSON_PRETTY_PRINT), hidden: true);
+        }
+
         return $this->generated_railpack_config_relative_path();
     }
 
@@ -2731,7 +2735,26 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->application_deployment_queue->addLogEntry('Generating Railpack build plan.');
         $this->execute_remote_command(
             [executeInDocker($this->deployment_uuid, $prepare_command), 'hidden' => true],
+            [
+                executeInDocker($this->deployment_uuid, 'cat /artifacts/railpack-plan.json'),
+                'hidden' => true,
+                'save' => 'railpack_plan',
+            ],
         );
+
+        $railpackPlanRaw = $this->saved_outputs->get('railpack_plan');
+        if (! empty($railpackPlanRaw)) {
+            if (isDev()) {
+                $this->application_deployment_queue->addLogEntry("Final Railpack plan: {$railpackPlanRaw}", hidden: true);
+            } else {
+                $parsedPlan = json_decode($railpackPlanRaw, true);
+                if (is_array($parsedPlan)) {
+                    // Strip secrets array to avoid logging variable names in production.
+                    unset($parsedPlan['secrets']);
+                    $this->application_deployment_queue->addLogEntry('Final Railpack plan: '.json_encode($parsedPlan, JSON_PRETTY_PRINT), hidden: true);
+                }
+            }
+        }
 
         // Step 2: Build image using docker buildx with railpack frontend.
         // Railpack's frontend requires full BuildKit (mergeop), so we use a docker-container driver builder.
