@@ -33,16 +33,21 @@ class DatabasesController extends Controller
             'id',
             'laravel_through_key',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
-            $database->makeHidden([
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $database->makeVisible([
                 'internal_db_url',
                 'external_db_url',
+                'init_scripts',
                 'postgres_password',
                 'dragonfly_password',
                 'redis_password',
                 'mongo_initdb_root_password',
                 'keydb_password',
                 'clickhouse_admin_password',
+                'mysql_password',
+                'mysql_root_password',
+                'mariadb_password',
+                'mariadb_root_password',
             ]);
         }
 
@@ -2957,8 +2962,8 @@ class DatabasesController extends Controller
             'resourceable_id',
             'resourceable_type',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
-            $env->makeHidden([
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $env->makeVisible([
                 'value',
                 'real_value',
             ]);

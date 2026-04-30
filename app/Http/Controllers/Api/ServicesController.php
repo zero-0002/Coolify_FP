@@ -30,8 +30,8 @@ class ServicesController extends Controller
             'resourceable_id',
             'resourceable_type',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
-            $service->makeHidden([
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $service->makeVisible([
                 'docker_compose_raw',
                 'docker_compose',
                 'value',

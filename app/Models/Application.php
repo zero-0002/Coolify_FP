@@ -215,6 +215,24 @@ class Application extends BaseModel
 
     protected $appends = ['server_status'];
 
+    /**
+     * Sensitive fields hidden by default in serialized output (toArray/toJson).
+     * API controllers should call makeVisible([...]) for callers with the
+     * `read:sensitive` or `root` token ability. Internal serializers (deployment
+     * job, compose generation) must makeVisible explicitly before toArray().
+     */
+    protected $hidden = [
+        'http_basic_auth_password',
+        'manual_webhook_secret_github',
+        'manual_webhook_secret_gitlab',
+        'manual_webhook_secret_bitbucket',
+        'manual_webhook_secret_gitea',
+        'dockerfile',
+        'docker_compose',
+        'docker_compose_raw',
+        'custom_labels',
+    ];
+
     protected function casts(): array
     {
         return [

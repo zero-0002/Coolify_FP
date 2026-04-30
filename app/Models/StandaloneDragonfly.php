@@ -47,6 +47,17 @@ class StandaloneDragonfly extends BaseModel
 
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
 
+    /**
+     * Sensitive fields hidden by default in serialized output (toArray/toJson).
+     * API controllers should call makeVisible([...]) for callers with the
+     * `read:sensitive` or `root` token ability.
+     */
+    protected $hidden = [
+        'dragonfly_password',
+        'internal_db_url',
+        'external_db_url',
+    ];
+
     protected $casts = [
         'dragonfly_password' => 'encrypted',
         'public_port_timeout' => 'integer',

@@ -43,8 +43,8 @@ class ApplicationsController extends Controller
             'resourceable_id',
             'resourceable_type',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
-            $application->makeHidden([
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $application->makeVisible([
                 'custom_labels',
                 'dockerfile',
                 'docker_compose',
@@ -53,10 +53,13 @@ class ApplicationsController extends Controller
                 'manual_webhook_secret_gitea',
                 'manual_webhook_secret_github',
                 'manual_webhook_secret_gitlab',
-                'private_key_id',
+                'http_basic_auth_password',
                 'value',
                 'real_value',
-                'http_basic_auth_password',
+            ]);
+        } else {
+            $application->makeHidden([
+                'private_key_id',
             ]);
         }
 

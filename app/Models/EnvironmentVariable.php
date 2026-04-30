@@ -76,9 +76,19 @@ class EnvironmentVariable extends BaseModel
 
     protected $appends = ['real_value', 'is_shared', 'is_really_required', 'is_nixpacks', 'is_coolify'];
 
+    /**
+     * Sensitive fields hidden by default in serialized output (toArray/toJson).
+     * API controllers should call makeVisible([...]) for callers with the
+     * `read:sensitive` or `root` token ability.
+     */
+    protected $hidden = [
+        'value',
+        'real_value',
+    ];
+
     protected static function booted()
     {
-        static::created(function (EnvironmentVariable $environment_variable) {
+        static::created(function (ModelsEnvironmentVariable $environment_variable) {
             if ($environment_variable->resourceable_type === Application::class && ! $environment_variable->is_preview) {
                 $found = ModelsEnvironmentVariable::where('key', $environment_variable->key)
                     ->where('resourceable_type', Application::class)
@@ -109,7 +119,7 @@ class EnvironmentVariable extends BaseModel
             ]);
         });
 
-        static::saving(function (EnvironmentVariable $environmentVariable) {
+        static::saving(function (ModelsEnvironmentVariable $environmentVariable) {
             $environmentVariable->updateIsShared();
         });
     }
