@@ -2527,6 +2527,14 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $variables->put('RAILPACK_INSTALL_CMD', $this->application->install_command);
         }
 
+        // Mirror Nixpacks behavior: expose COOLIFY_* and SOURCE_COMMIT to the build so apps
+        // (e.g. SPAs baking the public URL) can read them via /run/secrets/<KEY>.
+        foreach ($this->generate_coolify_env_variables(forBuildTime: true) as $key => $value) {
+            if (! is_null($value) && $value !== '') {
+                $variables->put($key, $value);
+            }
+        }
+
         return $variables;
     }
 
@@ -2829,7 +2837,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         );
     }
 
-    private function generate_coolify_env_variables(bool $forBuildTime = false): Collection
+    protected function generate_coolify_env_variables(bool $forBuildTime = false): Collection
     {
         $coolify_envs = collect([]);
         $local_branch = $this->branch;

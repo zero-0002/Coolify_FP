@@ -77,7 +77,7 @@ class EnvironmentVariable extends BaseModel
         'resourceable_id' => 'integer',
     ];
 
-    protected $appends = ['real_value', 'is_shared', 'is_really_required', 'is_nixpacks', 'is_coolify'];
+    protected $appends = ['real_value', 'is_shared', 'is_really_required', 'is_buildpack_control', 'is_coolify'];
 
     protected static function booted()
     {
@@ -215,16 +215,10 @@ class EnvironmentVariable extends BaseModel
         );
     }
 
-    protected function isNixpacks(): Attribute
+    protected function isBuildpackControl(): Attribute
     {
         return Attribute::make(
-            get: function () {
-                if (str($this->key)->startsWith('NIXPACKS_')) {
-                    return true;
-                }
-
-                return false;
-            }
+            get: fn () => self::isBuildpackControlKey($this->key),
         );
     }
 

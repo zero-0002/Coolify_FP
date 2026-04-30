@@ -48,6 +48,7 @@ it('generates escaped railpack env args from resolved values and includes instal
 
     $job = Mockery::mock(ApplicationDeploymentJob::class)->makePartial();
     $job->shouldAllowMockingProtectedMethods();
+    $job->shouldReceive('generate_coolify_env_variables')->andReturn(collect([]));
 
     $reflection = new ReflectionClass(ApplicationDeploymentJob::class);
     $applicationProperty = $reflection->getProperty('application');
@@ -102,6 +103,7 @@ it('uses preview railpack environment variables for preview deployments', functi
 
     $job = Mockery::mock(ApplicationDeploymentJob::class)->makePartial();
     $job->shouldAllowMockingProtectedMethods();
+    $job->shouldReceive('generate_coolify_env_variables')->andReturn(collect([]));
 
     $reflection = new ReflectionClass(ApplicationDeploymentJob::class);
     $applicationProperty = $reflection->getProperty('application');
@@ -123,4 +125,71 @@ it('uses preview railpack environment variables for preview deployments', functi
     expect($variables->all())->toBe([
         'RAILPACK_PREVIEW_ONLY' => 'preview-value',
     ]);
+});
+
+it('merges coolify env variables into railpack build variables', function () {
+    $application = Mockery::mock(Application::class);
+    $application->shouldReceive('getAttribute')->with('install_command')->andReturn(null);
+
+    $userVar = Mockery::mock(EnvironmentVariable::class)->makePartial();
+    $userVar->forceFill([
+        'key' => 'MY_BUILD_VAR',
+        'is_literal' => false,
+        'is_multiline' => false,
+    ]);
+    $userVar->shouldReceive('getResolvedValueWithServer')->once()->with(Mockery::type(Server::class))->andReturn('hello');
+
+    $envQuery = Mockery::mock();
+    $envQuery->shouldReceive('where')->with('is_buildtime', true)->once()->andReturnSelf();
+    $envQuery->shouldReceive('get')->once()->andReturn(collect([$userVar]));
+    $application->shouldReceive('environment_variables')->once()->andReturn($envQuery);
+
+    $job = Mockery::mock(ApplicationDeploymentJob::class)->makePartial();
+    $job->shouldAllowMockingProtectedMethods();
+    $job->shouldReceive('generate_coolify_env_variables')
+        ->with(true)
+        ->andReturn(collect([
+            'COOLIFY_URL' => 'https://app.example.com',
+            'COOLIFY_FQDN' => 'app.example.com',
+            'COOLIFY_BRANCH' => 'main',
+            'COOLIFY_RESOURCE_UUID' => 'app-uuid',
+            'SOURCE_COMMIT' => 'abc123',
+            'EMPTY_VAR' => '',
+            'NULL_VAR' => null,
+        ]));
+
+    $reflection = new ReflectionClass(ApplicationDeploymentJob::class);
+    $applicationProperty = $reflection->getProperty('application');
+    $applicationProperty->setAccessible(true);
+    $applicationProperty->setValue($job, $application);
+
+    $pullRequestProperty = $reflection->getProperty('pull_request_id');
+    $pullRequestProperty->setAccessible(true);
+    $pullRequestProperty->setValue($job, 0);
+
+    $mainServerProperty = $reflection->getProperty('mainServer');
+    $mainServerProperty->setAccessible(true);
+    $mainServerProperty->setValue($job, Mockery::mock(Server::class));
+
+    $method = $reflection->getMethod('generate_railpack_env_variables');
+    $method->setAccessible(true);
+    $variables = $method->invoke($job);
+
+    expect($variables->all())->toBe([
+        'MY_BUILD_VAR' => 'hello',
+        'COOLIFY_URL' => 'https://app.example.com',
+        'COOLIFY_FQDN' => 'app.example.com',
+        'COOLIFY_BRANCH' => 'main',
+        'COOLIFY_RESOURCE_UUID' => 'app-uuid',
+        'SOURCE_COMMIT' => 'abc123',
+    ]);
+
+    $envArgsProperty = $reflection->getProperty('env_railpack_args');
+    $envArgsProperty->setAccessible(true);
+    $envArgs = $envArgsProperty->getValue($job);
+
+    expect($envArgs)->toContain("--env 'COOLIFY_URL=https://app.example.com'");
+    expect($envArgs)->toContain("--env 'SOURCE_COMMIT=abc123'");
+    expect($envArgs)->not->toContain('EMPTY_VAR');
+    expect($envArgs)->not->toContain('NULL_VAR');
 });
