@@ -9,6 +9,9 @@
         fullscreen: @entangle('fullscreen'),
         alwaysScroll: {{ $isKeepAliveOn ? 'true' : 'false' }},
         rafId: null,
+        scrollDebounce: null,
+        isScrolling: false,
+        lastTouchY: 0,
         showTimestamps: true,
         searchQuery: '',
         matchCount: 0,
@@ -19,8 +22,53 @@
         scrollToBottom() {
             const logsContainer = document.getElementById('logsContainer');
             if (logsContainer) {
+                this.isScrolling = true;
                 logsContainer.scrollTop = logsContainer.scrollHeight;
+                setTimeout(() => { this.isScrolling = false; }, 50);
             }
+        },
+        disableFollow() {
+            if (!this.alwaysScroll) return;
+            this.alwaysScroll = false;
+            if (this.rafId) {
+                cancelAnimationFrame(this.rafId);
+                this.rafId = null;
+            }
+        },
+        handleWheel(event) {
+            if (this.alwaysScroll && event.deltaY < 0) {
+                this.disableFollow();
+            }
+        },
+        handleTouchStart(event) {
+            this.lastTouchY = event.touches[0].clientY;
+        },
+        handleTouchMove(event) {
+            if (!this.alwaysScroll) return;
+            const currentY = event.touches[0].clientY;
+            if (currentY > this.lastTouchY) {
+                this.disableFollow();
+            }
+            this.lastTouchY = currentY;
+        },
+        handleKeyScroll(event) {
+            if (!this.alwaysScroll) return;
+            const upKeys = ['ArrowUp', 'PageUp', 'Home'];
+            if (upKeys.includes(event.key)) {
+                this.disableFollow();
+            }
+        },
+        handleScroll(event) {
+            if (this.isScrolling) return;
+            clearTimeout(this.scrollDebounce);
+            this.scrollDebounce = setTimeout(() => {
+                const el = event.target;
+                const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+                if (!this.alwaysScroll && distanceFromBottom <= 10) {
+                    this.alwaysScroll = true;
+                    this.scheduleScroll();
+                }
+            }, 150);
         },
         scheduleScroll() {
             if (!this.alwaysScroll) return;
@@ -327,7 +375,8 @@
                             </div>
                         </div>
                     </div>
-                    <div id="logsContainer"
+                    <div id="logsContainer" @scroll="handleScroll" @wheel="handleWheel"
+                        @touchstart="handleTouchStart" @touchmove="handleTouchMove" @keydown="handleKeyScroll" tabindex="0"
                         class="flex min-h-40 flex-1 flex-col overflow-y-auto p-2 px-4 scrollbar">
                         <div id="logs" class="flex flex-col font-logs">
                             <div x-show="searchQuery.trim() && matchCount === 0"
