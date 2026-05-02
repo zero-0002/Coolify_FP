@@ -43,28 +43,47 @@ beforeEach(function () {
 });
 
 // Regression test: $request->input('force') ?? false coerced the string "false" to bool true,
-// causing every API deploy with force=false to run with --no-cache.
-test('force=false query string param does not set force_rebuild', function () {
+// causing every API deploy with ?force=false to run with --no-cache and bypass layer caching.
+//
+// Input       | input('force') ?? false (old) | boolean('force') (fix)
+// ------------|-------------------------------|----------------------
+// "false"     | true  (bug — non-empty string)| false  (correct)
+// "true"      | true                          | true
+// "0"         | false (PHP special-cases "0") | false
+// "1"         | true                          | true
+// absent/null | false                         | false
+
+dataset('falsy force values', [
+    'string false' => ['false'],
+    'string 0'     => ['0'],
+]);
+
+dataset('truthy force values', [
+    'string true' => ['true'],
+    'string 1'    => ['1'],
+]);
+
+test('force=<falsy> query string param does not set force_rebuild', function (string $value) {
     $response = $this->withHeaders(['Authorization' => 'Bearer '.$this->bearerToken])
-        ->postJson('/api/v1/deploy?uuid='.$this->application->uuid.'&force=false');
+        ->postJson('/api/v1/deploy?uuid='.$this->application->uuid.'&force='.$value);
 
     $response->assertSuccessful();
 
     $deployment = $this->application->deployment_queue()->latest('id')->first();
     expect($deployment)->not()->toBeNull();
     expect($deployment->force_rebuild)->toBeFalse();
-});
+})->with('falsy force values');
 
-test('force=true query string param sets force_rebuild', function () {
+test('force=<truthy> query string param sets force_rebuild', function (string $value) {
     $response = $this->withHeaders(['Authorization' => 'Bearer '.$this->bearerToken])
-        ->postJson('/api/v1/deploy?uuid='.$this->application->uuid.'&force=true');
+        ->postJson('/api/v1/deploy?uuid='.$this->application->uuid.'&force='.$value);
 
     $response->assertSuccessful();
 
     $deployment = $this->application->deployment_queue()->latest('id')->first();
     expect($deployment)->not()->toBeNull();
     expect($deployment->force_rebuild)->toBeTrue();
-});
+})->with('truthy force values');
 
 test('omitting force param does not set force_rebuild', function () {
     $response = $this->withHeaders(['Authorization' => 'Bearer '.$this->bearerToken])
