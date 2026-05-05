@@ -153,7 +153,7 @@ class OtherController extends Controller
         return response()->json(['message' => 'API disabled.'], 200);
     }
 
-    #[OA\Get(
+    #[OA\Post(
         summary: 'Enable MCP Server',
         description: 'Enable the MCP server endpoint at /mcp (only with root permissions).',
         path: '/mcp/enable',
@@ -209,7 +209,7 @@ class OtherController extends Controller
         return response()->json(['message' => 'MCP server enabled.'], 200);
     }
 
-    #[OA\Get(
+    #[OA\Post(
         summary: 'Disable MCP Server',
         description: 'Disable the MCP server endpoint at /mcp (only with root permissions).',
         path: '/mcp/disable',

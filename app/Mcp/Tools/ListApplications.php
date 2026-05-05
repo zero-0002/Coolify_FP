@@ -31,10 +31,13 @@ class ListApplications extends Tool
         }
 
         $tagName = $request->get('tag');
+        if ($tagName !== null && (! is_string($tagName) || trim($tagName) === '')) {
+            return Response::error('tag argument must be a non-empty string.');
+        }
         $args = $this->paginationArgs($request);
 
         $query = Application::ownedByCurrentTeamAPI($teamId)
-            ->when($tagName, function ($query, $tagName) {
+            ->when($tagName !== null, function ($query) use ($tagName) {
                 $query->whereHas('tags', fn ($q) => $q->where('name', $tagName));
             });
 

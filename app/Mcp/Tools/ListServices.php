@@ -4,7 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\BuildsResponse;
 use App\Mcp\Concerns\ResolvesTeam;
-use App\Models\Project;
+use App\Models\Service;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -32,17 +32,15 @@ class ListServices extends Tool
 
         $args = $this->paginationArgs($request);
 
-        $projects = Project::where('team_id', $teamId)->get();
-        $services = collect();
-        foreach ($projects as $project) {
-            $services = $services->merge($project->services()->get());
-        }
+        $query = Service::whereHas('environment.project', fn ($q) => $q->where('team_id', $teamId));
 
-        $total = $services->count();
+        $total = (clone $query)->count();
 
-        $summaries = $services
-            ->sortBy('name')
-            ->slice($args['offset'], $args['per_page'])
+        $summaries = $query
+            ->orderBy('name')
+            ->skip($args['offset'])
+            ->take($args['per_page'])
+            ->get()
             ->map(fn ($svc) => [
                 'uuid' => $svc->uuid,
                 'name' => $svc->name,

@@ -5485,7 +5485,7 @@ paths:
         -
           bearerAuth: []
   /mcp/enable:
-    get:
+    post:
       summary: 'Enable MCP Server'
       description: 'Enable the MCP server endpoint at /mcp (only with root permissions).'
       operationId: enable-mcp
@@ -5514,7 +5514,7 @@ paths:
         -
           bearerAuth: []
   /mcp/disable:
-    get:
+    post:
       summary: 'Disable MCP Server'
       description: 'Disable the MCP server endpoint at /mcp (only with root permissions).'
       operationId: disable-mcp

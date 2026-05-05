@@ -43,25 +43,25 @@ function makeNonRootMcpToken(User $user, Team $team, array $abilities = ['write'
     return $token->plainTextToken;
 }
 
-test('GET /api/v1/mcp/enable enables MCP server with root token', function () {
+test('POST /api/v1/mcp/enable enables MCP server with root token', function () {
     $token = makeRootMcpToken($this->user);
 
     $response = test()->withHeaders([
         'Authorization' => 'Bearer '.$token,
-    ])->getJson('/api/v1/mcp/enable');
+    ])->postJson('/api/v1/mcp/enable');
 
     $response->assertOk();
     $response->assertJson(['message' => 'MCP server enabled.']);
     expect(InstanceSettings::find(0)->is_mcp_server_enabled)->toBeTrue();
 });
 
-test('GET /api/v1/mcp/disable disables MCP server with root token', function () {
+test('POST /api/v1/mcp/disable disables MCP server with root token', function () {
     InstanceSettings::query()->where('id', 0)->update(['is_mcp_server_enabled' => true]);
     $token = makeRootMcpToken($this->user);
 
     $response = test()->withHeaders([
         'Authorization' => 'Bearer '.$token,
-    ])->getJson('/api/v1/mcp/disable');
+    ])->postJson('/api/v1/mcp/disable');
 
     $response->assertOk();
     $response->assertJson(['message' => 'MCP server disabled.']);
@@ -73,7 +73,7 @@ test('non-root token cannot enable MCP server', function () {
 
     $response = test()->withHeaders([
         'Authorization' => 'Bearer '.$token,
-    ])->getJson('/api/v1/mcp/enable');
+    ])->postJson('/api/v1/mcp/enable');
 
     $response->assertStatus(403);
     expect(InstanceSettings::find(0)->is_mcp_server_enabled)->toBeFalse();
@@ -85,14 +85,14 @@ test('non-root token cannot disable MCP server', function () {
 
     $response = test()->withHeaders([
         'Authorization' => 'Bearer '.$token,
-    ])->getJson('/api/v1/mcp/disable');
+    ])->postJson('/api/v1/mcp/disable');
 
     $response->assertStatus(403);
     expect(InstanceSettings::find(0)->is_mcp_server_enabled)->toBeTrue();
 });
 
 test('unauthenticated request to /api/v1/mcp/enable returns 401', function () {
-    $response = test()->getJson('/api/v1/mcp/enable');
+    $response = test()->postJson('/api/v1/mcp/enable');
     $response->assertStatus(401);
 });
 
@@ -101,7 +101,7 @@ test('read-only token cannot toggle MCP server (lacks write ability)', function 
 
     $response = test()->withHeaders([
         'Authorization' => 'Bearer '.$token,
-    ])->getJson('/api/v1/mcp/enable');
+    ])->postJson('/api/v1/mcp/enable');
 
     $response->assertStatus(403);
 });
