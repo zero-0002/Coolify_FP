@@ -945,10 +945,10 @@ $schema://$host {
     {
         return Attribute::make(
             get: function ($value) {
-                return preg_replace('/[^A-Za-z0-9\-_]/', '', $value);
+                return preg_replace('/[^A-Za-z0-9.\-_]/', '', $value);
             },
             set: function ($value) {
-                return preg_replace('/[^A-Za-z0-9\-_]/', '', $value);
+                return preg_replace('/[^A-Za-z0-9.\-_]/', '', $value);
             }
         );
     }

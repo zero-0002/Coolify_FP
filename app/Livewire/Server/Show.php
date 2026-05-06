@@ -110,7 +110,7 @@ class Show extends Component
             'name' => ValidationPatterns::nameRules(),
             'description' => ValidationPatterns::descriptionRules(),
             'ip' => ['required', new ValidServerIp],
-            'user' => ['required', 'regex:/^[a-zA-Z0-9_-]+$/'],
+            'user' => ['required', 'regex:/^[a-zA-Z0-9._-]+$/'],
             'port' => 'required|integer|between:1,65535',
             'connectionTimeout' => 'required|integer|min:1|max:300',
             'validationLogs' => 'nullable',

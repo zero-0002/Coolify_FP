@@ -57,7 +57,7 @@ class ByIp extends Component
             'name' => ValidationPatterns::nameRules(),
             'description' => ValidationPatterns::descriptionRules(),
             'ip' => ['required', 'string', new ValidServerIp],
-            'user' => ['required', 'string', 'regex:/^[a-zA-Z0-9_-]+$/'],
+            'user' => ['required', 'string', 'regex:/^[a-zA-Z0-9._-]+$/'],
             'port' => 'required|integer|between:1,65535',
             'is_build_server' => 'required|boolean',
         ];
