@@ -278,7 +278,7 @@ class Index extends Component
             'remoteServerName' => 'required|string',
             'remoteServerHost' => 'required|string',
             'remoteServerPort' => 'required|integer',
-            'remoteServerUser' => 'required|string',
+            'remoteServerUser' => 'required|string|regex:/^[a-zA-Z0-9._-]+$/',
         ]);
 
         $this->privateKey = formatPrivateKey($this->privateKey);
@@ -467,7 +467,7 @@ class Index extends Component
     {
         $this->validate([
             'remoteServerPort' => 'required|integer|min:1|max:65535',
-            'remoteServerUser' => 'required|string',
+            'remoteServerUser' => 'required|string|regex:/^[a-zA-Z0-9._-]+$/',
         ]);
 
         $this->createdServer->update([
