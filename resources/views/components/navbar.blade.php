@@ -92,8 +92,8 @@
                 }
             }
     }">
-    <div class="flex lg:pt-6 pt-4 pb-4 pl-2 items-start gap-2"
-        :class="collapsed ? 'lg:flex-col lg:items-center lg:pl-0 lg:gap-3' : ''">
+    <div class="flex pt-4 pb-4 pl-2 items-start gap-2"
+        :class="collapsed ? 'lg:flex-col lg:items-center lg:pl-0 lg:gap-3 lg:pt-8' : 'lg:pt-6'">
         <div class="flex flex-col w-full" :class="collapsed && 'lg:hidden'">
             <a href="/" {{ wireNavigate() }} class="text-2xl font-bold tracking-tight dark:text-white hover:opacity-80 transition-opacity">Coolify</a>
             <x-version />
