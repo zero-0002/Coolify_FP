@@ -1634,20 +1634,6 @@
         "minversion": "0.0.0",
         "port": "2368"
     },
-    "gitea-runner": {
-        "documentation": "https://github.com/go-gitea/gitea?utm_source=coolify.io",
-        "slogan": "Gitea Actions runner for docker",
-        "compose": "c2VydmljZXM6CiAgcnVubmVyOgogICAgaW1hZ2U6ICdkb2NrZXIuaW8vZ2l0ZWEvcnVubmVyOjEuMC4wJwogICAgY29udGFpbmVyX25hbWU6IGdpdGVhLXJ1bm5lcgogICAgcmVzdGFydDogdW5sZXNzLXN0b3BwZWQKICAgIGVudmlyb25tZW50OgogICAgICBHSVRFQV9JTlNUQU5DRV9VUkw6ICcke0dJVEVBX0lOU1RBTkNFX1VSTH0nCiAgICAgIEdJVEVBX1JVTk5FUl9SRUdJU1RSQVRJT05fVE9LRU46ICcke0dJVEVBX1JVTk5FUl9SRUdJU1RSQVRJT05fVE9LRU59JwogICAgICBHSVRFQV9SVU5ORVJfTkFNRTogJyR7R0lURUFfUlVOTkVSX05BTUU6LUdpdGVhIFJ1bm5lcn0nCiAgICAgIEdJVEVBX1JVTk5FUl9MQUJFTFM6ICcke0dJVEVBX1JVTk5FUl9MQUJFTFM6LXVidW50dS1sYXRlc3Q6ZG9ja2VyOi8vbm9kZToyMn0nCiAgICAgIEdJVEVBX1RPS0VOOiAnJHtHSVRFQV9UT0tFTn0nCiAgICB3b3JraW5nX2RpcjogL2RhdGEKICAgIHZvbHVtZXM6CiAgICAgIC0gJ3J1bm5lci1kYXRhOi9kYXRhJwogICAgICAtICcvdmFyL3J1bi9kb2NrZXIuc29jazovdmFyL3J1bi9kb2NrZXIuc29jaycKdm9sdW1lczoKICBydW5uZXItZGF0YTogbnVsbAo=",
-        "tags": [
-            "gitea",
-            "actions",
-            "runner",
-            "docker"
-        ],
-        "category": "devtools, runers",
-        "logo": "svgs/gitea.svg",
-        "minversion": "0.0.0"
-    },
     "gitea-with-mariadb": {
         "documentation": "https://docs.gitea.com?utm_source=coolify.io",
         "slogan": "Gitea is a self-hosted, lightweight Git service, offering version control, collaboration, and code hosting.",

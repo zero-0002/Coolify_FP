@@ -6,18 +6,17 @@
 
 services:
   runner:
-    image: "docker.io/gitea/runner:1.0.0"
-    restart: unless-stopped
+    image: 'docker.io/gitea/runner:1.0.0'
     environment:
-      GITEA_INSTANCE_URL: "${GITEA_INSTANCE_URL}"
-      GITEA_RUNNER_REGISTRATION_TOKEN: "${GITEA_RUNNER_REGISTRATION_TOKEN}"
-      GITEA_RUNNER_NAME: "${GITEA_RUNNER_NAME:-gitea-runner}"
-      GITEA_RUNNER_LABELS: "${GITEA_RUNNER_LABELS:-ubuntu-latest:docker://node:22}"
-      GITEA_TOKEN: "${GITEA_TOKEN}"
+      - 'GITEA_INSTANCE_URL=${GITEA_INSTANCE_URL}'
+      - 'GITEA_RUNNER_REGISTRATION_TOKEN=${GITEA_RUNNER_REGISTRATION_TOKEN}'
+      - 'GITEA_RUNNER_NAME=${GITEA_RUNNER_NAME:-gitea-runner}'
+      - 'GITEA_RUNNER_LABELS=${GITEA_RUNNER_LABELS:-ubuntu-latest:docker://node:22}'
+      - 'GITEA_TOKEN=${GITEA_TOKEN}'
     working_dir: /data
     volumes:
-      - "runner-data:/data"
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      - 'runner-data:/data'
+      - '/var/run/docker.sock:/var/run/docker.sock'
     healthcheck:
       test:
         - CMD-SHELL
@@ -25,5 +24,3 @@ services:
       interval: 5s
       timeout: 10s
       retries: 15
-volumes:
-  runner-data: null
