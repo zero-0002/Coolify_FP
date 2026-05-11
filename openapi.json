@@ -111,6 +111,7 @@
                                         "type": "string",
                                         "enum": [
                                             "nixpacks",
+                                            "railpack",
                                             "static",
                                             "dockerfile",
                                             "dockercompose"
@@ -569,6 +570,7 @@
                                         "type": "string",
                                         "enum": [
                                             "nixpacks",
+                                            "railpack",
                                             "static",
                                             "dockerfile",
                                             "dockercompose"
@@ -1019,6 +1021,7 @@
                                         "type": "string",
                                         "enum": [
                                             "nixpacks",
+                                            "railpack",
                                             "static",
                                             "dockerfile",
                                             "dockercompose"
@@ -1448,10 +1451,7 @@
                                     "build_pack": {
                                         "type": "string",
                                         "enum": [
-                                            "nixpacks",
-                                            "static",
-                                            "dockerfile",
-                                            "dockercompose"
+                                            "dockerfile"
                                         ],
                                         "description": "The build pack type."
                                     },
@@ -2290,6 +2290,7 @@
                                         "type": "string",
                                         "enum": [
                                             "nixpacks",
+                                            "railpack",
                                             "static",
                                             "dockerfile",
                                             "dockercompose"
@@ -12440,6 +12441,7 @@
                         "description": "Build pack.",
                         "enum": [
                             "nixpacks",
+                            "railpack",
                             "static",
                             "dockerfile",
                             "dockercompose"

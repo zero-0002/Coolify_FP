@@ -81,7 +81,7 @@ paths:
                   description: 'The git branch.'
                 build_pack:
                   type: string
-                  enum: [nixpacks, static, dockerfile, dockercompose]
+                  enum: [nixpacks, railpack, static, dockerfile, dockercompose]
                   description: 'The build pack type.'
                 ports_exposes:
                   type: string
@@ -375,7 +375,7 @@ paths:
                   description: 'The destination UUID.'
                 build_pack:
                   type: string
-                  enum: [nixpacks, static, dockerfile, dockercompose]
+                  enum: [nixpacks, railpack, static, dockerfile, dockercompose]
                   description: 'The build pack type.'
                 name:
                   type: string
@@ -663,7 +663,7 @@ paths:
                   description: 'The destination UUID.'
                 build_pack:
                   type: string
-                  enum: [nixpacks, static, dockerfile, dockercompose]
+                  enum: [nixpacks, railpack, static, dockerfile, dockercompose]
                   description: 'The build pack type.'
                 name:
                   type: string
@@ -935,7 +935,7 @@ paths:
                   description: 'The Dockerfile content.'
                 build_pack:
                   type: string
-                  enum: [nixpacks, static, dockerfile, dockercompose]
+                  enum: [dockerfile]
                   description: 'The build pack type.'
                 ports_exposes:
                   type: string
@@ -1479,7 +1479,7 @@ paths:
                   description: 'The destination UUID.'
                 build_pack:
                   type: string
-                  enum: [nixpacks, static, dockerfile, dockercompose]
+                  enum: [nixpacks, railpack, static, dockerfile, dockercompose]
                   description: 'The build pack type.'
                 name:
                   type: string
@@ -7888,6 +7888,7 @@ components:
           description: 'Build pack.'
           enum:
             - nixpacks
+            - railpack
             - static
             - dockerfile
             - dockercompose
