@@ -62,17 +62,18 @@ class DatabasesController extends Controller
      */
     private function exposeNestedServerSecrets(Model $model): void
     {
-        $server = $model->destination?->server ?? null;
-        if (! $server) {
+        $server = $model->destination?->server;
+        if ($server === null) {
             return;
         }
+
         $server->makeVisible([
             'logdrain_axiom_api_key',
             'logdrain_newrelic_license_key',
         ]);
-        $settings = $server->settings ?? null;
-        if ($settings) {
-            $settings->makeVisible([
+
+        if ($server->settings !== null) {
+            $server->settings->makeVisible([
                 'sentinel_token',
                 'sentinel_custom_url',
                 'logdrain_newrelic_license_key',
