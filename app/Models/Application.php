@@ -229,7 +229,9 @@ class Application extends BaseModel
         'manual_webhook_secret_gitea',
         'dockerfile',
         'docker_compose',
+        'docker_compose_pr',
         'docker_compose_raw',
+        'docker_compose_pr_raw',
         'custom_labels',
     ];
 

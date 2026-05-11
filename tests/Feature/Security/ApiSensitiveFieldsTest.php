@@ -196,4 +196,14 @@ describe('GET /api/v1/databases sensitive field gating', function () {
         expect($body)->toContain('"internal_db_url":');
         expect($body)->toContain('"sentinel_token":');
     });
+
+    test('project database list can eager load nested destination server settings', function () {
+        $databases = $this->project->databases(['destination.server.settings']);
+        $database = $databases->firstWhere('id', $this->database->id);
+
+        expect($database)->not->toBeNull()
+            ->and($database->relationLoaded('destination'))->toBeTrue()
+            ->and($database->destination->relationLoaded('server'))->toBeTrue()
+            ->and($database->destination->server->relationLoaded('settings'))->toBeTrue();
+    });
 });

@@ -20,6 +20,7 @@ use App\Models\ScheduledDatabaseBackup;
 use App\Models\Server;
 use App\Models\StandalonePostgresql;
 use App\Support\ValidationPatterns;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -59,7 +60,7 @@ class DatabasesController extends Controller
      * Expose sensitive fields on eager-loaded nested Server + ServerSetting
      * relations for callers with the `read:sensitive` or `root` token ability.
      */
-    private function exposeNestedServerSecrets($model): void
+    private function exposeNestedServerSecrets(Model $model): void
     {
         $server = $model->destination?->server ?? null;
         if (! $server) {
@@ -118,8 +119,12 @@ class DatabasesController extends Controller
         }
         $projects = Project::where('team_id', $teamId)->get();
         $databases = collect();
+        $databaseRelations = $request->attributes->get('can_read_sensitive', false) === true
+            ? ['destination.server.settings']
+            : [];
+
         foreach ($projects as $project) {
-            $databases = $databases->merge($project->databases());
+            $databases = $databases->merge($project->databases($databaseRelations));
         }
 
         $databaseIds = $databases->pluck('id')->toArray();
