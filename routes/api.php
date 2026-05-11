@@ -35,6 +35,8 @@ Route::group([
 ], function () {
     Route::get('/enable', [OtherController::class, 'enable_api']);
     Route::get('/disable', [OtherController::class, 'disable_api']);
+    Route::post('/mcp/enable', [OtherController::class, 'enable_mcp']);
+    Route::post('/mcp/disable', [OtherController::class, 'disable_mcp']);
 });
 Route::group([
     'middleware' => ['auth:sanctum', ApiAllowed::class, 'api.sensitive'],
@@ -215,6 +217,8 @@ Route::group([
     Route::post('/sentinel/push', function () {
         $token = request()->header('Authorization');
         if (! $token) {
+            auditLogWebhookFailure('sentinel', 'token_missing');
+
             return response()->json(['message' => 'Unauthorized'], 401);
         }
         $naked_token = str_replace('Bearer ', '', $token);
@@ -222,32 +226,60 @@ Route::group([
             $decrypted = decrypt($naked_token);
             $decrypted_token = json_decode($decrypted, true);
         } catch (Exception $e) {
+            auditLogWebhookFailure('sentinel', 'decrypt_failed');
+
             return response()->json(['message' => 'Invalid token'], 401);
         }
         $server_uuid = data_get($decrypted_token, 'server_uuid');
         if (! $server_uuid) {
+            auditLogWebhookFailure('sentinel', 'invalid_token_payload');
+
             return response()->json(['message' => 'Invalid token'], 401);
         }
         $server = Server::where('uuid', $server_uuid)->first();
         if (! $server) {
+            auditLogWebhookFailure('sentinel', 'server_not_found', [
+                'server_uuid' => $server_uuid,
+            ]);
+
             return response()->json(['message' => 'Server not found'], 404);
         }
 
         if (isCloud() && data_get($server->team->subscription, 'stripe_invoice_paid', false) === false && $server->team->id !== 0) {
+            auditLogWebhookFailure('sentinel', 'subscription_unpaid', [
+                'server_uuid' => $server->uuid,
+                'team_id' => $server->team_id,
+            ]);
+
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
         if ($server->isFunctional() === false) {
+            auditLogWebhookFailure('sentinel', 'server_not_functional', [
+                'server_uuid' => $server->uuid,
+                'team_id' => $server->team_id,
+            ]);
+
             return response()->json(['message' => 'Server is not functional'], 401);
         }
 
         if ($server->settings->sentinel_token !== $naked_token) {
+            auditLogWebhookFailure('sentinel', 'token_mismatch', [
+                'server_uuid' => $server->uuid,
+                'team_id' => $server->team_id,
+            ]);
+
             return response()->json(['message' => 'Unauthorized'], 401);
         }
         $data = request()->all();
 
         // \App\Jobs\ServerCheckNewJob::dispatch($server, $data);
         PushServerUpdateJob::dispatch($server, $data);
+
+        auditLog('sentinel.metrics_pushed', [
+            'server_uuid' => $server->uuid,
+            'team_id' => $server->team_id,
+        ]);
 
         return response()->json(['message' => 'ok'], 200);
     });
