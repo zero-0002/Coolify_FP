@@ -956,7 +956,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->rolling_update();
     }
 
-    private function deploy_railpack_buildpack()
+    private function deploy_railpack_buildpack(): void
     {
         if ($this->use_build_server) {
             $this->server = $this->build_server;
