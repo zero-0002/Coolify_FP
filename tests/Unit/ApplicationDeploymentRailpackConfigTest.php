@@ -225,14 +225,14 @@ it('builds railpack docker command with matching env and secret flags for all ra
         ],
     );
 
-    expect($command)->toContain("env RAILPACK_NODE_VERSION='22'");
-    expect($command)->toContain("RAILPACK_INSTALL_CMD='npm ci && npm run postinstall'");
-    expect($command)->toContain("RAILPACK_DEPLOY_APT_PACKAGES='curl wget'");
-    expect($command)->toContain("SECRET_JSON='{\"token\":\"abc\"}'");
-    expect($command)->toContain('--secret id=RAILPACK_NODE_VERSION,env=RAILPACK_NODE_VERSION');
-    expect($command)->toContain('--secret id=RAILPACK_INSTALL_CMD,env=RAILPACK_INSTALL_CMD');
-    expect($command)->toContain('--secret id=RAILPACK_DEPLOY_APT_PACKAGES,env=RAILPACK_DEPLOY_APT_PACKAGES');
-    expect($command)->toContain('--secret id=SECRET_JSON,env=SECRET_JSON');
+    expect($command)->toContain("env 'RAILPACK_NODE_VERSION=22'");
+    expect($command)->toContain("'RAILPACK_INSTALL_CMD=npm ci && npm run postinstall'");
+    expect($command)->toContain("'RAILPACK_DEPLOY_APT_PACKAGES=curl wget'");
+    expect($command)->toContain("'SECRET_JSON={\"token\":\"abc\"}'");
+    expect($command)->toContain("--secret 'id=RAILPACK_NODE_VERSION,env=RAILPACK_NODE_VERSION'");
+    expect($command)->toContain("--secret 'id=RAILPACK_INSTALL_CMD,env=RAILPACK_INSTALL_CMD'");
+    expect($command)->toContain("--secret 'id=RAILPACK_DEPLOY_APT_PACKAGES,env=RAILPACK_DEPLOY_APT_PACKAGES'");
+    expect($command)->toContain("--secret 'id=SECRET_JSON,env=SECRET_JSON'");
     expect($command)->toContain(' --build-arg secrets-hash=');
     expect($command)->toContain('--build-arg BUILDKIT_SYNTAX="ghcr.io/railwayapp/railpack-frontend:v'.config('constants.coolify.railpack_version').'"');
 });

@@ -2570,7 +2570,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         return 'env '.$variables
             ->map(function ($value, $key) {
-                return "{$key}=".escapeShellValue($value);
+                return escapeShellValue("{$key}={$value}");
             })
             ->implode(' ').' ';
     }
@@ -2583,7 +2583,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         return ' '.$variables
             ->map(function ($value, $key) {
-                return "--secret id={$key},env={$key}";
+                return '--secret '.escapeShellValue("id={$key},env={$key}");
             })
             ->implode(' ');
     }

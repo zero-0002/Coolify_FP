@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\EnvironmentVariable as ModelsEnvironmentVariable;
+use App\Support\ValidationPatterns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use OpenApi\Attributes as OA;
@@ -370,7 +371,7 @@ class EnvironmentVariable extends BaseModel
     protected function key(): Attribute
     {
         return Attribute::make(
-            set: fn (string $value) => str($value)->trim()->replace(' ', '_')->value,
+            set: fn (string $value) => ValidationPatterns::validatedEnvironmentVariableKey($value),
         );
     }
 
