@@ -4,7 +4,7 @@ return [
     'coolify' => [
         'version' => '4.1.0',
         'helper_version' => '1.0.13',
-        'realtime_version' => '1.0.14',
+        'realtime_version' => '1.0.15',
         'railpack_version' => '0.22.0',
         'self_hosted' => env('SELF_HOSTED', true),
         'autoupdate' => env('AUTOUPDATE'),
