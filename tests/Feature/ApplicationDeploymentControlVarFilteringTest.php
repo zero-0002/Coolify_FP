@@ -285,3 +285,104 @@ it('filters buildpack control vars from dockerfile arg injection', function () {
     expect($job->writtenDockerfile)->not->toContain('ARG NIXPACKS_NODE_VERSION=');
     expect($job->writtenDockerfile)->not->toContain('ARG RAILPACK_NODE_VERSION=');
 });
+
+it('builds railpack variables from generic buildtime vars railpack vars and coolify vars only', function () {
+    [$application, $server] = makeDeploymentControlVarFixture([
+        'build_pack' => 'railpack',
+        'fqdn' => 'https://railpack.example.com',
+        'install_command' => 'pnpm install --frozen-lockfile',
+    ]);
+
+    createApplicationEnvironmentVariable($application, [
+        'key' => 'APP_ENV',
+        'value' => 'production',
+        'is_runtime' => false,
+        'is_buildtime' => true,
+    ]);
+    createApplicationEnvironmentVariable($application, [
+        'key' => 'RUNTIME_ONLY',
+        'value' => 'runtime',
+        'is_runtime' => true,
+        'is_buildtime' => false,
+    ]);
+    createApplicationEnvironmentVariable($application, [
+        'key' => 'NIXPACKS_NODE_VERSION',
+        'value' => '22',
+        'is_runtime' => false,
+        'is_buildtime' => true,
+    ]);
+    createApplicationEnvironmentVariable($application, [
+        'key' => 'RAILPACK_NODE_VERSION',
+        'value' => '20',
+        'is_runtime' => false,
+        'is_buildtime' => true,
+    ]);
+
+    [$job, $reflection] = makeControlVarFilteringJob($application->fresh(), $server, [
+        'build_pack' => 'railpack',
+        'branch' => 'main',
+    ]);
+
+    /** @var Collection $variables */
+    $variables = invokeDeploymentJobMethod($job, $reflection, 'railpack_build_variables');
+
+    expect($variables->get('APP_ENV'))->toBe('production');
+    expect($variables->get('RAILPACK_NODE_VERSION'))->toBe('20');
+    expect($variables->get('RAILPACK_INSTALL_CMD'))->toBe('pnpm install --frozen-lockfile');
+    expect($variables->get('RAILPACK_DEPLOY_APT_PACKAGES'))->toBe('curl wget');
+    expect($variables->get('COOLIFY_RESOURCE_UUID'))->toBe($application->uuid);
+    expect($variables->has('NIXPACKS_NODE_VERSION'))->toBeFalse();
+    expect($variables->has('RUNTIME_ONLY'))->toBeFalse();
+});
+
+it('builds preview railpack variables without leaking stale nixpacks vars', function () {
+    [$application, $server] = makeDeploymentControlVarFixture([
+        'build_pack' => 'railpack',
+        'fqdn' => 'https://railpack.example.com',
+    ]);
+
+    createApplicationEnvironmentVariable($application, [
+        'key' => 'PREVIEW_BUILD_FLAG',
+        'value' => 'enabled',
+        'is_preview' => true,
+        'is_runtime' => false,
+        'is_buildtime' => true,
+    ]);
+    createApplicationEnvironmentVariable($application, [
+        'key' => 'PREVIEW_RUNTIME_ONLY',
+        'value' => 'runtime',
+        'is_preview' => true,
+        'is_runtime' => true,
+        'is_buildtime' => false,
+    ]);
+    createApplicationEnvironmentVariable($application, [
+        'key' => 'NIXPACKS_NODE_VERSION',
+        'value' => '22',
+        'is_preview' => true,
+        'is_runtime' => false,
+        'is_buildtime' => true,
+    ]);
+    createApplicationEnvironmentVariable($application, [
+        'key' => 'RAILPACK_NODE_VERSION',
+        'value' => '20',
+        'is_preview' => true,
+        'is_runtime' => false,
+        'is_buildtime' => true,
+    ]);
+
+    [$job, $reflection] = makeControlVarFilteringJob($application->fresh(), $server, [
+        'build_pack' => 'railpack',
+        'branch' => 'feature/railpack',
+        'pull_request_id' => 123,
+    ]);
+
+    /** @var Collection $variables */
+    $variables = invokeDeploymentJobMethod($job, $reflection, 'railpack_build_variables');
+
+    expect($variables->get('PREVIEW_BUILD_FLAG'))->toBe('enabled');
+    expect($variables->get('RAILPACK_NODE_VERSION'))->toBe('20');
+    expect($variables->get('RAILPACK_DEPLOY_APT_PACKAGES'))->toBe('curl wget');
+    expect($variables->get('COOLIFY_RESOURCE_UUID'))->toBe($application->uuid);
+    expect($variables->has('NIXPACKS_NODE_VERSION'))->toBeFalse();
+    expect($variables->has('PREVIEW_RUNTIME_ONLY'))->toBeFalse();
+});

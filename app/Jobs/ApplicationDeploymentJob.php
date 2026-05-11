@@ -2509,11 +2509,16 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
      */
     private function railpack_build_variables(): Collection
     {
-        $envCollection = $this->pull_request_id === 0
-            ? $this->application->environment_variables()->where('is_buildtime', true)->get()
-            : $this->application->environment_variables_preview()->where('is_buildtime', true)->get();
+        $genericBuildVariables = $this->pull_request_id === 0
+            ? $this->application->environment_variables()->withoutBuildpackControlVariables()->where('is_buildtime', true)->get()
+            : $this->application->environment_variables_preview()->withoutBuildpackControlVariables()->where('is_buildtime', true)->get();
 
-        $variables = $envCollection
+        $railpackVariables = $this->pull_request_id === 0
+            ? $this->application->railpack_environment_variables()->get()
+            : $this->application->railpack_environment_variables_preview()->get();
+
+        $variables = $genericBuildVariables
+            ->merge($railpackVariables)
             ->mapWithKeys(function (EnvironmentVariable $environmentVariable) {
                 $value = $this->normalize_resolved_build_variable_value($environmentVariable);
                 if (is_null($value) || $value === '') {
@@ -2527,6 +2532,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $variables->put('RAILPACK_INSTALL_CMD', $this->application->install_command);
         }
 
+        $variables = $this->merge_railpack_deploy_apt_packages($variables);
+
         // Mirror Nixpacks behavior: expose COOLIFY_* and SOURCE_COMMIT to the build so apps
         // (e.g. SPAs baking the public URL) can read them via /run/secrets/<KEY>.
         foreach ($this->generate_coolify_env_variables(forBuildTime: true) as $key => $value) {
@@ -2534,6 +2541,23 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $variables->put($key, $value);
             }
         }
+
+        return $variables;
+    }
+
+    private function merge_railpack_deploy_apt_packages(Collection $variables): Collection
+    {
+        $packages = collect(preg_split('/\s+/', trim((string) $variables->get('RAILPACK_DEPLOY_APT_PACKAGES', ''))) ?: [])
+            ->filter()
+            ->values();
+
+        foreach (['curl', 'wget'] as $package) {
+            if (! $packages->contains($package)) {
+                $packages->push($package);
+            }
+        }
+
+        $variables->put('RAILPACK_DEPLOY_APT_PACKAGES', $packages->implode(' '));
 
         return $variables;
     }
