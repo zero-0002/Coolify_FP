@@ -1154,12 +1154,15 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $this->production_image_name = "{$this->dockerImage}:{$this->dockerImageTag}";
             }
         } elseif ($this->pull_request_id !== 0) {
+            $previewImageTag = $this->previewImageTag();
+            $previewBuildImageTag = $this->previewImageTag(build: true);
+
             if ($this->application->docker_registry_image_name) {
-                $this->build_image_name = "{$this->application->docker_registry_image_name}:pr-{$this->pull_request_id}-build";
-                $this->production_image_name = "{$this->application->docker_registry_image_name}:pr-{$this->pull_request_id}";
+                $this->build_image_name = "{$this->application->docker_registry_image_name}:{$previewBuildImageTag}";
+                $this->production_image_name = "{$this->application->docker_registry_image_name}:{$previewImageTag}";
             } else {
-                $this->build_image_name = "{$this->application->uuid}:pr-{$this->pull_request_id}-build";
-                $this->production_image_name = "{$this->application->uuid}:pr-{$this->pull_request_id}";
+                $this->build_image_name = "{$this->application->uuid}:{$previewBuildImageTag}";
+                $this->production_image_name = "{$this->application->uuid}:{$previewImageTag}";
             }
         } else {
             $this->dockerImageTag = str($this->commit)->substr(0, 128);
@@ -1174,6 +1177,23 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $this->production_image_name = "{$this->application->uuid}:{$this->dockerImageTag}";
             }
         }
+    }
+
+    private function previewImageTag(bool $build = false): string
+    {
+        $prefix = "pr-{$this->pull_request_id}-";
+        $suffix = $build ? '-build' : '';
+        $maxCommitLength = max(1, 128 - strlen($prefix) - strlen($suffix));
+        $commit = Str::of($this->commit ?: 'HEAD')
+            ->replaceMatches('/[^A-Za-z0-9_.-]/', '-')
+            ->substr(0, $maxCommitLength)
+            ->toString();
+
+        if ($commit === '') {
+            $commit = 'HEAD';
+        }
+
+        return "{$prefix}{$commit}{$suffix}";
     }
 
     private function just_restart()
