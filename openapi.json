@@ -1451,11 +1451,7 @@
                                     "build_pack": {
                                         "type": "string",
                                         "enum": [
-                                            "nixpacks",
-                                            "railpack",
-                                            "static",
-                                            "dockerfile",
-                                            "dockercompose"
+                                            "dockerfile"
                                         ],
                                         "description": "The build pack type."
                                     },

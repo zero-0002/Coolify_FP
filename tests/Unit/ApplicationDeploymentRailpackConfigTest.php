@@ -205,6 +205,17 @@ it('builds railpack prepare command using railpack env for install and cli flags
     expect($command)->not->toContain('RAILPACK_START_CMD=');
 });
 
+it('fails fast when docker buildx is unavailable for railpack builds', function () {
+    [$job, $reflection] = makeRailpackDeploymentJob();
+
+    $dockerBuildxAvailableProperty = $reflection->getProperty('dockerBuildxAvailable');
+    $dockerBuildxAvailableProperty->setAccessible(true);
+    $dockerBuildxAvailableProperty->setValue($job, false);
+
+    expect(fn () => invokeRailpackMethod($job, $reflection, 'ensure_docker_buildx_available_for_railpack'))
+        ->toThrow(DeploymentException::class, 'Railpack deployments require the Docker buildx CLI plugin');
+});
+
 it('builds railpack docker command with matching env and secret flags for all railpack variables', function () {
     [$job, $reflection] = makeRailpackDeploymentJob([
         'uuid' => 'application-uuid',

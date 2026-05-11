@@ -935,7 +935,7 @@ paths:
                   description: 'The Dockerfile content.'
                 build_pack:
                   type: string
-                  enum: [nixpacks, railpack, static, dockerfile, dockercompose]
+                  enum: [dockerfile]
                   description: 'The build pack type.'
                 ports_exposes:
                   type: string

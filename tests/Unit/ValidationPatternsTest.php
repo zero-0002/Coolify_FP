@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\EnvironmentVariable;
 use App\Support\ValidationPatterns;
 
 it('accepts valid names with common characters', function (string $name) {
@@ -164,4 +165,11 @@ it('generates environment variable key rules with correct defaults', function ()
 
 it('normalizes environment variable keys by trimming surrounding whitespace', function () {
     expect(ValidationPatterns::normalizeEnvironmentVariableKey(' node.name '))->toBe('node.name');
+});
+
+it('normalizes environment variable keys before model validation', function () {
+    $environmentVariable = new EnvironmentVariable;
+    $environmentVariable->key = ' APP_ENV ';
+
+    expect($environmentVariable->key)->toBe('APP_ENV');
 });

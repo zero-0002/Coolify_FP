@@ -371,7 +371,9 @@ class EnvironmentVariable extends BaseModel
     protected function key(): Attribute
     {
         return Attribute::make(
-            set: fn (string $value) => ValidationPatterns::validatedEnvironmentVariableKey($value),
+            set: fn (string $value) => ValidationPatterns::validatedEnvironmentVariableKey(
+                ValidationPatterns::normalizeEnvironmentVariableKey($value)
+            ),
         );
     }
 

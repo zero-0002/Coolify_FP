@@ -181,6 +181,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private bool $dockerBuildkitSupported = false;
 
+    private bool $dockerBuildxAvailable = false;
+
     private bool $dockerSecretsSupported = false;
 
     private bool $skip_build = false;
@@ -421,6 +423,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
             if ($majorVersion < 18 || ($majorVersion == 18 && $minorVersion < 9)) {
                 $this->dockerBuildkitSupported = false;
+                $this->dockerBuildxAvailable = false;
                 $this->application_deployment_queue->addLogEntry("Docker {$dockerVersion} on {$serverName} does not support BuildKit (requires 18.09+).");
 
                 return;
@@ -434,8 +437,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
             if (trim($buildxAvailable) === 'available') {
                 $this->dockerBuildkitSupported = true;
+                $this->dockerBuildxAvailable = true;
                 $this->application_deployment_queue->addLogEntry("Docker {$dockerVersion} with BuildKit and Buildx detected on {$serverName}.");
             } else {
+                $this->dockerBuildxAvailable = false;
+
                 // Fallback: test DOCKER_BUILDKIT=1 support via --progress flag
                 $buildkitTest = instant_remote_process(
                     ["DOCKER_BUILDKIT=1 docker build --help 2>&1 | grep -q '\\-\\-progress' && echo 'supported' || echo 'not-supported'"],
@@ -468,6 +474,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
         } catch (Exception $e) {
             $this->dockerBuildkitSupported = false;
+            $this->dockerBuildxAvailable = false;
             $this->dockerSecretsSupported = false;
             $this->application_deployment_queue->addLogEntry("Could not detect BuildKit capabilities on {$serverName}: {$e->getMessage()}");
         }
@@ -2760,8 +2767,19 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         return $prepare_command;
     }
 
+    private function ensure_docker_buildx_available_for_railpack(): void
+    {
+        if ($this->dockerBuildxAvailable) {
+            return;
+        }
+
+        throw new DeploymentException('Railpack deployments require the Docker buildx CLI plugin on the build server. Install or enable docker buildx and retry the deployment.');
+    }
+
     private function build_railpack_image(): void
     {
+        $this->ensure_docker_buildx_available_for_railpack();
+
         $railpackVariables = $this->generate_railpack_env_variables();
         $railpackConfigPath = $this->generate_railpack_config_file();
 

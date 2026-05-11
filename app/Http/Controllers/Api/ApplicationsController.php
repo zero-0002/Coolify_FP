@@ -650,7 +650,7 @@ class ApplicationsController extends Controller
                             'environment_name' => ['type' => 'string', 'description' => 'The environment name. You need to provide at least one of environment_name or environment_uuid.'],
                             'environment_uuid' => ['type' => 'string', 'description' => 'The environment UUID. You need to provide at least one of environment_name or environment_uuid.'],
                             'dockerfile' => ['type' => 'string', 'description' => 'The Dockerfile content.'],
-                            'build_pack' => ['type' => 'string', 'enum' => ['nixpacks', 'railpack', 'static', 'dockerfile', 'dockercompose'], 'description' => 'The build pack type.'],
+                            'build_pack' => ['type' => 'string', 'enum' => ['dockerfile'], 'description' => 'The build pack type.'],
                             'ports_exposes' => ['type' => 'string', 'description' => 'The ports to expose.'],
                             'destination_uuid' => ['type' => 'string', 'description' => 'The destination UUID.'],
                             'name' => ['type' => 'string', 'description' => 'The application name.'],
