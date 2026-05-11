@@ -14,6 +14,7 @@ use App\Models\Project;
 use App\Models\Server;
 use App\Models\Service;
 use App\Support\ValidationPatterns;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -50,9 +51,9 @@ class ServicesController extends Controller
      * Handles both single models and Eloquent Collections (the listing endpoint
      * passes a Collection of Services per project to removeSensitiveData()).
      */
-    private function exposeNestedServerSecrets($model): void
+    private function exposeNestedServerSecrets(Model|Collection $model): void
     {
-        if ($model instanceof Collection || $model instanceof \Illuminate\Database\Eloquent\Collection) {
+        if ($model instanceof Collection) {
             foreach ($model as $item) {
                 $this->exposeNestedServerSecrets($item);
             }
@@ -215,8 +216,12 @@ class ServicesController extends Controller
         }
         $projects = Project::where('team_id', $teamId)->get();
         $services = collect();
+        $serviceRelations = $request->attributes->get('can_read_sensitive', false) === true
+            ? ['destination.server.settings']
+            : [];
+
         foreach ($projects as $project) {
-            $services->push($project->services()->get());
+            $services->push($project->services()->with($serviceRelations)->get());
         }
         foreach ($services as $service) {
             $service = $this->removeSensitiveData($service);
@@ -771,7 +776,12 @@ class ServicesController extends Controller
 
         $this->authorize('view', $service);
 
-        $service = $service->load(['applications', 'databases']);
+        $serviceRelations = ['applications', 'databases'];
+        if ($request->attributes->get('can_read_sensitive', false) === true) {
+            $serviceRelations[] = 'destination.server.settings';
+        }
+
+        $service = $service->load($serviceRelations);
 
         return response()->json($this->removeSensitiveData($service));
     }

@@ -5,6 +5,7 @@ use App\Models\Environment;
 use App\Models\InstanceSettings;
 use App\Models\Project;
 use App\Models\Server;
+use App\Models\Service;
 use App\Models\StandalonePostgresql;
 use App\Models\Team;
 use App\Models\User;
@@ -205,5 +206,79 @@ describe('GET /api/v1/databases sensitive field gating', function () {
             ->and($database->relationLoaded('destination'))->toBeTrue()
             ->and($database->destination->relationLoaded('server'))->toBeTrue()
             ->and($database->destination->server->relationLoaded('settings'))->toBeTrue();
+    });
+});
+
+describe('GET /api/v1/services sensitive field gating', function () {
+    beforeEach(function () {
+        $this->project = Project::factory()->create(['team_id' => $this->team->id]);
+        $this->environment = Environment::factory()->create(['project_id' => $this->project->id]);
+
+        $destination = $this->server->standaloneDockers()->firstOrFail();
+        $this->service = Service::factory()->create([
+            'server_id' => $this->server->id,
+            'destination_id' => $destination->id,
+            'destination_type' => $destination->getMorphClass(),
+            'environment_id' => $this->environment->id,
+        ]);
+    });
+
+    test('read token does not leak service or nested server sensitive fields', function () {
+        $token = makeApiToken($this->user, $this->team, ['read']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/v1/services');
+
+        $response->assertStatus(200);
+
+        $body = $response->getContent();
+        expect($body)->not->toContain('"docker_compose_raw":')
+            ->and($body)->not->toContain('"sentinel_token":')
+            ->and($body)->not->toContain('"sentinel_custom_url":');
+    });
+
+    test('read sensitive token sees service and nested server sensitive fields', function () {
+        $token = makeApiToken($this->user, $this->team, ['read', 'read:sensitive']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/v1/services');
+
+        $response->assertStatus(200);
+
+        $body = $response->getContent();
+        expect($body)->toContain('"docker_compose_raw":')
+            ->and($body)->toContain('"sentinel_token":')
+            ->and($body)->toContain('"sentinel_custom_url":');
+    });
+
+    test('read sensitive service list eager loads nested server settings once', function () {
+        $secondServer = Server::factory()->create(['team_id' => $this->team->id]);
+        $secondDestination = $secondServer->standaloneDockers()->firstOrFail();
+
+        Service::factory()->create([
+            'server_id' => $secondServer->id,
+            'destination_id' => $secondDestination->id,
+            'destination_type' => $secondDestination->getMorphClass(),
+            'environment_id' => $this->environment->id,
+        ]);
+
+        $token = makeApiToken($this->user, $this->team, ['read', 'read:sensitive']);
+        $serverSettingsQueries = collect();
+
+        DB::listen(function ($query) use ($serverSettingsQueries) {
+            if (str_contains($query->sql, 'from "server_settings"')) {
+                $serverSettingsQueries->push($query->sql);
+            }
+        });
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/v1/services');
+
+        $response->assertStatus(200);
+
+        expect($serverSettingsQueries->contains(fn (string $sql) => str_contains($sql, '"server_settings"."server_id" in')))->toBeTrue();
     });
 });
