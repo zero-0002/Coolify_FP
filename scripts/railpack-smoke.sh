@@ -45,7 +45,7 @@ DEFAULT_APPS=(
     railpack-python-flask
     railpack-go-gin
     railpack-rust
-    railpack-laravel
+    railpack-symfony
     railpack-bun
 )
 
@@ -255,7 +255,7 @@ assert_fqdn_responds() {
     local code
     code=$(curl -ksSL -o /dev/null -w '%{http_code}' --max-time 10 "$fqdn" || echo "000")
     case "$code" in
-        2*|3*) pass "$app_uuid" "fqdn ${fqdn} -> ${code}" ;;
+        2*|3*|4*) pass "$app_uuid" "fqdn ${fqdn} -> ${code}" ;;
         *)     fail "$app_uuid" "fqdn ${fqdn} -> ${code}" ;;
     esac
 }

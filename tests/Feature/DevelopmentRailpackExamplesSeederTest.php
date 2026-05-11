@@ -67,11 +67,18 @@ it('seeds the railpack examples in development mode', function () {
     expect($applications)->toHaveCount(count(DevelopmentRailpackExamplesSeeder::examples()));
     expect($applications->every(fn (Application $application) => $application->build_pack === 'railpack'))->toBeTrue();
     expect($applications->every(fn (Application $application) => $application->git_repository === DevelopmentRailpackExamplesSeeder::GIT_REPOSITORY))->toBeTrue();
-    expect($applications->every(fn (Application $application) => $application->git_branch === DevelopmentRailpackExamplesSeeder::GIT_BRANCH))->toBeTrue();
+
+    $examples = collect(DevelopmentRailpackExamplesSeeder::examples())->keyBy('uuid');
+    expect($applications->every(
+        fn (Application $application) => $application->git_branch === ($examples->get($application->uuid)['git_branch'] ?? DevelopmentRailpackExamplesSeeder::GIT_BRANCH)
+    ))->toBeTrue();
 
     $nestjs = $applications->firstWhere('uuid', 'railpack-nestjs');
     $angularStatic = $applications->firstWhere('uuid', 'railpack-angular-static');
     $eleventyStatic = $applications->firstWhere('uuid', 'railpack-eleventy-static');
+    $pythonFlask = $applications->firstWhere('uuid', 'railpack-python-flask');
+    $goGin = $applications->firstWhere('uuid', 'railpack-go-gin');
+    $rust = $applications->firstWhere('uuid', 'railpack-rust');
 
     expect($nestjs)
         ->not->toBeNull()
@@ -93,6 +100,19 @@ it('seeds the railpack examples in development mode', function () {
         ->and($eleventyStatic->publish_directory)->toBe('/_site')
         ->and($eleventyStatic->settings->is_static)->toBeTrue()
         ->and($eleventyStatic->settings->is_spa)->toBeFalse();
+
+    expect($pythonFlask)
+        ->not->toBeNull()
+        ->and($pythonFlask->ports_exposes)->toBe('5000')
+        ->and($pythonFlask->start_command)->toBe('flask run --host=0.0.0.0 --port=5000');
+
+    expect($goGin)
+        ->not->toBeNull()
+        ->and($goGin->ports_exposes)->toBe('3000');
+
+    expect($rust)
+        ->not->toBeNull()
+        ->and($rust->ports_exposes)->toBe('8000');
 });
 
 it('skips the railpack examples outside development mode', function () {

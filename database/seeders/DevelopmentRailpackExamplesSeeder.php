@@ -295,20 +295,20 @@ class DevelopmentRailpackExamplesSeeder extends Seeder
                 'base_directory' => '/flask',
                 'ports_exposes' => '5000',
                 'git_branch' => 'v4.x',
-                'start_command' => 'gunicorn app:app --bind 0.0.0.0:5000',
+                'start_command' => 'flask run --host=0.0.0.0 --port=5000',
             ],
             [
                 'uuid' => 'railpack-go-gin',
                 'name' => 'Railpack Go Gin Example',
                 'base_directory' => '/go/gin',
-                'ports_exposes' => '8080',
+                'ports_exposes' => '3000',
                 'git_branch' => 'v4.x',
             ],
             [
                 'uuid' => 'railpack-rust',
                 'name' => 'Railpack Rust Example',
                 'base_directory' => '/rust',
-                'ports_exposes' => '8080',
+                'ports_exposes' => '8000',
                 'git_branch' => 'v4.x',
             ],
             [
