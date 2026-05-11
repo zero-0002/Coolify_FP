@@ -38,6 +38,8 @@ RUN apk upgrade --no-cache && \
     mkdir -p /usr/share/keyrings && \
     curl -fSsL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor > /usr/share/keyrings/postgresql.gpg
 
+RUN sed -i 's|http://nginx.org/packages|https://nginx.org/packages|g' /etc/apk/repositories
+
 # Install system dependencies
 RUN apk add --no-cache \
     postgresql${POSTGRES_VERSION}-client \
