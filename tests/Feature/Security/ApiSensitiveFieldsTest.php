@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\Application;
+use App\Models\ApplicationDeploymentQueue;
 use App\Models\Environment;
 use App\Models\InstanceSettings;
+use App\Models\PrivateKey;
 use App\Models\Project;
 use App\Models\Server;
 use App\Models\Service;
@@ -98,6 +100,99 @@ describe('GET /api/v1/servers sensitive field gating', function () {
 
         $body = $response->getContent();
         expect($body)->toContain('sentinel_token');
+    });
+});
+
+describe('GET /api/v1/security/keys sensitive field gating', function () {
+    beforeEach(function () {
+        PrivateKey::withoutEvents(function () {
+            PrivateKey::forceCreate([
+                'uuid' => 'private-key-sensitive-test',
+                'name' => 'Sensitive key',
+                'description' => 'test',
+                'private_key' => 'super-secret-private-key',
+                'is_git_related' => false,
+                'team_id' => $this->team->id,
+            ]);
+        });
+    });
+
+    test('read token does not leak private key material', function () {
+        $token = makeApiToken($this->user, $this->team, ['read']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/v1/security/keys/private-key-sensitive-test');
+
+        $response->assertStatus(200);
+
+        expect($response->getContent())->not->toContain('"private_key":');
+    });
+
+    test('read sensitive token sees private key material', function () {
+        $token = makeApiToken($this->user, $this->team, ['read', 'read:sensitive']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/v1/security/keys/private-key-sensitive-test');
+
+        $response->assertStatus(200);
+
+        expect($response->getContent())->toContain('"private_key":');
+    });
+});
+
+describe('GET /api/v1/deployments sensitive field gating', function () {
+    beforeEach(function () {
+        $this->project = Project::factory()->create(['team_id' => $this->team->id]);
+        $this->environment = Environment::factory()->create(['project_id' => $this->project->id]);
+        $destination = $this->server->standaloneDockers()->firstOrFail();
+
+        $this->application = Application::create([
+            'name' => 'deployment-sensitive-test-app',
+            'git_repository' => 'https://github.com/test/test',
+            'git_branch' => 'main',
+            'build_pack' => 'nixpacks',
+            'ports_exposes' => '3000',
+            'environment_id' => $this->environment->id,
+            'destination_id' => $destination->id,
+            'destination_type' => $destination->getMorphClass(),
+        ]);
+
+        ApplicationDeploymentQueue::create([
+            'application_id' => $this->application->id,
+            'deployment_uuid' => 'deployment-sensitive-test',
+            'pull_request_id' => 0,
+            'status' => 'in_progress',
+            'logs' => '[{"output":"super-secret-deployment-log"}]',
+            'server_id' => $this->server->id,
+            'application_name' => $this->application->name,
+            'server_name' => $this->server->name,
+        ]);
+    });
+
+    test('read token does not leak deployment logs', function () {
+        $token = makeApiToken($this->user, $this->team, ['read']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/v1/deployments/deployment-sensitive-test');
+
+        $response->assertStatus(200);
+
+        expect($response->getContent())->not->toContain('"logs":');
+    });
+
+    test('read sensitive token sees deployment logs', function () {
+        $token = makeApiToken($this->user, $this->team, ['read', 'read:sensitive']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/v1/deployments/deployment-sensitive-test');
+
+        $response->assertStatus(200);
+
+        expect($response->getContent())->toContain('"logs":');
     });
 });
 

@@ -25,6 +25,10 @@ class DeployController extends Controller
             $deployment->makeHidden([
                 'logs',
             ]);
+        } else {
+            $deployment->makeVisible([
+                'logs',
+            ]);
         }
 
         return serializeApiResponse($deployment);
@@ -699,6 +703,9 @@ class DeployController extends Controller
         $this->authorize('view', $application);
 
         $deployments = $application->deployments($skip, $take);
+        if ($request->attributes->get('can_read_sensitive', false) === true) {
+            $deployments['deployments']->each->makeVisible(['logs']);
+        }
 
         return response()->json($deployments);
     }

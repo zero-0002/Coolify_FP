@@ -68,6 +68,10 @@ class ApplicationDeploymentQueue extends Model
         'finished_at',
     ];
 
+    protected $hidden = [
+        'logs',
+    ];
+
     protected $casts = [
         'pull_request_id' => 'integer',
         'finished_at' => 'datetime',
