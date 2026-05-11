@@ -14,8 +14,14 @@
     <h3>New Token</h3>
     @can('create', App\Models\PersonalAccessToken::class)
         <form class="flex flex-col gap-2" wire:submit='addNewToken'>
-            <div class="flex gap-2 items-end w-96">
-                <x-forms.input required id="description" label="Description" />
+            <div class="flex gap-2 items-end w-lg">
+                <x-forms.input class="w-64" required id="description" label="Description" />
+                <x-forms.select id="expiresInDays" label="Expires in" wire:model="expiresInDays">
+                    @foreach ($expirationOptions as $days => $label)
+                        <option value="{{ $days }}">{{ $label }}</option>
+                    @endforeach
+                    <option value="">Never</option>
+                </x-forms.select>
                 <x-forms.button type="submit">Create</x-forms.button>
             </div>
             <div class="flex items-center gap-2">
@@ -59,7 +65,7 @@
                         <x-forms.checkbox label="deploy (admin/owner only)" disabled domValue="deploy"
                             helper="Deploy access requires admin or owner role" :checked="false"></x-forms.checkbox>
                     @endif
-                    <x-forms.checkbox label="read" domValue="read" wire:model.live="permissions" domValue="read"
+                    <x-forms.checkbox label="read" wire:model.live="permissions" domValue="read"
                         :checked="in_array('read', $permissions)"></x-forms.checkbox>
                     @if ($canUseSensitivePermissions)
                         <x-forms.checkbox label="read:sensitive" wire:model.live="permissions" domValue="read:sensitive"
@@ -104,46 +110,83 @@
         <div class="flex items-center justify-between py-4">
             <h3>Issued Tokens</h3>
             @if ($tokens->count() > 1)
-                <input type="text" x-model="search" placeholder="Filter tokens..."
-                    class="input w-64" />
+                <input type="text" x-model="search" placeholder="Filter tokens..." class="input w-64" />
             @endif
         </div>
-        <div class="flex flex-col gap-2">
-            @forelse ($tokens as $token)
-                <div wire:key="token-{{ $token->id }}"
-                    x-show="!search || '{{ strtolower($token->name) }} {{ strtolower(implode(' ', $token->abilities ?? [])) }}'.includes(search.toLowerCase())"
-                    class="flex items-center justify-between p-3 border rounded dark:border-coolgray-200">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold dark:text-white">{{ $token->name }}</span>
-                            @if ($token->abilities)
-                                @foreach ($token->abilities as $ability)
-                                    <span
-                                        class="px-2 py-0.5 text-xs rounded-sm font-medium {{ $ability === 'root' ? 'bg-red-500/20 text-red-400' : ($ability === 'write' || $ability === 'write:sensitive' ? 'bg-amber-500/20 text-amber-400' : ($ability === 'deploy' ? 'bg-blue-500/20 text-blue-400' : 'bg-neutral-500/20 text-neutral-300')) }}">
-                                        {{ $ability }}
-                                    </span>
-                                @endforeach
-                            @endif
-                        </div>
-                        <div class="text-xs text-neutral-400">
-                            Last used: {{ $token->last_used_at ? $token->last_used_at->diffForHumans() : 'Never' }}
-                        </div>
+        <div class="flex flex-col">
+            <div class="overflow-x-auto">
+                <div class="inline-block min-w-full">
+                    <div class="overflow-hidden">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr>
+                                    <th class="px-5 py-3 text-xs font-medium text-left uppercase">Description</th>
+                                    <th class="px-5 py-3 text-xs font-medium text-left uppercase">Permissions</th>
+                                    <th class="px-5 py-3 text-xs font-medium text-left uppercase">Last used</th>
+                                    <th class="px-5 py-3 text-xs font-medium text-left uppercase">Created</th>
+                                    <th class="px-5 py-3 text-xs font-medium text-left uppercase">Expires</th>
+                                    <th class="px-5 py-3 text-xs font-medium text-left uppercase">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($tokens as $token)
+                                    <tr wire:key="token-{{ $token->id }}"
+                                        x-show="!search || {{ Js::from(strtolower($token->name).' '.strtolower(implode(' ', $token->abilities ?? []))) }}.includes(search.toLowerCase())">
+                                        <td class="px-5 py-4 text-sm whitespace-nowrap">{{ $token->name }}</td>
+                                        <td class="px-5 py-4 text-sm whitespace-nowrap">
+                                            @if ($token->abilities)
+                                                <div class="flex gap-1.5 flex-wrap">
+                                                    @foreach ($token->abilities as $ability)
+                                                        <span
+                                                            class="px-2 py-0.5 text-xs rounded-sm font-medium {{ $ability === 'root' ? 'bg-red-500/20 text-red-400' : ($ability === 'write' || $ability === 'write:sensitive' ? 'bg-amber-500/20 text-amber-400' : ($ability === 'deploy' ? 'bg-blue-500/20 text-blue-400' : 'bg-neutral-500/20 text-neutral-300')) }}">
+                                                            {{ $ability }}
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        </td>
+                                        <td class="px-5 py-4 text-sm whitespace-nowrap">
+                                            {{ $token->last_used_at ? $token->last_used_at->diffForHumans() : 'Never' }}
+                                        </td>
+                                        <td class="px-5 py-4 text-sm whitespace-nowrap">
+                                            {{ $token->created_at->diffForHumans() }}
+                                        </td>
+                                        <td class="px-5 py-4 text-sm whitespace-nowrap">
+                                            @if (! $token->expires_at)
+                                                Never
+                                            @elseif ($token->expires_at->isPast())
+                                                <span class="font-bold dark:text-error">Expired
+                                                    {{ $token->expires_at->format('Y-m-d H:i:s') }}</span>
+                                            @else
+                                                {{ $token->expires_at->format('Y-m-d H:i:s') }}
+                                            @endif
+                                        </td>
+                                        <td class="px-5 py-4 text-sm font-medium whitespace-nowrap">
+                                            @if (auth()->id() === $token->tokenable_id)
+                                                <x-modal-confirmation title="Confirm API Token Revocation?" isErrorButton
+                                                    buttonTitle="Revoke token"
+                                                    submitAction="revoke({{ data_get($token, 'id') }})" :actions="[
+                                                        'This API Token will be revoked and permanently deleted.',
+                                                        'Any API call made with this token will fail.',
+                                                    ]"
+                                                    confirmationText="{{ $token->name }}"
+                                                    confirmationLabel="Please confirm the execution of the actions by entering the API Token Description below"
+                                                    shortConfirmationLabel="API Token Description" :confirmWithPassword="false"
+                                                    step2ButtonText="Revoke API Token" />
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td class="px-5 py-4 text-sm whitespace-nowrap" colspan="6">No API tokens found.
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
-                    @if (auth()->id() === $token->tokenable_id)
-                        <x-modal-confirmation title="Confirm API Token Revocation?" isErrorButton
-                            buttonTitle="Revoke" submitAction="revoke({{ data_get($token, 'id') }})"
-                            :actions="[
-                                'This API Token will be revoked and permanently deleted.',
-                                'Any API call made with this token will fail.',
-                            ]" confirmationText="{{ $token->name }}"
-                            confirmationLabel="Please confirm the execution of the actions by entering the API Token Description below"
-                            shortConfirmationLabel="API Token Description" :confirmWithPassword="false"
-                            step2ButtonText="Revoke API Token" />
-                    @endif
                 </div>
-            @empty
-                <div class="text-neutral-400">No API tokens found.</div>
-            @endforelse
+            </div>
         </div>
     </div>
     @endif

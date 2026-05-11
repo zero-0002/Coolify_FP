@@ -272,6 +272,12 @@ class GithubController extends Controller
 
             $githubApp = GithubApp::create($payload);
 
+            auditLog('api.github_app.created', [
+                'team_id' => $teamId,
+                'github_app_uuid' => $githubApp->uuid,
+                'github_app_name' => $githubApp->name,
+            ]);
+
             return response()->json($githubApp, 201);
         } catch (\Throwable $e) {
             return handleError($e);
@@ -652,6 +658,13 @@ class GithubController extends Controller
             // Update the GitHub app
             $githubApp->update($payload);
 
+            auditLog('api.github_app.updated', [
+                'team_id' => $teamId,
+                'github_app_uuid' => $githubApp->uuid,
+                'github_app_name' => $githubApp->name,
+                'changed_fields' => array_values(array_diff($allowedFields, ['client_secret', 'webhook_secret', 'private_key_uuid'])),
+            ]);
+
             return response()->json([
                 'message' => 'GitHub app updated successfully',
                 'data' => $githubApp,
@@ -737,7 +750,15 @@ class GithubController extends Controller
                 ], 409);
             }
 
+            $deletedUuid = $githubApp->uuid;
+            $deletedName = $githubApp->name;
             $githubApp->delete();
+
+            auditLog('api.github_app.deleted', [
+                'team_id' => $teamId,
+                'github_app_uuid' => $deletedUuid,
+                'github_app_name' => $deletedName,
+            ]);
 
             return response()->json([
                 'message' => 'GitHub app deleted successfully',
