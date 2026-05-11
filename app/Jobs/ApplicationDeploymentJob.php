@@ -3790,14 +3790,15 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
     private function graceful_shutdown_container(string $containerName, bool $skipRemove = false)
     {
         try {
-            $timeout = isDev() ? 1 : 30;
+            $timeout = $this->application->settings->deploymentStopGracePeriodSeconds();
+
             if ($skipRemove) {
                 $this->execute_remote_command(
-                    ["docker stop -t $timeout $containerName", 'hidden' => true, 'ignore_errors' => true]
+                    ["docker stop --time=$timeout $containerName", 'hidden' => true, 'ignore_errors' => true]
                 );
             } else {
                 $this->execute_remote_command(
-                    ["docker stop -t $timeout $containerName", 'hidden' => true, 'ignore_errors' => true],
+                    ["docker stop --time=$timeout $containerName", 'hidden' => true, 'ignore_errors' => true],
                     ["docker rm -f $containerName", 'hidden' => true, 'ignore_errors' => true]
                 );
             }
