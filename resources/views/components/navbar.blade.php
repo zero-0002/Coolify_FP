@@ -92,7 +92,7 @@
                 }
             }
     }">
-    <div class="flex pt-4 pb-4 pl-2 items-start gap-2"
+    <div class="flex pt-4 pb-4 pl-2 items-start gap-2 motion-safe:transition-all motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none"
         :class="collapsed ? 'lg:flex-col lg:items-center lg:pl-0 lg:gap-3 lg:pt-8' : 'lg:pt-6'">
         <div class="flex flex-col w-full" :class="collapsed && 'lg:hidden'">
             <a href="/" {{ wireNavigate() }} class="text-2xl font-bold tracking-tight dark:text-white hover:opacity-80 transition-opacity">Coolify</a>
@@ -124,7 +124,7 @@
             <livewire:settings-dropdown />
         </div>
     </div>
-    <div class="px-2 pt-2 pb-7" :class="collapsed && 'lg:px-0 lg:pt-0 lg:pb-4 lg:flex lg:justify-center'">
+    <div class="px-2 pt-2 pb-7 overflow-hidden motion-safe:transition-all motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none" :class="collapsed && 'lg:px-0 lg:pt-0 lg:pb-0 lg:min-h-[4.5rem] lg:flex lg:justify-center'">
         <livewire:switch-team />
     </div>
     <ul role="list" class="flex flex-col flex-1 gap-y-7">

@@ -7,7 +7,6 @@
     <!-- Global search component - included once to prevent keyboard shortcut duplication -->
     <livewire:global-search />
     @auth
-        <livewire:deployments-indicator />
         <div x-data="{
             open: false,
             collapsed: false,
@@ -26,6 +25,7 @@
             }
         }" x-cloak class="mx-auto dark:text-inherit text-black"
             :class="pageWidth === 'full' ? '' : 'max-w-7xl'">
+            <livewire:deployments-indicator />
             <div class="relative z-50 lg:hidden" :class="open ? 'block' : 'hidden'" role="dialog" aria-modal="true">
                 <div class="fixed inset-0 bg-black/80" x-on:click="open = false"></div>
                 <div class="fixed inset-y-0 right-0 h-full flex">
