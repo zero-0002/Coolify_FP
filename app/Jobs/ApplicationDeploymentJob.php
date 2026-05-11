@@ -3790,13 +3790,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
     private function graceful_shutdown_container(string $containerName, bool $skipRemove = false)
     {
         try {
-            if (isDev()) {
-                $timeout = 1;
-            } else {
-                $timeout = ($this->application->settings->stop_grace_period > 0)
-                    ? $this->application->settings->stop_grace_period
-                    : DEFAULT_STOP_GRACE_PERIOD_SECONDS;
-            }
+            $timeout = $this->application->settings->deploymentStopGracePeriodSeconds();
 
             if ($skipRemove) {
                 $this->execute_remote_command(

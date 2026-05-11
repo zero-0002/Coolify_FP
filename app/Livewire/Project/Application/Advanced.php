@@ -4,6 +4,8 @@ namespace App\Livewire\Project\Application;
 
 use App\Models\Application;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 
@@ -264,24 +266,21 @@ class Advanced extends Component
         try {
             $this->authorize('update', $this->application);
 
-            // Convert empty string to null, otherwise cast to integer
-            $value = ($this->stopGracePeriod === '' || $this->stopGracePeriod === null)
+            $validated = Validator::make(
+                ['stopGracePeriod' => $this->stopGracePeriod === '' ? null : $this->stopGracePeriod],
+                ['stopGracePeriod' => ['nullable', 'integer', 'min:'.MIN_STOP_GRACE_PERIOD_SECONDS, 'max:'.MAX_STOP_GRACE_PERIOD_SECONDS]],
+                [],
+                ['stopGracePeriod' => 'stop grace period']
+            )->validate();
+
+            $this->application->settings->stop_grace_period = $validated['stopGracePeriod'] === null
                 ? null
-                : (int) $this->stopGracePeriod;
-
-            // Validate the integer value
-            if ($value !== null && ($value < 1 || $value > 3600)) {
-                $this->dispatch('error', 'Stop grace period must be between 1 and 3600 seconds.');
-
-                return;
-            }
-
-            // Save to model
-            $this->application->settings->stop_grace_period = $value;
+                : (int) $validated['stopGracePeriod'];
             $this->application->settings->save();
 
-            // User feedback
             $this->dispatch('success', 'Stop grace period updated.');
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }

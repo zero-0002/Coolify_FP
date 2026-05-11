@@ -36,6 +36,8 @@ const VALID_CRON_STRINGS = [
 ];
 const RESTART_MODE = 'unless-stopped';
 const DEFAULT_STOP_GRACE_PERIOD_SECONDS = 30;
+const MIN_STOP_GRACE_PERIOD_SECONDS = 1;
+const MAX_STOP_GRACE_PERIOD_SECONDS = 3600;
 
 const DATABASE_DOCKER_IMAGES = [
     'bitnami/mariadb',

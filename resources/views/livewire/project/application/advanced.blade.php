@@ -93,9 +93,9 @@
                     id="stopGracePeriod"
                     label="Stop Grace Period (seconds)"
                     placeholder="{{ DEFAULT_STOP_GRACE_PERIOD_SECONDS }}"
-                    helper="How long to wait for graceful shutdown during rolling updates, manual stops, and restarts. Applies to all containers for this application. Default: {{ DEFAULT_STOP_GRACE_PERIOD_SECONDS }} seconds. Range: 1-3600 seconds (1 hour)."
-                    min="1"
-                    max="3600"
+                    helper="How long to wait for graceful shutdown during rolling updates, manual stops, and restarts. Applies to all containers for this application. Default: {{ DEFAULT_STOP_GRACE_PERIOD_SECONDS }} seconds. Range: {{ MIN_STOP_GRACE_PERIOD_SECONDS }}-{{ MAX_STOP_GRACE_PERIOD_SECONDS }} seconds (1 hour)."
+                    min="{{ MIN_STOP_GRACE_PERIOD_SECONDS }}"
+                    max="{{ MAX_STOP_GRACE_PERIOD_SECONDS }}"
                     canGate="update"
                     :canResource="$application"
                 />
