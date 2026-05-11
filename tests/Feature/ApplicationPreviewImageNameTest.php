@@ -3,7 +3,7 @@
 use App\Jobs\ApplicationDeploymentJob;
 use App\Models\Application;
 
-function makePreviewImageNameJob(string $commit, int $pullRequestId = 42, ?string $registryImageName = null): object
+function makePreviewImageNameJob(string $commit, int $pullRequestId = 42, ?string $registryImageName = null, string $deploymentUuid = 'deployment-uuid'): object
 {
     $reflection = new ReflectionClass(ApplicationDeploymentJob::class);
     $job = $reflection->newInstanceWithoutConstructor();
@@ -18,6 +18,7 @@ function makePreviewImageNameJob(string $commit, int $pullRequestId = 42, ?strin
         'application' => $application,
         'pull_request_id' => $pullRequestId,
         'commit' => $commit,
+        'deployment_uuid' => $deploymentUuid,
     ] as $property => $value) {
         $reflectionProperty = $reflection->getProperty($property);
         $reflectionProperty->setAccessible(true);
@@ -68,6 +69,24 @@ it('generates different preview image names for different commits on the same pu
 
     expect($firstCommitNames['production'])->not->toBe($secondCommitNames['production'])
         ->and($firstCommitNames['build'])->not->toBe($secondCommitNames['build']);
+});
+
+it('uses the deployment uuid for preview image names when commit is HEAD', function () {
+    $firstDeploymentNames = generatePreviewImageNames(makePreviewImageNameJob(
+        commit: 'HEAD',
+        pullRequestId: 123,
+        deploymentUuid: 'deployment-one',
+    ));
+    $secondDeploymentNames = generatePreviewImageNames(makePreviewImageNameJob(
+        commit: 'HEAD',
+        pullRequestId: 123,
+        deploymentUuid: 'deployment-two',
+    ));
+
+    expect($firstDeploymentNames['production'])->toBe('preview-app:pr-123-deployment-one')
+        ->and($firstDeploymentNames['build'])->toBe('preview-app:pr-123-deployment-one-build')
+        ->and($secondDeploymentNames['production'])->toBe('preview-app:pr-123-deployment-two')
+        ->and($secondDeploymentNames['build'])->toBe('preview-app:pr-123-deployment-two-build');
 });
 
 it('uses the configured registry image name for commit-specific preview tags', function () {

@@ -1634,6 +1634,20 @@
         "minversion": "0.0.0",
         "port": "2368"
     },
+    "gitea-runner": {
+        "documentation": "https://github.com/go-gitea/gitea?utm_source=coolify.io",
+        "slogan": "Gitea Actions runner for docker",
+        "compose": "c2VydmljZXM6CiAgcnVubmVyOgogICAgaW1hZ2U6ICdkb2NrZXIuaW8vZ2l0ZWEvcnVubmVyOjEuMC4wJwogICAgZW52aXJvbm1lbnQ6CiAgICAgIC0gJ0dJVEVBX0lOU1RBTkNFX1VSTD0ke0dJVEVBX0lOU1RBTkNFX1VSTH0nCiAgICAgIC0gJ0dJVEVBX1JVTk5FUl9SRUdJU1RSQVRJT05fVE9LRU49JHtHSVRFQV9SVU5ORVJfUkVHSVNUUkFUSU9OX1RPS0VOfScKICAgICAgLSAnR0lURUFfUlVOTkVSX05BTUU9JHtHSVRFQV9SVU5ORVJfTkFNRTotZ2l0ZWEtcnVubmVyfScKICAgICAgLSAnR0lURUFfUlVOTkVSX0xBQkVMUz0ke0dJVEVBX1JVTk5FUl9MQUJFTFM6LXVidW50dS1sYXRlc3Q6ZG9ja2VyOi8vbm9kZToyMn0nCiAgICAgIC0gJ0dJVEVBX1RPS0VOPSR7R0lURUFfVE9LRU59JwogICAgd29ya2luZ19kaXI6IC9kYXRhCiAgICB2b2x1bWVzOgogICAgICAtICdydW5uZXItZGF0YTovZGF0YScKICAgICAgLSAnL3Zhci9ydW4vZG9ja2VyLnNvY2s6L3Zhci9ydW4vZG9ja2VyLnNvY2snCiAgICBoZWFsdGhjaGVjazoKICAgICAgdGVzdDoKICAgICAgICAtIENNRC1TSEVMTAogICAgICAgIC0gInBzIGF1eCB8IGdyZXAgJ1tSXXVubmVyJyA+IC9kZXYvbnVsbCB8fCBleGl0IDEiCiAgICAgIGludGVydmFsOiA1cwogICAgICB0aW1lb3V0OiAxMHMKICAgICAgcmV0cmllczogMTUK",
+        "tags": [
+            "gitea",
+            "actions",
+            "runner",
+            "docker"
+        ],
+        "category": "devtools",
+        "logo": "svgs/gitea.svg",
+        "minversion": "0.0.0"
+    },
     "gitea-with-mariadb": {
         "documentation": "https://docs.gitea.com?utm_source=coolify.io",
         "slogan": "Gitea is a self-hosted, lightweight Git service, offering version control, collaboration, and code hosting.",
@@ -2586,22 +2600,6 @@
         "logo": "svgs/litellm.svg",
         "minversion": "0.0.0",
         "port": "4000"
-    },
-    "litequeen": {
-        "documentation": "https://litequeen.com/?utm_source=coolify.io",
-        "slogan": "Lite Queen is an open-source SQLite database management software that runs on your server.",
-        "compose": "c2VydmljZXM6CiAgbGl0ZXF1ZWVuOgogICAgaW1hZ2U6ICdraXZzZWdyb2IvbGl0ZS1xdWVlbjpsYXRlc3QnCiAgICBlbnZpcm9ubWVudDoKICAgICAgLSBTRVJWSUNFX0ZRRE5fTElURVFVRUVOXzgwMDAKICAgIHZvbHVtZXM6CiAgICAgIC0gJ2xpdGVxdWVlbi1kYXRhOi9ob21lL2xpdGVxdWVlbi9kYXRhJwogICAgICAtCiAgICAgICAgdHlwZTogYmluZAogICAgICAgIHNvdXJjZTogLi9kYXRhYmFzZXMKICAgICAgICB0YXJnZXQ6IC9zcnYKICAgICAgICBpc19kaXJlY3Rvcnk6IHRydWUKICAgIGhlYWx0aGNoZWNrOgogICAgICB0ZXN0OgogICAgICAgIC0gQ01ELVNIRUxMCiAgICAgICAgLSAiYmFzaCAtYyAnOj4gL2Rldi90Y3AvMTI3LjAuMC4xLzgwMDAnIHx8IGV4aXQgMSIKICAgICAgaW50ZXJ2YWw6IDVzCiAgICAgIHRpbWVvdXQ6IDVzCiAgICAgIHJldHJpZXM6IDMK",
-        "tags": [
-            "sqlite",
-            "sqlite-database-management",
-            "self-hosted",
-            "vps",
-            "database"
-        ],
-        "category": "database",
-        "logo": "svgs/litequeen.svg",
-        "minversion": "0.0.0",
-        "port": "8000"
     },
     "lobe-chat": {
         "documentation": "https://github.com/lobehub/lobe-chat?tab=readme-ov-file#b-deploying-with-docker?utm_source=coolify.io",

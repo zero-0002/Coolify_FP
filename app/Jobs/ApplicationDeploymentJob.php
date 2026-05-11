@@ -1184,7 +1184,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $prefix = "pr-{$this->pull_request_id}-";
         $suffix = $build ? '-build' : '';
         $maxCommitLength = max(1, 128 - strlen($prefix) - strlen($suffix));
-        $commit = Str::of($this->commit ?: 'HEAD')
+        $commitSource = ($this->commit === 'HEAD' || blank($this->commit))
+            ? $this->deployment_uuid
+            : $this->commit;
+
+        $commit = Str::of($commitSource)
             ->replaceMatches('/[^A-Za-z0-9_.-]/', '-')
             ->substr(0, $maxCommitLength)
             ->toString();
