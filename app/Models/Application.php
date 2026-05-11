@@ -39,7 +39,7 @@ use Visus\Cuid2\Cuid2;
         'git_full_url' => ['type' => 'string', 'nullable' => true, 'description' => 'Git full URL.'],
         'docker_registry_image_name' => ['type' => 'string', 'nullable' => true, 'description' => 'Docker registry image name.'],
         'docker_registry_image_tag' => ['type' => 'string', 'nullable' => true, 'description' => 'Docker registry image tag.'],
-        'build_pack' => ['type' => 'string', 'description' => 'Build pack.', 'enum' => ['nixpacks', 'static', 'dockerfile', 'dockercompose']],
+        'build_pack' => ['type' => 'string', 'description' => 'Build pack.', 'enum' => ['nixpacks', 'railpack', 'static', 'dockerfile', 'dockercompose']],
         'static_image' => ['type' => 'string', 'description' => 'Static image used when static site is deployed.'],
         'install_command' => ['type' => 'string', 'description' => 'Install command.'],
         'build_command' => ['type' => 'string', 'description' => 'Build command.'],
@@ -980,7 +980,7 @@ class Application extends BaseModel
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->where('is_preview', false)
-            ->where('key', 'not like', 'NIXPACKS_%');
+            ->withoutBuildpackControlVariables();
     }
 
     public function nixpacks_environment_variables()
@@ -988,6 +988,13 @@ class Application extends BaseModel
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->where('is_preview', false)
             ->where('key', 'like', 'NIXPACKS_%');
+    }
+
+    public function railpack_environment_variables()
+    {
+        return $this->morphMany(EnvironmentVariable::class, 'resourceable')
+            ->where('is_preview', false)
+            ->where('key', 'like', 'RAILPACK_%');
     }
 
     public function environment_variables_preview()
@@ -1008,7 +1015,7 @@ class Application extends BaseModel
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->where('is_preview', true)
-            ->where('key', 'not like', 'NIXPACKS_%');
+            ->withoutBuildpackControlVariables();
     }
 
     public function nixpacks_environment_variables_preview()
@@ -1016,6 +1023,13 @@ class Application extends BaseModel
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->where('is_preview', true)
             ->where('key', 'like', 'NIXPACKS_%');
+    }
+
+    public function railpack_environment_variables_preview()
+    {
+        return $this->morphMany(EnvironmentVariable::class, 'resourceable')
+            ->where('is_preview', true)
+            ->where('key', 'like', 'RAILPACK_%');
     }
 
     public function scheduled_tasks(): HasMany
@@ -1137,7 +1151,7 @@ class Application extends BaseModel
 
     public function could_set_build_commands(): bool
     {
-        if ($this->build_pack === 'nixpacks') {
+        if ($this->build_pack === 'nixpacks' || $this->build_pack === 'railpack') {
             return true;
         }
 
