@@ -979,6 +979,9 @@ class ApplicationsController extends Controller
                     ],
                 ], 422);
             }
+            $request->merge([
+                'custom_nginx_configuration' => $customNginxConfiguration,
+            ]);
         }
 
         $project = Project::whereTeamId($teamId)->whereUuid($request->project_uuid)->first();
@@ -2397,7 +2400,7 @@ class ApplicationsController extends Controller
                 }
             }
         }
-        if ($request->has('custom_nginx_configuration')) {
+        if ($request->has('custom_nginx_configuration') && ! is_null($request->custom_nginx_configuration)) {
             if (! isBase64Encoded($request->custom_nginx_configuration)) {
                 return response()->json([
                     'message' => 'Validation failed.',
@@ -2415,6 +2418,9 @@ class ApplicationsController extends Controller
                     ],
                 ], 422);
             }
+            $request->merge([
+                'custom_nginx_configuration' => $customNginxConfiguration,
+            ]);
         }
         $return = $this->validateDataApplications($request, $server);
         if ($return instanceof JsonResponse) {

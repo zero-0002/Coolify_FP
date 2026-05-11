@@ -886,8 +886,8 @@ class Application extends BaseModel
     public function customNginxConfiguration(): Attribute
     {
         return Attribute::make(
-            set: fn ($value) => base64_encode($value),
-            get: fn ($value) => base64_decode($value),
+            set: fn ($value) => is_null($value) ? null : base64_encode($value),
+            get: fn ($value) => is_null($value) ? null : base64_decode($value),
         );
     }
 
