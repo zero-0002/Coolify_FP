@@ -1106,7 +1106,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     'hidden' => true,
                 ],
             );
-            if ($this->application->docker_registry_image_tag) {
+            if ($this->shouldPushDockerRegistryImageTag()) {
                 // Tag image with docker_registry_image_tag
                 $this->application_deployment_queue->addLogEntry("Tagging and pushing image with {$this->application->docker_registry_image_tag} tag.");
                 $this->execute_remote_command(
@@ -1128,6 +1128,15 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 throw new DeploymentException(get_class($e).': '.$e->getMessage(), $e->getCode(), $e);
             }
         }
+    }
+
+    private function shouldPushDockerRegistryImageTag(): bool
+    {
+        if (blank($this->application->docker_registry_image_tag)) {
+            return false;
+        }
+
+        return $this->pull_request_id === 0;
     }
 
     private function generate_image_names()
