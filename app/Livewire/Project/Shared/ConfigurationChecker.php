@@ -18,6 +18,10 @@ class ConfigurationChecker extends Component
 {
     public bool $isConfigurationChanged = false;
 
+    public array $configurationDiff = [];
+
+    public array $groupedConfigurationChanges = [];
+
     public Application|Service|StandaloneRedis|StandalonePostgresql|StandaloneMongodb|StandaloneMysql|StandaloneMariadb|StandaloneKeydb|StandaloneDragonfly|StandaloneClickhouse $resource;
 
     public function getListeners()
@@ -42,6 +46,17 @@ class ConfigurationChecker extends Component
 
     public function configurationChanged()
     {
+        if ($this->resource instanceof Application) {
+            $diff = $this->resource->pendingDeploymentConfigurationDiff();
+            $this->isConfigurationChanged = $diff->isChanged();
+            $this->configurationDiff = $diff->toArray();
+            $this->groupedConfigurationChanges = $diff->groupedChanges();
+
+            return;
+        }
+
         $this->isConfigurationChanged = $this->resource->isConfigurationChanged();
+        $this->configurationDiff = [];
+        $this->groupedConfigurationChanges = [];
     }
 }
