@@ -70,6 +70,45 @@ it('renders the changed configuration labels', function () {
         ->assertSee('A rebuild is required.');
 });
 
+it('refreshes configuration changes when the event is received', function () {
+    $application = configurationCheckerApplication($this->environment);
+    markConfigurationCheckerApplicationDeployed($application);
+
+    $component = Livewire::test(ConfigurationChecker::class, ['resource' => $application->refresh()])
+        ->assertSet('isConfigurationChanged', false)
+        ->assertDontSee('The latest configuration has not been applied');
+
+    $application->update(['build_command' => 'pnpm build']);
+
+    $component
+        ->dispatch('configurationChanged')
+        ->assertSet('isConfigurationChanged', true)
+        ->assertSee('The latest configuration has not been applied')
+        ->assertSee('Build command');
+});
+
+it('refreshes stale modal configuration diff before opening changes', function () {
+    $application = configurationCheckerApplication($this->environment);
+    markConfigurationCheckerApplicationDeployed($application);
+
+    $application->update(['build_command' => 'pnpm build']);
+
+    $component = Livewire::test(ConfigurationChecker::class, ['resource' => $application->refresh()])
+        ->assertSee('Build command')
+        ->assertDontSee('Start command');
+
+    $application->update([
+        'build_command' => 'npm run build',
+        'start_command' => 'node server.js',
+    ]);
+
+    $component
+        ->call('refreshConfigurationChanges')
+        ->assertSet('isConfigurationChanged', true)
+        ->assertSee('Start command')
+        ->assertDontSee('Build command');
+});
+
 it('does not render environment variable secret values', function () {
     $application = configurationCheckerApplication($this->environment);
     EnvironmentVariable::create([

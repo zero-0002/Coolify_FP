@@ -12,6 +12,7 @@ use App\Models\StandaloneMongodb;
 use App\Models\StandaloneMysql;
 use App\Models\StandalonePostgresql;
 use App\Models\StandaloneRedis;
+use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
 class ConfigurationChecker extends Component
@@ -24,7 +25,7 @@ class ConfigurationChecker extends Component
 
     public Application|Service|StandaloneRedis|StandalonePostgresql|StandaloneMongodb|StandaloneMysql|StandaloneMariadb|StandaloneKeydb|StandaloneDragonfly|StandaloneClickhouse $resource;
 
-    public function getListeners()
+    public function getListeners(): array
     {
         $teamId = auth()->user()->currentTeam()->id;
 
@@ -34,18 +35,25 @@ class ConfigurationChecker extends Component
         ];
     }
 
-    public function mount()
+    public function mount(): void
     {
         $this->configurationChanged();
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.project.shared.configuration-checker');
     }
 
-    public function configurationChanged()
+    public function refreshConfigurationChanges(): void
     {
+        $this->configurationChanged();
+    }
+
+    public function configurationChanged(): void
+    {
+        $this->resource->refresh();
+
         if ($this->resource instanceof Application) {
             $diff = $this->resource->pendingDeploymentConfigurationDiff();
             $this->isConfigurationChanged = $diff->isChanged();

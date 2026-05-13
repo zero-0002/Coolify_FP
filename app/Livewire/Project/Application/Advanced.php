@@ -219,6 +219,7 @@ class Advanced extends Component
             }
             $this->syncData(true);
             $this->dispatch('success', 'Settings saved.');
+            $this->dispatch('configurationChanged');
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
@@ -237,6 +238,7 @@ class Advanced extends Component
             if (is_null($this->customInternalName)) {
                 $this->syncData(true);
                 $this->dispatch('success', 'Custom name saved.');
+                $this->dispatch('configurationChanged');
 
                 return;
             }
@@ -256,6 +258,7 @@ class Advanced extends Component
             }
             $this->syncData(true);
             $this->dispatch('success', 'Custom name saved.');
+            $this->dispatch('configurationChanged');
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }

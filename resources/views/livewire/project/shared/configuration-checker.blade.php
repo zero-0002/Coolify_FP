@@ -23,7 +23,8 @@
                                 Please redeploy to apply the new configuration.
                             @endif
                             <button type="button" class="ml-1 font-semibold underline text-coollabs dark:text-warning"
-                                @click="configurationDiffModalOpen = true">
+                                x-on:click="$wire.refreshConfigurationChanges().then(() => configurationDiffModalOpen = true)"
+                                wire:loading.attr="disabled" wire:target="refreshConfigurationChanges">
                                 View changes
                             </button>
                         @else

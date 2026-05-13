@@ -48,6 +48,16 @@ it('saves a valid stop grace period', function () {
     expect($application->settings()->first()->stop_grace_period)->toBe(300);
 });
 
+it('dispatches configuration changed when advanced settings are saved', function () {
+    $application = createApplicationForAdvancedStopGracePeriodTest();
+
+    Livewire::test(Advanced::class, ['application' => $application])
+        ->set('includeSourceCommitInBuild', true)
+        ->call('submit')
+        ->assertHasNoErrors()
+        ->assertDispatched('configurationChanged');
+});
+
 it('clears the stop grace period when submitted empty', function () {
     $application = createApplicationForAdvancedStopGracePeriodTest();
     $application->settings->update(['stop_grace_period' => 300]);
