@@ -537,11 +537,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             \Log::warning('Post deployment command failed for '.$this->deployment_uuid.': '.$e->getMessage());
         }
 
-        try {
-            $this->application->isConfigurationChanged(true);
-        } catch (Exception $e) {
-            \Log::warning('Failed to mark configuration as changed for deployment '.$this->deployment_uuid.': '.$e->getMessage());
-        }
     }
 
     private function deploy_simple_dockerfile()
@@ -1154,12 +1149,15 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $this->production_image_name = "{$this->dockerImage}:{$this->dockerImageTag}";
             }
         } elseif ($this->pull_request_id !== 0) {
+            $previewImageTag = $this->previewImageTag();
+            $previewBuildImageTag = $this->previewImageTag(build: true);
+
             if ($this->application->docker_registry_image_name) {
-                $this->build_image_name = "{$this->application->docker_registry_image_name}:pr-{$this->pull_request_id}-build";
-                $this->production_image_name = "{$this->application->docker_registry_image_name}:pr-{$this->pull_request_id}";
+                $this->build_image_name = "{$this->application->docker_registry_image_name}:{$previewBuildImageTag}";
+                $this->production_image_name = "{$this->application->docker_registry_image_name}:{$previewImageTag}";
             } else {
-                $this->build_image_name = "{$this->application->uuid}:pr-{$this->pull_request_id}-build";
-                $this->production_image_name = "{$this->application->uuid}:pr-{$this->pull_request_id}";
+                $this->build_image_name = "{$this->application->uuid}:{$previewBuildImageTag}";
+                $this->production_image_name = "{$this->application->uuid}:{$previewImageTag}";
             }
         } else {
             $this->dockerImageTag = str($this->commit)->substr(0, 128);
@@ -1174,6 +1172,27 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $this->production_image_name = "{$this->application->uuid}:{$this->dockerImageTag}";
             }
         }
+    }
+
+    private function previewImageTag(bool $build = false): string
+    {
+        $prefix = "pr-{$this->pull_request_id}-";
+        $suffix = $build ? '-build' : '';
+        $maxCommitLength = max(1, 128 - strlen($prefix) - strlen($suffix));
+        $commitSource = ($this->commit === 'HEAD' || blank($this->commit))
+            ? $this->deployment_uuid
+            : $this->commit;
+
+        $commit = Str::of($commitSource)
+            ->replaceMatches('/[^A-Za-z0-9_.-]/', '-')
+            ->substr(0, $maxCommitLength)
+            ->toString();
+
+        if ($commit === '') {
+            $commit = 'HEAD';
+        }
+
+        return "{$prefix}{$commit}{$suffix}";
     }
 
     private function just_restart()
@@ -1214,8 +1233,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
                 return true;
             }
-            if (! $this->application->isConfigurationChanged()) {
-                $this->application_deployment_queue->addLogEntry("No configuration changed & image found ({$this->production_image_name}) with the same Git Commit SHA. Build step skipped.");
+            $configurationDiff = $this->application->pendingDeploymentConfigurationDiff();
+            if (! $configurationDiff->requiresBuild()) {
+                $this->application_deployment_queue->addLogEntry("No build configuration changed & image found ({$this->production_image_name}) with the same Git Commit SHA. Build step skipped.");
                 $this->skip_build = true;
                 $this->generate_compose_file();
 
@@ -1227,7 +1247,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
                 return true;
             } else {
-                $this->application_deployment_queue->addLogEntry('Configuration changed. Rebuilding image.');
+                $this->application_deployment_queue->addLogEntry('Build configuration changed. Rebuilding image.');
             }
         } else {
             $this->application_deployment_queue->addLogEntry("Image not found ({$this->production_image_name}). Building new image.");
@@ -3766,14 +3786,15 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
     private function graceful_shutdown_container(string $containerName, bool $skipRemove = false)
     {
         try {
-            $timeout = isDev() ? 1 : 30;
+            $timeout = $this->application->settings->deploymentStopGracePeriodSeconds();
+
             if ($skipRemove) {
                 $this->execute_remote_command(
-                    ["docker stop -t $timeout $containerName", 'hidden' => true, 'ignore_errors' => true]
+                    ["docker stop --time=$timeout $containerName", 'hidden' => true, 'ignore_errors' => true]
                 );
             } else {
                 $this->execute_remote_command(
-                    ["docker stop -t $timeout $containerName", 'hidden' => true, 'ignore_errors' => true],
+                    ["docker stop --time=$timeout $containerName", 'hidden' => true, 'ignore_errors' => true],
                     ["docker rm -f $containerName", 'hidden' => true, 'ignore_errors' => true]
                 );
             }
@@ -4712,6 +4733,12 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
             'last_restart_at' => null,
             'last_restart_type' => null,
         ]);
+
+        try {
+            $this->application->markDeploymentConfigurationApplied($this->application_deployment_queue);
+        } catch (Exception $e) {
+            \Log::warning('Failed to mark configuration as applied for deployment '.$this->deployment_uuid.': '.$e->getMessage());
+        }
 
         event(new ApplicationConfigurationChanged($this->application->team()->id));
 

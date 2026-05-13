@@ -79,10 +79,8 @@
                 </button>
             </div>
 
-            <main class="transition-[padding] duration-200" :class="collapsed ? 'lg:pl-16' : 'lg:pl-56'">
-                <div class="p-4 sm:px-6 lg:px-8 lg:py-6">
+            <main class="transition-[padding] duration-200 p-6" :class="collapsed ? 'lg:pl-[6rem]' : 'lg:pl-[16rem]'">
                     {{ $slot }}
-                </div>
             </main>
         </div>
     @endauth
