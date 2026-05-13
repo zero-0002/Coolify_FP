@@ -537,11 +537,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             \Log::warning('Post deployment command failed for '.$this->deployment_uuid.': '.$e->getMessage());
         }
 
-        try {
-            $this->application->isConfigurationChanged(true);
-        } catch (Exception $e) {
-            \Log::warning('Failed to mark configuration as changed for deployment '.$this->deployment_uuid.': '.$e->getMessage());
-        }
     }
 
     private function deploy_simple_dockerfile()
@@ -1238,8 +1233,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
                 return true;
             }
-            if (! $this->application->isConfigurationChanged()) {
-                $this->application_deployment_queue->addLogEntry("No configuration changed & image found ({$this->production_image_name}) with the same Git Commit SHA. Build step skipped.");
+            $configurationDiff = $this->application->pendingDeploymentConfigurationDiff();
+            if (! $configurationDiff->requiresBuild()) {
+                $this->application_deployment_queue->addLogEntry("No build configuration changed & image found ({$this->production_image_name}) with the same Git Commit SHA. Build step skipped.");
                 $this->skip_build = true;
                 $this->generate_compose_file();
 
@@ -1251,7 +1247,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
                 return true;
             } else {
-                $this->application_deployment_queue->addLogEntry('Configuration changed. Rebuilding image.');
+                $this->application_deployment_queue->addLogEntry('Build configuration changed. Rebuilding image.');
             }
         } else {
             $this->application_deployment_queue->addLogEntry("Image not found ({$this->production_image_name}). Building new image.");
@@ -4737,6 +4733,12 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
             'last_restart_at' => null,
             'last_restart_type' => null,
         ]);
+
+        try {
+            $this->application->markDeploymentConfigurationApplied($this->application_deployment_queue);
+        } catch (Exception $e) {
+            \Log::warning('Failed to mark configuration as applied for deployment '.$this->deployment_uuid.': '.$e->getMessage());
+        }
 
         event(new ApplicationConfigurationChanged($this->application->team()->id));
 
