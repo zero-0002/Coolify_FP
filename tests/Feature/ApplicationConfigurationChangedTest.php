@@ -3,6 +3,7 @@
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
 use App\Models\Environment;
+use App\Models\EnvironmentVariable;
 use App\Models\Project;
 use App\Models\Team;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -55,6 +56,32 @@ it('stores a diff between successful deployments', function () {
 
     expect($secondDeployment->refresh()->configuration_diff['count'])->toBe(1)
         ->and(data_get($secondDeployment->configuration_diff, 'changes.0.label'))->toBe('Build command');
+});
+
+it('checks legacy preview deployment configuration hash using preview environment variable query', function () {
+    $application = configurationChangedTestApplication();
+
+    EnvironmentVariable::create([
+        'key' => 'APP_ENV',
+        'value' => 'preview',
+        'is_preview' => true,
+        'is_multiline' => false,
+        'is_literal' => false,
+        'is_buildtime' => true,
+        'is_runtime' => true,
+        'resourceable_type' => Application::class,
+        'resourceable_id' => $application->id,
+    ]);
+
+    $application->forceFill([
+        'config_hash' => 'legacy-hash',
+        'pull_request_id' => 123,
+    ]);
+
+    $diff = $application->pendingDeploymentConfigurationDiff();
+
+    expect($diff->isLegacyFallback())->toBeTrue()
+        ->and($diff->isChanged())->toBeTrue();
 });
 
 it('falls back to legacy configuration hash when no deployment snapshot exists', function () {
