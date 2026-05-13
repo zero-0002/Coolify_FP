@@ -12791,6 +12791,18 @@
                         "type": "string",
                         "nullable": true
                     },
+                    "configuration_hash": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "configuration_snapshot": {
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "configuration_diff": {
+                        "type": "object",
+                        "nullable": true
+                    },
                     "force_rebuild": {
                         "type": "boolean"
                     },

@@ -80,9 +80,7 @@
             </div>
 
             <main class="transition-[padding] duration-200 p-6" :class="collapsed ? 'lg:pl-[6rem]' : 'lg:pl-[16rem]'">
-                <div>
                     {{ $slot }}
-                </div>
             </main>
         </div>
     @endauth
