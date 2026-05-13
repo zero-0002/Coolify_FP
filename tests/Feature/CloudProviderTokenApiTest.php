@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\CloudProviderToken;
+use App\Models\InstanceSettings;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -9,6 +10,8 @@ use Illuminate\Support\Facades\Http;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    InstanceSettings::forceCreate(['id' => 0, 'is_api_enabled' => true]);
+
     // Create a team with owner
     $this->team = Team::factory()->create();
     $this->user = User::factory()->create();
@@ -68,6 +71,63 @@ describe('GET /api/v1/cloud-tokens', function () {
     test('rejects request without authentication', function () {
         $response = $this->getJson('/api/v1/cloud-tokens');
         $response->assertStatus(401);
+    });
+
+    test('read token does not include provider token values', function () {
+        CloudProviderToken::create([
+            'team_id' => $this->team->id,
+            'name' => 'Hidden Token',
+            'provider' => 'hetzner',
+            'token' => 'hidden-cloud-provider-token',
+        ]);
+
+        $readToken = $this->user->createToken('read-token', ['read'])->plainTextToken;
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$readToken,
+            'Content-Type' => 'application/json',
+        ])->getJson('/api/v1/cloud-tokens');
+
+        $response->assertSuccessful();
+        expect($response->getContent())->not->toContain('"token":');
+    });
+
+    test('read sensitive token includes provider token values', function () {
+        CloudProviderToken::create([
+            'team_id' => $this->team->id,
+            'name' => 'Visible Token',
+            'provider' => 'hetzner',
+            'token' => 'visible-cloud-provider-token',
+        ]);
+
+        $readSensitiveToken = $this->user->createToken('read-sensitive-token', ['read', 'read:sensitive'])->plainTextToken;
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$readSensitiveToken,
+            'Content-Type' => 'application/json',
+        ])->getJson('/api/v1/cloud-tokens');
+
+        $response->assertSuccessful();
+        $response->assertJsonFragment(['token' => 'visible-cloud-provider-token']);
+    });
+
+    test('root token includes provider token values', function () {
+        CloudProviderToken::create([
+            'team_id' => $this->team->id,
+            'name' => 'Root Visible Token',
+            'provider' => 'hetzner',
+            'token' => 'root-visible-cloud-provider-token',
+        ]);
+
+        $rootToken = $this->user->createToken('root-token', ['root'])->plainTextToken;
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$rootToken,
+            'Content-Type' => 'application/json',
+        ])->getJson('/api/v1/cloud-tokens');
+
+        $response->assertSuccessful();
+        $response->assertJsonFragment(['token' => 'root-visible-cloud-provider-token']);
     });
 });
 
