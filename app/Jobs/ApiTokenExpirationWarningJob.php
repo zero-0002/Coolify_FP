@@ -42,6 +42,9 @@ class ApiTokenExpirationWarningJob implements ShouldBeEncrypted, ShouldQueue, Si
                     }
 
                     $warningSentAt = now();
+
+                    $team->notify(new ApiTokenExpiringNotification($token));
+
                     $markedAsSent = PersonalAccessToken::query()
                         ->whereKey($token->getKey())
                         ->whereNotNull('expires_at')
@@ -55,7 +58,6 @@ class ApiTokenExpirationWarningJob implements ShouldBeEncrypted, ShouldQueue, Si
                     }
 
                     $token->forceFill(['api_token_expiration_warning_sent_at' => $warningSentAt]);
-                    $team->notify(new ApiTokenExpiringNotification($token));
                 }
             });
     }

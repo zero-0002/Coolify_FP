@@ -6,6 +6,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Notifications\ApiTokenExpiringNotification;
 use Carbon\Carbon;
+use Illuminate\Contracts\Notifications\Dispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
@@ -48,6 +49,21 @@ describe('ApiTokenExpirationWarningJob', function () {
 
         Notification::assertSentTo($this->team, ApiTokenExpiringNotification::class);
         expect($token->fresh()->api_token_expiration_warning_sent_at)->not->toBeNull();
+    });
+
+    test('does not mark token as warned when notification fails', function () {
+        $token = createTokenExpiring($this->user, $this->team, now()->addHours(23));
+        $dispatcher = Mockery::mock(Dispatcher::class);
+        $dispatcher->shouldReceive('send')
+            ->once()
+            ->andThrow(new RuntimeException('Notification failed'));
+
+        $this->app->instance(Dispatcher::class, $dispatcher);
+
+        expect(fn () => (new ApiTokenExpirationWarningJob)->handle())
+            ->toThrow(RuntimeException::class, 'Notification failed');
+
+        expect($token->fresh()->api_token_expiration_warning_sent_at)->toBeNull();
     });
 
     test('database marker prevents duplicate warnings on repeat runs', function () {
