@@ -32,6 +32,7 @@ RUN set -eux; \
     grep -qxF "@nginx ${NGINX_REPOSITORY}" /etc/apk/repositories || echo "@nginx ${NGINX_REPOSITORY}" >> /etc/apk/repositories; \
     curl -fsSL https://nginx.org/keys/nginx_signing.rsa.pub -o /etc/apk/keys/nginx_signing.rsa.pub; \
     apk add --no-cache --upgrade "nginx@nginx=${NGINX_VERSION}"; \
+    rm -f /etc/nginx/nginx.conf /etc/nginx/conf.d/default.conf; \
     nginx -v
 
 ARG USER_ID
@@ -90,6 +91,7 @@ RUN set -eux; \
     grep -qxF "@nginx ${NGINX_REPOSITORY}" /etc/apk/repositories || echo "@nginx ${NGINX_REPOSITORY}" >> /etc/apk/repositories; \
     curl -fsSL https://nginx.org/keys/nginx_signing.rsa.pub -o /etc/apk/keys/nginx_signing.rsa.pub; \
     apk add --no-cache --upgrade "nginx@nginx=${NGINX_VERSION}"; \
+    rm -f /etc/nginx/nginx.conf /etc/nginx/conf.d/default.conf; \
     nginx -v
 
 RUN docker-php-serversideup-set-id www-data $USER_ID:$GROUP_ID && \
