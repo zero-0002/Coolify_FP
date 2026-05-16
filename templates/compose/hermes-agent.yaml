@@ -1,0 +1,56 @@
+# documentation: https://github.com/nesquena/hermes-webui
+# slogan: Hermes Agent — autonomous AI agent with persistent memory, scheduling, and a self-hosted web chat UI.
+# category: ai
+# tags: ai, agent, llm, chatbot, hermes, openrouter, anthropic, openai
+# logo: svgs/default.webp
+# port: 8787
+
+services:
+  hermes-agent:
+    image: nousresearch/hermes-agent:latest
+    command: gateway run
+    environment:
+      - HERMES_HOME=/home/hermes/.hermes
+      - HERMES_UID=1000
+      - HERMES_GID=1000
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    volumes:
+      - hermes-home:/home/hermes/.hermes
+      - hermes-agent-src:/opt/hermes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /home/hermes/.hermes || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  hermes-webui:
+    image: ghcr.io/nesquena/hermes-webui:latest
+    depends_on:
+      - hermes-agent
+    environment:
+      - SERVICE_FQDN_HERMESWEBUI_8787
+      - HERMES_WEBUI_HOST=0.0.0.0
+      - HERMES_WEBUI_PORT=8787
+      - HERMES_WEBUI_STATE_DIR=/home/hermeswebui/.hermes/webui
+      - WANTED_UID=1000
+      - WANTED_GID=1000
+      - HERMES_WEBUI_PASSWORD=${SERVICE_PASSWORD_HERMESWEBUI}
+    volumes:
+      - hermes-home:/home/hermeswebui/.hermes
+      - hermes-agent-src:/home/hermeswebui/.hermes/hermes-agent
+      - hermes-workspace:/workspace
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8787/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  hermes-home:
+  hermes-agent-src:
+  hermes-workspace:
