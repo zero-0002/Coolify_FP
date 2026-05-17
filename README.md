@@ -76,7 +76,6 @@ Thank you so much!
 * [COMIT](https://comit.international?ref=coolify.io) - New York Times award–winning contractor
 * [CompAI](https://www.trycomp.ai?ref=coolify.io) - Open source compliance automation platform
 * [Convex](https://convex.link/coolify.io) - Open-source reactive database for web app developers
-* [CubePath](https://cubepath.com/?ref=coolify.io) - Dedicated Servers & Instant Deploy
 * [Darweb](https://darweb.nl/?ref=coolify.io) - 3D CPQ solutions for ecommerce design
 * [Dataforest Cloud](https://cloud.dataforest.net/en?ref=coolify.io) - Deploy cloud servers as seeds independently in seconds. Enterprise hardware, premium network, 100% made in Germany.
 * [Formbricks](https://formbricks.com?ref=coolify.io) - The open source feedback platform
