@@ -55,6 +55,9 @@ class Github extends Controller
                 $after_sha = data_get($payload, 'after', data_get($payload, 'pull_request.head.sha'));
                 $author_association = data_get($payload, 'pull_request.author_association');
             }
+            if (! in_array($x_github_event, ['push', 'pull_request'])) {
+                return response("Nothing to do. Event '$x_github_event' is not supported.");
+            }
             if (! $branch) {
                 return response('Nothing to do. No branch found in the request.');
             }
@@ -78,6 +81,15 @@ class Github extends Controller
             foreach ($applicationsByServer as $serverId => $serverApplications) {
                 foreach ($serverApplications as $application) {
                     $webhook_secret = data_get($application, 'manual_webhook_secret_github');
+                    if (empty($webhook_secret)) {
+                        $return_payloads->push([
+                            'application' => $application->name,
+                            'status' => 'failed',
+                            'message' => 'Webhook secret not configured.',
+                        ]);
+
+                        continue;
+                    }
                     $hmac = hash_hmac('sha256', $request->getContent(), $webhook_secret);
                     if (! hash_equals($x_hub_signature_256, $hmac) && ! isDev()) {
                         $return_payloads->push([
@@ -245,6 +257,9 @@ class Github extends Controller
                 $before_sha = data_get($payload, 'before');
                 $after_sha = data_get($payload, 'after', data_get($payload, 'pull_request.head.sha'));
                 $author_association = data_get($payload, 'pull_request.author_association');
+            }
+            if (! in_array($x_github_event, ['push', 'pull_request'])) {
+                return response("Nothing to do. Event '$x_github_event' is not supported.");
             }
             if (! $id || ! $branch) {
                 return response('Nothing to do. No id or branch found.');
