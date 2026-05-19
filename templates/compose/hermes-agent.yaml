@@ -2,7 +2,7 @@
 # slogan: Hermes Agent — autonomous AI agent with persistent memory, scheduling, and a self-hosted web chat UI.
 # category: ai
 # tags: ai, agent, llm, chatbot, hermes, openrouter, anthropic, openai
-# logo: svgs/default.webp
+# logo: svgs/hermes-agent.png
 # port: 8787
 
 services:
@@ -41,7 +41,7 @@ services:
       - HERMES_WEBUI_PASSWORD=${SERVICE_PASSWORD_HERMESWEBUI}
     volumes:
       - hermes-home:/home/hermeswebui/.hermes
-      - hermes-agent-src:/home/hermeswebui/.hermes/hermes-agent
+      - hermes-agent-src:/home/hermeswebui/.hermes/hermes-agent:ro
       - hermes-workspace:/workspace
     restart: unless-stopped
     healthcheck:
