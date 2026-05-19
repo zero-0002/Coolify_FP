@@ -1140,8 +1140,8 @@ class ApplicationsController extends Controller
             if ($git_host === 'github.com') {
                 $application->source_type = GithubApp::class;
                 $application->source_id = GithubApp::find(0)->id;
+                $application->git_repository = str($repository_url_parsed->getSegment(1).'/'.$repository_url_parsed->getSegment(2))->trim()->toString();
             }
-            $application->git_repository = str($repository_url_parsed->getSegment(1).'/'.$repository_url_parsed->getSegment(2))->trim()->toString();
             $application->fqdn = $fqdn;
             $application->destination_id = $destination->id;
             $application->destination_type = $destination->getMorphClass();
