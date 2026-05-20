@@ -5,9 +5,17 @@ namespace App\Livewire\Project\Database;
 use App\Models\S3Storage;
 use App\Models\Server;
 use App\Models\Service;
+use App\Models\ServiceDatabase;
+use App\Models\StandaloneClickhouse;
+use App\Models\StandaloneDragonfly;
+use App\Models\StandaloneKeydb;
+use App\Models\StandaloneMariadb;
+use App\Models\StandaloneMongodb;
+use App\Models\StandaloneMysql;
+use App\Models\StandalonePostgresql;
+use App\Models\StandaloneRedis;
 use App\Support\ValidationPatterns;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -192,15 +200,9 @@ class Import extends Component
         return Server::ownedByCurrentTeam()->find($this->serverId);
     }
 
-    public function getListeners()
-    {
-        $userId = Auth::id();
-
-        return [
-            "echo-private:user.{$userId},DatabaseStatusChanged" => '$refresh',
-            'slideOverClosed' => 'resetActivityId',
-        ];
-    }
+    protected $listeners = [
+        'slideOverClosed' => 'resetActivityId',
+    ];
 
     public function resetActivityId()
     {
@@ -219,7 +221,7 @@ class Import extends Component
         $morphClass = $this->resource->getMorphClass();
 
         // Handle ServiceDatabase by checking the database type
-        if ($morphClass === \App\Models\ServiceDatabase::class) {
+        if ($morphClass === ServiceDatabase::class) {
             $dbType = $this->resource->databaseType();
             if (str_contains($dbType, 'mysql')) {
                 $morphClass = 'mysql';
@@ -231,7 +233,7 @@ class Import extends Component
         }
 
         switch ($morphClass) {
-            case \App\Models\StandaloneMariadb::class:
+            case StandaloneMariadb::class:
             case 'mariadb':
                 if ($value === true) {
                     $this->mariadbRestoreCommand = <<<'EOD'
@@ -247,7 +249,7 @@ EOD;
                     $this->mariadbRestoreCommand = 'mariadb -u $MARIADB_USER -p$MARIADB_PASSWORD $MARIADB_DATABASE';
                 }
                 break;
-            case \App\Models\StandaloneMysql::class:
+            case StandaloneMysql::class:
             case 'mysql':
                 if ($value === true) {
                     $this->mysqlRestoreCommand = <<<'EOD'
@@ -263,7 +265,7 @@ EOD;
                     $this->mysqlRestoreCommand = 'mysql -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE';
                 }
                 break;
-            case \App\Models\StandalonePostgresql::class:
+            case StandalonePostgresql::class:
             case 'postgresql':
                 if ($value === true) {
                     $this->postgresqlRestoreCommand = <<<'EOD'
@@ -321,7 +323,7 @@ EOD;
         $this->resourceStatus = $resource->status ?? '';
 
         // Handle ServiceDatabase server access differently
-        if ($resource->getMorphClass() === \App\Models\ServiceDatabase::class) {
+        if ($resource->getMorphClass() === ServiceDatabase::class) {
             $server = $resource->service?->server;
             if (! $server) {
                 abort(404, 'Server not found for this service database.');
@@ -359,16 +361,16 @@ EOD;
         }
 
         if (
-            $resource->getMorphClass() === \App\Models\StandaloneRedis::class ||
-            $resource->getMorphClass() === \App\Models\StandaloneKeydb::class ||
-            $resource->getMorphClass() === \App\Models\StandaloneDragonfly::class ||
-            $resource->getMorphClass() === \App\Models\StandaloneClickhouse::class
+            $resource->getMorphClass() === StandaloneRedis::class ||
+            $resource->getMorphClass() === StandaloneKeydb::class ||
+            $resource->getMorphClass() === StandaloneDragonfly::class ||
+            $resource->getMorphClass() === StandaloneClickhouse::class
         ) {
             $this->unsupported = true;
         }
 
         // Mark unsupported ServiceDatabase types (Redis, KeyDB, etc.)
-        if ($resource->getMorphClass() === \App\Models\ServiceDatabase::class) {
+        if ($resource->getMorphClass() === ServiceDatabase::class) {
             $dbType = $resource->databaseType();
             if (str_contains($dbType, 'redis') || str_contains($dbType, 'keydb') ||
                 str_contains($dbType, 'dragonfly') || str_contains($dbType, 'clickhouse')) {
@@ -664,7 +666,7 @@ EOD;
             $fullImageName = "{$helperImage}:{$latestVersion}";
 
             // Get the database destination network
-            if ($this->resource->getMorphClass() === \App\Models\ServiceDatabase::class) {
+            if ($this->resource->getMorphClass() === ServiceDatabase::class) {
                 $destinationNetwork = $this->resource->service->destination->network ?? 'coolify';
             } else {
                 $destinationNetwork = $this->resource->destination->network ?? 'coolify';
@@ -756,7 +758,7 @@ EOD;
         $morphClass = $this->resource->getMorphClass();
 
         // Handle ServiceDatabase by checking the database type
-        if ($morphClass === \App\Models\ServiceDatabase::class) {
+        if ($morphClass === ServiceDatabase::class) {
             $dbType = $this->resource->databaseType();
             if (str_contains($dbType, 'mysql')) {
                 $morphClass = 'mysql';
@@ -770,7 +772,7 @@ EOD;
         }
 
         switch ($morphClass) {
-            case \App\Models\StandaloneMariadb::class:
+            case StandaloneMariadb::class:
             case 'mariadb':
                 $restoreCommand = $this->mariadbRestoreCommand;
                 if ($this->dumpAll) {
@@ -779,7 +781,7 @@ EOD;
                     $restoreCommand .= " < {$tmpPath}";
                 }
                 break;
-            case \App\Models\StandaloneMysql::class:
+            case StandaloneMysql::class:
             case 'mysql':
                 $restoreCommand = $this->mysqlRestoreCommand;
                 if ($this->dumpAll) {
@@ -788,7 +790,7 @@ EOD;
                     $restoreCommand .= " < {$tmpPath}";
                 }
                 break;
-            case \App\Models\StandalonePostgresql::class:
+            case StandalonePostgresql::class:
             case 'postgresql':
                 $restoreCommand = $this->postgresqlRestoreCommand;
                 if ($this->dumpAll) {
@@ -797,7 +799,7 @@ EOD;
                     $restoreCommand .= " {$tmpPath}";
                 }
                 break;
-            case \App\Models\StandaloneMongodb::class:
+            case StandaloneMongodb::class:
             case 'mongodb':
                 $restoreCommand = $this->mongodbRestoreCommand;
                 if ($this->dumpAll === false) {

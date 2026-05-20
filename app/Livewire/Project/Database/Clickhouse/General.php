@@ -48,11 +48,24 @@ class General extends Component
 
     public function getListeners()
     {
+        $userId = Auth::id();
         $teamId = Auth::user()->currentTeam()->id;
 
         return [
             "echo-private:team.{$teamId},DatabaseProxyStopped" => 'databaseProxyStopped',
+            // Broadcasts go to refreshStatus, which only writes display-only properties.
+            // Never wire status broadcasts to a handler that touches text-input properties —
+            // it clobbers in-progress typing every 10s. See coolify#6062 / #6354 / #9695.
+            "echo-private:user.{$userId},DatabaseStatusChanged" => 'refreshStatus',
+            "echo-private:team.{$teamId},ServiceChecked" => 'refreshStatus',
         ];
+    }
+
+    public function refreshStatus(): void
+    {
+        $this->database->refresh();
+        $this->dbUrl = $this->database->internal_db_url;
+        $this->dbUrlPublic = $this->database->external_db_url;
     }
 
     public function mount()

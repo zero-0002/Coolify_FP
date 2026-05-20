@@ -66,9 +66,20 @@ class General extends Component
         $teamId = Auth::user()->currentTeam()->id;
 
         return [
-            "echo-private:user.{$userId},DatabaseStatusChanged" => 'refresh',
-            "echo-private:team.{$teamId},ServiceChecked" => 'refresh',
+            // Broadcasts go to refreshStatus, which only writes display-only properties.
+            // Never wire status broadcasts to a handler that touches text-input properties —
+            // it clobbers in-progress typing every 10s. See coolify#6062 / #6354 / #9695.
+            "echo-private:user.{$userId},DatabaseStatusChanged" => 'refreshStatus',
+            "echo-private:team.{$teamId},ServiceChecked" => 'refreshStatus',
         ];
+    }
+
+    public function refreshStatus(): void
+    {
+        $this->database->refresh();
+        $this->db_url = $this->database->internal_db_url;
+        $this->db_url_public = $this->database->external_db_url;
+        $this->certificateValidUntil = $this->database->sslCertificates()->first()?->valid_until;
     }
 
     protected function rules(): array
