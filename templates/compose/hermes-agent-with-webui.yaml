@@ -20,7 +20,6 @@ services:
     volumes:
       - hermes-home:/home/hermes/.hermes
       - hermes-agent-src:/opt/hermes
-    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "test -d /home/hermes/.hermes || exit 1"]
       interval: 10s
@@ -43,14 +42,8 @@ services:
       - hermes-home:/home/hermeswebui/.hermes
       - hermes-agent-src:/home/hermeswebui/.hermes/hermes-agent:ro
       - hermes-workspace:/workspace
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8787/health"]
       interval: 30s
       timeout: 5s
       retries: 3
-
-volumes:
-  hermes-home:
-  hermes-agent-src:
-  hermes-workspace:
