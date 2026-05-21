@@ -78,11 +78,13 @@ it('does not subscribe the form to status broadcasts when display lives in a sib
         ->not->toHaveKey("echo-private:team.{$this->team->id},ServiceStatusChanged");
 })->with('database-general-forms-without-broadcasts');
 
+/**
+ * Resolve a Livewire component's listeners regardless of whether the subclass
+ * exposes getListeners() publicly or only declares a $listeners array — the
+ * HandlesEvents trait keeps getListeners() protected by default.
+ */
 function resolveLivewireListeners(object $component): array
 {
-    // Livewire's HandlesEvents trait declares getListeners() as protected,
-    // so subclasses that override it as public are callable directly, but
-    // subclasses that rely on $listeners are not. Reflection handles both.
     $method = new ReflectionMethod($component, 'getListeners');
     $method->setAccessible(true);
 

@@ -184,9 +184,12 @@ class General extends Component
         }
     }
 
-    public function databaseProxyStopped()
+    public function databaseProxyStopped(): void
     {
-        $this->syncData();
+        $this->database->refresh();
+        $this->isPublic = $this->database->is_public;
+        $this->publicPort = $this->database->public_port;
+        $this->publicPortTimeout = $this->database->public_port_timeout;
         $this->dispatch('databaseUpdated');
     }
 

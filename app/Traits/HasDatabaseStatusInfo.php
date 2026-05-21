@@ -5,6 +5,7 @@ namespace App\Traits;
 use App\Helpers\SslHelper;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -51,16 +52,23 @@ trait HasDatabaseStatusInfo
         return false;
     }
 
-    public function getListeners()
+    public function getListeners(): array
     {
-        $userId = Auth::id();
-        $teamId = Auth::user()->currentTeam()->id;
+        $listeners = ['databaseUpdated' => 'refresh'];
 
-        return [
-            "echo-private:user.{$userId},DatabaseStatusChanged" => 'refresh',
-            "echo-private:team.{$teamId},ServiceChecked" => 'refresh',
-            'databaseUpdated' => 'refresh',
-        ];
+        $user = Auth::user();
+        if (! $user) {
+            return $listeners;
+        }
+
+        $listeners["echo-private:user.{$user->id},DatabaseStatusChanged"] = 'refresh';
+
+        $team = $user->currentTeam();
+        if ($team) {
+            $listeners["echo-private:team.{$team->id},ServiceChecked"] = 'refresh';
+        }
+
+        return $listeners;
     }
 
     public function mount(): void
@@ -150,7 +158,7 @@ trait HasDatabaseStatusInfo
         }
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.project.database.status-info', [
             'label' => $this->databaseLabel(),
