@@ -29,5 +29,3 @@ services:
       - "healthchecks-data:/data"
     restart: unless-stopped
 
-volumes:
-  healthchecks-data: null
