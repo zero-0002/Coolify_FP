@@ -11,7 +11,6 @@ services:
     container_name: healthchecks
     environment:
       - SERVICE_URL_HEALTHCHECKS_8000
-      - SERVICE_URL_HEALTHCHECKS
       - DB=sqlite
       - DB_NAME=/data/hc.sqlite
       - "ALLOWED_HOSTS=${ALOWED_HOSTS:-*}"
