@@ -27,5 +27,4 @@ services:
       - "EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}"
     volumes:
       - "healthchecks-data:/data"
-    restart: unless-stopped
 
