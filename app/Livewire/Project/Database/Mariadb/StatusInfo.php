@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\Project\Database\Redis;
+namespace App\Livewire\Project\Database\Mariadb;
 
-use App\Models\StandaloneRedis;
+use App\Models\StandaloneMariadb;
 use App\Traits\HasDatabaseStatusInfo;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
@@ -12,10 +12,10 @@ class StatusInfo extends Component
     use AuthorizesRequests;
     use HasDatabaseStatusInfo;
 
-    public StandaloneRedis $database;
+    public StandaloneMariadb $database;
 
     protected function databaseLabel(): string
     {
-        return 'Redis';
+        return 'MariaDB';
     }
 }

@@ -1,11 +1,19 @@
 <?php
 
+use App\Livewire\Project\Database\Clickhouse\General as ClickhouseGeneral;
+use App\Livewire\Project\Database\Clickhouse\StatusInfo as ClickhouseStatusInfo;
 use App\Livewire\Project\Database\Dragonfly\General as DragonflyGeneral;
+use App\Livewire\Project\Database\Dragonfly\StatusInfo as DragonflyStatusInfo;
 use App\Livewire\Project\Database\Keydb\General as KeydbGeneral;
+use App\Livewire\Project\Database\Keydb\StatusInfo as KeydbStatusInfo;
 use App\Livewire\Project\Database\Mariadb\General as MariadbGeneral;
+use App\Livewire\Project\Database\Mariadb\StatusInfo as MariadbStatusInfo;
 use App\Livewire\Project\Database\Mongodb\General as MongodbGeneral;
+use App\Livewire\Project\Database\Mongodb\StatusInfo as MongodbStatusInfo;
 use App\Livewire\Project\Database\Mysql\General as MysqlGeneral;
+use App\Livewire\Project\Database\Mysql\StatusInfo as MysqlStatusInfo;
 use App\Livewire\Project\Database\Postgresql\General as PostgresqlGeneral;
+use App\Livewire\Project\Database\Postgresql\StatusInfo as PostgresqlStatusInfo;
 use App\Livewire\Project\Database\Redis\General as RedisGeneral;
 use App\Livewire\Project\Database\Redis\StatusInfo as RedisStatusInfo;
 use App\Livewire\Server\Sentinel;
@@ -15,7 +23,6 @@ use App\Models\Project;
 use App\Models\Server;
 use App\Models\StandaloneDocker;
 use App\Models\StandaloneMysql;
-use App\Models\StandalonePostgresql;
 use App\Models\StandaloneRedis;
 use App\Models\Team;
 use App\Models\User;
@@ -34,30 +41,35 @@ beforeEach(function () {
 });
 
 dataset('database-general-forms-without-broadcasts', [
-    // Redis splits status-derived display into a sibling component; the form itself
-    // takes no broadcast listeners. Other DBs use the narrower refreshStatus pattern below.
+    // Status-derived display moved into a sibling StatusInfo component for each DB,
+    // so the form itself takes no broadcast listeners and cannot clobber wire:dirty
+    // by absorbing deferred wire:model values during a status-triggered roundtrip.
     RedisGeneral::class,
-]);
-
-dataset('database-general-forms-with-narrow-refresh', [
-    // Form listens to status broadcasts but routes them to refreshStatus, which only
-    // writes display-only properties (URLs, cert expiry) — never input-bound text fields.
     PostgresqlGeneral::class,
     MysqlGeneral::class,
     MariadbGeneral::class,
     MongodbGeneral::class,
     KeydbGeneral::class,
     DragonflyGeneral::class,
+    ClickhouseGeneral::class,
 ]);
 
 dataset('database-status-info-components', [
     RedisStatusInfo::class,
+    PostgresqlStatusInfo::class,
+    MysqlStatusInfo::class,
+    MariadbStatusInfo::class,
+    MongodbStatusInfo::class,
+    KeydbStatusInfo::class,
+    DragonflyStatusInfo::class,
+    ClickhouseStatusInfo::class,
 ]);
 
 it('does not subscribe the form to status broadcasts when display lives in a sibling', function (string $componentClass) {
     // Regression guard for coolify#6062 / #6354 / #9695:
-    // For DBs whose status-derived display moved into a sibling component, the form
-    // itself must not subscribe to status broadcasts at all.
+    // Status broadcasts on the form would trigger a Livewire roundtrip that absorbs
+    // deferred wire:model values into the snapshot — clobbering both the typed text
+    // (resolved by the earlier refreshStatus fix) and the wire:dirty indicator.
     $listeners = resolveLivewireListeners(app($componentClass));
 
     expect($listeners)
@@ -65,20 +77,6 @@ it('does not subscribe the form to status broadcasts when display lives in a sib
         ->not->toHaveKey("echo-private:team.{$this->team->id},ServiceChecked")
         ->not->toHaveKey("echo-private:team.{$this->team->id},ServiceStatusChanged");
 })->with('database-general-forms-without-broadcasts');
-
-it('routes status broadcasts to refreshStatus, never to a handler that re-syncs inputs', function (string $componentClass) {
-    // Regression guard for coolify#6062 / #6354 / #9695:
-    // The form may listen to broadcasts, but only to a narrow handler (refreshStatus)
-    // that touches display-only properties. Routing to `refresh` or `$refresh` would
-    // re-sync every input property from the DB and wipe in-progress typing.
-    $listeners = resolveLivewireListeners(app($componentClass));
-
-    $databaseStatusKey = "echo-private:user.{$this->user->id},DatabaseStatusChanged";
-    $serviceCheckedKey = "echo-private:team.{$this->team->id},ServiceChecked";
-
-    expect($listeners[$databaseStatusKey] ?? null)->toBe('refreshStatus')
-        ->and($listeners[$serviceCheckedKey] ?? null)->toBe('refreshStatus');
-})->with('database-general-forms-with-narrow-refresh');
 
 function resolveLivewireListeners(object $component): array
 {
@@ -101,7 +99,7 @@ it('auto-refreshes status-info sibling on database status broadcasts', function 
         ->toHaveKey("echo-private:team.{$this->team->id},ServiceChecked");
 })->with('database-status-info-components');
 
-it('reloads the mysql database model when refresh is called directly so ssl controls follow the latest status', function () {
+it('reloads the mysql status-info model when refresh is called so ssl controls follow the latest status', function () {
     $server = Server::factory()->create(['team_id' => $this->team->id]);
     $destination = StandaloneDocker::where('server_id', $server->id)->first();
     $project = Project::factory()->create(['team_id' => $this->team->id]);
@@ -122,7 +120,7 @@ it('reloads the mysql database model when refresh is called directly so ssl cont
         'destination_type' => $destination->getMorphClass(),
     ]);
 
-    $component = Livewire::test(MysqlGeneral::class, ['database' => $database])
+    $component = Livewire::test(MysqlStatusInfo::class, ['database' => $database])
         ->assertDontSee('Database should be stopped to change this settings.');
 
     $database->fill(['status' => 'running:healthy'])->save();
@@ -159,36 +157,6 @@ it('does not clobber server form text inputs when server validation completes', 
 
     expect($component->get('name'))->toBe('user-was-typing-here')
         ->and($component->get('ip'))->toBe('203.0.113.42');
-});
-
-it('preserves typed input on the postgres form when refreshStatus runs', function () {
-    $server = Server::factory()->create(['team_id' => $this->team->id]);
-    $destination = StandaloneDocker::where('server_id', $server->id)->first();
-    $project = Project::factory()->create(['team_id' => $this->team->id]);
-    $environment = Environment::factory()->create(['project_id' => $project->id]);
-
-    $database = StandalonePostgresql::create([
-        'name' => 'persisted-name',
-        'image' => 'postgres:16',
-        'postgres_user' => 'postgres',
-        'postgres_password' => 'password',
-        'postgres_db' => 'postgres',
-        'status' => 'exited:unhealthy',
-        'enable_ssl' => false,
-        'is_log_drain_enabled' => false,
-        'environment_id' => $environment->id,
-        'destination_id' => $destination->id,
-        'destination_type' => $destination->getMorphClass(),
-    ]);
-
-    $component = Livewire::test(PostgresqlGeneral::class, ['database' => $database])
-        ->set('name', 'user-was-typing-here')
-        ->set('portsMappings', '5433:5432');
-
-    $component->call('refreshStatus');
-
-    expect($component->get('name'))->toBe('user-was-typing-here')
-        ->and($component->get('portsMappings'))->toBe('5433:5432');
 });
 
 it('shows the redis ssl gate hint after the sibling is refreshed', function () {
