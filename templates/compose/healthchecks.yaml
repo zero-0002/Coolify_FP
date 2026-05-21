@@ -11,8 +11,10 @@ services:
     container_name: healthchecks
     environment:
       - SERVICE_URL_HEALTHCHECKS_8000
+      - SERVICE_URL_HEALTHCHECKS
       - DB=sqlite
       - DB_NAME=/data/hc.sqlite
+      - "ALLOWED_HOSTS=${ALOWED_HOSTS:-*}"
       - "REGISTRATION_OPEN=${REGISTRATION_OPEN:-True}"
       - "DEBUG=${DEBUG:-False}"
       - "SECRET_KEY=${SECRET_KEY:?${SERVICE_PASSWORD_64_HEALTHCHECKS}}"
