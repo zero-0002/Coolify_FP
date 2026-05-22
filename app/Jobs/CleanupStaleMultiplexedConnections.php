@@ -38,10 +38,6 @@ class CleanupStaleMultiplexedConnections implements ShouldQueue
         $groups = [];
 
         foreach ($this->listProcesses() as $process) {
-            if (! preg_match('#(^|/)ssh -fN#', $process['args'])) {
-                continue;
-            }
-
             $controlPath = $this->extractControlPath($process['args']);
             if (! is_string($controlPath) || ! str_starts_with($controlPath, $muxDir.'/')) {
                 continue;
@@ -75,17 +71,13 @@ class CleanupStaleMultiplexedConnections implements ShouldQueue
         $minAge = (int) config('constants.ssh.mux_orphan_min_age');
 
         foreach ($this->listProcesses() as $process) {
-            // Backgrounded ssh master: current `ssh -fN` or legacy `ssh -fNM`.
-            if (! preg_match('#(^|/)ssh -fN#', $process['args'])) {
-                continue;
-            }
-
             // Only ever touch ssh processes pointing at Coolify's mux directory.
-            if (! preg_match('#ControlPath=('.preg_quote($muxDir, '#').'/\S+)#', $process['args'], $pathMatch)) {
+            $controlPath = $this->extractControlPath($process['args']);
+            if (! is_string($controlPath) || ! str_starts_with($controlPath, $muxDir.'/')) {
                 continue;
             }
 
-            if ($process['etimes'] >= $minAge && ! file_exists($pathMatch[1])) {
+            if ($process['etimes'] >= $minAge && ! file_exists($controlPath)) {
                 $this->reapOrphan('ssh', $process);
             }
         }
@@ -214,6 +206,10 @@ class CleanupStaleMultiplexedConnections implements ShouldQueue
     private function extractControlPath(string $args): ?string
     {
         if (! preg_match('/(?:^|\s)-o\s+ControlPath=(?:"([^"]+)"|\'([^\']+)\'|(\S+))/', $args, $matches)) {
+            if (preg_match('/^ssh:\s+(\S+)\s+\[mux\]$/', $args, $matches)) {
+                return $matches[1];
+            }
+
             return null;
         }
 

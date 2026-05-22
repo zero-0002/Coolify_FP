@@ -66,8 +66,10 @@ it('adds native openssh multiplexing options to ssh commands', function () {
     $command = SshMultiplexingHelper::generateSshCommand($server, 'echo ok');
 
     expect($command)
+        ->toStartWith('sh -c')
         ->toContain('-o ControlMaster=auto')
         ->toContain("-o ControlPath=/var/www/html/storage/app/ssh/mux/mux_{$server->uuid}")
+        ->toContain("/var/www/html/storage/app/ssh/mux/mux_{$server->uuid}.lock")
         ->toContain('-o ControlPersist=3600')
         ->not->toContain('ssh -fN')
         ->not->toContain('-O check');
@@ -83,6 +85,7 @@ it('omits native multiplexing options when ssh multiplexing is disabled for a co
     $command = SshMultiplexingHelper::generateSshCommand($server, 'echo ok', disableMultiplexing: true);
 
     expect($command)
+        ->not->toStartWith('sh -c')
         ->not->toContain('-o ControlMaster=auto')
         ->not->toContain('-o ControlPath=')
         ->not->toContain('-o ControlPersist=');
@@ -97,8 +100,10 @@ it('adds native openssh multiplexing options to scp commands', function () {
     $command = SshMultiplexingHelper::generateScpCommand($server, '/tmp/source', '/tmp/dest');
 
     expect($command)
+        ->toStartWith('sh -c')
         ->toContain('-o ControlMaster=auto')
         ->toContain("-o ControlPath=/var/www/html/storage/app/ssh/mux/mux_{$server->uuid}")
+        ->toContain("/var/www/html/storage/app/ssh/mux/mux_{$server->uuid}.lock")
         ->toContain('-o ControlPersist=3600')
         ->not->toContain('ssh -fN')
         ->not->toContain('-O check');
@@ -142,6 +147,32 @@ it('kills only old orphaned ssh masters whose control socket no longer exists', 
     Process::assertRan(fn ($process) => str_contains($process->command, 'kill') && str_contains($process->command, '222'));
     Process::assertNotRan(fn ($process) => str_contains($process->command, 'kill') && str_contains($process->command, '111'));
     Process::assertNotRan(fn ($process) => str_contains($process->command, 'kill') && str_contains($process->command, '333'));
+
+    File::delete($liveSocket);
+});
+
+it('kills old orphaned native openssh mux masters whose control socket no longer exists', function () {
+    config(['constants.ssh.mux_orphan_reap_enabled' => true]);
+    $muxDir = storage_path('app/ssh/mux');
+    File::ensureDirectoryExists($muxDir);
+
+    $liveSocket = $muxDir.'/mux_native_live_'.uniqid();
+    $orphanSocket = $muxDir.'/mux_native_orphan_'.uniqid();
+    File::put($liveSocket, 'x');
+
+    Process::fake([
+        'ps*' => Process::result(output: "111 1 5000 ssh: {$liveSocket} [mux]\n".
+            "222 1 5000 ssh: {$orphanSocket} [mux]\n"),
+        'kill*' => Process::result(exitCode: 0),
+    ]);
+
+    $job = new CleanupStaleMultiplexedConnections;
+    $method = new ReflectionMethod($job, 'cleanupOrphanedSshProcesses');
+    $method->setAccessible(true);
+    $method->invoke($job);
+
+    Process::assertRan(fn ($process) => str_contains($process->command, 'kill') && str_contains($process->command, '222'));
+    Process::assertNotRan(fn ($process) => str_contains($process->command, 'kill') && str_contains($process->command, '111'));
 
     File::delete($liveSocket);
 });
@@ -198,6 +229,29 @@ it('resets duplicate ssh mux process groups atomically when reaping is enabled',
     Process::fake([
         'ps*' => Process::result(output: "111 1 5000 ssh -fN -o ControlMaster=auto -o ControlPath={$controlPath} root@1.2.3.4\n".
             "222 1 5000 ssh -fN -o ControlMaster=auto -o ControlPath={$controlPath} root@1.2.3.4\n"),
+        'kill*' => Process::result(exitCode: 0),
+    ]);
+
+    $job = new CleanupStaleMultiplexedConnections;
+    $method = new ReflectionMethod($job, 'cleanupDuplicateSshProcesses');
+    $method->setAccessible(true);
+    $method->invoke($job);
+
+    Process::assertRan(fn ($process) => str_contains($process->command, 'kill') && str_contains($process->command, '111'));
+    Process::assertRan(fn ($process) => str_contains($process->command, 'kill') && str_contains($process->command, '222'));
+    expect(file_exists($controlPath))->toBeFalse();
+});
+
+it('resets duplicate native openssh mux process groups atomically when reaping is enabled', function () {
+    config(['constants.ssh.mux_orphan_reap_enabled' => true]);
+    $muxDir = storage_path('app/ssh/mux');
+    File::ensureDirectoryExists($muxDir);
+    $controlPath = $muxDir.'/mux_native_duplicate_'.uniqid();
+    File::put($controlPath, 'socket');
+
+    Process::fake([
+        'ps*' => Process::result(output: "111 1 5000 ssh: {$controlPath} [mux]\n".
+            "222 1 5000 ssh: {$controlPath} [mux]\n"),
         'kill*' => Process::result(exitCode: 0),
     ]);
 
