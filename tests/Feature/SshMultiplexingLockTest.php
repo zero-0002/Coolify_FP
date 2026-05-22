@@ -71,8 +71,8 @@ it('adds native openssh multiplexing options to ssh commands', function () {
         ->toContain("-o ControlPath=/var/www/html/storage/app/ssh/mux/mux_{$server->uuid}")
         ->toContain("/var/www/html/storage/app/ssh/mux/mux_{$server->uuid}.lock")
         ->toContain('-o ControlPersist=3600')
-        ->not->toContain('ssh -fN')
-        ->not->toContain('-O check');
+        ->toContain('-O check')
+        ->not->toContain('ssh -fN');
 
     Process::assertNothingRan();
 });
@@ -105,8 +105,8 @@ it('adds native openssh multiplexing options to scp commands', function () {
         ->toContain("-o ControlPath=/var/www/html/storage/app/ssh/mux/mux_{$server->uuid}")
         ->toContain("/var/www/html/storage/app/ssh/mux/mux_{$server->uuid}.lock")
         ->toContain('-o ControlPersist=3600')
-        ->not->toContain('ssh -fN')
-        ->not->toContain('-O check');
+        ->toContain('-O check')
+        ->not->toContain('ssh -fN');
 
     Process::assertNothingRan();
 });

@@ -28,13 +28,18 @@ class SshMultiplexingHelper
 
     public static function removeMuxFile(Server $server): void
     {
-        $closeCommand = 'ssh -O exit -o ControlPath='.self::muxSocket($server).' ';
-        if (data_get($server, 'settings.is_cloudflare_tunnel')) {
-            $closeCommand .= '-o ProxyCommand="cloudflared access ssh --hostname %h" ';
-        }
-        $closeCommand .= self::escapedUserAtHost($server);
-
+        $closeCommand = self::muxControlCommand($server, 'exit');
         Process::run($closeCommand);
+    }
+
+    private static function muxControlCommand(Server $server, string $operation): string
+    {
+        $command = "ssh -O {$operation} -o ControlPath=".self::muxSocket($server).' ';
+        if (data_get($server, 'settings.is_cloudflare_tunnel')) {
+            $command .= '-o ProxyCommand="cloudflared access ssh --hostname %h" ';
+        }
+
+        return $command.self::escapedUserAtHost($server);
     }
 
     public static function generateScpCommand(Server $server, string $source, string $dest): string
@@ -128,24 +133,31 @@ class SshMultiplexingHelper
         $lockDirectory = self::muxLockDirectory($server);
         $lockTimeout = (int) config('constants.ssh.mux_lock_timeout');
 
+        $checkCommand = self::muxControlCommand($server, 'check');
+
         $script = <<<'SH'
 cmd=$1
 socket=$2
 lock=$3
 timeout=$4
+check=$5
 
 run_command() {
     sh -c "$cmd"
 }
 
-if [ -S "$socket" ]; then
+mux_ready() {
+    [ -S "$socket" ] && sh -c "$check" >/dev/null 2>&1
+}
+
+if mux_ready; then
     run_command
     exit $?
 fi
 
 waited=0
 while ! mkdir "$lock" 2>/dev/null; do
-    if [ -S "$socket" ]; then
+    if mux_ready; then
         run_command
         exit $?
     fi
@@ -171,7 +183,7 @@ sh -c "$cmd" &
 child=$!
 
 for _ in 1 2 3 4 5 6 7 8 9 10; do
-    if [ -S "$socket" ] || ! kill -0 "$child" 2>/dev/null; then
+    if mux_ready || ! kill -0 "$child" 2>/dev/null; then
         break
     fi
     sleep 0.1
@@ -186,7 +198,8 @@ SH;
             .escapeshellarg($command).' '
             .escapeshellarg($muxSocket).' '
             .escapeshellarg($lockDirectory).' '
-            .escapeshellarg((string) $lockTimeout);
+            .escapeshellarg((string) $lockTimeout).' '
+            .escapeshellarg($checkCommand);
     }
 
     private static function escapedUserAtHost(Server $server): string
