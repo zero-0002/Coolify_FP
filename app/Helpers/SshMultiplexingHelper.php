@@ -4,6 +4,7 @@ namespace App\Helpers;
 
 use App\Models\PrivateKey;
 use App\Models\Server;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -30,37 +31,99 @@ class SshMultiplexingHelper
             return false;
         }
 
+        // Fast path: a usable master already exists, no need to lock.
+        if (self::connectionIsReusable($server)) {
+            return true;
+        }
+
+        // Slow path: establishing or refreshing the master. Serialize per server
+        // so concurrent workers do not each spawn their own master process,
+        // leaving orphaned non-master ssh connections that ControlPersist never reaps.
+        try {
+            return Cache::lock(
+                self::connectionLockKey($server),
+                config('constants.ssh.mux_lock_ttl')
+            )->block(config('constants.ssh.mux_lock_timeout'), function () use ($server) {
+                // Double-checked: another worker may have established the master
+                // while we were waiting for the lock.
+                if (self::connectionIsReusable($server)) {
+                    return true;
+                }
+
+                // A master exists but is stale or expired: close and re-establish.
+                if (self::masterConnectionExists($server)) {
+                    return self::refreshMultiplexedConnection($server);
+                }
+
+                return self::establishNewMultiplexedConnection($server);
+            });
+        } catch (LockTimeoutException) {
+            Log::warning('SSH multiplexing lock timeout, falling back to non-multiplexed connection', [
+                'server' => $server->name ?? $server->ip,
+            ]);
+
+            return false;
+        } catch (\Throwable $e) {
+            Log::warning('SSH multiplexing lock unavailable, falling back to non-multiplexed connection', [
+                'server' => $server->name ?? $server->ip,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Per-server, per-host lock key for serializing master establishment.
+     *
+     * The mux socket is a host-local unix socket, so the lock is scoped to the
+     * current Coolify host: workers on the same host share a master and must
+     * serialize, while workers on other hosts manage their own masters and must
+     * not block on each other.
+     */
+    private static function connectionLockKey(Server $server): string
+    {
+        return 'ssh_mux_lock_'.(gethostname() ?: 'unknown').'_'.$server->uuid;
+    }
+
+    /**
+     * Check whether a multiplexed master connection currently exists for the server.
+     */
+    private static function masterConnectionExists(Server $server): bool
+    {
         $sshConfig = self::serverSshConfiguration($server);
         $muxSocket = $sshConfig['muxFilename'];
 
-        // Check if connection exists
         $checkCommand = "ssh -O check -o ControlPath=$muxSocket ";
         if (data_get($server, 'settings.is_cloudflare_tunnel')) {
             $checkCommand .= '-o ProxyCommand="cloudflared access ssh --hostname %h" ';
         }
         $checkCommand .= self::escapedUserAtHost($server);
-        $process = Process::run($checkCommand);
 
-        if ($process->exitCode() !== 0) {
-            return self::establishNewMultiplexedConnection($server);
+        return Process::run($checkCommand)->exitCode() === 0;
+    }
+
+    /**
+     * Determine whether the existing master connection can be reused as-is
+     * (it exists, has not exceeded its max age, and passes the health check).
+     */
+    private static function connectionIsReusable(Server $server): bool
+    {
+        if (! self::masterConnectionExists($server)) {
+            return false;
         }
 
-        // Connection exists, ensure we have metadata for age tracking
+        // Existing connection but no metadata, store current time as fallback.
         if (self::getConnectionAge($server) === null) {
-            // Existing connection but no metadata, store current time as fallback
             self::storeConnectionMetadata($server);
         }
 
-        // Connection exists, check if it needs refresh due to age
         if (self::isConnectionExpired($server)) {
-            return self::refreshMultiplexedConnection($server);
+            return false;
         }
 
-        // Perform health check if enabled
-        if (config('constants.ssh.mux_health_check_enabled')) {
-            if (! self::isConnectionHealthy($server)) {
-                return self::refreshMultiplexedConnection($server);
-            }
+        if (config('constants.ssh.mux_health_check_enabled') && ! self::isConnectionHealthy($server)) {
+            return false;
         }
 
         return true;
@@ -75,7 +138,10 @@ class SshMultiplexingHelper
         $serverInterval = config('constants.ssh.server_interval');
         $muxPersistTime = config('constants.ssh.mux_persist_time');
 
-        $establishCommand = "ssh -fNM -o ControlMaster=auto -o ControlPath=$muxSocket -o ControlPersist={$muxPersistTime} ";
+        // No -M: it forces master mode and overrides ControlMaster=auto. When a
+        // socket already exists -M leaves an orphaned non-master ssh -fN process
+        // that ControlPersist never reaps. ControlMaster=auto reuses instead.
+        $establishCommand = "ssh -fN -o ControlMaster=auto -o ControlPath=$muxSocket -o ControlPersist={$muxPersistTime} ";
 
         if (data_get($server, 'settings.is_cloudflare_tunnel')) {
             $establishCommand .= ' -o ProxyCommand="cloudflared access ssh --hostname %h" ';
@@ -176,6 +242,10 @@ class SshMultiplexingHelper
                     $ssh_command .= "-o ControlMaster=auto -o ControlPath=$muxSocket -o ControlPersist={$muxPersistTime} ";
                 }
             } catch (\Exception $e) {
+                Log::warning('SSH multiplexing failed, falling back to non-multiplexed connection', [
+                    'server' => $server->name ?? $server->ip,
+                    'error' => $e->getMessage(),
+                ]);
                 // Continue without multiplexing
             }
         }
