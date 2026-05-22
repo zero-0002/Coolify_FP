@@ -3,7 +3,9 @@
 use App\Actions\Database\StartDatabase;
 use App\Actions\Database\StartDatabaseProxy;
 use App\Actions\Service\StartService;
+use App\Jobs\DatabaseBackupJob;
 use App\Jobs\ScheduledJobManager;
+use App\Models\ScheduledDatabaseBackup;
 
 describe('deployment_queue helper', function () {
     test('uses the high queue on self-hosted', function () {
@@ -16,6 +18,20 @@ describe('deployment_queue helper', function () {
         config(['constants.coolify.self_hosted' => false]);
 
         expect(deployment_queue())->toBe('deployments');
+    });
+});
+
+describe('crons_queue helper', function () {
+    test('uses the high queue on self-hosted', function () {
+        config(['constants.coolify.self_hosted' => true]);
+
+        expect(crons_queue())->toBe('high');
+    });
+
+    test('uses the crons queue on cloud', function () {
+        config(['constants.coolify.self_hosted' => false]);
+
+        expect(crons_queue())->toBe('crons');
     });
 });
 
@@ -41,16 +57,18 @@ describe('start action job routing', function () {
     ]);
 });
 
-describe('scheduled job manager queue routing', function () {
-    test('uses the crons queue on cloud', function () {
+describe('scheduled job routing', function () {
+    test('scheduled jobs use the crons queue on cloud', function () {
         config(['constants.coolify.self_hosted' => false]);
 
         expect((new ScheduledJobManager)->queue)->toBe('crons');
+        expect((new DatabaseBackupJob(new ScheduledDatabaseBackup))->queue)->toBe('crons');
     });
 
-    test('uses the high queue on self-hosted', function () {
+    test('scheduled jobs use the high queue on self-hosted', function () {
         config(['constants.coolify.self_hosted' => true]);
 
         expect((new ScheduledJobManager)->queue)->toBe('high');
+        expect((new DatabaseBackupJob(new ScheduledDatabaseBackup))->queue)->toBe('high');
     });
 });

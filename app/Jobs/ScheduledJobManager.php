@@ -37,18 +37,7 @@ class ScheduledJobManager implements ShouldQueue
      */
     public function __construct()
     {
-        $this->onQueue($this->determineQueue());
-    }
-
-    /**
-     * On cloud this job runs on a dedicated `crons` queue so it can be drained by an isolated
-     * Horizon worker pool; self-hosted keeps it on the shared `high` queue. Routing is decided
-     * by `isCloud()` (config-based), so the dispatching process needs no special env — only
-     * the worker must be configured to drain `crons` via `HORIZON_QUEUES`.
-     */
-    private function determineQueue(): string
-    {
-        return isCloud() ? 'crons' : 'high';
+        $this->onQueue(crons_queue());
     }
 
     /**
