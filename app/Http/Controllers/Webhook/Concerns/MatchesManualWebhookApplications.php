@@ -42,7 +42,13 @@ trait MatchesManualWebhookApplications
     {
         $repositoryPath = $this->canonicalManualWebhookRepository($gitRepository);
 
-        return $repositoryPath !== null && hash_equals($fullName, $repositoryPath);
+        if ($repositoryPath === null) {
+            return false;
+        }
+
+        // Git hosts (GitHub, GitLab, Gitea, Bitbucket) treat owner/repo names
+        // case-insensitively, so compare the canonical paths case-insensitively.
+        return hash_equals(mb_strtolower($fullName), mb_strtolower($repositoryPath));
     }
 
     /**

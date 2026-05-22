@@ -508,6 +508,29 @@ describe('Manual Webhook Repository Matching', function () {
         $response->assertOk();
         expect($response->getContent())->not->toContain('No applications found');
     });
+
+    test('github matches repository case-insensitively', function () {
+        $app = createApplicationWithWebhook(overrides: [
+            'git_repository' => 'https://github.com/Test-Org/Test-Repo.git',
+        ]);
+        $secret = $app->manual_webhook_secret_github;
+
+        $payload = json_encode([
+            'ref' => 'refs/heads/main',
+            'repository' => ['full_name' => 'test-org/test-repo'],
+            'after' => 'abc123',
+            'commits' => [],
+        ]);
+
+        $response = $this->call('POST', '/webhooks/source/github/events/manual', [], [], [], [
+            'HTTP_X-GitHub-Event' => 'push',
+            'HTTP_X-Hub-Signature-256' => 'sha256='.hash_hmac('sha256', $payload, $secret),
+            'CONTENT_TYPE' => 'application/json',
+        ], $payload);
+
+        $response->assertOk();
+        expect($response->getContent())->not->toContain('No applications found');
+    });
 });
 
 describe('Webhook Secret Auto-Generation', function () {
