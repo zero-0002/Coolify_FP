@@ -163,7 +163,7 @@
 
                 // Update highlighting
                 if (textSpan) {
-                    const originalText = this.decodeHtml(textSpan.dataset.lineText || '');
+                    const originalText = textSpan.dataset.lineText || '';
                     if (!query) {
                         textSpan.textContent = originalText;
                     } else if (matches) {
