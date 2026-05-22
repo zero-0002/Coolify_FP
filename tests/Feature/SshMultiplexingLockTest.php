@@ -66,12 +66,10 @@ it('adds native openssh multiplexing options to ssh commands', function () {
     $command = SshMultiplexingHelper::generateSshCommand($server, 'echo ok');
 
     expect($command)
-        ->toStartWith('sh -c')
         ->toContain('-o ControlMaster=auto')
         ->toContain("-o ControlPath=/var/www/html/storage/app/ssh/mux/mux_{$server->uuid}")
-        ->toContain("/var/www/html/storage/app/ssh/mux/mux_{$server->uuid}.lock")
         ->toContain('-o ControlPersist=3600')
-        ->toContain('-O check')
+        ->not->toContain('-O check')
         ->not->toContain('ssh -fN');
 
     Process::assertNothingRan();
@@ -85,7 +83,6 @@ it('omits native multiplexing options when ssh multiplexing is disabled for a co
     $command = SshMultiplexingHelper::generateSshCommand($server, 'echo ok', disableMultiplexing: true);
 
     expect($command)
-        ->not->toStartWith('sh -c')
         ->not->toContain('-o ControlMaster=auto')
         ->not->toContain('-o ControlPath=')
         ->not->toContain('-o ControlPersist=');
@@ -100,12 +97,10 @@ it('adds native openssh multiplexing options to scp commands', function () {
     $command = SshMultiplexingHelper::generateScpCommand($server, '/tmp/source', '/tmp/dest');
 
     expect($command)
-        ->toStartWith('sh -c')
         ->toContain('-o ControlMaster=auto')
         ->toContain("-o ControlPath=/var/www/html/storage/app/ssh/mux/mux_{$server->uuid}")
-        ->toContain("/var/www/html/storage/app/ssh/mux/mux_{$server->uuid}.lock")
         ->toContain('-o ControlPersist=3600')
-        ->toContain('-O check')
+        ->not->toContain('-O check')
         ->not->toContain('ssh -fN');
 
     Process::assertNothingRan();

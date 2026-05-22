@@ -46,14 +46,13 @@ class SshMultiplexingHelper
     {
         $sshConfig = self::serverSshConfiguration($server);
         $sshKeyLocation = $sshConfig['sshKeyLocation'];
-        $multiplexingEnabled = self::isMultiplexingEnabled();
         $scpCommand = 'timeout '.config('constants.ssh.command_timeout').' scp ';
 
         if ($server->isIpv6()) {
             $scpCommand .= '-6 ';
         }
 
-        if ($multiplexingEnabled) {
+        if (self::isMultiplexingEnabled()) {
             $scpCommand .= self::multiplexingOptions($server);
         }
 
@@ -64,14 +63,10 @@ class SshMultiplexingHelper
         $scpCommand .= self::getCommonSshOptions($server, $sshKeyLocation, self::getConnectionTimeout($server), config('constants.ssh.server_interval'), isScp: true);
 
         if ($server->isIpv6()) {
-            $scpCommand .= "{$source} ".escapeshellarg($server->user).'@['.escapeshellarg($server->ip)."]:{$dest}";
-        } else {
-            $scpCommand .= "{$source} ".self::escapedUserAtHost($server).":{$dest}";
+            return $scpCommand."{$source} ".escapeshellarg($server->user).'@['.escapeshellarg($server->ip)."]:{$dest}";
         }
 
-        return $multiplexingEnabled
-            ? self::withFirstUseMuxLock($server, $scpCommand)
-            : $scpCommand;
+        return $scpCommand."{$source} ".self::escapedUserAtHost($server).":{$dest}";
     }
 
     public static function generateSshCommand(Server $server, string $command, bool $disableMultiplexing = false): string
@@ -82,13 +77,12 @@ class SshMultiplexingHelper
 
         $sshConfig = self::serverSshConfiguration($server);
         $sshKeyLocation = $sshConfig['sshKeyLocation'];
-        $multiplexingEnabled = ! $disableMultiplexing && self::isMultiplexingEnabled();
 
         self::validateSshKey($server->privateKey);
 
         $sshCommand = 'timeout '.config('constants.ssh.command_timeout').' ssh ';
 
-        if ($multiplexingEnabled) {
+        if (! $disableMultiplexing && self::isMultiplexingEnabled()) {
             $sshCommand .= self::multiplexingOptions($server);
         }
 
@@ -101,13 +95,9 @@ class SshMultiplexingHelper
         $delimiter = base64_encode(Hash::make($command));
         $command = str_replace($delimiter, '', $command);
 
-        $sshCommand .= self::escapedUserAtHost($server)." 'bash -se' << \\$delimiter".PHP_EOL
+        return $sshCommand.self::escapedUserAtHost($server)." 'bash -se' << \\$delimiter".PHP_EOL
             .$command.PHP_EOL
             .$delimiter;
-
-        return $multiplexingEnabled
-            ? self::withFirstUseMuxLock($server, $sshCommand)
-            : $sshCommand;
     }
 
     private static function multiplexingOptions(Server $server): string
@@ -120,86 +110,6 @@ class SshMultiplexingHelper
     private static function muxSocket(Server $server): string
     {
         return '/var/www/html/storage/app/ssh/mux/mux_'.$server->uuid;
-    }
-
-    private static function muxLockDirectory(Server $server): string
-    {
-        return self::muxSocket($server).'.lock';
-    }
-
-    private static function withFirstUseMuxLock(Server $server, string $command): string
-    {
-        $muxSocket = self::muxSocket($server);
-        $lockDirectory = self::muxLockDirectory($server);
-        $lockTimeout = (int) config('constants.ssh.mux_lock_timeout');
-
-        $checkCommand = self::muxControlCommand($server, 'check');
-
-        $script = <<<'SH'
-cmd=$1
-socket=$2
-lock=$3
-timeout=$4
-check=$5
-
-run_command() {
-    sh -c "$cmd"
-}
-
-mux_ready() {
-    [ -S "$socket" ] && sh -c "$check" >/dev/null 2>&1
-}
-
-if mux_ready; then
-    run_command
-    exit $?
-fi
-
-waited=0
-while ! mkdir "$lock" 2>/dev/null; do
-    if mux_ready; then
-        run_command
-        exit $?
-    fi
-
-    if [ "$waited" -ge "$timeout" ]; then
-        run_command
-        exit $?
-    fi
-
-    waited=$((waited + 1))
-    sleep 1
-done
-
-cleanup() {
-    if [ -n "${child:-}" ] && kill -0 "$child" 2>/dev/null; then
-        kill "$child" 2>/dev/null
-    fi
-    rmdir "$lock" 2>/dev/null
-}
-trap cleanup INT TERM HUP
-
-sh -c "$cmd" &
-child=$!
-
-for _ in 1 2 3 4 5 6 7 8 9 10; do
-    if mux_ready || ! kill -0 "$child" 2>/dev/null; then
-        break
-    fi
-    sleep 0.1
-done
-
-rmdir "$lock" 2>/dev/null
-wait "$child"
-exit $?
-SH;
-
-        return 'sh -c '.escapeshellarg($script).' -- '
-            .escapeshellarg($command).' '
-            .escapeshellarg($muxSocket).' '
-            .escapeshellarg($lockDirectory).' '
-            .escapeshellarg((string) $lockTimeout).' '
-            .escapeshellarg($checkCommand);
     }
 
     private static function escapedUserAtHost(Server $server): string
