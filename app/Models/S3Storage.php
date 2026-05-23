@@ -15,6 +15,7 @@ class S3Storage extends BaseModel
     use HasFactory, HasSafeStringAttribute;
 
     protected $fillable = [
+        'team_id',
         'name',
         'description',
         'region',
