@@ -84,6 +84,42 @@ it('rejects an S3 storage not owned by the current team', function () {
     expect(ScheduledDatabaseBackup::count())->toBe(0);
 });
 
+it('rejects an S3 storage that is reassigned after the component is mounted', function () {
+    $database = createDatabaseForScheduledBackupTest($this->team);
+    $s3 = createS3StorageForTeam($this->team);
+
+    $component = Livewire::test(CreateScheduledBackup::class, ['database' => $database])
+        ->set('frequency', '0 0 * * *')
+        ->set('saveToS3', true)
+        ->set('s3StorageId', $s3->id);
+
+    $s3->update(['team_id' => Team::factory()->create()->id]);
+
+    $component
+        ->call('submit')
+        ->assertDispatched('error');
+
+    expect(ScheduledDatabaseBackup::count())->toBe(0);
+});
+
+it('rejects an S3 storage that becomes unusable after the component is mounted', function () {
+    $database = createDatabaseForScheduledBackupTest($this->team);
+    $s3 = createS3StorageForTeam($this->team);
+
+    $component = Livewire::test(CreateScheduledBackup::class, ['database' => $database])
+        ->set('frequency', '0 0 * * *')
+        ->set('saveToS3', true)
+        ->set('s3StorageId', $s3->id);
+
+    $s3->update(['is_usable' => false]);
+
+    $component
+        ->call('submit')
+        ->assertDispatched('error');
+
+    expect(ScheduledDatabaseBackup::count())->toBe(0);
+});
+
 it('creates a scheduled backup with a valid team-owned S3 storage', function () {
     $database = createDatabaseForScheduledBackupTest($this->team);
     $s3 = createS3StorageForTeam($this->team);

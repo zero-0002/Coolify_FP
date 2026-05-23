@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Project\Database;
 
+use App\Models\S3Storage;
 use App\Models\ScheduledDatabaseBackup;
 use App\Models\ServiceDatabase;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -50,7 +51,13 @@ class CreateScheduledBackup extends Component
             $this->validate();
 
             if ($this->saveToS3) {
-                if (is_null($this->s3StorageId) || ! $this->definedS3s->contains('id', $this->s3StorageId)) {
+                $s3StorageExists = ! is_null($this->s3StorageId)
+                    && S3Storage::where('team_id', currentTeam()->id)
+                        ->where('is_usable', true)
+                        ->whereKey($this->s3StorageId)
+                        ->exists();
+
+                if (! $s3StorageExists) {
                     $this->dispatch('error', 'Please select a valid S3 storage to enable S3 backups.');
 
                     return;
