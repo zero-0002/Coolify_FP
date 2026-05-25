@@ -301,10 +301,16 @@ EOD;
         } elseif ($stackServiceUuid) {
             // ServiceDatabase route - look up the service database
             $serviceUuid = data_get($this->parameters, 'service_uuid');
-            $service = Service::whereUuid($serviceUuid)->first();
-            if (! $service) {
-                abort(404);
-            }
+            $project = currentTeam()
+                ->projects()
+                ->select('id', 'uuid', 'team_id')
+                ->where('uuid', data_get($this->parameters, 'project_uuid'))
+                ->firstOrFail();
+            $environment = $project->environments()
+                ->select('id', 'uuid', 'name', 'project_id')
+                ->where('uuid', data_get($this->parameters, 'environment_uuid'))
+                ->firstOrFail();
+            $service = $environment->services()->whereUuid($serviceUuid)->firstOrFail();
             $resource = $service->databases()->whereUuid($stackServiceUuid)->first();
             if (is_null($resource)) {
                 abort(404);
