@@ -25,6 +25,9 @@ class DestinationsController extends Controller
         ];
     }
 
+    /**
+     * Resolve the calling token's team id, or return a 403 response.
+     */
     private function teamIdOrAbort(): int|\Illuminate\Http\JsonResponse
     {
         $teamId = getTeamIdFromToken();
@@ -35,16 +38,33 @@ class DestinationsController extends Controller
         return $teamId;
     }
 
+    /**
+     * StandaloneDocker / SwarmDocker scoped to a team via their parent server.
+     * Uses whereHas instead of the model's ownedByCurrentTeamAPI() scope so the
+     * controller works on Coolify versions that pre-date that scope being added
+     * to the destination models (e.g. 4.0.0-beta.470).
+     */
+    private function teamScopedDockers(int $teamId)
+    {
+        return [
+            'standalone' => StandaloneDocker::whereHas('server', fn ($q) => $q->whereTeamId($teamId))->get(),
+            'swarm' => SwarmDocker::whereHas('server', fn ($q) => $q->whereTeamId($teamId))->get(),
+        ];
+    }
+
     public function index(Request $request)
     {
         $teamId = $this->teamIdOrAbort();
         if (! is_int($teamId)) {
             return $teamId;
         }
-        $standalone = StandaloneDocker::ownedByCurrentTeamAPI($teamId)->get();
-        $swarm = SwarmDocker::ownedByCurrentTeamAPI($teamId)->get();
+        $sets = $this->teamScopedDockers($teamId);
 
-        return response()->json($standalone->concat($swarm)->map(fn ($d) => $this->transform($d))->values());
+        return response()->json(
+            $sets['standalone']->concat($sets['swarm'])
+                ->map(fn ($d) => $this->transform($d))
+                ->values()
+        );
     }
 
     public function index_by_server(Request $request, string $server_uuid)
@@ -53,7 +73,7 @@ class DestinationsController extends Controller
         if (! is_int($teamId)) {
             return $teamId;
         }
-        $server = Server::ownedByCurrentTeamAPI($teamId)->whereUuid($server_uuid)->firstOrFail();
+        $server = Server::whereTeamId($teamId)->whereUuid($server_uuid)->firstOrFail();
         $list = $server->standaloneDockers->concat($server->swarmDockers);
 
         return response()->json($list->map(fn ($d) => $this->transform($d))->values());
@@ -65,8 +85,8 @@ class DestinationsController extends Controller
         if (! is_int($teamId)) {
             return $teamId;
         }
-        $d = StandaloneDocker::ownedByCurrentTeamAPI($teamId)->whereUuid($uuid)->first()
-            ?? SwarmDocker::ownedByCurrentTeamAPI($teamId)->whereUuid($uuid)->firstOrFail();
+        $d = StandaloneDocker::whereHas('server', fn ($q) => $q->whereTeamId($teamId))->whereUuid($uuid)->first()
+            ?? SwarmDocker::whereHas('server', fn ($q) => $q->whereTeamId($teamId))->whereUuid($uuid)->firstOrFail();
 
         return response()->json($this->transform($d));
     }
@@ -77,7 +97,7 @@ class DestinationsController extends Controller
         if (! is_int($teamId)) {
             return $teamId;
         }
-        $server = Server::ownedByCurrentTeamAPI($teamId)->whereUuid($server_uuid)->firstOrFail();
+        $server = Server::whereTeamId($teamId)->whereUuid($server_uuid)->firstOrFail();
 
         $allowed = ['name', 'network', 'type'];
         $extra = array_diff(array_keys($request->all()), $allowed);
@@ -118,10 +138,30 @@ class DestinationsController extends Controller
         if (! is_int($teamId)) {
             return $teamId;
         }
-        $d = StandaloneDocker::ownedByCurrentTeamAPI($teamId)->whereUuid($uuid)->first()
-            ?? SwarmDocker::ownedByCurrentTeamAPI($teamId)->whereUuid($uuid)->firstOrFail();
-        if ($d->attachedTo()) {
-            return response()->json(['message' => 'Destination has attached resources, detach first.'], 409);
+        $d = StandaloneDocker::whereHas('server', fn ($q) => $q->whereTeamId($teamId))->whereUuid($uuid)->first()
+            ?? SwarmDocker::whereHas('server', fn ($q) => $q->whereTeamId($teamId))->whereUuid($uuid)->firstOrFail();
+
+        // Guard against deleting destinations with attached resources. attachedTo()
+        // is recent on the destination models; fall back to a manual check for
+        // older Coolify versions (e.g. 4.0.0-beta.470).
+        if (method_exists($d, 'attachedTo')) {
+            if ($d->attachedTo()) {
+                return response()->json(['message' => 'Destination has attached resources, detach first.'], 409);
+            }
+        } else {
+            $hasAttached = $d->applications()->exists()
+                || $d->postgresqls()->exists()
+                || (method_exists($d, 'mysqls') && $d->mysqls()->exists())
+                || (method_exists($d, 'mariadbs') && $d->mariadbs()->exists())
+                || (method_exists($d, 'mongodbs') && $d->mongodbs()->exists())
+                || (method_exists($d, 'redis') && $d->redis()->exists())
+                || (method_exists($d, 'keydbs') && $d->keydbs()->exists())
+                || (method_exists($d, 'dragonflies') && $d->dragonflies()->exists())
+                || (method_exists($d, 'clickhouses') && $d->clickhouses()->exists())
+                || (method_exists($d, 'services') && $d->services()->exists());
+            if ($hasAttached) {
+                return response()->json(['message' => 'Destination has attached resources, detach first.'], 409);
+            }
         }
         $d->delete();
 
