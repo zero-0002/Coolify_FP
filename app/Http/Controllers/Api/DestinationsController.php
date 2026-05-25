@@ -25,9 +25,22 @@ class DestinationsController extends Controller
         ];
     }
 
+    private function teamIdOrAbort(): int|\Illuminate\Http\JsonResponse
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return response()->json(['message' => 'You are not allowed to access the API.'], 403);
+        }
+
+        return $teamId;
+    }
+
     public function index(Request $request)
     {
-        $teamId = auth()->user()->currentTeam()->id;
+        $teamId = $this->teamIdOrAbort();
+        if (! is_int($teamId)) {
+            return $teamId;
+        }
         $standalone = StandaloneDocker::ownedByCurrentTeamAPI($teamId)->get();
         $swarm = SwarmDocker::ownedByCurrentTeamAPI($teamId)->get();
 
@@ -36,7 +49,10 @@ class DestinationsController extends Controller
 
     public function index_by_server(Request $request, string $server_uuid)
     {
-        $teamId = auth()->user()->currentTeam()->id;
+        $teamId = $this->teamIdOrAbort();
+        if (! is_int($teamId)) {
+            return $teamId;
+        }
         $server = Server::ownedByCurrentTeamAPI($teamId)->whereUuid($server_uuid)->firstOrFail();
         $list = $server->standaloneDockers->concat($server->swarmDockers);
 
@@ -45,7 +61,10 @@ class DestinationsController extends Controller
 
     public function show(Request $request, string $uuid)
     {
-        $teamId = auth()->user()->currentTeam()->id;
+        $teamId = $this->teamIdOrAbort();
+        if (! is_int($teamId)) {
+            return $teamId;
+        }
         $d = StandaloneDocker::ownedByCurrentTeamAPI($teamId)->whereUuid($uuid)->first()
             ?? SwarmDocker::ownedByCurrentTeamAPI($teamId)->whereUuid($uuid)->firstOrFail();
 
@@ -54,7 +73,10 @@ class DestinationsController extends Controller
 
     public function create(Request $request, string $server_uuid)
     {
-        $teamId = auth()->user()->currentTeam()->id;
+        $teamId = $this->teamIdOrAbort();
+        if (! is_int($teamId)) {
+            return $teamId;
+        }
         $server = Server::ownedByCurrentTeamAPI($teamId)->whereUuid($server_uuid)->firstOrFail();
 
         $allowed = ['name', 'network', 'type'];
@@ -92,7 +114,10 @@ class DestinationsController extends Controller
 
     public function delete(Request $request, string $uuid)
     {
-        $teamId = auth()->user()->currentTeam()->id;
+        $teamId = $this->teamIdOrAbort();
+        if (! is_int($teamId)) {
+            return $teamId;
+        }
         $d = StandaloneDocker::ownedByCurrentTeamAPI($teamId)->whereUuid($uuid)->first()
             ?? SwarmDocker::ownedByCurrentTeamAPI($teamId)->whereUuid($uuid)->firstOrFail();
         if ($d->attachedTo()) {
