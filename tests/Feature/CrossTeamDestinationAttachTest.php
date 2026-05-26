@@ -98,6 +98,16 @@ describe('Destination::addServer GHSA-j395-3pqh-9r5g', function () {
         expect($this->applicationA->fresh()->additional_networks)->toHaveCount(0);
     });
 
+    test('cannot attach own network paired with wrong own server', function () {
+        try {
+            Livewire::test(Destination::class, ['resource' => $this->applicationA])
+                ->call('addServer', $this->destinationA2->id, $this->serverA->id);
+        } catch (Throwable $e) {
+        }
+
+        expect($this->applicationA->fresh()->additional_networks)->toHaveCount(0);
+    });
+
     test('can attach own team\'s server + network to own application', function () {
         Livewire::test(Destination::class, ['resource' => $this->applicationA])
             ->call('addServer', $this->destinationA2->id, $this->serverA2->id);
@@ -116,6 +126,18 @@ describe('Destination::promote GHSA-j395-3pqh-9r5g', function () {
         try {
             Livewire::test(Destination::class, ['resource' => $this->applicationA])
                 ->call('promote', $this->destinationB->id, $this->serverB->id);
+        } catch (Throwable $e) {
+        }
+
+        expect($this->applicationA->fresh()->destination_id)->toBe($originalDestinationId);
+    });
+
+    test('cannot promote own network paired with wrong own server', function () {
+        $originalDestinationId = $this->applicationA->destination_id;
+
+        try {
+            Livewire::test(Destination::class, ['resource' => $this->applicationA])
+                ->call('promote', $this->destinationA2->id, $this->serverA->id);
         } catch (Throwable $e) {
         }
 
