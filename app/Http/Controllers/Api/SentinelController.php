@@ -8,6 +8,7 @@ use App\Models\Server;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Validator;
 
 class SentinelController extends Controller
 {
@@ -77,6 +78,17 @@ class SentinelController extends Controller
 
             return response()->json(['message' => 'Unauthorized'], 401);
         }
+        $validator = Validator::make($request->all(), [
+            'containers' => ['required', 'array', 'min:1'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(serializeApiResponse([
+                'message' => 'Validation failed.',
+                'errors' => $validator->errors(),
+            ]), 422);
+        }
+
         $data = $request->all();
 
         // Heartbeat MUST update on every push — drives isSentinelLive() and SSH-check skipping.

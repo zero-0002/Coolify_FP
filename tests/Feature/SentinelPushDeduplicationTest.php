@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Queue;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    config(['app.maintenance.store' => 'array']);
+
     Queue::fake();
     Cache::flush();
 
@@ -68,6 +70,25 @@ it('updates the heartbeat even when the job is skipped', function () use ($runni
     Queue::assertPushed(PushServerUpdateJob::class, 1);
     expect(Carbon::parse($this->server->fresh()->sentinel_updated_at)->diffInSeconds(now()))->toBeLessThan(5);
 });
+
+it('rejects malformed sentinel payloads before touching server state', function (array $payload) {
+    $this->server->update(['sentinel_updated_at' => now()->subHour()]);
+    $originalHeartbeat = $this->server->fresh()->sentinel_updated_at;
+
+    pushSentinel($this->token, $payload)
+        ->assertUnprocessable()
+        ->assertJsonPath('message', 'Validation failed.')
+        ->assertJsonValidationErrors('containers');
+
+    Queue::assertNotPushed(PushServerUpdateJob::class);
+    expect($this->server->fresh()->sentinel_updated_at)->toBe($originalHeartbeat);
+    expect(Cache::has('sentinel:push-hash:'.$this->server->id))->toBeFalse();
+    expect(Cache::has('sentinel:push-force:'.$this->server->id))->toBeFalse();
+})->with([
+    'missing containers' => [[]],
+    'non-array containers' => [['containers' => 'not-an-array']],
+    'empty containers' => [['containers' => []]],
+]);
 
 it('dispatches the job when container state changes', function () use ($running) {
     pushSentinel($this->token, sentinelPayload($running()))->assertOk();
