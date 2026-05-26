@@ -143,6 +143,8 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
             && (string) $lastPercentage !== (string) $filesystemUsageRoot) {
             Cache::put($storageCacheKey, $filesystemUsageRoot, 600);
             ServerStorageCheckJob::dispatch($this->server, $filesystemUsageRoot);
+        } elseif ($filesystemUsageRoot !== null && $filesystemUsageRoot < $diskThreshold) {
+            Cache::forget($storageCacheKey);
         }
 
         if ($this->containers->isEmpty()) {
