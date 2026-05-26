@@ -117,19 +117,22 @@ class SentinelController extends Controller
         $hash = $this->containerStateHash($data);
         $hashKey = "sentinel:push-hash:{$server->id}";
         $forceKey = "sentinel:push-force:{$server->id}";
+        $lockKey = "sentinel:push-lock:{$server->id}";
 
-        $cachedHash = Cache::get($hashKey);
-        $forceActive = Cache::has($forceKey);
+        return Cache::lock($lockKey, 10)->block(5, function () use ($hashKey, $forceKey, $hash): bool {
+            $cachedHash = Cache::get($hashKey);
+            $forceActive = Cache::has($forceKey);
 
-        $shouldDispatch = $cachedHash === null || $cachedHash !== $hash || ! $forceActive;
+            $shouldDispatch = $cachedHash === null || $cachedHash !== $hash || ! $forceActive;
 
-        if ($shouldDispatch) {
-            // Day-long TTL bounds memory if a server stops pushing entirely.
-            Cache::put($hashKey, $hash, now()->addDay());
-            Cache::put($forceKey, true, config('constants.sentinel.push_force_interval_seconds', 300));
-        }
+            if ($shouldDispatch) {
+                // Day-long TTL bounds memory if a server stops pushing entirely.
+                Cache::put($hashKey, $hash, now()->addDay());
+                Cache::put($forceKey, true, config('constants.sentinel.push_force_interval_seconds', 300));
+            }
 
-        return $shouldDispatch;
+            return $shouldDispatch;
+        });
     }
 
     /**
