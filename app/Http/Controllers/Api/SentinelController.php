@@ -79,7 +79,7 @@ class SentinelController extends Controller
             return response()->json(['message' => 'Unauthorized'], 401);
         }
         $validator = Validator::make($request->all(), [
-            'containers' => ['required', 'array', 'min:1'],
+            'containers' => ['present', 'array'],
         ]);
 
         if ($validator->fails()) {

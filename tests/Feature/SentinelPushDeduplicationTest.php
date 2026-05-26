@@ -71,6 +71,15 @@ it('updates the heartbeat even when the job is skipped', function () use ($runni
     expect(Carbon::parse($this->server->fresh()->sentinel_updated_at)->diffInSeconds(now()))->toBeLessThan(5);
 });
 
+it('accepts an empty container list as a heartbeat when no containers are running', function () {
+    $this->server->update(['sentinel_updated_at' => now()->subHour()]);
+
+    pushSentinel($this->token, sentinelPayload([]))->assertOk();
+
+    Queue::assertPushed(PushServerUpdateJob::class, 1);
+    expect(Carbon::parse($this->server->fresh()->sentinel_updated_at)->diffInSeconds(now()))->toBeLessThan(5);
+});
+
 it('rejects malformed sentinel payloads before touching server state', function (array $payload) {
     $this->server->update(['sentinel_updated_at' => now()->subHour()]);
     $originalHeartbeat = $this->server->fresh()->sentinel_updated_at;
@@ -87,7 +96,6 @@ it('rejects malformed sentinel payloads before touching server state', function 
 })->with([
     'missing containers' => [[]],
     'non-array containers' => [['containers' => 'not-an-array']],
-    'empty containers' => [['containers' => []]],
 ]);
 
 it('guards the dedupe decision with a server scoped atomic cache lock', function () {
