@@ -63,7 +63,7 @@ class ScheduledTaskJob implements ShouldBeEncrypted, ShouldQueue
 
     public string $server_timezone;
 
-    public function __construct($task)
+    public function __construct(ScheduledTask $task)
     {
         $this->onQueue(crons_queue());
 
