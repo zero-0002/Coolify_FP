@@ -143,4 +143,19 @@ describe('Destination::promote GHSA-j395-3pqh-9r5g', function () {
 
         expect($this->applicationA->fresh()->destination_id)->toBe($originalDestinationId);
     });
+
+    test('can promote own team network and preserve previous main as additional network', function () {
+        $this->applicationA->additional_networks()->attach($this->destinationA2->id, ['server_id' => $this->serverA2->id]);
+
+        Livewire::test(Destination::class, ['resource' => $this->applicationA])
+            ->call('promote', $this->destinationA2->id, $this->serverA2->id);
+
+        $application = $this->applicationA->fresh();
+        $additional = $application->additional_networks;
+
+        expect($application->destination_id)->toBe($this->destinationA2->id);
+        expect($additional)->toHaveCount(1);
+        expect($additional->first()->id)->toBe($this->destinationA->id);
+        expect($additional->first()->pivot->server_id)->toBe($this->serverA->id);
+    });
 });
