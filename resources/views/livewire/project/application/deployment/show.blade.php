@@ -40,6 +40,10 @@
                 clearTimeout(this.scrollTimeout);
                 this.scrollTimeout = null;
             }
+            if (this.scrollDebounce) {
+                clearTimeout(this.scrollDebounce);
+                this.scrollDebounce = null;
+            }
         },
         disableFollow() {
             if (!this.alwaysScroll) return;
