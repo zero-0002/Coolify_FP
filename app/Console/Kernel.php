@@ -41,7 +41,9 @@ class Kernel extends ConsoleKernel
             $this->instanceTimezone = config('app.timezone');
         }
 
-        $this->scheduleInstance->job(new CleanupStaleMultiplexedConnections)->hourly()->onOneServer();
+        $this->scheduleInstance->job(new CleanupStaleMultiplexedConnections, crons_queue())
+            ->hourly()
+            ->onOneServer();
         $this->scheduleInstance->command('cleanup:redis --clear-locks')->daily();
         $this->scheduleInstance->command('sanctum:prune-expired --hours=1')->hourly()->onOneServer();
         $this->scheduleInstance->job(new ApiTokenExpirationWarningJob)->hourly()->onOneServer();
