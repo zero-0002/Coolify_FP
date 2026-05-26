@@ -98,8 +98,18 @@ class User extends Authenticatable implements SendsEmail
                 $team['id'] = 0;
                 $team['name'] = 'Root Team';
             }
+            $new_team = $user->id === 0 ? Team::find(0) : null;
+
+            if ($new_team !== null) {
+                $new_team->forceFill($team);
+                $new_team->save();
+
+                return;
+            }
+
             $new_team = (new Team)->forceFill($team);
             $new_team->save();
+
             $user->teams()->attach($new_team, ['role' => 'owner']);
         });
 
