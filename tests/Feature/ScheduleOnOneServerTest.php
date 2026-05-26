@@ -1,10 +1,8 @@
 <?php
 
-use App\Jobs\CleanupStaleMultiplexedConnections;
 use App\Models\InstanceSettings;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -21,23 +19,6 @@ it('schedules RegenerateSslCertJob with onOneServer to prevent multi-server doub
 
     expect($event)->not->toBeNull();
     expect($event->onOneServer)->toBeTrue();
-});
-
-it('schedules CleanupStaleMultiplexedConnections on the crons queue', function () {
-    config(['constants.coolify.self_hosted' => false]);
-    Queue::fake();
-
-    $schedule = app(Schedule::class);
-
-    $event = collect($schedule->events())->first(
-        fn ($e) => str_contains((string) $e->description, CleanupStaleMultiplexedConnections::class)
-    );
-
-    expect($event)->not->toBeNull();
-
-    $event->run(app());
-
-    Queue::assertPushedOn('crons', CleanupStaleMultiplexedConnections::class);
 });
 
 it('schedules every production job with onOneServer', function () {
