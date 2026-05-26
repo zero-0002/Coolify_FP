@@ -2,67 +2,47 @@
 
 use Illuminate\Support\Facades\Http;
 
-function createFakeSyncBunnyBinary(string $binDir, string $name, string $contents): void
+function createSyncBunnyFailingBinary(string $binDir, string $name): void
 {
-    file_put_contents("{$binDir}/{$name}", $contents);
+    file_put_contents("{$binDir}/{$name}", <<<'SH'
+#!/bin/sh
+printf '%s %s\n' "$(basename "$0")" "$*" >> "$SYNC_BUNNY_TEST_LOG"
+exit 1
+SH);
     chmod("{$binDir}/{$name}", 0755);
 }
 
-it('syncs nightly files to the nested nightly json path in the cdn repository', function (string $option, string $confirmation, bool $syncsReleases) {
+it('syncs nightly versions to BunnyCDN without creating a GitHub PR', function () {
     Http::fake([
-        'api.github.com/repos/coollabsio/coolify/releases*' => Http::response([], 200),
+        'storage.bunnycdn.com/*' => Http::response([], 201),
+        'api.bunny.net/purge*' => Http::response([], 200),
     ]);
 
     $binDir = sys_get_temp_dir().'/sync-bunny-bin-'.uniqid();
     $logFile = sys_get_temp_dir().'/sync-bunny-'.uniqid().'.log';
 
     mkdir($binDir, 0755, true);
-
-    createFakeSyncBunnyBinary($binDir, 'gh', <<<'SH'
-#!/bin/sh
-printf 'gh %s\n' "$*" >> "$SYNC_BUNNY_TEST_LOG"
-if [ "$1" = "repo" ] && [ "$2" = "clone" ]; then
-    mkdir -p "$4/json/nightly"
-    printf '{}' > "$4/json/releases.json"
-    printf '{}' > "$4/json/nightly/versions.json"
-fi
-exit 0
-SH);
-
-    createFakeSyncBunnyBinary($binDir, 'git', <<<'SH'
-#!/bin/sh
-printf 'git %s\n' "$*" >> "$SYNC_BUNNY_TEST_LOG"
-if [ "$1" = "status" ]; then
-    printf 'M %s\n' "$3"
-fi
-exit 0
-SH);
+    createSyncBunnyFailingBinary($binDir, 'gh');
+    createSyncBunnyFailingBinary($binDir, 'git');
 
     $originalPath = getenv('PATH') ?: '';
     putenv("PATH={$binDir}:{$originalPath}");
     putenv("SYNC_BUNNY_TEST_LOG={$logFile}");
 
     try {
-        $this->artisan("sync:bunny {$option} --nightly")
-            ->expectsConfirmation($confirmation, 'yes')
+        $this->artisan('sync:bunny --release --nightly')
+            ->expectsConfirmation('Are you sure you want to proceed?', 'yes')
+            ->expectsOutputToContain('BunnyCDN sync: ✓ Complete')
+            ->doesntExpectOutputToContain('GitHub PR')
             ->assertExitCode(0);
     } finally {
         putenv("PATH={$originalPath}");
         putenv('SYNC_BUNNY_TEST_LOG');
     }
 
-    $log = file_get_contents($logFile);
+    expect(file_exists($logFile))->toBeFalse();
 
-    expect($log)
-        ->toContain('json/nightly/versions.json')
-        ->not->toContain('json/versions-nightly.json');
-
-    if ($syncsReleases) {
-        expect($log)
-            ->toContain('json/nightly/releases.json')
-            ->not->toContain('git add json/releases.json');
-    }
-})->with([
-    'release sync with releases' => ['--release', 'Are you sure you want to proceed?', true],
-    'versions-only github sync' => ['--github-versions', 'Are you sure you want to sync versions.json via GitHub PR?', false],
-]);
+    Http::assertSent(fn ($request) => $request->url() === 'https://storage.bunnycdn.com/coolcdn/coolify-nightly/versions.json');
+    Http::assertSent(fn ($request) => str_starts_with($request->url(), 'https://api.bunny.net/purge')
+        && $request['url'] === 'https://cdn.coollabs.io/coolify-nightly/versions.json');
+});
