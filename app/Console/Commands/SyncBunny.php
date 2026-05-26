@@ -212,7 +212,8 @@ class SyncBunny extends Command
             $timestamp = time();
             $tmpDir = sys_get_temp_dir().'/coolify-cdn-combined-'.$timestamp;
             $branchName = 'update-releases-and-versions-'.$timestamp;
-            $versionsTargetPath = $nightly ? 'json/versions-nightly.json' : 'json/versions.json';
+            $versionsTargetPath = $nightly ? 'json/nightly/versions.json' : 'json/versions.json';
+            $releasesTargetPath = $nightly ? 'json/nightly/releases.json' : 'json/releases.json';
 
             // 3. Clone the repository
             $this->info('Cloning coolify-cdn repository...');
@@ -237,7 +238,7 @@ class SyncBunny extends Command
 
             // 5. Write releases.json
             $this->info('Writing releases.json...');
-            $releasesPath = "$tmpDir/json/releases.json";
+            $releasesPath = "$tmpDir/$releasesTargetPath";
             $releasesDir = dirname($releasesPath);
 
             if (! is_dir($releasesDir)) {
@@ -282,7 +283,7 @@ class SyncBunny extends Command
             // 7. Stage both files
             $this->info('Staging changes...');
             $output = [];
-            exec('cd '.escapeshellarg($tmpDir).' && git add json/releases.json '.escapeshellarg($versionsTargetPath).' 2>&1', $output, $returnCode);
+            exec('cd '.escapeshellarg($tmpDir).' && git add '.escapeshellarg($releasesTargetPath).' '.escapeshellarg($versionsTargetPath).' 2>&1', $output, $returnCode);
             if ($returnCode !== 0) {
                 $this->error('Failed to stage changes: '.implode("\n", $output));
                 exec('rm -rf '.escapeshellarg($tmpDir));
@@ -539,7 +540,7 @@ class SyncBunny extends Command
             $timestamp = time();
             $tmpDir = sys_get_temp_dir().'/coolify-cdn-versions-'.$timestamp;
             $branchName = 'update-versions-'.$timestamp;
-            $targetPath = $nightly ? 'json/versions-nightly.json' : 'json/versions.json';
+            $targetPath = $nightly ? 'json/nightly/versions.json' : 'json/versions.json';
 
             // Clone the repository
             $this->info('Cloning coolify-cdn repository...');
