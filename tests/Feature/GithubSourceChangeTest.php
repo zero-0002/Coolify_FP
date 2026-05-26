@@ -2,6 +2,7 @@
 
 use App\Livewire\Source\Github\Change;
 use App\Models\GithubApp;
+use App\Models\InstanceSettings;
 use App\Models\PrivateKey;
 use App\Models\Team;
 use App\Models\User;
@@ -45,6 +46,32 @@ describe('GitHub Source Change Component', function () {
             ->assertSet('clientSecret', null)
             ->assertSet('webhookSecret', null)
             ->assertSet('privateKeyId', null);
+    });
+
+    test('defaults webhook endpoint to app url when it is the first available endpoint', function () {
+        config(['app.url' => 'http://localhost:8000']);
+
+        InstanceSettings::forceCreate([
+            'id' => 0,
+            'fqdn' => null,
+            'public_ipv4' => null,
+            'public_ipv6' => null,
+        ]);
+
+        $githubApp = GithubApp::create([
+            'name' => 'Test GitHub App',
+            'api_url' => 'https://api.github.com',
+            'html_url' => 'https://github.com',
+            'custom_user' => 'git',
+            'custom_port' => 22,
+            'team_id' => $this->team->id,
+            'is_system_wide' => false,
+        ]);
+
+        Livewire::withQueryParams(['github_app_uuid' => $githubApp->uuid])
+            ->test(Change::class)
+            ->assertSuccessful()
+            ->assertSet('webhook_endpoint', 'http://localhost:8000');
     });
 
     test('can mount with fully configured github app', function () {
