@@ -97,6 +97,7 @@ class Change extends Component
             'metadata' => 'nullable|string',
             'pullRequests' => 'nullable|string',
             'privateKeyId' => 'nullable|int',
+            'webhook_endpoint' => ['required', 'string', 'url'],
         ];
     }
 

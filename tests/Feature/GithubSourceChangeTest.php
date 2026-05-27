@@ -20,7 +20,26 @@ beforeEach(function () {
     // Set current team
     $this->actingAs($this->user);
     session(['currentTeam' => $this->team]);
+
+    InstanceSettings::forceCreate([
+        'id' => 0,
+        'fqdn' => null,
+        'public_ipv4' => null,
+        'public_ipv6' => null,
+    ]);
 });
+
+function validPrivateKey(): string
+{
+    $key = openssl_pkey_new([
+        'private_key_bits' => 2048,
+        'private_key_type' => OPENSSL_KEYTYPE_RSA,
+    ]);
+
+    openssl_pkey_export($key, $privateKey);
+
+    return $privateKey;
+}
 
 describe('GitHub Source Change Component', function () {
     test('all github app form controls declare explicit authorization', function () {
@@ -68,8 +87,7 @@ describe('GitHub Source Change Component', function () {
     test('defaults webhook endpoint to app url when it is the first available endpoint', function () {
         config(['app.url' => 'http://localhost:8000']);
 
-        InstanceSettings::forceCreate([
-            'id' => 0,
+        InstanceSettings::findOrFail(0)->update([
             'fqdn' => null,
             'public_ipv4' => null,
             'public_ipv6' => null,
@@ -91,10 +109,39 @@ describe('GitHub Source Change Component', function () {
             ->assertSet('webhook_endpoint', 'http://localhost:8000');
     });
 
+    test('webhook endpoint can be typed manually when creating github app', function () {
+        config(['app.url' => 'http://localhost:8000']);
+
+        InstanceSettings::findOrFail(0)->update([
+            'fqdn' => 'http://staging.example.com',
+            'public_ipv4' => '84.1.202.183',
+            'public_ipv6' => null,
+        ]);
+
+        $githubApp = GithubApp::create([
+            'name' => 'Test GitHub App',
+            'api_url' => 'https://api.github.com',
+            'html_url' => 'https://github.com',
+            'custom_user' => 'git',
+            'custom_port' => 22,
+            'team_id' => $this->team->id,
+            'is_system_wide' => false,
+        ]);
+
+        Livewire::withQueryParams(['github_app_uuid' => $githubApp->uuid])
+            ->test(Change::class)
+            ->assertSuccessful()
+            ->set('webhook_endpoint', 'https://staging.example.com')
+            ->assertSet('webhook_endpoint', 'https://staging.example.com')
+            ->assertSee('Type or select the public URL GitHub should use for webhooks', false)
+            ->assertSee('https://staging.example.com')
+            ->assertSee('webhook-endpoint-suggestions');
+    });
+
     test('can mount with fully configured github app', function () {
         $privateKey = PrivateKey::create([
             'name' => 'Test Key',
-            'private_key' => 'test-private-key-content',
+            'private_key' => validPrivateKey(),
             'team_id' => $this->team->id,
         ]);
 
@@ -128,7 +175,7 @@ describe('GitHub Source Change Component', function () {
     test('can update github app from null to valid values', function () {
         $privateKey = PrivateKey::create([
             'name' => 'Test Key',
-            'private_key' => 'test-private-key-content',
+            'private_key' => validPrivateKey(),
             'team_id' => $this->team->id,
         ]);
 
@@ -201,8 +248,8 @@ describe('GitHub Source Change Component', function () {
 
         // Verify the database was updated
         $githubApp->refresh();
-        expect($githubApp->app_id)->toBe('1234567890');
-        expect($githubApp->installation_id)->toBe('1234567890');
+        expect($githubApp->app_id)->toBe(1234567890);
+        expect($githubApp->installation_id)->toBe(1234567890);
     });
 
     test('checkPermissions validates required fields', function () {
@@ -223,6 +270,8 @@ describe('GitHub Source Change Component', function () {
             ->assertSuccessful()
             ->call('checkPermissions')
             ->assertDispatched('error', function ($event, $message) {
+                $message = is_array($message) ? implode(' ', $message) : $message;
+
                 return str_contains($message, 'App ID') && str_contains($message, 'Private Key');
             });
     });
@@ -246,6 +295,8 @@ describe('GitHub Source Change Component', function () {
             ->assertSuccessful()
             ->call('checkPermissions')
             ->assertDispatched('error', function ($event, $message) {
+                $message = is_array($message) ? implode(' ', $message) : $message;
+
                 return str_contains($message, 'Private Key not found');
             });
     });

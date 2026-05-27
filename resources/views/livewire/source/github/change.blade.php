@@ -259,8 +259,13 @@
                         </div>
                         <div class="flex flex-col gap-3 pt-4 border-t border-neutral-200 dark:border-coolgray-400">
                             @if (!isCloud() || isDev())
-                                <x-forms.select canGate="create" :canResource="$github_app" wire:model.live='webhook_endpoint' x-model="webhookEndpoint" label="Webhook Endpoint"
-                                    helper="All Git webhooks will be sent to this endpoint. <br><br>If you would like to use domain instead of IP address, set your Coolify instance's FQDN in the Settings menu.">
+                                <x-forms.input canGate="create" :canResource="$github_app" x-model="webhookEndpoint"
+                                    :value="$webhook_endpoint" id="webhook_endpoint" type="url"
+                                    list="webhook-endpoint-suggestions" label="Webhook Endpoint"
+                                    placeholder="https://coolify.example.com"
+                                    helper="Type or select the public URL GitHub should use for webhooks. Useful when a tunnel or proxy terminates HTTPS while Coolify itself is configured with HTTP. Do not include /webhooks.">
+                                </x-forms.input>
+                                <datalist id="webhook-endpoint-suggestions">
                                     @if ($fqdn)
                                         <option value="{{ $fqdn }}">Use {{ $fqdn }}</option>
                                     @endif
@@ -273,7 +278,7 @@
                                     @if (config('app.url'))
                                         <option value="{{ config('app.url') }}">Use {{ config('app.url') }}</option>
                                     @endif
-                                </x-forms.select>
+                                </datalist>
                             @else
                                 <div class="text-sm dark:text-neutral-400">You need to register a GitHub App before using this source.</div>
                             @endif
@@ -337,10 +342,10 @@
                         uuid
                     } = @js($github_app->only(['organization', 'html_url', 'uuid']));
                     if (!webhook_endpoint) {
-                        alert('Please select a webhook endpoint.');
+                        alert('Please enter a webhook endpoint.');
                         return;
                     }
-                    let baseUrl = webhook_endpoint;
+                    let baseUrl = webhook_endpoint.trim().replace(/\/+$/, '');
                     const name = @js($name);
                     const manifestState = @js($manifestState);
                     const isDev = @js(config('app.env')) ===
