@@ -98,10 +98,6 @@ return [
         // every push.
         'push_force_interval_seconds' => env('SENTINEL_PUSH_FORCE_INTERVAL_SECONDS', 300),
 
-        // How long a Sentinel-enabled server may go without a heartbeat before
-        // ResourcesCheck considers its resources stale. Per-resource
-        // last_online_at is only updated on real status changes, not every push.
-        'resource_stale_seconds' => env('SENTINEL_RESOURCE_STALE_SECONDS', 300),
     ],
 
     'proxy' => [
