@@ -109,7 +109,7 @@ describe('GitHub Source Change Component', function () {
             ->assertSet('webhook_endpoint', 'http://localhost:8000');
     });
 
-    test('webhook endpoint can be typed manually when creating github app', function () {
+    test('custom webhook endpoint input is used as an override for selected endpoint', function () {
         config(['app.url' => 'http://localhost:8000']);
 
         InstanceSettings::findOrFail(0)->update([
@@ -131,11 +131,12 @@ describe('GitHub Source Change Component', function () {
         Livewire::withQueryParams(['github_app_uuid' => $githubApp->uuid])
             ->test(Change::class)
             ->assertSuccessful()
-            ->set('webhook_endpoint', 'https://staging.example.com')
-            ->assertSet('webhook_endpoint', 'https://staging.example.com')
-            ->assertSee('Type or select the public URL GitHub should use for webhooks', false)
-            ->assertSee('https://staging.example.com')
-            ->assertSee('webhook-endpoint-suggestions');
+            ->set('custom_webhook_endpoint', 'https://staging.example.com')
+            ->assertSet('webhook_endpoint', 'http://staging.example.com')
+            ->assertSet('custom_webhook_endpoint', 'https://staging.example.com')
+            ->assertSee('Use a custom URL only when it should override the selected endpoint.', false)
+            ->assertSee('Custom Webhook Endpoint')
+            ->assertSee('createGithubApp(webhookEndpoint, customWebhookEndpoint');
     });
 
     test('can mount with fully configured github app', function () {
