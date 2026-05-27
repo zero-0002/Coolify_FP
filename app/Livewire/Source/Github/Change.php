@@ -23,6 +23,8 @@ class Change extends Component
 
     public string $custom_webhook_endpoint = '';
 
+    public bool $use_custom_webhook_endpoint = false;
+
     public ?string $ipv4 = null;
 
     public ?string $ipv6 = null;
@@ -101,6 +103,7 @@ class Change extends Component
             'privateKeyId' => 'nullable|int',
             'webhook_endpoint' => ['required', 'string', 'url'],
             'custom_webhook_endpoint' => ['nullable', 'string', 'url'],
+            'use_custom_webhook_endpoint' => ['required', 'bool'],
         ];
     }
 

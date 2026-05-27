@@ -240,6 +240,7 @@
                 <section class="box-without-bg flex-col gap-4 p-6 h-full transition-all duration-200"
                     x-data="{
                         webhookEndpoint: $wire.entangle('webhook_endpoint').live,
+                        useCustomWebhookEndpoint: $wire.entangle('use_custom_webhook_endpoint').live,
                         customWebhookEndpoint: $wire.entangle('custom_webhook_endpoint').live,
                     }">
                     <div class="flex flex-col gap-4 text-left h-full">
@@ -262,27 +263,35 @@
                         </div>
                         <div class="flex flex-col gap-3 pt-4 border-t border-neutral-200 dark:border-coolgray-400">
                             @if (!isCloud() || isDev())
-                                <x-forms.select canGate="create" :canResource="$github_app"
-                                    wire:model.live='webhook_endpoint' x-model="webhookEndpoint"
-                                    label="Webhook Endpoint"
-                                    helper="All Git webhooks will be sent to this endpoint unless a custom endpoint is set below.">
-                                    @if ($fqdn)
-                                        <option value="{{ $fqdn }}">Use {{ $fqdn }}</option>
-                                    @endif
-                                    @if ($ipv4)
-                                        <option value="{{ $ipv4 }}">Use {{ $ipv4 }}</option>
-                                    @endif
-                                    @if ($ipv6)
-                                        <option value="{{ $ipv6 }}">Use {{ $ipv6 }}</option>
-                                    @endif
-                                    @if (config('app.url'))
-                                        <option value="{{ config('app.url') }}">Use {{ config('app.url') }}</option>
-                                    @endif
-                                </x-forms.select>
-                                <x-forms.input canGate="create" :canResource="$github_app"
-                                    x-model="customWebhookEndpoint" id="custom_webhook_endpoint" type="url"
-                                    label="Custom Webhook Endpoint" placeholder="https://coolify.example.com"
-                                    helper="Use a custom URL only when it should override the selected endpoint. Useful when a tunnel or proxy terminates HTTPS while Coolify itself is configured with HTTP. Do not include /webhooks." />
+                                <x-forms.checkbox canGate="create" :canResource="$github_app"
+                                    x-model="useCustomWebhookEndpoint" id="use_custom_webhook_endpoint"
+                                    label="Use custom webhook endpoint"
+                                    helper="Enable this when the public URL GitHub should call differs from Coolify's configured URL, for example behind Cloudflare Tunnel." />
+                                <div x-show="!useCustomWebhookEndpoint">
+                                    <x-forms.select canGate="create" :canResource="$github_app"
+                                        wire:model.live='webhook_endpoint' x-model="webhookEndpoint"
+                                        label="Selected endpoint"
+                                        helper="GitHub will use this endpoint unless custom mode is enabled.">
+                                        @if ($fqdn)
+                                            <option value="{{ $fqdn }}">Use {{ $fqdn }}</option>
+                                        @endif
+                                        @if ($ipv4)
+                                            <option value="{{ $ipv4 }}">Use {{ $ipv4 }}</option>
+                                        @endif
+                                        @if ($ipv6)
+                                            <option value="{{ $ipv6 }}">Use {{ $ipv6 }}</option>
+                                        @endif
+                                        @if (config('app.url'))
+                                            <option value="{{ config('app.url') }}">Use {{ config('app.url') }}</option>
+                                        @endif
+                                    </x-forms.select>
+                                </div>
+                                <div x-cloak x-show="useCustomWebhookEndpoint">
+                                    <x-forms.input canGate="create" :canResource="$github_app"
+                                        x-model="customWebhookEndpoint" id="custom_webhook_endpoint" type="url"
+                                        label="Custom endpoint" placeholder="https://coolify.example.com"
+                                        helper="GitHub will use this custom public URL. Do not include /webhooks." />
+                                </div>
                             @else
                                 <div class="text-sm dark:text-neutral-400">You need to register a GitHub App before using this source.</div>
                             @endif
@@ -296,7 +305,7 @@
                         </div>
                         <div class="mt-auto pt-2">
                             <x-forms.button canGate="create" :canResource="$github_app" class="w-full justify-center" isHighlighted
-                                x-on:click.prevent="createGithubApp(webhookEndpoint, customWebhookEndpoint, {{ Illuminate\Support\Js::from($preview_deployment_permissions) }}, {{ Illuminate\Support\Js::from($administration) }})">
+                                x-on:click.prevent="createGithubApp(webhookEndpoint, useCustomWebhookEndpoint, customWebhookEndpoint, {{ Illuminate\Support\Js::from($preview_deployment_permissions) }}, {{ Illuminate\Support\Js::from($administration) }})">
                                 Register Now
                             </x-forms.button>
                         </div>
@@ -339,7 +348,7 @@
             </div>
         </div>
             <script>
-                function createGithubApp(webhook_endpoint, custom_webhook_endpoint, preview_deployment_permissions, administration) {
+                function createGithubApp(webhook_endpoint, use_custom_webhook_endpoint, custom_webhook_endpoint, preview_deployment_permissions, administration) {
                     const {
                         organization,
                         html_url,
@@ -347,11 +356,15 @@
                     } = @js($github_app->only(['organization', 'html_url', 'uuid']));
                     const selectedEndpoint = webhook_endpoint ? webhook_endpoint.trim() : '';
                     const customEndpoint = custom_webhook_endpoint ? custom_webhook_endpoint.trim() : '';
-                    if (!customEndpoint && !selectedEndpoint) {
+                    if (use_custom_webhook_endpoint && !customEndpoint) {
+                        alert('Please enter a custom webhook endpoint.');
+                        return;
+                    }
+                    if (!use_custom_webhook_endpoint && !selectedEndpoint) {
                         alert('Please enter a webhook endpoint.');
                         return;
                     }
-                    let baseUrl = (customEndpoint || selectedEndpoint).replace(/\/+$/, '');
+                    let baseUrl = (use_custom_webhook_endpoint ? customEndpoint : selectedEndpoint).replace(/\/+$/, '');
                     const name = @js($name);
                     const manifestState = @js($manifestState);
                     const isDev = @js(config('app.env')) ===
