@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Docker\GetContainersStatus;
 use App\Livewire\Project\Shared\Destination;
 use App\Models\Application;
 use App\Models\Environment;
@@ -10,6 +11,7 @@ use App\Models\StandaloneDocker;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
@@ -63,6 +65,10 @@ beforeEach(function () {
     // Act as attacker (Team A)
     $this->actingAs($this->userA);
     session(['currentTeam' => $this->teamA]);
+});
+
+afterEach(function () {
+    GetContainersStatus::clearFake();
 });
 
 describe('Destination::addServer GHSA-j395-3pqh-9r5g', function () {
@@ -157,5 +163,70 @@ describe('Destination::promote GHSA-j395-3pqh-9r5g', function () {
         expect($additional)->toHaveCount(1);
         expect($additional->first()->id)->toBe($this->destinationA->id);
         expect($additional->first()->pivot->server_id)->toBe($this->serverA->id);
+    });
+
+    test('refresh failures after promote do not roll back promoted destination', function () {
+        $this->applicationA->additional_networks()->attach($this->destinationA2->id, ['server_id' => $this->serverA2->id]);
+
+        GetContainersStatus::shouldRun()
+            ->once()
+            ->andThrow(new RuntimeException('refresh failed'));
+
+        try {
+            Livewire::test(Destination::class, ['resource' => $this->applicationA])
+                ->call('promote', $this->destinationA2->id, $this->serverA2->id);
+        } catch (Throwable $e) {
+            // The refresh failure is intentionally outside the transaction; persistence is the assertion.
+        }
+
+        $application = $this->applicationA->fresh();
+        $additional = $application->additional_networks;
+
+        expect($application->destination_id)->toBe($this->destinationA2->id);
+        expect($additional)->toHaveCount(1);
+        expect($additional->first()->id)->toBe($this->destinationA->id);
+        expect($additional->first()->pivot->server_id)->toBe($this->serverA->id);
+    });
+
+    test('only detaches the promoted network for the selected pivot server', function () {
+        $this->applicationA->additional_networks()->attach($this->destinationA2->id, ['server_id' => $this->serverA2->id]);
+        $this->applicationA->additional_networks()->attach($this->destinationA2->id, ['server_id' => $this->serverA->id]);
+
+        Livewire::test(Destination::class, ['resource' => $this->applicationA])
+            ->call('promote', $this->destinationA2->id, $this->serverA2->id);
+
+        expect(DB::table('additional_destinations')
+            ->where('application_id', $this->applicationA->id)
+            ->where('standalone_docker_id', $this->destinationA2->id)
+            ->where('server_id', $this->serverA->id)
+            ->exists())->toBeTrue();
+
+        expect(DB::table('additional_destinations')
+            ->where('application_id', $this->applicationA->id)
+            ->where('standalone_docker_id', $this->destinationA2->id)
+            ->where('server_id', $this->serverA2->id)
+            ->exists())->toBeFalse();
+    });
+});
+
+describe('Destination::removeServer', function () {
+    test('only detaches the removed network for the selected pivot server', function () {
+        $this->applicationA->additional_networks()->attach($this->destinationA2->id, ['server_id' => $this->serverA2->id]);
+        $this->applicationA->additional_networks()->attach($this->destinationA2->id, ['server_id' => $this->serverA->id]);
+
+        Livewire::test(Destination::class, ['resource' => $this->applicationA])
+            ->call('removeServer', $this->destinationA2->id, $this->serverA2->id, 'password');
+
+        expect(DB::table('additional_destinations')
+            ->where('application_id', $this->applicationA->id)
+            ->where('standalone_docker_id', $this->destinationA2->id)
+            ->where('server_id', $this->serverA->id)
+            ->exists())->toBeTrue();
+
+        expect(DB::table('additional_destinations')
+            ->where('application_id', $this->applicationA->id)
+            ->where('standalone_docker_id', $this->destinationA2->id)
+            ->where('server_id', $this->serverA2->id)
+            ->exists())->toBeFalse();
     });
 });

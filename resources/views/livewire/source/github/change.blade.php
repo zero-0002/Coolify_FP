@@ -70,14 +70,14 @@
                                 </x-forms.button>
                                 @can('update', $github_app)
                                     <a href="{{ $this->getGithubAppNameUpdatePath() }}">
-                                        <x-forms.button
+                                        <x-forms.button canGate="update" :canResource="$github_app"
                                             class="bg-transparent border-transparent hover:bg-transparent hover:border-transparent hover:underline">
                                             Rename
                                             <x-external-link />
                                         </x-forms.button>
                                     </a>
                                     <a href="{{ getInstallationPath($github_app) }}" class="w-fit">
-                                        <x-forms.button
+                                        <x-forms.button canGate="update" :canResource="$github_app"
                                             class="bg-transparent border-transparent hover:bg-transparent hover:border-transparent hover:underline whitespace-nowrap">
                                             Update Repositories
                                             <x-external-link />
@@ -141,9 +141,9 @@
                         <div class="flex flex-col sm:flex-row items-start sm:items-end gap-2">
                             <h2>Permissions</h2>
                             @can('view', $github_app)
-                                <x-forms.button wire:click.prevent="checkPermissions">Refetch</x-forms.button>
+                                <x-forms.button canGate="view" :canResource="$github_app" wire:click.prevent="checkPermissions">Refetch</x-forms.button>
                                 <a href="{{ getPermissionsPath($github_app) }}">
-                                    <x-forms.button class="bg-transparent border-transparent hover:bg-transparent hover:border-transparent hover:underline">
+                                    <x-forms.button canGate="view" :canResource="$github_app" class="bg-transparent border-transparent hover:bg-transparent hover:border-transparent hover:underline">
                                         Update
                                         <x-external-link />
                                     </x-forms.button>
@@ -151,11 +151,11 @@
                             @endcan
                         </div>
                         <div class="flex flex-col sm:flex-row gap-2">
-                            <x-forms.input id="contents" helper="read - mandatory." label="Content" readonly
+                            <x-forms.input canGate="view" :canResource="$github_app" id="contents" helper="read - mandatory." label="Content" readonly
                                 placeholder="N/A" />
-                            <x-forms.input id="metadata" helper="read - mandatory." label="Metadata" readonly
+                            <x-forms.input canGate="view" :canResource="$github_app" id="metadata" helper="read - mandatory." label="Metadata" readonly
                                 placeholder="N/A" />
-                            <x-forms.input id="pullRequests"
+                            <x-forms.input canGate="view" :canResource="$github_app" id="pullRequests"
                                 helper="write access needed to use deployment status update in previews."
                                 label="Pull Request" readonly placeholder="N/A" />
                         </div>
@@ -167,7 +167,7 @@
                                 No resources are currently using this GitHub App.
                             </div>
                         @else
-                            <x-forms.input placeholder="Search resources..." x-model="search" id="null" />
+                            <x-forms.input canGate="view" :canResource="$github_app" placeholder="Search resources..." x-model="search" id="null" />
                             <div class="overflow-x-auto pt-4">
                                 <div class="inline-block min-w-full">
                                     <div class="overflow-hidden">
@@ -259,7 +259,7 @@
                         </div>
                         <div class="flex flex-col gap-3 pt-4 border-t border-neutral-200 dark:border-coolgray-400">
                             @if (!isCloud() || isDev())
-                                <x-forms.select wire:model.live='webhook_endpoint' x-model="webhookEndpoint" label="Webhook Endpoint"
+                                <x-forms.select canGate="create" :canResource="$github_app" wire:model.live='webhook_endpoint' x-model="webhookEndpoint" label="Webhook Endpoint"
                                     helper="All Git webhooks will be sent to this endpoint. <br><br>If you would like to use domain instead of IP address, set your Coolify instance's FQDN in the Settings menu.">
                                     @if ($fqdn)
                                         <option value="{{ $fqdn }}">Use {{ $fqdn }}</option>
@@ -279,14 +279,14 @@
                             @endif
 
                             <div class="flex w-full flex-col gap-2">
-                                <x-forms.checkbox disabled id="default_permissions" label="Mandatory"
+                                <x-forms.checkbox canGate="create" :canResource="$github_app" disabled id="default_permissions" label="Mandatory"
                                     helper="Contents: read<br>Metadata: read<br>Email: read" />
-                                <x-forms.checkbox id="preview_deployment_permissions" label="Preview Deployments"
+                                <x-forms.checkbox canGate="create" :canResource="$github_app" id="preview_deployment_permissions" label="Preview Deployments"
                                     helper="Necessary for updating pull requests with useful comments (deployment status, links, etc.)<br><br>Pull Request: read & write" />
                             </div>
                         </div>
                         <div class="mt-auto pt-2">
-                            <x-forms.button class="w-full justify-center" isHighlighted
+                            <x-forms.button canGate="create" :canResource="$github_app" class="w-full justify-center" isHighlighted
                                 x-on:click.prevent="createGithubApp(webhookEndpoint, {{ Illuminate\Support\Js::from($preview_deployment_permissions) }}, {{ Illuminate\Support\Js::from($administration) }})">
                                 Register Now
                             </x-forms.button>
@@ -314,7 +314,7 @@
                             </p>
                         </div>
                         <div class="mt-auto pt-2">
-                            <x-forms.button class="w-full justify-center" wire:click.prevent="createGithubAppManually">
+                            <x-forms.button canGate="create" :canResource="$github_app" class="w-full justify-center" wire:click.prevent="createGithubAppManually">
                                 Continue
                             </x-forms.button>
                         </div>

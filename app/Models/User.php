@@ -104,6 +104,12 @@ class User extends Authenticatable implements SendsEmail
                 $new_team->forceFill($team);
                 $new_team->save();
 
+                if (! $user->teams()->whereKey($new_team->id)->exists()) {
+                    $user->teams()->attach($new_team, ['role' => 'owner']);
+                } else {
+                    $user->teams()->updateExistingPivot($new_team->id, ['role' => 'owner']);
+                }
+
                 return;
             }
 

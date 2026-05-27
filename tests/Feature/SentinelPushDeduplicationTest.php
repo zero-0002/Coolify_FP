@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Api\SentinelController;
 use App\Jobs\PushServerUpdateJob;
 use App\Models\Server;
 use App\Models\User;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -46,6 +48,25 @@ function sentinelPayload(array $containers, ?float $diskPercentage = 42.0): arra
 }
 
 $running = fn () => [['name' => 'app-1', 'state' => 'running', 'health_status' => 'healthy']];
+
+it('skips dispatch decision when sentinel lock acquisition times out', function () use ($running) {
+    $lock = Mockery::mock();
+    $lock->shouldReceive('block')
+        ->once()
+        ->with(5, Mockery::type('callable'))
+        ->andThrow(LockTimeoutException::class);
+
+    Cache::shouldReceive('lock')
+        ->once()
+        ->with('sentinel:push-lock:'.$this->server->id, 10)
+        ->andReturn($lock);
+
+    $controller = new SentinelController;
+    $method = new ReflectionMethod($controller, 'shouldDispatchUpdate');
+    $method->setAccessible(true);
+
+    expect($method->invoke($controller, $this->server, sentinelPayload($running())))->toBeFalse();
+});
 
 it('dispatches the job on the first push', function () use ($running) {
     pushSentinel($this->token, sentinelPayload($running()))->assertOk();

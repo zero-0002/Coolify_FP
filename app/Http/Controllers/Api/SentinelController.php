@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\PushServerUpdateJob;
 use App\Models\Server;
 use Exception;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
@@ -119,20 +120,24 @@ class SentinelController extends Controller
         $forceKey = "sentinel:push-force:{$server->id}";
         $lockKey = "sentinel:push-lock:{$server->id}";
 
-        return Cache::lock($lockKey, 10)->block(5, function () use ($hashKey, $forceKey, $hash): bool {
-            $cachedHash = Cache::get($hashKey);
-            $forceActive = Cache::has($forceKey);
+        try {
+            return Cache::lock($lockKey, 10)->block(5, function () use ($hashKey, $forceKey, $hash): bool {
+                $cachedHash = Cache::get($hashKey);
+                $forceActive = Cache::has($forceKey);
 
-            $shouldDispatch = $cachedHash === null || $cachedHash !== $hash || ! $forceActive;
+                $shouldDispatch = $cachedHash === null || $cachedHash !== $hash || ! $forceActive;
 
-            if ($shouldDispatch) {
-                // Day-long TTL bounds memory if a server stops pushing entirely.
-                Cache::put($hashKey, $hash, now()->addDay());
-                Cache::put($forceKey, true, config('constants.sentinel.push_force_interval_seconds', 300));
-            }
+                if ($shouldDispatch) {
+                    // Day-long TTL bounds memory if a server stops pushing entirely.
+                    Cache::put($hashKey, $hash, now()->addDay());
+                    Cache::put($forceKey, true, config('constants.sentinel.push_force_interval_seconds', 300));
+                }
 
-            return $shouldDispatch;
-        });
+                return $shouldDispatch;
+            });
+        } catch (LockTimeoutException) {
+            return false;
+        }
     }
 
     /**

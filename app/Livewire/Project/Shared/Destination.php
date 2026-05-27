@@ -8,7 +8,6 @@ use App\Events\ApplicationStatusChanged;
 use App\Models\Server;
 use App\Models\StandaloneDocker;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Visus\Cuid2\Cuid2;
 
@@ -116,17 +115,19 @@ class Destination extends Component
             $network = StandaloneDocker::ownedByCurrentTeam()->where('server_id', $server->id)->findOrFail($network_id);
             $this->authorize('update', $this->resource);
 
-            DB::transaction(function () use ($network, $server) {
+            $this->resource->getConnection()->transaction(function () use ($network, $server) {
                 $main_destination = $this->resource->destination;
                 $this->resource->update([
                     'destination_id' => $network->id,
                     'destination_type' => StandaloneDocker::class,
                 ]);
-                $this->resource->additional_networks()->detach($network->id, ['server_id' => $server->id]);
+                $this->resource->additional_networks()
+                    ->wherePivot('server_id', $server->id)
+                    ->detach($network->id);
                 $this->resource->additional_networks()->attach($main_destination->id, ['server_id' => $main_destination->server->id]);
-                $this->refreshServers();
-                $this->resource->refresh();
             });
+            $this->resource->refresh();
+            $this->refreshServers();
         } catch (\Exception $e) {
             return handleError($e, $this);
         }
@@ -167,7 +168,9 @@ class Destination extends Component
             }
             $server = Server::ownedByCurrentTeam()->findOrFail($server_id);
             StopApplicationOneServer::run($this->resource, $server);
-            $this->resource->additional_networks()->detach($network_id, ['server_id' => $server_id]);
+            $this->resource->additional_networks()
+                ->wherePivot('server_id', $server_id)
+                ->detach($network_id);
             $this->loadData();
             $this->dispatch('refresh');
             ApplicationStatusChanged::dispatch(data_get($this->resource, 'environment.project.team.id'));
