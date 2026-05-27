@@ -101,6 +101,8 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
 
     public bool $foundLogDrainContainer = false;
 
+    private ?array $cachedDestinationIds = null;
+
     public function middleware(): array
     {
         return [(new WithoutOverlapping('push-server-update-'.$this->server->uuid))->expireAfter(30)->dontRelease()];
@@ -155,6 +157,10 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
         $this->servicesById ??= collect();
         $this->serviceApplicationsById ??= collect();
         $this->serviceDatabasesById ??= collect();
+
+        // Eager-load relations the job touches repeatedly to avoid lazy-load queries
+        // (settings: disk threshold, isProxyShouldRun, isLogDrainEnabled; team: notifications).
+        $this->server->loadMissing(['settings', 'team']);
 
         // TODO: Swarm is not supported yet
         if (! $this->data) {
@@ -327,21 +333,23 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
     {
         [$standaloneDockerIds, $swarmDockerIds] = $this->serverDestinationIds();
 
-        $applications = Application::withoutGlobalScope('withRelations')
-            ->select([
-                'id',
-                'uuid',
-                'name',
-                'status',
-                'build_pack',
-                'docker_compose_raw',
-                'destination_id',
-                'destination_type',
-                'last_online_at',
-            ])
-            ->withCount('additional_servers')
-            ->where(fn ($query) => $this->scopeDestination($query, $standaloneDockerIds, $swarmDockerIds))
-            ->get();
+        $applications = ($standaloneDockerIds->isNotEmpty() || $swarmDockerIds->isNotEmpty())
+            ? Application::withoutGlobalScope('withRelations')
+                ->select([
+                    'id',
+                    'uuid',
+                    'name',
+                    'status',
+                    'build_pack',
+                    'docker_compose_raw',
+                    'destination_id',
+                    'destination_type',
+                    'last_online_at',
+                ])
+                ->withCount('additional_servers')
+                ->where(fn ($query) => $this->scopeDestination($query, $standaloneDockerIds, $swarmDockerIds))
+                ->get()
+            : collect();
 
         $additionalApplicationIds = DB::table('additional_destinations')
             ->where('server_id', $this->server->id)
@@ -409,6 +417,9 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
     private function loadDatabases(): Collection
     {
         [$standaloneDockerIds, $swarmDockerIds] = $this->serverDestinationIds();
+        if ($standaloneDockerIds->isEmpty() && $swarmDockerIds->isEmpty()) {
+            return collect();
+        }
         $databaseColumns = [
             'id',
             'uuid',
@@ -442,7 +453,11 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
 
     private function serverDestinationIds(): array
     {
-        return [
+        if ($this->cachedDestinationIds !== null) {
+            return $this->cachedDestinationIds;
+        }
+
+        return $this->cachedDestinationIds = [
             StandaloneDocker::where('server_id', $this->server->id)->pluck('id'),
             SwarmDocker::where('server_id', $this->server->id)->pluck('id'),
         ];
