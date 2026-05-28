@@ -1,5 +1,5 @@
 <span>
-    @if ($application->server_status == false)
+    @if ($application->server_status === false)
         <span title="One or more servers are unreachable or misconfigured.">
             <svg class="w-4 h-4 text-error" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
                 <path fill="currentColor"
