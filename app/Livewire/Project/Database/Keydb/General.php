@@ -42,12 +42,19 @@ class General extends Component
 
     public bool $isLogDrainEnabled = false;
 
-    public function getListeners()
+    public function getListeners(): array
     {
-        $teamId = Auth::user()->currentTeam()->id;
+        $user = Auth::user();
+        if (! $user) {
+            return [];
+        }
+        $team = $user->currentTeam();
+        if (! $team) {
+            return [];
+        }
 
         return [
-            "echo-private:team.{$teamId},DatabaseProxyStopped" => 'databaseProxyStopped',
+            "echo-private:team.{$team->id},DatabaseProxyStopped" => 'databaseProxyStopped',
         ];
     }
 

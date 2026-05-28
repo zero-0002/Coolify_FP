@@ -63,7 +63,7 @@
                     @else
                         <x-forms.checkbox id="enableSsl" label="Enable SSL" wire:model.live="enableSsl"
                             instantSave="instantSaveSSL" disabled
-                            helper="Database should be stopped to change this settings." canGate="update"
+                            helper="Database should be stopped to change this setting." canGate="update"
                             :canResource="$database" />
                     @endif
                 </div>
@@ -79,7 +79,7 @@
                             </x-forms.select>
                         @else
                             <x-forms.select id="sslMode" label="SSL Mode" instantSave="instantSaveSSL" disabled
-                                helper="Database should be stopped to change this settings." canGate="update"
+                                helper="Database should be stopped to change this setting." canGate="update"
                                 :canResource="$database">
                                 @foreach ($sslModeOptions as $value => $option)
                                     <option value="{{ $value }}" title="{{ $option['title'] ?? '' }}">{{ $option['label'] }}</option>
