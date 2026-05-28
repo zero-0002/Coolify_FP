@@ -1,9 +1,13 @@
 <?php
 
+use App\Livewire\Project\Application\Configuration as ApplicationConfiguration;
+use App\Livewire\Project\Application\ServerStatusBadge;
 use App\Livewire\Project\Database\Clickhouse\General as ClickhouseGeneral;
 use App\Livewire\Project\Database\Clickhouse\StatusInfo as ClickhouseStatusInfo;
 use App\Livewire\Project\Database\Dragonfly\General as DragonflyGeneral;
 use App\Livewire\Project\Database\Dragonfly\StatusInfo as DragonflyStatusInfo;
+use App\Livewire\Project\Database\Import as DatabaseImport;
+use App\Livewire\Project\Database\ImportForm as DatabaseImportForm;
 use App\Livewire\Project\Database\Keydb\General as KeydbGeneral;
 use App\Livewire\Project\Database\Keydb\StatusInfo as KeydbStatusInfo;
 use App\Livewire\Project\Database\Mariadb\General as MariadbGeneral;
@@ -16,11 +20,15 @@ use App\Livewire\Project\Database\Postgresql\General as PostgresqlGeneral;
 use App\Livewire\Project\Database\Postgresql\StatusInfo as PostgresqlStatusInfo;
 use App\Livewire\Project\Database\Redis\General as RedisGeneral;
 use App\Livewire\Project\Database\Redis\StatusInfo as RedisStatusInfo;
+use App\Livewire\Project\Service\Configuration as ServiceConfiguration;
+use App\Livewire\Project\Service\ResourceCard as ServiceResourceCard;
 use App\Livewire\Server\Sentinel;
 use App\Livewire\Server\Show;
 use App\Models\Environment;
 use App\Models\Project;
 use App\Models\Server;
+use App\Models\Service;
+use App\Models\ServiceApplication;
 use App\Models\StandaloneDocker;
 use App\Models\StandaloneMysql;
 use App\Models\StandaloneRedis;
@@ -52,6 +60,9 @@ dataset('database-general-forms-without-broadcasts', [
     KeydbGeneral::class,
     DragonflyGeneral::class,
     ClickhouseGeneral::class,
+    DatabaseImportForm::class,
+    ServiceConfiguration::class,
+    ApplicationConfiguration::class,
 ]);
 
 dataset('database-status-info-components', [
@@ -63,6 +74,20 @@ dataset('database-status-info-components', [
     KeydbStatusInfo::class,
     DragonflyStatusInfo::class,
     ClickhouseStatusInfo::class,
+]);
+
+dataset('display-only-status-components', [
+    RedisStatusInfo::class,
+    PostgresqlStatusInfo::class,
+    MysqlStatusInfo::class,
+    MariadbStatusInfo::class,
+    MongodbStatusInfo::class,
+    KeydbStatusInfo::class,
+    DragonflyStatusInfo::class,
+    ClickhouseStatusInfo::class,
+    DatabaseImport::class,
+    ServiceResourceCard::class,
+    ServerStatusBadge::class,
 ]);
 
 it('does not subscribe the form to status broadcasts when display lives in a sibling', function (string $componentClass) {
@@ -100,6 +125,80 @@ it('auto-refreshes status-info sibling on database status broadcasts', function 
         ->toHaveKey("echo-private:user.{$this->user->id},DatabaseStatusChanged")
         ->toHaveKey("echo-private:team.{$this->team->id},ServiceChecked");
 })->with('database-status-info-components');
+
+it('keeps realtime status listeners on display-only components instead of form owners', function (string $componentClass) {
+    $listeners = resolveLivewireListeners(app($componentClass));
+
+    expect($listeners)->not->toBeEmpty();
+})->with('display-only-status-components');
+
+it('refreshes a service resource card without refreshing the service configuration form owner', function () {
+    $server = Server::factory()->create(['team_id' => $this->team->id]);
+    $destination = StandaloneDocker::where('server_id', $server->id)->first();
+    $project = Project::factory()->create(['team_id' => $this->team->id]);
+    $environment = Environment::factory()->create(['project_id' => $project->id]);
+    $service = Service::create([
+        'name' => 'status-card-service',
+        'environment_id' => $environment->id,
+        'server_id' => $server->id,
+        'destination_id' => $destination->id,
+        'destination_type' => $destination->getMorphClass(),
+        'docker_compose_raw' => 'services: {}',
+    ]);
+    $serviceApplication = ServiceApplication::create([
+        'service_id' => $service->id,
+        'name' => 'web',
+        'image' => 'nginx:latest',
+        'status' => 'exited:unhealthy',
+    ]);
+    $parameters = [
+        'project_uuid' => $project->uuid,
+        'environment_uuid' => $environment->uuid,
+        'service_uuid' => $service->uuid,
+    ];
+
+    $component = Livewire::test(ServiceResourceCard::class, [
+        'service' => $service,
+        'resource' => $serviceApplication,
+        'parameters' => $parameters,
+    ]);
+
+    $serviceApplication->fill(['status' => 'running:healthy'])->save();
+
+    $component->call('refreshResource');
+
+    expect($component->instance()->resource->status)->toBe('running:healthy');
+});
+
+it('refreshes database import status from stored resource identity after the route context is gone', function () {
+    $server = Server::factory()->create(['team_id' => $this->team->id]);
+    $destination = StandaloneDocker::where('server_id', $server->id)->first();
+    $project = Project::factory()->create(['team_id' => $this->team->id]);
+    $environment = Environment::factory()->create(['project_id' => $project->id]);
+    $database = StandaloneMysql::create([
+        'name' => 'import-status-mysql',
+        'image' => 'mysql:8',
+        'mysql_root_password' => 'password',
+        'mysql_user' => 'coolify',
+        'mysql_password' => 'password',
+        'mysql_database' => 'coolify',
+        'status' => 'exited:unhealthy',
+        'is_log_drain_enabled' => false,
+        'environment_id' => $environment->id,
+        'destination_id' => $destination->id,
+        'destination_type' => $destination->getMorphClass(),
+    ]);
+
+    $component = app(DatabaseImport::class);
+    $component->resourceId = $database->id;
+    $component->resourceType = StandaloneMysql::class;
+
+    $database->fill(['status' => 'running:healthy'])->save();
+
+    $component->refreshStatus();
+
+    expect($component->resourceStatus)->toBe('running:healthy');
+});
 
 it('reloads the mysql status-info model when refresh is called so ssl controls follow the latest status', function () {
     $server = Server::factory()->create(['team_id' => $this->team->id]);
