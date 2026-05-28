@@ -58,9 +58,9 @@
             @if ($resourceDbType === 'standalone-postgresql')
                 @if ($dumpAll)
                     <x-forms.textarea rows="6" readonly label="Custom Import Command"
-                        wire:model='restoreCommandText'></x-forms.textarea>
+                        wire:model='restoreCommandText' canGate="update" :canResource="$this->resource"></x-forms.textarea>
                 @else
-                    <x-forms.input label="Custom Import Command" wire:model='postgresqlRestoreCommand'></x-forms.input>
+                    <x-forms.input label="Custom Import Command" wire:model='postgresqlRestoreCommand' canGate="update" :canResource="$this->resource"></x-forms.input>
                     <div class="flex flex-col gap-1 pt-1">
                         <span class="text-xs">You can add "--clean" to drop objects before creating them, avoiding
                             conflicts.</span>
@@ -68,27 +68,27 @@
                     </div>
                 @endif
                 <div class="w-64 pt-2">
-                    <x-forms.checkbox label="Backup includes all databases" wire:model.live='dumpAll'></x-forms.checkbox>
+                    <x-forms.checkbox label="Backup includes all databases" wire:model.live='dumpAll' canGate="update" :canResource="$this->resource"></x-forms.checkbox>
                 </div>
             @elseif ($resourceDbType === 'standalone-mysql')
                 @if ($dumpAll)
                     <x-forms.textarea rows="14" readonly label="Custom Import Command"
-                        wire:model='restoreCommandText'></x-forms.textarea>
+                        wire:model='restoreCommandText' canGate="update" :canResource="$this->resource"></x-forms.textarea>
                 @else
-                    <x-forms.input label="Custom Import Command" wire:model='mysqlRestoreCommand'></x-forms.input>
+                    <x-forms.input label="Custom Import Command" wire:model='mysqlRestoreCommand' canGate="update" :canResource="$this->resource"></x-forms.input>
                 @endif
                 <div class="w-64 pt-2">
-                    <x-forms.checkbox label="Backup includes all databases" wire:model.live='dumpAll'></x-forms.checkbox>
+                    <x-forms.checkbox label="Backup includes all databases" wire:model.live='dumpAll' canGate="update" :canResource="$this->resource"></x-forms.checkbox>
                 </div>
             @elseif ($resourceDbType === 'standalone-mariadb')
                 @if ($dumpAll)
                     <x-forms.textarea rows="14" readonly label="Custom Import Command"
-                        wire:model='restoreCommandText'></x-forms.textarea>
+                        wire:model='restoreCommandText' canGate="update" :canResource="$this->resource"></x-forms.textarea>
                 @else
-                    <x-forms.input label="Custom Import Command" wire:model='mariadbRestoreCommand'></x-forms.input>
+                    <x-forms.input label="Custom Import Command" wire:model='mariadbRestoreCommand' canGate="update" :canResource="$this->resource"></x-forms.input>
                 @endif
                 <div class="w-64 pt-2">
-                    <x-forms.checkbox label="Backup includes all databases" wire:model.live='dumpAll'></x-forms.checkbox>
+                    <x-forms.checkbox label="Backup includes all databases" wire:model.live='dumpAll' canGate="update" :canResource="$this->resource"></x-forms.checkbox>
                 </div>
             @endif
 
@@ -128,8 +128,8 @@
                     <h3>Backup File</h3>
                     <form class="flex gap-2 items-end pt-2">
                         <x-forms.input label="Location of the backup file on the server" placeholder="e.g. /home/user/backup.sql.gz"
-                            wire:model='customLocation' x-model="$wire.customLocation"></x-forms.input>
-                        <x-forms.button class="w-full" wire:click='checkFile' x-bind:disabled="!$wire.customLocation">Check File</x-forms.button>
+                            wire:model='customLocation' x-model="$wire.customLocation" canGate="update" :canResource="$this->resource"></x-forms.input>
+                        <x-forms.button class="w-full" wire:click='checkFile' x-bind:disabled="!$wire.customLocation" canGate="update" :canResource="$this->resource">Check File</x-forms.button>
                     </form>
                     <div class="pt-2 text-center text-xl font-bold">
                         Or
@@ -168,7 +168,7 @@
                     <div x-show="restoreType === 's3'" class="pt-6">
                         <h3>Restore from S3</h3>
                         <div class="flex flex-col gap-2 pt-2">
-                            <x-forms.select label="S3 Storage" wire:model.live="s3StorageId">
+                            <x-forms.select label="S3 Storage" wire:model.live="s3StorageId" canGate="update" :canResource="$this->resource">
                                 <option value="">Select S3 Storage</option>
                                 @foreach ($availableS3Storages as $storage)
                                     <option value="{{ $storage['id'] }}">{{ $storage['name'] }}
@@ -182,10 +182,10 @@
                             <x-forms.input label="S3 File Path (within bucket)"
                                 helper="Path to the backup file in your S3 bucket, e.g., /backups/database-2025-01-15.gz"
                                 placeholder="/backups/database-backup.gz" wire:model.blur='s3Path'
-                                wire:keydown.enter='checkS3File'></x-forms.input>
+                                wire:keydown.enter='checkS3File' canGate="update" :canResource="$this->resource"></x-forms.input>
 
                             <div class="flex gap-2">
-                                <x-forms.button class="w-full" wire:click='checkS3File' x-bind:disabled="!s3StorageId || !s3Path">
+                                <x-forms.button class="w-full" wire:click='checkS3File' x-bind:disabled="!s3StorageId || !s3Path" canGate="update" :canResource="$this->resource">
                                     Check File
                                 </x-forms.button>
                             </div>
