@@ -368,7 +368,7 @@
                     <div class="flex-1"></div>
                     @if (isInstanceAdmin() && !isCloud())
                         @persist('upgrade')
-                            <li :class="collapsed && 'lg:hidden'">
+                            <li>
                                 <livewire:upgrade />
                             </li>
                         @endpersist
@@ -420,7 +420,7 @@
                 <li>
                     <form action="/logout" method="POST">
                         @csrf
-                        <button title="Logout" type="submit" class="gap-2 mb-6 menu-item">
+                        <button title="Logout" type="submit" class="mb-6 menu-item">
                             <svg class="menu-item-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path fill="currentColor"
                                     d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2a9.985 9.985 0 0 1 8 4h-2.71a8 8 0 1 0 .001 12h2.71A9.985 9.985 0 0 1 12 22m7-6v-3h-8v-2h8V8l5 4z" />
