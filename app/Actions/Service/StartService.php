@@ -4,13 +4,17 @@ namespace App\Actions\Service;
 
 use App\Models\Service;
 use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Decorators\JobDecorator;
 use Symfony\Component\Yaml\Yaml;
 
 class StartService
 {
     use AsAction;
 
-    public string $jobQueue = 'high';
+    public function configureJob(JobDecorator $job): void
+    {
+        $job->onQueue(deployment_queue());
+    }
 
     public function handle(Service $service, bool $pullLatestImages = false, bool $stopBeforeStart = false)
     {
@@ -40,10 +44,10 @@ class StartService
         $commands[] = "docker network connect $service->uuid coolify-proxy >/dev/null 2>&1 || true";
         if (data_get($service, 'connect_to_docker_network')) {
             $compose = data_get($service, 'docker_compose', []);
-            $network = $service->destination->network;
+            $safeNetwork = escapeshellarg($service->destination->network);
             $serviceNames = data_get(Yaml::parse($compose), 'services', []);
             foreach ($serviceNames as $serviceName => $serviceConfig) {
-                $commands[] = "docker network connect --alias {$serviceName}-{$service->uuid} $network {$serviceName}-{$service->uuid} >/dev/null 2>&1 || true";
+                $commands[] = "docker network connect --alias {$serviceName}-{$service->uuid} {$safeNetwork} {$serviceName}-{$service->uuid} >/dev/null 2>&1 || true";
             }
         }
 

