@@ -134,7 +134,7 @@
                     <div class="pt-2 text-center text-xl font-bold">
                         Or
                     </div>
-                    <form action="/upload/backup/{{ $resourceUuid }}" class="dropzone" id="my-dropzone" wire:ignore>
+                    <form action="{{ route('upload.backup', ['databaseUuid' => $resourceUuid]) }}" class="dropzone" id="my-dropzone" wire:ignore>
                         @csrf
                     </form>
                     <div x-show="isUploading">
