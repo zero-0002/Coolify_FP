@@ -31,6 +31,7 @@ it('keeps changelog and appearance options out of the preferences dropdown', fun
         ->toContain('class="relative text-left menu-item"')
         ->toContain('class="text-left menu-item-label"')
         ->toContain("What's New</span>")
+        ->toContain('M9.813 15.904 9 18.75')
         ->not->toContain('<span>Changelog</span>')
         ->not->toContain('Appearance</div>')
         ->not->toContain("@click=\"setTheme('dark'); dropdownOpen = false\"")
