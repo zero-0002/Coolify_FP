@@ -361,7 +361,7 @@ function refreshSession(?Team $team = null): void
         }
         if (! $team) {
             // Fall back to any team the user still belongs to.
-            $team = User::find(Auth::id())->teams()->first();
+            $team = User::query()->find(Auth::id())?->teams()->first();
         }
     }
 
