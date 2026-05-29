@@ -807,10 +807,7 @@ EOD;
                 break;
             case StandaloneMongodb::class:
             case 'mongodb':
-                $restoreCommand = $this->mongodbRestoreCommand;
-                if ($this->dumpAll === false) {
-                    $restoreCommand .= "{$tmpPath}";
-                }
+                $restoreCommand = $this->mongodbRestoreCommand."{$tmpPath}";
                 break;
             default:
                 $restoreCommand = '';
