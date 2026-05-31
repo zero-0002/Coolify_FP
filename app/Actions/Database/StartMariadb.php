@@ -105,10 +105,10 @@ class StartMariadb
                     'labels' => defaultDatabaseLabels($this->database)->toArray(),
                     'healthcheck' => [
                         'test' => ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized'],
-                        'interval' => '5s',
-                        'timeout' => '5s',
-                        'retries' => 10,
-                        'start_period' => '5s',
+                        'interval' => "{$this->database->health_check_interval}s",
+                        'timeout' => "{$this->database->health_check_timeout}s",
+                        'retries' => $this->database->health_check_retries,
+                        'start_period' => "{$this->database->health_check_start_period}s",
                     ],
                     'mem_limit' => $this->database->limits_memory,
                     'memswap_limit' => $this->database->limits_memory_swap,
@@ -202,6 +202,9 @@ class StartMariadb
             ];
         }
 
+        if (! $this->database->isHealthcheckEnabled()) {
+            unset($docker_compose['services'][$container_name]['healthcheck']);
+        }
         $docker_compose = Yaml::dump($docker_compose, 10);
         $docker_compose_base64 = base64_encode($docker_compose);
         $this->commands[] = "echo '{$docker_compose_base64}' | base64 -d | tee $this->configuration_dir/docker-compose.yml > /dev/null";
