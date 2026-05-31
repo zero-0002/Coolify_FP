@@ -1,4 +1,7 @@
 <div id="terminal-container" x-data="terminalData()">
+    @if ($isTerminalConnected)
+        <div class="hidden" aria-hidden="true" wire:poll.keep-alive.30s="keepTerminalPageAlive"></div>
+    @endif
     @if (!$hasShell)
         <div class="flex pt-4 items-center justify-center w-full py-4 mx-auto">
             <div class="p-4 w-full rounded-sm border dark:bg-coolgray-100 dark:border-coolgray-300">

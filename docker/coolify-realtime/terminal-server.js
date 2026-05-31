@@ -63,8 +63,8 @@ function createHttpError(response) {
 }
 
 const userSessions = new Map();
-const terminalDebugEnabled = ['1', 'true', 'yes'].includes(
-    String(process.env.TERMINAL_DEBUG || '').toLowerCase()
+const terminalDebugEnabled = ['local', 'development'].includes(
+    String(process.env.APP_ENV || process.env.NODE_ENV || '').toLowerCase()
 );
 
 function logTerminal(level, message, context = {}) {
@@ -154,7 +154,6 @@ const verifyClient = async (info, callback) => {
 const wss = new WebSocketServer({ server, path: '/terminal/ws', verifyClient: verifyClient });
 
 const HEARTBEAT_INTERVAL_MS = 30000;
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
 wss.on('connection', async (ws, req) => {
     ws.isAlive = true;
@@ -168,7 +167,6 @@ wss.on('connection', async (ws, req) => {
         ptyProcess: null,
         isActive: false,
         authorizedIPs: [],
-        lastActivityAt: Date.now(),
         authReady: false,
         pendingMessages: [],
     };
@@ -260,29 +258,6 @@ const heartbeat = setInterval(() => {
         } catch (_) {
             // ignore — close handler will follow
         }
-
-        const session = ws.userId ? userSessions.get(ws.userId) : null;
-        if (session?.isActive && session.lastActivityAt && (Date.now() - session.lastActivityAt > IDLE_TIMEOUT_MS)) {
-            const idleMs = Date.now() - session.lastActivityAt;
-            logTerminal('warn', 'Closing terminal session due to idle timeout.', {
-                userId: ws.userId,
-                idleMs,
-                idleTimeoutMs: IDLE_TIMEOUT_MS,
-            });
-            try {
-                ws.send('idle-timeout');
-            } catch (_) {
-                // ignore — close still attempted below
-            }
-            killPtyProcess(ws.userId);
-            setTimeout(() => {
-                try {
-                    ws.close(1000, 'Idle timeout');
-                } catch (_) {
-                    // ignore — already closed
-                }
-            }, 100);
-        }
     });
 }, HEARTBEAT_INTERVAL_MS);
 
@@ -290,11 +265,9 @@ wss.on('close', () => clearInterval(heartbeat));
 
 const messageHandlers = {
     message: (session, data) => {
-        session.lastActivityAt = Date.now();
         session.ptyProcess.write(data);
     },
     resize: (session, { cols, rows }) => {
-        session.lastActivityAt = Date.now();
         cols = cols > 0 ? cols : 80;
         rows = rows > 0 ? rows : 30;
         session.ptyProcess.resize(cols, rows)
@@ -420,7 +393,6 @@ async function handleCommand(ws, command, userId) {
 
     userSession.ptyProcess = ptyProcess;
     userSession.isActive = true;
-    userSession.lastActivityAt = Date.now();
 
     ws.send('pty-ready');
 

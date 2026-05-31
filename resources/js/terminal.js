@@ -44,7 +44,7 @@ export function initializeTerminalComponent() {
             pendingCommand: null,
             // Last successfully sent SSH command — replayed after a transient reconnect
             // so the PTY respawns automatically. Cleared on intentional terminations
-            // (pty-exited, idle-timeout, unprocessable).
+            // (pty-exited, unprocessable).
             lastSentCommand: null,
             // Resize handling
             resizeObserver: null,
@@ -461,15 +461,6 @@ export function initializeTerminalComponent() {
                     this.lastSentCommand = null;
 
                     // Notify parent component that terminal disconnected
-                    this.$wire.dispatch('terminalDisconnected');
-                } else if (event.data === 'idle-timeout') {
-                    this.$wire.dispatch('error', 'Terminal closed after 30 minutes of inactivity.');
-                    this.terminalActive = false;
-                    if (this.term) {
-                        this.term.reset();
-                    }
-                    this.commandBuffer = '';
-                    this.lastSentCommand = null;
                     this.$wire.dispatch('terminalDisconnected');
                 } else if (
                     typeof event.data === 'string' &&
