@@ -23,6 +23,11 @@
     <div x-ref="terminalWrapper"
         :class="fullscreen ? 'fullscreen !bg-black' : 'relative w-full h-full py-4 mx-auto max-h-[510px]'">
         <!-- Terminal container -->
+        <div x-show="terminalActive" x-cloak class="mb-2 flex justify-start">
+            <div class="inline-flex rounded-sm border px-2 py-1 text-xs font-medium"
+                :class="terminalSessionTimerClass()" x-text="terminalSessionRemainingLabel()">
+            </div>
+        </div>
         <div id="terminal" wire:ignore
             :class="fullscreen ? 'px-2 py-1 h-full bg-black' : 'px-2 py-1 rounded-sm bg-black'" x-show="terminalActive">
         </div>

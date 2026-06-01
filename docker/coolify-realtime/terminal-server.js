@@ -8,6 +8,7 @@ import {
     extractSshArgs,
     extractTargetHost,
     extractTimeout,
+    getTerminalSessionTimeout,
     isAuthorizedTargetHost,
 } from './terminal-utils.js';
 
@@ -171,6 +172,7 @@ wss.on('connection', async (ws, req) => {
         authorizedIPs: [],
         authReady: false,
         pendingMessages: [],
+        terminalSessionTimer: null,
     };
     const { xsrfToken, laravelSession, sessionCookieName } = getSessionCookie(req);
     const connectionContext = {
@@ -340,8 +342,14 @@ async function handleCommand(ws, command, userId) {
         }
     }
 
+    if (userSession.terminalSessionTimer) {
+        clearTimeout(userSession.terminalSessionTimer);
+        userSession.terminalSessionTimer = null;
+    }
+
     const commandString = command[0].split('\n').join(' ');
-    const timeout = extractTimeout(commandString);
+    const commandTimeout = extractTimeout(commandString);
+    const terminalSessionTimeout = getTerminalSessionTimeout();
     const sshArgs = extractSshArgs(commandString);
     const hereDocContent = extractHereDocContent(commandString);
 
@@ -350,7 +358,8 @@ async function handleCommand(ws, command, userId) {
     logTerminal('log', 'Parsed terminal command metadata.', {
         userId,
         targetHost,
-        timeout,
+        commandTimeout,
+        terminalSessionTimeout,
         sshArgs,
         authorizedIPs: userSession?.authorizedIPs ?? [],
     });
@@ -389,7 +398,8 @@ async function handleCommand(ws, command, userId) {
     logTerminal('log', 'Spawning PTY process for terminal session.', {
         userId,
         targetHost,
-        timeout,
+        commandTimeout,
+        terminalSessionTimeout,
     });
     const ptyProcess = pty.spawn('ssh', sshArgs.concat([hereDocContent]), options);
 
@@ -411,13 +421,16 @@ async function handleCommand(ws, command, userId) {
         });
         ws.send('pty-exited');
         userSession.isActive = false;
+
+        if (userSession.terminalSessionTimer) {
+            clearTimeout(userSession.terminalSessionTimer);
+            userSession.terminalSessionTimer = null;
+        }
     });
 
-    if (timeout) {
-        setTimeout(async () => {
-            await killPtyProcess(userId);
-        }, timeout * 1000);
-    }
+    userSession.terminalSessionTimer = setTimeout(async () => {
+        await killPtyProcess(userId);
+    }, terminalSessionTimeout * 1000);
 }
 
 async function handleError(err, userId) {
@@ -459,6 +472,11 @@ async function killPtyProcess(userId) {
 
             setTimeout(() => {
                 if (!session.isActive || !session.ptyProcess) {
+                    if (session.terminalSessionTimer) {
+                        clearTimeout(session.terminalSessionTimer);
+                        session.terminalSessionTimer = null;
+                    }
+
                     logTerminal('log', 'PTY process terminated successfully.', {
                         userId,
                         killAttempts,
