@@ -28,8 +28,8 @@ it('keeps realtime terminal server logging behind the explicit debug flag', func
     $terminalServer = file_get_contents(base_path('docker/coolify-realtime/terminal-server.js'));
 
     expect($terminalServer)
-        ->toContain("const terminalDebugEnabled = ['1', 'true', 'yes'].includes(")
-        ->toContain('process.env.TERMINAL_DEBUG')
+        ->toContain('const debugOverride = String(process.env.TERMINAL_DEBUG')
+        ->toContain("['1', 'true', 'yes', 'on'].includes(debugOverride)")
         ->toContain('if (!terminalDebugEnabled) {')
         ->not->toContain("console.log('Coolify realtime terminal server listening on port 6002. Let the hacking begin!');");
 });
@@ -88,6 +88,16 @@ it('keeps Livewire alive in background tabs while a terminal is connected', func
         ->and($terminalView)
         ->toContain('@if ($isTerminalConnected)')
         ->toContain('wire:poll.keep-alive.30s="keepTerminalPageAlive"');
+});
+
+it('exits fullscreen when the terminal process exits', function () {
+    $terminalClient = file_get_contents(resource_path('js/terminal.js'));
+
+    expect($terminalClient)
+        ->toContain("event.data === 'pty-exited'")
+        ->toContain('this.fullscreen = false;
+                    this.mobileToolbarCollapsed = false;
+                    this.terminalActive = false;');
 });
 
 it('replays the last command on reconnect so the PTY respawns automatically', function () {
@@ -178,7 +188,7 @@ it('uses simple fullscreen bottom margin based on mobile toolbar visibility', fu
         ->not->toContain('terminalFullscreenHeight')
         ->not->toContain('window.visualViewport?.height')
         ->and($terminalView)
-        ->toContain("mobileToolbarCollapsed ? 'h-[calc(100dvh-3.5rem)] mb-14 px-2 py-1 bg-black' : 'h-[calc(100dvh-11rem)] mb-[11rem] px-2 py-1 bg-black'")
+        ->toContain("mobileToolbarCollapsed ? 'h-[calc(100dvh-3.5rem)] mb-14 px-2 py-1 bg-black' : 'h-[calc(100dvh-6rem)] mb-[6rem] px-2 py-1 bg-black'")
         ->toContain("fullscreen ? 'absolute inset-x-0 bottom-0 z-[9999] px-2 pb-2'");
 });
 

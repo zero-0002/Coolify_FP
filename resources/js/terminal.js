@@ -527,6 +527,8 @@ export function initializeTerminalComponent() {
                     // Notify parent component that terminal connection failed
                     this.$wire.dispatch('terminalDisconnected');
                 } else if (event.data === 'pty-exited') {
+                    this.fullscreen = false;
+                    this.mobileToolbarCollapsed = false;
                     this.terminalActive = false;
                     this.resetTerminalSessionCountdown();
                     this.term.reset();
