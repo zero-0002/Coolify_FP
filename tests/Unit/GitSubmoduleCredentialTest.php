@@ -2,6 +2,8 @@
 
 use App\Models\Application;
 use App\Models\ApplicationSetting;
+use App\Models\GitlabApp;
+use App\Models\PrivateKey;
 
 describe('Git submodule credential propagation', function () {
     beforeEach(function () {
@@ -119,4 +121,48 @@ describe('Git submodule credential propagation', function () {
             ->toContain("git checkout 'main'")
             ->not->toContain('submodule');
     });
+
+    test('generateGitImportCommands uses GitLab private key for PR submodule checkout', function () {
+        $settings = new ApplicationSetting;
+        $settings->is_git_shallow_clone_enabled = false;
+        $settings->is_git_submodules_enabled = true;
+        $settings->is_git_lfs_enabled = false;
+
+        $privateKey = Mockery::mock(PrivateKey::class)->makePartial();
+        $privateKey->shouldReceive('getAttribute')->with('private_key')->andReturn('fake-private-key');
+
+        $gitlabSource = Mockery::mock(GitlabApp::class)->makePartial();
+        $gitlabSource->shouldReceive('getMorphClass')->andReturn(GitlabApp::class);
+        $gitlabSource->shouldReceive('getAttribute')->with('privateKey')->andReturn($privateKey);
+        $gitlabSource->shouldReceive('getAttribute')->with('custom_port')->andReturn(22);
+        $gitlabSource->shouldReceive('getAttribute')->with('html_url')->andReturn('https://gitlab.com');
+
+        $application = Mockery::mock(Application::class)->makePartial();
+        $application->git_branch = 'main';
+        $application->git_commit_sha = 'HEAD';
+        $application->setRelation('settings', $settings);
+        $application->source = $gitlabSource;
+        $application->shouldReceive('deploymentType')->andReturn('source');
+        $application->shouldReceive('customRepository')->andReturn([
+            'repository' => 'git@gitlab.com:user/repo.git',
+            'port' => 22,
+        ]);
+        $application->shouldReceive('getAttribute')->with('source')->andReturn($gitlabSource);
+
+        $result = $application->generateGitImportCommands(
+            deployment_uuid: 'test-uuid',
+            pull_request_id: 123,
+            git_type: 'gitlab',
+            exec_in_docker: false,
+        );
+
+        $sshCommand = 'ssh -o ConnectTimeout=30 -p 22 -o Port=22 -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa';
+
+        expect($result['commands'])
+            ->toContain('GIT_SSH_COMMAND="'.$sshCommand.'" git fetch origin merge-requests/123/head:pr-123-coolify')
+            ->toContain("git checkout 'pr-123-coolify'")
+            ->toContain('GIT_SSH_COMMAND="'.$sshCommand.'" git submodule update --init --recursive')
+            ->not->toContain('GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git submodule update --init --recursive');
+    });
+
 });
