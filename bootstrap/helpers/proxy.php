@@ -110,6 +110,7 @@ function connectProxyToNetworks(Server $server)
     if ($server->isSwarm()) {
         $commands = $networks->map(function ($network) {
             $safe = escapeshellarg($network);
+
             return [
                 "docker network ls --format '{{.Name}}' | grep '^{$network}$' >/dev/null || docker network create --driver overlay --attachable {$safe} >/dev/null",
                 "docker network connect {$safe} coolify-proxy >/dev/null 2>&1 || true",
@@ -119,6 +120,7 @@ function connectProxyToNetworks(Server $server)
     } else {
         $commands = $networks->map(function ($network) {
             $safe = escapeshellarg($network);
+
             return [
                 "docker network ls --format '{{.Name}}' | grep '^{$network}$' >/dev/null || docker network create --attachable {$safe} >/dev/null",
                 "docker network connect {$safe} coolify-proxy >/dev/null 2>&1 || true",
@@ -144,6 +146,7 @@ function ensureProxyNetworksExist(Server $server)
     if ($server->isSwarm()) {
         $commands = $networks->map(function ($network) {
             $safe = escapeshellarg($network);
+
             return [
                 "echo 'Ensuring network {$safe} exists...'",
                 "docker network ls --format '{{.Name}}' | grep -q '^{$network}$' || docker network create --driver overlay --attachable {$safe}",
@@ -152,6 +155,7 @@ function ensureProxyNetworksExist(Server $server)
     } else {
         $commands = $networks->map(function ($network) {
             $safe = escapeshellarg($network);
+
             return [
                 "echo 'Ensuring network {$safe} exists...'",
                 "docker network ls --format '{{.Name}}' | grep -q '^{$network}$' || docker network create --attachable {$safe}",

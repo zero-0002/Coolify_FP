@@ -144,7 +144,7 @@ function sharedDataApplications()
         'docker_compose_custom_start_command' => \App\Support\ValidationPatterns::shellSafeCommandRules(),
         'docker_compose_custom_build_command' => \App\Support\ValidationPatterns::shellSafeCommandRules(),
         'is_container_label_escape_enabled' => 'boolean',
-        'is_preserve_repository_enabled' => 'boolean'
+        'is_preserve_repository_enabled' => 'boolean',
     ];
 }
 
