@@ -1,6 +1,6 @@
 <form wire:submit='submit' class="flex flex-col">
     <div class="flex items-center gap-2">
-        <h2>Health Checks</h2>
+        <h2>Healthcheck</h2>
         <x-forms.button canGate="update" :canResource="$database" type="submit">Save</x-forms.button>
     </div>
     <div class="mt-1 pb-4">Configure how Docker checks this database's health. A higher interval lowers

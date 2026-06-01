@@ -243,7 +243,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/servers', DatabaseConfiguration::class)->name('project.database.servers');
         Route::get('/import-backup', DatabaseConfiguration::class)->name('project.database.import-backup')->middleware('can.update.resource');
         Route::get('/persistent-storage', DatabaseConfiguration::class)->name('project.database.persistent-storage');
-        Route::get('/health-checks', DatabaseConfiguration::class)->name('project.database.health-checks');
+        Route::get('/healthcheck', DatabaseConfiguration::class)->name('project.database.healthcheck');
         Route::get('/webhooks', DatabaseConfiguration::class)->name('project.database.webhooks');
         Route::get('/resource-limits', DatabaseConfiguration::class)->name('project.database.resource-limits');
         Route::get('/resource-operations', DatabaseConfiguration::class)->name('project.database.resource-operations');
