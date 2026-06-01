@@ -63,9 +63,11 @@ function createHttpError(response) {
 }
 
 const userSessions = new Map();
-const terminalDebugEnabled = ['local', 'development'].includes(
-    String(process.env.APP_ENV || process.env.NODE_ENV || '').toLowerCase()
-);
+const envName = String(process.env.APP_ENV || process.env.NODE_ENV || '').toLowerCase();
+const debugOverride = String(process.env.TERMINAL_DEBUG || '').toLowerCase();
+const terminalDebugEnabled =
+    ['local', 'development'].includes(envName)
+    || ['1', 'true', 'yes', 'on'].includes(debugOverride);
 
 function logTerminal(level, message, context = {}) {
     if (!terminalDebugEnabled) {
