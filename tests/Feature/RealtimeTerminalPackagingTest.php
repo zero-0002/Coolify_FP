@@ -59,22 +59,35 @@ it('uses a fast probe timeout when the tab regains visibility', function () {
         ->toContain("'Visibility-resume timeout'");
 });
 
-it('closes idle terminal sessions after 30 minutes on the server', function () {
+it('does not hard close terminal sessions after 30 minutes on the server', function () {
     $terminalServer = file_get_contents(base_path('docker/coolify-realtime/terminal-server.js'));
 
     expect($terminalServer)
-        ->toContain('IDLE_TIMEOUT_MS = 30 * 60 * 1000')
-        ->toContain('lastActivityAt')
-        ->toContain("ws.send('idle-timeout');")
-        ->toContain("ws.close(1000, 'Idle timeout');");
+        ->not->toContain('IDLE_TIMEOUT_MS = 30 * 60 * 1000')
+        ->not->toContain("ws.send('idle-timeout');")
+        ->not->toContain("ws.close(1000, 'Idle timeout');");
 });
 
-it('reacts to idle-timeout sentinel on the client and shows a user-facing error', function () {
+it('does not close the client terminal from an idle-timeout sentinel', function () {
     $terminalClient = file_get_contents(base_path('resources/js/terminal.js'));
 
     expect($terminalClient)
-        ->toContain("event.data === 'idle-timeout'")
-        ->toContain('Terminal closed after 30 minutes of inactivity.');
+        ->not->toContain("event.data === 'idle-timeout'")
+        ->not->toContain('Terminal closed after 30 minutes of inactivity.');
+});
+
+it('keeps Livewire alive in background tabs while a terminal is connected', function () {
+    $terminalComponent = file_get_contents(base_path('app/Livewire/Project/Shared/Terminal.php'));
+    $terminalView = file_get_contents(base_path('resources/views/livewire/project/shared/terminal.blade.php'));
+
+    expect($terminalComponent)
+        ->toContain('public bool $isTerminalConnected = false;')
+        ->toContain("#[On('terminalConnected')]")
+        ->toContain('public function markTerminalConnected(): void')
+        ->toContain('public function keepTerminalPageAlive(): void')
+        ->and($terminalView)
+        ->toContain('@if ($isTerminalConnected)')
+        ->toContain('wire:poll.keep-alive.30s="keepTerminalPageAlive"');
 });
 
 it('replays the last command on reconnect so the PTY respawns automatically', function () {

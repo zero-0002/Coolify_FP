@@ -1,4 +1,7 @@
 <div id="terminal-container" x-data="terminalData()">
+    @if ($isTerminalConnected)
+        <div class="hidden" aria-hidden="true" wire:poll.keep-alive.30s="keepTerminalPageAlive"></div>
+    @endif
     @if (!$hasShell)
         <div class="flex pt-4 items-center justify-center w-full py-4 mx-auto">
             <div class="p-4 w-full rounded-sm border dark:bg-coolgray-100 dark:border-coolgray-300">
@@ -20,6 +23,11 @@
     <div x-ref="terminalWrapper"
         :class="fullscreen ? 'fixed inset-0 z-[9999] m-0 h-[100dvh] w-screen max-w-none overflow-hidden rounded-none !bg-black p-0' : 'relative w-full h-full py-4 mx-auto max-h-[510px]'">
         <!-- Terminal container -->
+        <div x-show="terminalActive" x-cloak class="mb-2 flex justify-start">
+            <div class="inline-flex rounded-sm border px-2 py-1 text-xs font-medium"
+                :class="terminalSessionTimerClass()" x-text="terminalSessionRemainingLabel()">
+            </div>
+        </div>
         <div id="terminal" wire:ignore
             :class="fullscreen ? (mobileToolbarCollapsed ? 'h-[calc(100dvh-3.5rem)] mb-14 px-2 py-1 bg-black' : 'h-[calc(100dvh-6rem)] mb-[6rem] px-2 py-1 bg-black') : 'h-[510px] max-h-[calc(100dvh-10rem)] overflow-hidden px-2 py-1 rounded-sm bg-black'"
             x-show="terminalActive">
