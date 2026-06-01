@@ -3,6 +3,8 @@
 use App\Enums\BuildPackTypes;
 use App\Enums\RedirectTypes;
 use App\Enums\StaticImageTypes;
+use App\Rules\ValidGitBranch;
+use App\Support\ValidationPatterns;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -83,7 +85,7 @@ function sharedDataApplications()
 {
     return [
         'git_repository' => 'string',
-        'git_branch' => 'string',
+        'git_branch' => ['string', new ValidGitBranch],
         'build_pack' => Rule::enum(BuildPackTypes::class),
         'is_static' => 'boolean',
         'is_spa' => 'boolean',
@@ -95,14 +97,14 @@ function sharedDataApplications()
         'git_commit_sha' => ['string', 'regex:/^[a-zA-Z0-9][a-zA-Z0-9._\-\/]*$/'],
         'docker_registry_image_name' => 'string|nullable',
         'docker_registry_image_tag' => 'string|nullable',
-        'install_command' => \App\Support\ValidationPatterns::shellSafeCommandRules(),
-        'build_command' => \App\Support\ValidationPatterns::shellSafeCommandRules(),
-        'start_command' => \App\Support\ValidationPatterns::shellSafeCommandRules(),
+        'install_command' => ValidationPatterns::shellSafeCommandRules(),
+        'build_command' => ValidationPatterns::shellSafeCommandRules(),
+        'start_command' => ValidationPatterns::shellSafeCommandRules(),
         'ports_exposes' => 'string|regex:/^(\d+)(,\d+)*$/',
         'ports_mappings' => 'string|regex:/^(\d+:\d+)(,\d+:\d+)*$/|nullable',
         'custom_network_aliases' => 'string|nullable',
-        'base_directory' => \App\Support\ValidationPatterns::directoryPathRules(),
-        'publish_directory' => \App\Support\ValidationPatterns::directoryPathRules(),
+        'base_directory' => ValidationPatterns::directoryPathRules(),
+        'publish_directory' => ValidationPatterns::directoryPathRules(),
         'health_check_enabled' => 'boolean',
         'health_check_type' => 'string|in:http,cmd',
         'health_check_command' => ['nullable', 'string', 'max:1000', 'regex:/^[a-zA-Z0-9 \-_.\/:=@,+]+$/'],
@@ -125,24 +127,24 @@ function sharedDataApplications()
         'limits_cpuset' => 'string|nullable',
         'limits_cpu_shares' => 'numeric',
         'custom_labels' => 'string|nullable',
-        'custom_docker_run_options' => \App\Support\ValidationPatterns::shellSafeCommandRules(2000),
+        'custom_docker_run_options' => ValidationPatterns::shellSafeCommandRules(2000),
         // Security: deployment commands are intentionally arbitrary shell (e.g. "php artisan migrate").
         // Access is gated by API token authentication. Commands run inside the app container, not the host.
         'post_deployment_command' => 'string|nullable',
-        'post_deployment_command_container' => \App\Support\ValidationPatterns::containerNameRules(),
+        'post_deployment_command_container' => ValidationPatterns::containerNameRules(),
         'pre_deployment_command' => 'string|nullable',
-        'pre_deployment_command_container' => \App\Support\ValidationPatterns::containerNameRules(),
+        'pre_deployment_command_container' => ValidationPatterns::containerNameRules(),
         'manual_webhook_secret_github' => 'string|nullable',
         'manual_webhook_secret_gitlab' => 'string|nullable',
         'manual_webhook_secret_bitbucket' => 'string|nullable',
         'manual_webhook_secret_gitea' => 'string|nullable',
-        'dockerfile_location' => \App\Support\ValidationPatterns::filePathRules(),
-        'dockerfile_target_build' => \App\Support\ValidationPatterns::dockerTargetRules(),
-        'docker_compose_location' => \App\Support\ValidationPatterns::filePathRules(),
+        'dockerfile_location' => ValidationPatterns::filePathRules(),
+        'dockerfile_target_build' => ValidationPatterns::dockerTargetRules(),
+        'docker_compose_location' => ValidationPatterns::filePathRules(),
         'docker_compose' => 'string|nullable',
         'docker_compose_domains' => 'array|nullable',
-        'docker_compose_custom_start_command' => \App\Support\ValidationPatterns::shellSafeCommandRules(),
-        'docker_compose_custom_build_command' => \App\Support\ValidationPatterns::shellSafeCommandRules(),
+        'docker_compose_custom_start_command' => ValidationPatterns::shellSafeCommandRules(),
+        'docker_compose_custom_build_command' => ValidationPatterns::shellSafeCommandRules(),
         'is_container_label_escape_enabled' => 'boolean',
         'is_preserve_repository_enabled' => 'boolean',
     ];

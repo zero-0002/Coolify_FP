@@ -5,6 +5,7 @@ namespace App\Livewire\Project\Application;
 use App\Actions\Application\GenerateConfig;
 use App\Jobs\ApplicationDeploymentJob;
 use App\Models\Application;
+use App\Rules\ValidGitBranch;
 use App\Support\ValidationPatterns;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -144,7 +145,7 @@ class General extends Component
             'description' => ValidationPatterns::descriptionRules(),
             'fqdn' => 'nullable',
             'gitRepository' => 'required',
-            'gitBranch' => 'required',
+            'gitBranch' => ['required', 'string', new ValidGitBranch],
             'gitCommitSha' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9][a-zA-Z0-9._\-\/]*$/'],
             'installCommand' => ValidationPatterns::shellSafeCommandRules(),
             'buildCommand' => ValidationPatterns::shellSafeCommandRules(),
