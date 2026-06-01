@@ -58,6 +58,7 @@ export function initializeTerminalComponent() {
             // Visibility handling - prevent disconnects when tab loses focus
             isDocumentVisible: true,
             wasConnectedBeforeHidden: false,
+            mobileToolbarCollapsed: false,
             terminalSessionStartedAt: null,
             terminalSessionRemainingSeconds: null,
             terminalSessionCountdownInterval: null,
@@ -526,6 +527,8 @@ export function initializeTerminalComponent() {
                     // Notify parent component that terminal connection failed
                     this.$wire.dispatch('terminalDisconnected');
                 } else if (event.data === 'pty-exited') {
+                    this.fullscreen = false;
+                    this.mobileToolbarCollapsed = false;
                     this.terminalActive = false;
                     this.resetTerminalSessionCountdown();
                     this.term.reset();
@@ -600,6 +603,64 @@ export function initializeTerminalComponent() {
                     }
                     return true;
                 });
+            },
+
+
+            sendTerminalInput(data) {
+                if (!this.term || !this.terminalActive) {
+                    return;
+                }
+
+                this.term.focus();
+                this.sendMessage({ message: data });
+            },
+
+            sendTerminalControl(sequence) {
+                const terminalSequences = {
+                    arrowUp: '\x1b[A',
+                    arrowDown: '\x1b[B',
+                    arrowRight: '\x1b[C',
+                    arrowLeft: '\x1b[D',
+                    tab: '\t',
+                    escape: '\x1b',
+                    ctrlC: '\x03'
+                };
+
+                if (terminalSequences[sequence]) {
+                    this.sendTerminalInput(terminalSequences[sequence]);
+                }
+            },
+
+            async pasteFromClipboard() {
+                if (!navigator.clipboard?.readText) {
+                    this.$wire.dispatch('error', 'Clipboard paste is not available in this browser.');
+                    return;
+                }
+
+                try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                        this.sendTerminalInput(text);
+                    }
+                } catch (error) {
+                    logTerminal('warn', '[Terminal] Clipboard paste failed:', error);
+                    this.$wire.dispatch('error', 'Clipboard paste permission was denied.');
+                }
+            },
+
+            async copyTerminalSelection() {
+                const selection = this.term?.getSelection();
+                if (!selection) {
+                    this.$wire.dispatch('error', 'Select terminal text before copying.');
+                    return;
+                }
+
+                try {
+                    await navigator.clipboard.writeText(selection);
+                } catch (error) {
+                    logTerminal('warn', '[Terminal] Clipboard copy failed:', error);
+                    this.$wire.dispatch('error', 'Clipboard copy permission was denied.');
+                }
             },
 
             keepAlive() {
@@ -693,15 +754,20 @@ export function initializeTerminalComponent() {
                     // Force a refresh of the fit addon dimensions
                     this.fitAddon.fit();
 
-                    // Get fresh dimensions after fit
-                    const wrapperHeight = this.$refs.terminalWrapper.clientHeight;
-                    const wrapperWidth = this.$refs.terminalWrapper.clientWidth;
+                    // Get fresh dimensions from the terminal element itself. The mobile
+                    // toolbar can live beside the terminal in normal flow, so wrapper dimensions
+                    // would include controls that should not be counted as terminal rows.
+                    const terminalElement = document.getElementById('terminal');
+                    const terminalHeight = terminalElement?.clientHeight || this.$refs.terminalWrapper.clientHeight;
+                    const terminalWidth = terminalElement?.clientWidth || this.$refs.terminalWrapper.clientWidth;
 
-                    // Account for terminal container padding (px-2 py-1 = 8px left/right, 4px top/bottom)
-                    const horizontalPadding = 16; // 8px * 2 (left + right)
-                    const verticalPadding = 8; // 4px * 2 (top + bottom)
-                    const height = wrapperHeight - verticalPadding;
-                    const width = wrapperWidth - horizontalPadding;
+                    // Account for terminal container padding. In fullscreen mobile mode,
+                    // the fixed toolbar sits over the terminal container, so reserve its height
+                    // when calculating rows to keep the prompt above the controls.
+                    const horizontalPadding = 16; // px-2 = 8px * 2 (left + right)
+                    const verticalPadding = 8; // py-1 = 4px * 2 (top + bottom)
+                    const height = terminalHeight - verticalPadding;
+                    const width = terminalWidth - horizontalPadding;
 
                     // Check if dimensions are valid
                     if (height <= 0 || width <= 0) {
