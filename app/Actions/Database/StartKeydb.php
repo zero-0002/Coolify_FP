@@ -108,13 +108,9 @@ class StartKeydb
                         $this->database->destination->network,
                     ],
                     'labels' => defaultDatabaseLabels($this->database)->toArray(),
-                    'healthcheck' => [
-                        'test' => ['CMD', 'keydb-cli', '--pass', (string) $this->database->keydb_password, 'ping'],
-                        'interval' => "{$this->database->health_check_interval}s",
-                        'timeout' => "{$this->database->health_check_timeout}s",
-                        'retries' => $this->database->health_check_retries,
-                        'start_period' => "{$this->database->health_check_start_period}s",
-                    ],
+                    'healthcheck' => $this->database->healthCheckConfiguration([
+                        'CMD', 'keydb-cli', '--pass', (string) $this->database->keydb_password, 'ping',
+                    ]),
                     'mem_limit' => $this->database->limits_memory,
                     'memswap_limit' => $this->database->limits_memory_swap,
                     'mem_swappiness' => $this->database->limits_memory_swappiness,

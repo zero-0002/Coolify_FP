@@ -110,13 +110,9 @@ class StartPostgresql
                         $this->database->destination->network,
                     ],
                     'labels' => defaultDatabaseLabels($this->database)->toArray(),
-                    'healthcheck' => [
-                        'test' => ['CMD', 'psql', '-U', (string) $this->database->postgres_user, '-d', (string) $this->database->postgres_db, '-c', 'SELECT 1'],
-                        'interval' => "{$this->database->health_check_interval}s",
-                        'timeout' => "{$this->database->health_check_timeout}s",
-                        'retries' => $this->database->health_check_retries,
-                        'start_period' => "{$this->database->health_check_start_period}s",
-                    ],
+                    'healthcheck' => $this->database->healthCheckConfiguration([
+                        'CMD', 'psql', '-U', (string) $this->database->postgres_user, '-d', (string) $this->database->postgres_db, '-c', 'SELECT 1',
+                    ]),
                     'mem_limit' => $this->database->limits_memory,
                     'memswap_limit' => $this->database->limits_memory_swap,
                     'mem_swappiness' => $this->database->limits_memory_swappiness,

@@ -31,4 +31,15 @@ trait HasDatabaseHealthCheck
             'start_period' => ($this->health_check_start_period ?? 5).'s',
         ];
     }
+
+    protected function healthCheckConfigurationHash(): string
+    {
+        return implode('|', [
+            (int) ($this->health_check_enabled ?? true),
+            $this->health_check_interval ?? 15,
+            $this->health_check_timeout ?? 5,
+            $this->health_check_retries ?? 5,
+            $this->health_check_start_period ?? 5,
+        ]);
+    }
 }

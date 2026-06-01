@@ -105,17 +105,11 @@ class StartRedis
                         $this->database->destination->network,
                     ],
                     'labels' => defaultDatabaseLabels($this->database)->toArray(),
-                    'healthcheck' => [
-                        'test' => [
-                            'CMD-SHELL',
-                            'redis-cli',
-                            'ping',
-                        ],
-                        'interval' => "{$this->database->health_check_interval}s",
-                        'timeout' => "{$this->database->health_check_timeout}s",
-                        'retries' => $this->database->health_check_retries,
-                        'start_period' => "{$this->database->health_check_start_period}s",
-                    ],
+                    'healthcheck' => $this->database->healthCheckConfiguration([
+                        'CMD-SHELL',
+                        'redis-cli',
+                        'ping',
+                    ]),
                     'mem_limit' => $this->database->limits_memory,
                     'memswap_limit' => $this->database->limits_memory_swap,
                     'mem_swappiness' => $this->database->limits_memory_swappiness,

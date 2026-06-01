@@ -121,7 +121,7 @@ class StandaloneDragonfly extends BaseModel
     public function isConfigurationChanged(bool $save = false)
     {
         $newConfigHash = $this->image.$this->ports_mappings;
-        $newConfigHash .= $this->health_check_enabled.$this->health_check_interval.$this->health_check_timeout.$this->health_check_retries.$this->health_check_start_period;
+        $newConfigHash .= $this->healthCheckConfigurationHash();
         $newConfigHash .= json_encode($this->environment_variables()->get('value')->sort());
         $newConfigHash = md5($newConfigHash);
         $oldConfigHash = data_get($this, 'config_hash');
