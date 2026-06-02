@@ -13,6 +13,7 @@ it('accepts valid docker registry image names', function (string $imageName) {
     'single component' => 'nginx',
     'namespace image' => 'library/nginx',
     'ghcr image' => 'ghcr.io/coollabsio/coolify',
+    'repository component with repeated hyphens' => 'ghcr.io/acme/my--service',
     'registry with port' => 'registry.example.com:5000/team/app',
     'digest marker used by existing dockerimage records' => 'nginx@sha256',
 ]);

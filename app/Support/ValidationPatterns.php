@@ -109,7 +109,7 @@ class ValidationPatterns
      * path components. A trailing @sha256 marker is accepted for existing
      * digest-based dockerimage records that store the digest hash separately.
      */
-    public const DOCKER_IMAGE_NAME_PATTERN = '/\A(?=.{1,255}\z)(?:(?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[0-9]+)?\/)?[a-z0-9]+(?:(?:[._-]|__)[a-z0-9]+)*(?:\/[a-z0-9]+(?:(?:[._-]|__)[a-z0-9]+)*)*)(?:@sha256)?\z/';
+    public const DOCKER_IMAGE_NAME_PATTERN = '/\A(?=.{1,255}\z)(?:(?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[0-9]+)?\/)?[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*(?:\/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)*)(?:@sha256)?\z/';
 
     /**
      * Pattern for Docker image tags.
