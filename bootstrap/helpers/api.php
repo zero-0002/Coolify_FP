@@ -10,9 +10,15 @@ use Illuminate\Validation\Rule;
 
 function getTeamIdFromToken()
 {
-    $token = auth()->user()->currentAccessToken();
+    $user = auth()->user();
+    $token = $user?->currentAccessToken();
+    $teamId = data_get($token, 'team_id');
 
-    return data_get($token, 'team_id');
+    if (! $user || is_null($teamId) || ! $user->teams()->where('teams.id', $teamId)->exists()) {
+        return null;
+    }
+
+    return $teamId;
 }
 function invalidTokenResponse()
 {
