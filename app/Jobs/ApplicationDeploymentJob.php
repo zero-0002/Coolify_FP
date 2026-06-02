@@ -220,6 +220,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->restart_only = $this->restart_only && $this->application->build_pack !== 'dockerimage' && $this->application->build_pack !== 'dockerfile';
         $this->only_this_server = $this->application_deployment_queue->only_this_server;
         $this->dockerImagePreviewTag = $this->application_deployment_queue->docker_registry_image_tag;
+        $this->validateDockerRegistryImageConfiguration();
 
         $this->git_type = data_get($this->application_deployment_queue, 'git_type');
 
@@ -1137,6 +1138,21 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         }
 
         return $this->pull_request_id === 0;
+    }
+
+    private function validateDockerRegistryImageConfiguration(): void
+    {
+        if (! ValidationPatterns::isValidDockerImageName($this->application->docker_registry_image_name)) {
+            throw new DeploymentException('Docker registry image name contains invalid characters.');
+        }
+
+        if (! ValidationPatterns::isValidDockerImageTag($this->application->docker_registry_image_tag)) {
+            throw new DeploymentException('Docker registry image tag contains invalid characters.');
+        }
+
+        if (! ValidationPatterns::isValidDockerImageTag($this->dockerImagePreviewTag)) {
+            throw new DeploymentException('Docker registry preview image tag contains invalid characters.');
+        }
     }
 
     private function generate_image_names()
