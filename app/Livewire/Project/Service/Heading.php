@@ -30,6 +30,8 @@ class Heading extends Component
 
     public function mount()
     {
+        $this->authorizeService('view');
+
         if (str($this->service->status)->contains('running') && is_null($this->service->config_hash)) {
             $this->service->isConfigurationChanged(true);
             $this->dispatch('configurationChanged');
@@ -50,6 +52,8 @@ class Heading extends Component
 
     public function checkStatus()
     {
+        $this->authorizeService('view');
+
         if ($this->service->server->isFunctional()) {
             GetContainersStatus::dispatch($this->service->server);
         } else {
@@ -64,6 +68,8 @@ class Heading extends Component
 
     public function serviceChecked()
     {
+        $this->authorizeService('view');
+
         try {
             $this->service->applications->each(function ($application) {
                 $application->refresh();
@@ -85,6 +91,8 @@ class Heading extends Component
 
     public function checkDeployments()
     {
+        $this->authorizeService('view');
+
         try {
             $activity = Activity::where('properties->type_uuid', $this->service->uuid)->latest()->first();
             $status = data_get($activity, 'properties.status');
@@ -103,7 +111,7 @@ class Heading extends Component
     public function start()
     {
         try {
-            $this->authorize('deploy', $this->service);
+            $this->authorizeService('deploy');
             $activity = StartService::run($this->service, pullLatestImages: true);
             $this->js("window.dispatchEvent(new CustomEvent('startservice'))");
             $this->dispatch('activityMonitor', $activity->id);
@@ -115,7 +123,7 @@ class Heading extends Component
     public function forceDeploy()
     {
         try {
-            $this->authorize('deploy', $this->service);
+            $this->authorizeService('deploy');
             $activities = Activity::where('properties->type_uuid', $this->service->uuid)
                 ->where(function ($q) {
                     $q->where('properties->status', ProcessStatus::IN_PROGRESS->value)
@@ -136,7 +144,7 @@ class Heading extends Component
     public function stop()
     {
         try {
-            $this->authorize('stop', $this->service);
+            $this->authorizeService('stop');
             StopService::dispatch($this->service, false, $this->docker_cleanup);
         } catch (\Throwable $e) {
             return handleError($e, $this);
@@ -146,7 +154,7 @@ class Heading extends Component
     public function restart()
     {
         try {
-            $this->authorize('deploy', $this->service);
+            $this->authorizeService('deploy');
             $this->checkDeployments();
             if ($this->isDeploymentProgress) {
                 $this->dispatch('error', 'There is a deployment in progress.');
@@ -164,7 +172,7 @@ class Heading extends Component
     public function pullAndRestartEvent()
     {
         try {
-            $this->authorize('deploy', $this->service);
+            $this->authorizeService('deploy');
             $this->checkDeployments();
             if ($this->isDeploymentProgress) {
                 $this->dispatch('error', 'There is a deployment in progress.');
@@ -177,6 +185,15 @@ class Heading extends Component
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
+    }
+
+    private function authorizeService(string $ability): void
+    {
+        $this->service = Service::ownedByCurrentTeam()
+            ->whereKey($this->service->getKey())
+            ->firstOrFail();
+
+        $this->authorize($ability, $this->service);
     }
 
     public function render()

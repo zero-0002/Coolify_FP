@@ -197,7 +197,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     public function __construct(public int $application_deployment_queue_id)
     {
-        $this->onQueue('high');
+        $this->onQueue(deployment_queue());
 
         $this->application_deployment_queue = ApplicationDeploymentQueue::find($this->application_deployment_queue_id);
         $this->nixpacks_plan_json = collect([]);
@@ -220,6 +220,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->restart_only = $this->restart_only && $this->application->build_pack !== 'dockerimage' && $this->application->build_pack !== 'dockerfile';
         $this->only_this_server = $this->application_deployment_queue->only_this_server;
         $this->dockerImagePreviewTag = $this->application_deployment_queue->docker_registry_image_tag;
+        $this->validateDockerRegistryImageConfiguration();
 
         $this->git_type = data_get($this->application_deployment_queue, 'git_type');
 
@@ -1106,7 +1107,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     'hidden' => true,
                 ],
             );
-            if ($this->application->docker_registry_image_tag) {
+            if ($this->shouldPushDockerRegistryImageTag()) {
                 // Tag image with docker_registry_image_tag
                 $this->application_deployment_queue->addLogEntry("Tagging and pushing image with {$this->application->docker_registry_image_tag} tag.");
                 $this->execute_remote_command(
@@ -1127,6 +1128,30 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             if ($forceFail) {
                 throw new DeploymentException(get_class($e).': '.$e->getMessage(), $e->getCode(), $e);
             }
+        }
+    }
+
+    private function shouldPushDockerRegistryImageTag(): bool
+    {
+        if (blank($this->application->docker_registry_image_tag)) {
+            return false;
+        }
+
+        return $this->pull_request_id === 0;
+    }
+
+    private function validateDockerRegistryImageConfiguration(): void
+    {
+        if (! ValidationPatterns::isValidDockerImageName($this->application->docker_registry_image_name)) {
+            throw new DeploymentException('Docker registry image name contains invalid characters.');
+        }
+
+        if (! ValidationPatterns::isValidDockerImageTag($this->application->docker_registry_image_tag)) {
+            throw new DeploymentException('Docker registry image tag contains invalid characters.');
+        }
+
+        if (! ValidationPatterns::isValidDockerImageTag($this->dockerImagePreviewTag)) {
+            throw new DeploymentException('Docker registry preview image tag contains invalid characters.');
         }
     }
 
@@ -1293,12 +1318,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $sorted_environment_variables_preview = $this->application->runtime_environment_variables_preview->sortBy('id');
         }
         if ($this->build_pack === 'dockercompose') {
-            $sorted_environment_variables = $sorted_environment_variables->filter(function ($env) {
-                return ! str($env->key)->startsWith('SERVICE_FQDN_') && ! str($env->key)->startsWith('SERVICE_URL_') && ! str($env->key)->startsWith('SERVICE_NAME_');
-            });
-            $sorted_environment_variables_preview = $sorted_environment_variables_preview->filter(function ($env) {
-                return ! str($env->key)->startsWith('SERVICE_FQDN_') && ! str($env->key)->startsWith('SERVICE_URL_') && ! str($env->key)->startsWith('SERVICE_NAME_');
-            });
+            $sorted_environment_variables = $sorted_environment_variables->reject(fn (EnvironmentVariable $env) => $this->isGeneratedDockerComposeEnvironmentVariable($env));
+            $sorted_environment_variables_preview = $sorted_environment_variables_preview->reject(fn (EnvironmentVariable $env) => $this->isGeneratedDockerComposeEnvironmentVariable($env));
         }
         $ports = $this->application->main_port();
         $coolify_envs = $this->generate_coolify_env_variables();
@@ -1449,6 +1470,15 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         // Return the generated environment variables instead of storing them globally
         return $envs;
+    }
+
+    private function isGeneratedDockerComposeEnvironmentVariable(EnvironmentVariable $environmentVariable): bool
+    {
+        $key = str($environmentVariable->key);
+
+        return $key->startsWith('SERVICE_FQDN_')
+            || $key->startsWith('SERVICE_URL_')
+            || $key->startsWith('SERVICE_NAME_');
     }
 
     private function save_runtime_environment_variables()
@@ -1666,11 +1696,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ->orderBy($this->application->settings->is_env_sorting_enabled ? 'key' : 'id')
                 ->get();
 
-            // For Docker Compose, filter out SERVICE_FQDN and SERVICE_URL as we generate these
+            // For Docker Compose, filter out generated SERVICE_* variables as we generate these
             if ($this->build_pack === 'dockercompose') {
-                $sorted_environment_variables = $sorted_environment_variables->filter(function ($env) {
-                    return ! str($env->key)->startsWith('SERVICE_FQDN_') && ! str($env->key)->startsWith('SERVICE_URL_');
-                });
+                $sorted_environment_variables = $sorted_environment_variables->reject(fn (EnvironmentVariable $env) => $this->isGeneratedDockerComposeEnvironmentVariable($env));
             }
 
             foreach ($sorted_environment_variables as $env) {
@@ -1719,11 +1747,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ->orderBy($this->application->settings->is_env_sorting_enabled ? 'key' : 'id')
                 ->get();
 
-            // For Docker Compose, filter out SERVICE_FQDN and SERVICE_URL as we generate these with PR-specific values
+            // For Docker Compose, filter out generated SERVICE_* variables as we generate these with PR-specific values
             if ($this->build_pack === 'dockercompose') {
-                $sorted_environment_variables = $sorted_environment_variables->filter(function ($env) {
-                    return ! str($env->key)->startsWith('SERVICE_FQDN_') && ! str($env->key)->startsWith('SERVICE_URL_');
-                });
+                $sorted_environment_variables = $sorted_environment_variables->reject(fn (EnvironmentVariable $env) => $this->isGeneratedDockerComposeEnvironmentVariable($env));
             }
 
             foreach ($sorted_environment_variables as $env) {
@@ -2222,9 +2248,20 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
         }
         if (isset($this->application->git_branch)) {
-            $this->coolify_variables .= "COOLIFY_BRANCH={$this->application->git_branch} ";
+            $this->coolify_variables .= 'COOLIFY_BRANCH='.escapeShellValue($this->application->git_branch).' ';
         }
         $this->coolify_variables .= "COOLIFY_RESOURCE_UUID={$this->application->uuid} ";
+    }
+
+    private function gitLsRemoteCommand(string $lsRemoteRef, ?string $identityFile = null): string
+    {
+        $sshCommand = "ssh -o ConnectTimeout=30 -p {$this->customPort} -o Port={$this->customPort} -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null";
+
+        if ($identityFile !== null) {
+            $sshCommand .= " -i {$identityFile}";
+        }
+
+        return 'GIT_SSH_COMMAND="'.$sshCommand.'" git ls-remote '.escapeshellarg($this->fullRepoUrl).' '.escapeshellarg($lsRemoteRef);
     }
 
     private function check_git_if_build_needed()
@@ -2272,7 +2309,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     executeInDocker($this->deployment_uuid, 'chmod 600 /root/.ssh/id_rsa'),
                 ],
                 [
-                    executeInDocker($this->deployment_uuid, "GIT_SSH_COMMAND=\"ssh -o ConnectTimeout=30 -p {$this->customPort} -o Port={$this->customPort} -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa\" git ls-remote {$this->fullRepoUrl} {$lsRemoteRef}"),
+                    executeInDocker($this->deployment_uuid, $this->gitLsRemoteCommand($lsRemoteRef, '/root/.ssh/id_rsa')),
                     'hidden' => true,
                     'save' => 'git_commit_sha',
                 ]
@@ -2280,7 +2317,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         } else {
             $this->execute_remote_command(
                 [
-                    executeInDocker($this->deployment_uuid, "GIT_SSH_COMMAND=\"ssh -o ConnectTimeout=30 -p {$this->customPort} -o Port={$this->customPort} -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" git ls-remote {$this->fullRepoUrl} {$lsRemoteRef}"),
+                    executeInDocker($this->deployment_uuid, $this->gitLsRemoteCommand($lsRemoteRef)),
                     'hidden' => true,
                     'save' => 'git_commit_sha',
                 ],
@@ -3019,6 +3056,10 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 ->where('is_buildtime', true)
                 ->get();
 
+            if ($this->build_pack === 'dockercompose') {
+                $envs = $envs->reject(fn (EnvironmentVariable $env) => $this->isGeneratedDockerComposeEnvironmentVariable($env));
+            }
+
             foreach ($envs as $env) {
                 $resolvedValue = $env->getResolvedValueWithServer($this->mainServer);
                 if (! is_null($resolvedValue)) {
@@ -3030,6 +3071,10 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 ->withoutBuildpackControlVariables()
                 ->where('is_buildtime', true)
                 ->get();
+
+            if ($this->build_pack === 'dockercompose') {
+                $envs = $envs->reject(fn (EnvironmentVariable $env) => $this->isGeneratedDockerComposeEnvironmentVariable($env));
+            }
 
             foreach ($envs as $env) {
                 $resolvedValue = $env->getResolvedValueWithServer($this->mainServer);
