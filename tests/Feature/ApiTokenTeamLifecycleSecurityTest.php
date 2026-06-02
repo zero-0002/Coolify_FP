@@ -14,10 +14,10 @@ use Livewire\Livewire;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    InstanceSettings::unguarded(fn () => InstanceSettings::query()->create([
-        'id' => 0,
-        'is_api_enabled' => true,
-    ]));
+    InstanceSettings::unguarded(fn () => InstanceSettings::query()->updateOrCreate(
+        ['id' => 0],
+        ['is_api_enabled' => true],
+    ));
 
     $this->team = Team::factory()->create();
     $this->user = User::factory()->create();
