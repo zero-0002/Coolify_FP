@@ -109,14 +109,25 @@ class Controller extends BaseController
                 return redirect()->route('login')->with('error', 'Invalid credentials.');
             }
 
-            [$email, $password] = explode('@@@', $decrypted, 2);
+            $payload = explode('@@@', $decrypted, 3);
+            if (count($payload) === 3) {
+                [$email, $invitationUuid, $password] = $payload;
+            } else {
+                [$email, $password] = $payload;
+                $invitationUuid = null;
+            }
+
             $email = Str::lower($email);
             $user = User::whereEmail($email)->first();
             if (! $user) {
                 return redirect()->route('login');
             }
 
-            $invitation = TeamInvitation::whereEmail($email)->first();
+            $invitation = TeamInvitation::query()
+                ->where('email', $email)
+                ->when($invitationUuid, fn ($query) => $query->where('uuid', $invitationUuid))
+                ->where('link', request()->fullUrl())
+                ->first();
             if (! $invitation || ! $invitation->isValid()) {
                 return redirect()->route('login')->with('error', 'Invitation has expired or been revoked.');
             }

@@ -39,12 +39,13 @@ function createInvitationLinkFixture(array $invitationAttributes = []): array
         'force_password_reset' => true,
         'email_verified_at' => null,
     ]);
-    $token = Crypt::encryptString("{$user->email}@@@{$password}");
+    $uuid = (string) new Cuid2(32);
+    $token = Crypt::encryptString("{$user->email}@@@{$uuid}@@@{$password}");
     $link = route('auth.link', ['token' => $token]);
 
     $invitation = TeamInvitation::create(array_merge([
         'team_id' => $team->id,
-        'uuid' => (string) new Cuid2(32),
+        'uuid' => $uuid,
         'email' => $user->email,
         'role' => 'member',
         'link' => $link,
@@ -85,6 +86,27 @@ it('rejects a magic link when the invitation was revoked', function () {
 
     $this->assertGuest();
     expect($user->teams()->where('personal_team', false)->exists())->toBeFalse();
+});
+
+it('rejects a magic link when another invitation exists for the same email', function () {
+    [, $user, , $token, $invitation] = createInvitationLinkFixture();
+    $invitation->delete();
+
+    $otherTeam = Team::factory()->create();
+    TeamInvitation::create([
+        'team_id' => $otherTeam->id,
+        'uuid' => (string) new Cuid2(32),
+        'email' => $user->email,
+        'role' => 'admin',
+        'link' => url('/invitations/other-invitation'),
+        'via' => 'link',
+    ]);
+
+    $this->get(route('auth.link', ['token' => $token]))
+        ->assertRedirect(route('login'));
+
+    $this->assertGuest();
+    expect($user->teams()->where('team_id', $otherTeam->id)->exists())->toBeFalse();
 });
 
 it('rejects a magic link when the invitation expired', function () {

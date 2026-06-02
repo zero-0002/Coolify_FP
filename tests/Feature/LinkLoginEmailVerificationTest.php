@@ -39,10 +39,11 @@ describe('invitation link login', function () {
         ]);
         $user->teams()->attach($team->id, ['role' => 'member']);
 
-        $token = Crypt::encryptString("{$user->email}@@@{$password}");
+        $uuid = 'email-verification-test-invitation';
+        $token = Crypt::encryptString("{$user->email}@@@{$uuid}@@@{$password}");
         TeamInvitation::create([
             'team_id' => $team->id,
-            'uuid' => 'email-verification-test-invitation',
+            'uuid' => $uuid,
             'email' => $user->email,
             'role' => 'member',
             'link' => route('auth.link', ['token' => $token]),
@@ -65,10 +66,11 @@ describe('invitation link login', function () {
         ]);
         $user->teams()->attach($team->id, ['role' => 'member']);
 
-        $token = Crypt::encryptString("{$user->email}@@@{$password}");
+        $uuid = 'email-verification-login-test-invitation';
+        $token = Crypt::encryptString("{$user->email}@@@{$uuid}@@@{$password}");
         TeamInvitation::create([
             'team_id' => $team->id,
-            'uuid' => 'email-verification-login-test-invitation',
+            'uuid' => $uuid,
             'email' => $user->email,
             'role' => 'member',
             'link' => route('auth.link', ['token' => $token]),
