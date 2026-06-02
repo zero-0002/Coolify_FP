@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\ClearsGlobalSearchCache;
+use App\Traits\HasDatabaseHealthCheck;
 use App\Traits\HasMetrics;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StandaloneMysql extends BaseModel
 {
-    use ClearsGlobalSearchCache, HasFactory, HasMetrics, HasSafeStringAttribute, SoftDeletes;
+    use ClearsGlobalSearchCache, HasDatabaseHealthCheck, HasFactory, HasMetrics, HasSafeStringAttribute, SoftDeletes;
 
     protected $fillable = [
         'uuid',
@@ -48,6 +49,11 @@ class StandaloneMysql extends BaseModel
         'destination_type',
         'destination_id',
         'environment_id',
+        'health_check_enabled',
+        'health_check_interval',
+        'health_check_timeout',
+        'health_check_retries',
+        'health_check_start_period',
     ];
 
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
@@ -65,6 +71,11 @@ class StandaloneMysql extends BaseModel
     ];
 
     protected $casts = [
+        'health_check_enabled' => 'boolean',
+        'health_check_interval' => 'integer',
+        'health_check_timeout' => 'integer',
+        'health_check_retries' => 'integer',
+        'health_check_start_period' => 'integer',
         'mysql_password' => 'encrypted',
         'mysql_root_password' => 'encrypted',
         'public_port_timeout' => 'integer',
@@ -128,6 +139,7 @@ class StandaloneMysql extends BaseModel
     public function isConfigurationChanged(bool $save = false)
     {
         $newConfigHash = $this->image.$this->ports_mappings.$this->mysql_conf;
+        $newConfigHash .= $this->healthCheckConfigurationHash();
         $newConfigHash .= json_encode($this->environment_variables()->get('value')->sort());
         $newConfigHash = md5($newConfigHash);
         $oldConfigHash = data_get($this, 'config_hash');

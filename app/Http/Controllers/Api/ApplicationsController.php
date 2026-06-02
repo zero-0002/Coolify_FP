@@ -17,6 +17,7 @@ use App\Models\LocalPersistentVolume;
 use App\Models\PrivateKey;
 use App\Models\Project;
 use App\Models\Server;
+use App\Rules\DockerImageFormat;
 use App\Rules\ValidGitBranch;
 use App\Rules\ValidGitRepositoryUrl;
 use App\Services\DockerImageParser;
@@ -1011,6 +1012,9 @@ class ApplicationsController extends Controller
                     ],
                 ], 422);
             }
+            $request->merge([
+                'custom_nginx_configuration' => $customNginxConfiguration,
+            ]);
         }
 
         $project = Project::whereTeamId($teamId)->whereUuid($request->project_uuid)->first();
@@ -1819,8 +1823,8 @@ class ApplicationsController extends Controller
             ]))->setStatusCode(201);
         } elseif ($type === 'dockerimage') {
             $validationRules = [
-                'docker_registry_image_name' => 'string|required',
-                'docker_registry_image_tag' => 'string',
+                'docker_registry_image_name' => ['required', 'string', 'max:255', new DockerImageFormat],
+                'docker_registry_image_tag' => ValidationPatterns::dockerImageTagRules(),
                 'ports_exposes' => 'string|regex:/^(\d+)(,\d+)*$/|required',
             ];
             $validationRules = array_merge(sharedDataApplications(), $validationRules);
@@ -2429,7 +2433,7 @@ class ApplicationsController extends Controller
                 }
             }
         }
-        if ($request->has('custom_nginx_configuration')) {
+        if ($request->has('custom_nginx_configuration') && ! is_null($request->custom_nginx_configuration)) {
             if (! isBase64Encoded($request->custom_nginx_configuration)) {
                 return response()->json([
                     'message' => 'Validation failed.',
@@ -2447,6 +2451,9 @@ class ApplicationsController extends Controller
                     ],
                 ], 422);
             }
+            $request->merge([
+                'custom_nginx_configuration' => $customNginxConfiguration,
+            ]);
         }
         $return = $this->validateDataApplications($request, $server);
         if ($return instanceof JsonResponse) {
