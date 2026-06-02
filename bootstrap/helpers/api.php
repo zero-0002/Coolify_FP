@@ -3,6 +3,7 @@
 use App\Enums\BuildPackTypes;
 use App\Enums\RedirectTypes;
 use App\Enums\StaticImageTypes;
+use App\Rules\ValidGitBranch;
 use App\Support\ValidationPatterns;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -90,7 +91,7 @@ function sharedDataApplications()
 {
     return [
         'git_repository' => 'string',
-        'git_branch' => 'string',
+        'git_branch' => ['string', new ValidGitBranch],
         'build_pack' => Rule::enum(BuildPackTypes::class),
         'is_static' => 'boolean',
         'is_spa' => 'boolean',

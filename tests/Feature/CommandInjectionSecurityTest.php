@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\ApplicationDeploymentJob;
+use App\Rules\ValidGitBranch;
 use App\Support\ValidationPatterns;
 
 describe('deployment job path field validation', function () {
@@ -977,4 +978,47 @@ describe('install/build/start command rules survive array_merge in controller', 
         expect($merged['start_command'])->toBeArray();
         expect($merged['start_command'])->toContain('regex:'.ValidationPatterns::SHELL_SAFE_COMMAND_PATTERN);
     });
+});
+
+describe('git_branch validation rules survive array_merge in controller', function () {
+    test('git_branch uses ValidGitBranch in shared application rules', function () {
+        $rules = sharedDataApplications();
+
+        expect($rules['git_branch'])->toBeArray();
+        expect(collect($rules['git_branch'])->contains(fn ($rule) => $rule instanceof ValidGitBranch))->toBeTrue();
+    });
+
+    test('git_branch rejects shell metacharacter payloads', function (string $payload) {
+        $rules = sharedDataApplications();
+
+        $validator = validator(
+            ['git_branch' => $payload],
+            ['git_branch' => $rules['git_branch']]
+        );
+
+        expect($validator->fails())->toBeTrue();
+    })->with([
+        'semicolon command separator' => 'main;touch /tmp/pwned;#',
+        'command substitution' => 'main$(touch /tmp/pwned)',
+        'backtick substitution' => 'main`touch /tmp/pwned`',
+        'pipe operator' => 'main|id',
+        'newline injection' => "main\ntouch /tmp/pwned",
+        'redirect operator' => 'main>/tmp/pwned',
+        'single quote breakout' => "main';id;#",
+    ]);
+
+    test('git_branch accepts safe branch names', function (string $branch) {
+        $rules = sharedDataApplications();
+
+        $validator = validator(
+            ['git_branch' => $branch],
+            ['git_branch' => $rules['git_branch']]
+        );
+
+        expect($validator->fails())->toBeFalse();
+    })->with([
+        'main',
+        'feature/my-branch',
+        'release_1.2.3',
+    ]);
 });
