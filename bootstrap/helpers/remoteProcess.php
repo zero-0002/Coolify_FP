@@ -245,7 +245,7 @@ function decode_remote_command_output(?ApplicationDeploymentQueue $application_d
             $timestamp = Carbon::parse(data_get($i, 'timestamp'));
             try {
                 $timestamp->setTimezone($serverTimezone);
-            } catch (\Exception) {
+            } catch (Exception) {
                 $timestamp->setTimezone('UTC');
             }
             data_set($i, 'timestamp', $timestamp->format('Y-M-d H:i:s.u'));

@@ -2346,7 +2346,7 @@ class Application extends BaseModel
             'config.build_pack' => 'required|string',
             'config.base_directory' => 'required|string',
             'config.publish_directory' => 'required|string',
-            'config.ports_exposes' => 'required|string',
+            'config.ports_exposes' => 'nullable|string',
             'config.settings.is_static' => 'required|boolean',
         ]);
         if ($deepValidator->fails()) {

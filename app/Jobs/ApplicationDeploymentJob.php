@@ -1388,7 +1388,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
             // Add PORT if not exists, use the first port as default
             if ($this->build_pack !== 'dockercompose') {
-                if ($this->application->environment_variables->where('key', 'PORT')->isEmpty()) {
+                if ($this->application->environment_variables->where('key', 'PORT')->isEmpty() && ! empty($ports)) {
                     $envs->push("PORT={$ports[0]}");
                 }
             }
@@ -3138,7 +3138,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                     'image' => $this->production_image_name,
                     'container_name' => $this->container_name,
                     'restart' => RESTART_MODE,
-                    'expose' => $ports,
+                    ...(! empty($ports) ? ['expose' => $ports] : []),
                     'networks' => [
                         $this->destination->network => [
                             'aliases' => array_merge(
@@ -3170,16 +3170,19 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         // If custom_healthcheck_found is true, the Dockerfile's HEALTHCHECK will be used
         // If healthcheck is disabled, no healthcheck will be added
         if (! $this->application->custom_healthcheck_found && ! $this->application->isHealthcheckDisabled()) {
-            $docker_compose['services'][$this->container_name]['healthcheck'] = [
-                'test' => [
-                    'CMD-SHELL',
-                    $this->generate_healthcheck_commands(),
-                ],
-                'interval' => $this->application->health_check_interval.'s',
-                'timeout' => $this->application->health_check_timeout.'s',
-                'retries' => $this->application->health_check_retries,
-                'start_period' => $this->application->health_check_start_period.'s',
-            ];
+            $healthcheck_command = $this->generate_healthcheck_commands();
+            if ($healthcheck_command !== null) {
+                $docker_compose['services'][$this->container_name]['healthcheck'] = [
+                    'test' => [
+                        'CMD-SHELL',
+                        $healthcheck_command,
+                    ],
+                    'interval' => $this->application->health_check_interval.'s',
+                    'timeout' => $this->application->health_check_timeout.'s',
+                    'retries' => $this->application->health_check_retries,
+                    'start_period' => $this->application->health_check_start_period.'s',
+                ];
+            }
         }
 
         if (! is_null($this->application->limits_cpuset)) {
@@ -3389,7 +3392,11 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
         // HTTP type healthcheck (default)
         if (! $this->application->health_check_port) {
-            $health_check_port = (int) $this->application->ports_exposes_array[0];
+            if (! empty($this->application->ports_exposes_array)) {
+                $health_check_port = (int) $this->application->ports_exposes_array[0];
+            } else {
+                return null;
+            }
         } else {
             $health_check_port = (int) $this->application->health_check_port;
         }
