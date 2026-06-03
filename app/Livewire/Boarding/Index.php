@@ -213,6 +213,23 @@ class Index extends Component
         }
     }
 
+    protected function rules(): array
+    {
+        return [
+            'remoteServerName' => 'required|string',
+            'remoteServerHost' => 'required|string',
+            'remoteServerPort' => 'required|integer|min:1|max:65535',
+            'remoteServerUser' => ValidationPatterns::serverUsernameRules(),
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            ...ValidationPatterns::serverUsernameMessages('remoteServerUser', 'SSH User'),
+        ];
+    }
+
     public function getProxyType()
     {
         $this->selectProxy(ProxyTypes::TRAEFIK->value);
@@ -275,12 +292,7 @@ class Index extends Component
 
     public function saveServer()
     {
-        $this->validate([
-            'remoteServerName' => 'required|string',
-            'remoteServerHost' => 'required|string',
-            'remoteServerPort' => 'required|integer',
-            'remoteServerUser' => ValidationPatterns::serverUsernameRules(),
-        ]);
+        $this->validate();
 
         $this->privateKey = formatPrivateKey($this->privateKey);
         $foundServer = Server::whereIp($this->remoteServerHost)->first();
@@ -466,10 +478,10 @@ class Index extends Component
 
     public function saveAndValidateServer()
     {
-        $this->validate([
-            'remoteServerPort' => 'required|integer|min:1|max:65535',
-            'remoteServerUser' => ValidationPatterns::serverUsernameRules(),
-        ]);
+        $this->validate(array_intersect_key($this->rules(), array_flip([
+            'remoteServerPort',
+            'remoteServerUser',
+        ])));
 
         $this->createdServer->update([
             'port' => $this->remoteServerPort,

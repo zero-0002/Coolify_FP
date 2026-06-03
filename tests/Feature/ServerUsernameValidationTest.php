@@ -73,6 +73,21 @@ it('updates a server through the API with a dotted SSH username', function () {
     expect($server->fresh()->user)->toBe('deploy.user');
 });
 
+it('rejects unsafe SSH usernames when creating a server through the API', function () {
+    $response = $this->withHeaders([
+        'Authorization' => 'Bearer '.$this->token,
+        'Content-Type' => 'application/json',
+    ])->postJson('/api/v1/servers', [
+        'name' => 'Unsafe User Server',
+        'ip' => '192.0.2.11',
+        'private_key_uuid' => $this->privateKey->uuid,
+        'user' => 'deploy$user',
+    ]);
+
+    $response->assertStatus(422);
+    $response->assertJsonPath('errors.user.0', 'The User may only contain letters, numbers, dots, hyphens, and underscores.');
+});
+
 it('rejects unsafe SSH usernames through the API', function () {
     $server = Server::factory()->create([
         'team_id' => $this->team->id,
@@ -88,6 +103,7 @@ it('rejects unsafe SSH usernames through the API', function () {
 
     $response->assertStatus(422);
     $response->assertJsonStructure(['errors' => ['user']]);
+    $response->assertJsonPath('errors.user.0', 'The User may only contain letters, numbers, dots, hyphens, and underscores.');
 });
 
 it('allows dotted SSH usernames in the server creation form', function () {
@@ -135,7 +151,12 @@ it('rejects unsafe SSH usernames during onboarding server creation', function ()
         ->set('remoteServerPort', 22)
         ->set('remoteServerUser', 'deploy$user')
         ->call('saveServer')
-        ->assertHasErrors(['remoteServerUser' => ['regex']]);
+        ->assertHasErrors([
+            'remoteServerUser' => [
+                'regex',
+                'The SSH User may only contain letters, numbers, dots, hyphens, and underscores.',
+            ],
+        ]);
 });
 
 it('rejects unsafe SSH usernames during onboarding server validation', function () {
@@ -152,5 +173,10 @@ it('rejects unsafe SSH usernames during onboarding server validation', function 
         ->set('remoteServerPort', 22)
         ->set('remoteServerUser', 'deploy$user')
         ->call('saveAndValidateServer')
-        ->assertHasErrors(['remoteServerUser' => ['regex']]);
+        ->assertHasErrors([
+            'remoteServerUser' => [
+                'regex',
+                'The SSH User may only contain letters, numbers, dots, hyphens, and underscores.',
+            ],
+        ]);
 });
