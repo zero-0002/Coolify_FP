@@ -93,6 +93,17 @@ it('keeps the existing private key when private_key_uuid is omitted', function (
         ->and($server->private_key_id)->toBe($this->oldPrivateKey->id);
 });
 
+it('can disable build server mode via API', function () {
+    $this->server->settings()->update(['is_build_server' => true]);
+
+    patchServerUpdatePrivateKeyApi($this, $this->server, $this->bearerToken, [
+        'is_build_server' => false,
+    ])->assertCreated()
+        ->assertJson(['uuid' => $this->server->uuid]);
+
+    expect($this->server->settings->fresh()->is_build_server)->toBeFalse();
+});
+
 it('rejects an invalid disk usage check frequency without partially updating the server', function () {
     $this->server->proxy->set('type', 'TRAEFIK');
     $this->server->save();

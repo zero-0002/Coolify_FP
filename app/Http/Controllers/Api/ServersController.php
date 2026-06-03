@@ -726,9 +726,9 @@ class ServersController extends Controller
         }
 
         $server->update($updateFields);
-        if ($request->is_build_server) {
+        if ($request->has('is_build_server')) {
             $server->settings()->update([
-                'is_build_server' => $request->is_build_server,
+                'is_build_server' => $request->boolean('is_build_server'),
             ]);
         }
 
