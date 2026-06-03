@@ -83,6 +83,12 @@ class ValidationPatterns
     public const DOCKER_NETWORK_PATTERN = '/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/';
 
     /**
+     * Pattern for Docker-compatible environment variable keys.
+     * Docker environment entries are KEY=value strings, so keys must be non-empty and cannot contain '=' or NUL.
+     */
+    public const ENVIRONMENT_VARIABLE_KEY_PATTERN = '/\A[^=\x00]+\z/u';
+
+    /**
      * Pattern for SQL-safe unquoted database identifiers (usernames, database names).
      * Allows letters, digits, underscore; first char must be letter or underscore.
      * Excludes all shell metacharacters. Max 63 chars (Postgres identifier limit).
@@ -95,6 +101,159 @@ class ValidationPatterns
      * Allows a broad set of printable characters so passwords remain strong.
      */
     public const DB_PASSWORD_PATTERN = '/^[A-Za-z0-9!@#%^*()_+\-=\[\]{}:,.?\/~]+$/';
+
+    /**
+     * Pattern for Docker image repository names without a tag.
+     *
+     * Allows an optional registry host/port followed by lowercase repository
+     * path components. A trailing @sha256 marker is accepted for existing
+     * digest-based dockerimage records that store the digest hash separately.
+     */
+    public const DOCKER_IMAGE_NAME_PATTERN = '/\A(?=.{1,255}\z)(?:(?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[0-9]+)?\/)?[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*(?:\/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)*)(?:@sha256)?\z/';
+
+    /**
+     * Pattern for Docker image tags.
+     *
+     * Docker tags may contain letters, digits, underscores, dots, and hyphens,
+     * must start with an alphanumeric/underscore, and are limited to 128 chars.
+     */
+    public const DOCKER_IMAGE_TAG_PATTERN = '/\A[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}\z/';
+
+    /**
+     * Normalize environment variable keys before validation and storage.
+     */
+    public static function normalizeEnvironmentVariableKey(string $value): string
+    {
+        return str($value)->trim()->value;
+    }
+
+    /**
+     * Get validation rules for environment variable keys.
+     */
+    public static function environmentVariableKeyRules(bool $required = true, int $maxLength = 255): array
+    {
+        $rules = [];
+
+        if ($required) {
+            $rules[] = 'required';
+        } else {
+            $rules[] = 'nullable';
+        }
+
+        $rules[] = 'string';
+        $rules[] = "max:$maxLength";
+        $rules[] = 'regex:'.self::ENVIRONMENT_VARIABLE_KEY_PATTERN;
+
+        return $rules;
+    }
+
+    /**
+     * Get validation messages for environment variable key fields.
+     */
+    public static function environmentVariableKeyMessages(string $field = 'key', string $label = 'key'): array
+    {
+        return [
+            "{$field}.regex" => "The {$label} must be a non-empty Docker-compatible environment variable key and cannot contain '=' or NUL characters.",
+            "{$field}.max" => "The {$label} may not be greater than :max characters.",
+        ];
+    }
+
+    /**
+     * Check if a string is a valid environment variable key.
+     */
+    public static function isValidEnvironmentVariableKey(string $value): bool
+    {
+        return preg_match(self::ENVIRONMENT_VARIABLE_KEY_PATTERN, $value) === 1;
+    }
+
+    /**
+     * Normalize and validate an environment variable key.
+     */
+    public static function validatedEnvironmentVariableKey(string $value, string $label = 'key'): string
+    {
+        $key = self::normalizeEnvironmentVariableKey($value);
+
+        if (! self::isValidEnvironmentVariableKey($key)) {
+            throw new \InvalidArgumentException(self::environmentVariableKeyMessages(label: $label)['key.regex']);
+        }
+
+        return $key;
+    }
+
+    /**
+     * Get validation rules for Docker image repository names without tags.
+     */
+    public static function dockerImageNameRules(bool $required = false, int $maxLength = 255): array
+    {
+        $rules = [];
+
+        if ($required) {
+            $rules[] = 'required';
+        } else {
+            $rules[] = 'nullable';
+        }
+
+        $rules[] = 'string';
+        $rules[] = "max:$maxLength";
+        $rules[] = 'regex:'.self::DOCKER_IMAGE_NAME_PATTERN;
+
+        return $rules;
+    }
+
+    /**
+     * Get validation rules for Docker image tags.
+     */
+    public static function dockerImageTagRules(bool $required = false, int $maxLength = 128): array
+    {
+        $rules = [];
+
+        if ($required) {
+            $rules[] = 'required';
+        } else {
+            $rules[] = 'nullable';
+        }
+
+        $rules[] = 'string';
+        $rules[] = "max:$maxLength";
+        $rules[] = 'regex:'.self::DOCKER_IMAGE_TAG_PATTERN;
+
+        return $rules;
+    }
+
+    /**
+     * Get validation messages for Docker image fields.
+     */
+    public static function dockerImageMessages(string $nameField = 'docker_registry_image_name', string $tagField = 'docker_registry_image_tag'): array
+    {
+        return [
+            "{$nameField}.regex" => 'The Docker registry image name must be a valid image repository without a tag and may not contain shell metacharacters.',
+            "{$tagField}.regex" => 'The Docker registry image tag must be a valid Docker tag and may not contain shell metacharacters.',
+        ];
+    }
+
+    /**
+     * Check if a string is a valid Docker image repository name without a tag.
+     */
+    public static function isValidDockerImageName(?string $value): bool
+    {
+        if (blank($value)) {
+            return true;
+        }
+
+        return preg_match(self::DOCKER_IMAGE_NAME_PATTERN, $value) === 1;
+    }
+
+    /**
+     * Check if a string is a valid Docker image tag.
+     */
+    public static function isValidDockerImageTag(?string $value): bool
+    {
+        if (blank($value)) {
+            return true;
+        }
+
+        return preg_match(self::DOCKER_IMAGE_TAG_PATTERN, $value) === 1;
+    }
 
     /**
      * Get validation rules for database identifier fields (username, database name).
