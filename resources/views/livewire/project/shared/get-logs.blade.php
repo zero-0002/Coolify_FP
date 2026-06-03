@@ -139,10 +139,6 @@
             const range = selection.getRangeAt(0);
             return logsContainer.contains(range.commonAncestorContainer);
         },
-        decodeHtml(text) {
-            const doc = new DOMParser().parseFromString(text, 'text/html');
-            return doc.documentElement.textContent;
-        },
         applySearch() {
             const logs = document.getElementById('logs');
             if (!logs) return;
