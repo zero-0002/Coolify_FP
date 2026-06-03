@@ -45,3 +45,12 @@ it('renders a single no results message for empty environment variable searches'
         ->toContain('<div>No environment variables found.</div>')
         ->toContain('@else');
 });
+
+it('only renders the production section when production variables are visible', function () {
+    $view = file_get_contents(resource_path('views/livewire/project/shared/environment-variable/all.blade.php'));
+
+    expect($view)
+        ->toContain('@if ($this->environmentVariables->isNotEmpty() || $this->hardcodedEnvironmentVariables->isNotEmpty())')
+        ->not->toContain('@forelse ($this->environmentVariables as $env)')
+        ->not->toContain('@empty');
+});

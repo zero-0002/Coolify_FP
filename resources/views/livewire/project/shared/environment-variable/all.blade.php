@@ -70,23 +70,27 @@
         @if ($this->isSearchActive && ! $this->hasEnvironmentVariables)
             <div>No environment variables found.</div>
         @else
-            <div>
-                <h3>Production Environment Variables</h3>
-                <div>Environment (secrets) variables for Production.</div>
-            </div>
-            @forelse ($this->environmentVariables as $env)
-                <livewire:project.shared.environment-variable.show wire:key="environment-{{ $env->id }}" :env="$env"
-                    :type="$resource->type()" />
-            @empty
-                <div>No environment variables found.</div>
-            @endforelse
-            @if (($resource->type() === 'service' || $resource?->build_pack === 'dockercompose') && $this->hardcodedEnvironmentVariables->isNotEmpty())
-                @foreach ($this->hardcodedEnvironmentVariables as $index => $env)
-                    <livewire:project.shared.environment-variable.show-hardcoded
-                        wire:key="hardcoded-prod-{{ $env['key'] }}-{{ $env['service_name'] ?? 'default' }}-{{ $index }}" :env="$env" />
+            @if ($this->environmentVariables->isNotEmpty() || $this->hardcodedEnvironmentVariables->isNotEmpty())
+                <div>
+                    <h3>Production Environment Variables</h3>
+                    <div>Environment (secrets) variables for Production.</div>
+                </div>
+                @foreach ($this->environmentVariables as $env)
+                    <livewire:project.shared.environment-variable.show wire:key="environment-{{ $env->id }}" :env="$env"
+                        :type="$resource->type()" />
                 @endforeach
+                @if (($resource->type() === 'service' || $resource?->build_pack === 'dockercompose') && $this->hardcodedEnvironmentVariables->isNotEmpty())
+                    @foreach ($this->hardcodedEnvironmentVariables as $index => $env)
+                        <livewire:project.shared.environment-variable.show-hardcoded
+                            wire:key="hardcoded-prod-{{ $env['key'] }}-{{ $env['service_name'] ?? 'default' }}-{{ $index }}" :env="$env" />
+                    @endforeach
+                @endif
             @endif
-            @if ($resource->type() === 'application' && $resource->environment_variables_preview->count() > 0 && $showPreview)
+            @if (
+                $resource->type() === 'application' &&
+                    $showPreview &&
+                    ($this->environmentVariablesPreview->isNotEmpty() || $this->hardcodedEnvironmentVariablesPreview->isNotEmpty())
+            )
                 <div>
                     <h3>Preview Deployments Environment Variables</h3>
                     <div>Environment (secrets) variables for Preview Deployments.</div>

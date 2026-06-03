@@ -39,7 +39,12 @@ class All extends Component
         'environmentVariableDeleted' => 'refreshEnvs',
     ];
 
-    public function updatedSearch()
+    public function updatedSearch(): void
+    {
+        $this->clearEnvironmentVariableCaches();
+    }
+
+    private function clearEnvironmentVariableCaches(): void
     {
         unset($this->environmentVariables);
         unset($this->environmentVariablesPreview);
@@ -95,7 +100,9 @@ class All extends Component
         $query->orderByRaw("CASE WHEN is_required = true AND (value IS NULL OR value = '') THEN 0 ELSE 1 END");
 
         if ($withSearch && $this->searchTerm() !== '') {
-            $query->whereRaw('LOWER(key) LIKE ?', ['%'.Str::lower($this->searchTerm()).'%']);
+            $escapedSearch = addcslashes(Str::lower($this->searchTerm()), '%_\\');
+
+            $query->whereRaw("LOWER(key) LIKE ? ESCAPE '\\'", ['%'.$escapedSearch.'%']);
         }
 
         if ($this->is_env_sorting_enabled) {
@@ -322,12 +329,7 @@ class All extends Component
         $environment->order = $maxOrder + 1;
         $environment->save();
 
-        // Clear computed property cache to force refresh
-        unset($this->environmentVariables);
-        unset($this->environmentVariablesPreview);
-        unset($this->hardcodedEnvironmentVariables);
-        unset($this->hardcodedEnvironmentVariablesPreview);
-        unset($this->hasEnvironmentVariables);
+        $this->clearEnvironmentVariableCaches();
 
         $this->dispatch('success', 'Environment variable added.');
     }
@@ -456,12 +458,7 @@ class All extends Component
     public function refreshEnvs()
     {
         $this->resource->refresh();
-        // Clear computed property cache to force refresh
-        unset($this->environmentVariables);
-        unset($this->environmentVariablesPreview);
-        unset($this->hardcodedEnvironmentVariables);
-        unset($this->hardcodedEnvironmentVariablesPreview);
-        unset($this->hasEnvironmentVariables);
+        $this->clearEnvironmentVariableCaches();
         $this->getDevView();
     }
 }

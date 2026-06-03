@@ -56,6 +56,44 @@ it('filters production environment variables by key case-insensitively', functio
         ->toBe(['API_KEY']);
 });
 
+it('treats production environment variable search wildcards literally', function () {
+    $application = Application::factory()->create([
+        'environment_id' => $this->environment->id,
+    ]);
+
+    EnvironmentVariable::create([
+        'key' => 'API_KEY',
+        'value' => 'secret',
+        'resourceable_type' => Application::class,
+        'resourceable_id' => $application->id,
+    ]);
+
+    EnvironmentVariable::create([
+        'key' => 'APIXKEY',
+        'value' => 'other-secret',
+        'resourceable_type' => Application::class,
+        'resourceable_id' => $application->id,
+    ]);
+
+    EnvironmentVariable::create([
+        'key' => 'PERCENT%KEY',
+        'value' => 'percent-secret',
+        'resourceable_type' => Application::class,
+        'resourceable_id' => $application->id,
+    ]);
+
+    $component = Livewire::test(All::class, ['resource' => $application])
+        ->set('search', 'api_key');
+
+    expect($component->instance()->environmentVariables->pluck('key')->all())
+        ->toBe(['API_KEY']);
+
+    $component->set('search', '%KEY');
+
+    expect($component->instance()->environmentVariables->pluck('key')->all())
+        ->toBe(['PERCENT%KEY']);
+});
+
 it('filters preview environment variables by key case-insensitively', function () {
     $application = Application::factory()->create([
         'environment_id' => $this->environment->id,
@@ -102,6 +140,26 @@ YAML,
 
     expect($component->instance()->hardcodedEnvironmentVariables->pluck('key')->all())
         ->toBe(['API_TOKEN']);
+});
+
+it('does not show the empty production message when search only matches hardcoded variables', function () {
+    $service = Service::factory()->create([
+        'environment_id' => $this->environment->id,
+        'docker_compose_raw' => <<<'YAML'
+services:
+  app:
+    image: nginx
+    environment:
+      API_TOKEN: hardcoded-secret
+      DATABASE_URL: postgres://example
+YAML,
+    ]);
+
+    Livewire::test(All::class, ['resource' => $service])
+        ->set('search', 'api')
+        ->assertSee('Production Environment Variables')
+        ->assertSee('API_TOKEN')
+        ->assertDontSee('No environment variables found.');
 });
 
 it('keeps developer view unfiltered after searching', function () {
@@ -160,4 +218,34 @@ it('does not delete non-matching variables when saving developer view after sear
     expect($application->environment_variables()->pluck('key')->all())
         ->toContain('API_KEY')
         ->toContain('DATABASE_URL');
+});
+
+it('hides the preview section when search filters out all preview variables', function () {
+    $application = Application::factory()->create([
+        'environment_id' => $this->environment->id,
+    ]);
+
+    EnvironmentVariable::create([
+        'key' => 'API_KEY',
+        'value' => 'secret',
+        'resourceable_type' => Application::class,
+        'resourceable_id' => $application->id,
+    ]);
+
+    $application->environment_variables_preview()->where('key', 'API_KEY')->delete();
+
+    EnvironmentVariable::create([
+        'key' => 'PREVIEW_TOKEN',
+        'value' => 'preview-secret',
+        'is_preview' => true,
+        'resourceable_type' => Application::class,
+        'resourceable_id' => $application->id,
+    ]);
+
+    Livewire::test(All::class, ['resource' => $application])
+        ->set('search', 'api')
+        ->assertSee('Production Environment Variables')
+        ->assertSee('API_KEY')
+        ->assertDontSee('Preview Deployments Environment Variables')
+        ->assertDontSee('PREVIEW_TOKEN');
 });
