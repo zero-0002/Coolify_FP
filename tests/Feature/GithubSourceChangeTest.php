@@ -124,6 +124,29 @@ describe('GitHub Source Change Component', function () {
             ]);
     });
 
+    test('installation path is generated from the provided github app instance', function () {
+        $githubApp = new GithubApp;
+        $githubApp->forceFill([
+            'id' => 123,
+            'name' => 'Provided GitHub App',
+            'html_url' => 'https://github.example.com',
+            'team_id' => 456,
+        ]);
+
+        $installationUrl = getInstallationPath($githubApp);
+        parse_str(parse_url($installationUrl, PHP_URL_QUERY), $query);
+        $installState = $query['state'] ?? null;
+
+        expect($installationUrl)->toStartWith('https://github.example.com/github-apps/provided-git-hub-app/installations/new?')
+            ->and($installState)->not->toBeEmpty()
+            ->and(Cache::get('github-app-setup-state:'.hash('sha256', $installState)))
+            ->toMatchArray([
+                'action' => 'install',
+                'github_app_id' => 123,
+                'team_id' => 456,
+            ]);
+    });
+
     test('defaults webhook endpoint to app url when it is the first available endpoint', function () {
         config(['app.url' => 'http://localhost:8000']);
 
@@ -389,11 +412,13 @@ describe('GitHub Source Change Component', function () {
         Livewire::withQueryParams(['github_app_uuid' => $githubApp->uuid])
             ->test(Change::class)
             ->assertSuccessful()
+            ->assertSet('name', 'test-git-hub-app')
             ->assertSet('contents', null)
             ->assertSet('metadata', null)
             ->assertSet('pullRequests', null)
             ->call('checkPermissions')
             ->assertDispatched('success')
+            ->assertSet('name', 'test-git-hub-app')
             ->assertSet('contents', 'read')
             ->assertSet('metadata', 'read')
             ->assertSet('pullRequests', 'write');
