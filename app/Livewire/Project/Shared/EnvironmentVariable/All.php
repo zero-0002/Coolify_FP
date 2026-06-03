@@ -45,6 +45,7 @@ class All extends Component
         unset($this->environmentVariablesPreview);
         unset($this->hardcodedEnvironmentVariables);
         unset($this->hardcodedEnvironmentVariablesPreview);
+        unset($this->hasEnvironmentVariables);
     }
 
     public function mount()
@@ -109,6 +110,19 @@ class All extends Component
     private function searchTerm(): string
     {
         return trim($this->search);
+    }
+
+    public function getHasEnvironmentVariablesProperty(): bool
+    {
+        return $this->environmentVariables->isNotEmpty() ||
+            $this->environmentVariablesPreview->isNotEmpty() ||
+            $this->hardcodedEnvironmentVariables->isNotEmpty() ||
+            $this->hardcodedEnvironmentVariablesPreview->isNotEmpty();
+    }
+
+    public function getIsSearchActiveProperty(): bool
+    {
+        return $this->searchTerm() !== '';
     }
 
     public function getHardcodedEnvironmentVariablesProperty()
@@ -313,6 +327,7 @@ class All extends Component
         unset($this->environmentVariablesPreview);
         unset($this->hardcodedEnvironmentVariables);
         unset($this->hardcodedEnvironmentVariablesPreview);
+        unset($this->hasEnvironmentVariables);
 
         $this->dispatch('success', 'Environment variable added.');
     }
@@ -446,6 +461,7 @@ class All extends Component
         unset($this->environmentVariablesPreview);
         unset($this->hardcodedEnvironmentVariables);
         unset($this->hardcodedEnvironmentVariablesPreview);
+        unset($this->hasEnvironmentVariables);
         $this->getDevView();
     }
 }
