@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Actions\User\RevokeUserTeamTokens;
 use App\Events\ServerReachabilityChanged;
 use App\Notifications\Channels\SendsDiscord;
 use App\Notifications\Channels\SendsEmail;
@@ -72,6 +73,8 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         });
 
         static::deleting(function (Team $team) {
+            RevokeUserTeamTokens::forTeam($team->id);
+
             foreach ($team->privateKeys as $key) {
                 $key->delete();
             }
@@ -233,6 +236,9 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
                 'is_reachable' => false,
             ]);
             ServerReachabilityChanged::dispatch($server);
+            $server->unreachable_count = 3;
+            $server->unreachable_notification_sent = true;
+            $server->save();
         }
     }
 
@@ -344,5 +350,4 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
     {
         return $this->hasOne(WebhookNotificationSettings::class);
     }
-
 }
