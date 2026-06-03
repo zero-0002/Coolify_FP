@@ -7,18 +7,21 @@
     <!-- Global search component - included once to prevent keyboard shortcut duplication -->
     <livewire:global-search />
     @auth
-        <livewire:deployments-indicator />
         <div x-data="{
             open: false,
-            collapsed: false,
-            pageWidth: 'full',
+            collapsed: localStorage.getItem('sidebarCollapsed') === 'true',
+            pageWidth: localStorage.getItem('pageWidth') || 'full',
+            sidebarReady: false,
             init() {
-                this.pageWidth = localStorage.getItem('pageWidth');
-                if (!this.pageWidth) {
-                    this.pageWidth = 'full';
-                    localStorage.setItem('pageWidth', 'full');
+                if (!localStorage.getItem('pageWidth')) {
+                    localStorage.setItem('pageWidth', this.pageWidth);
                 }
-                this.collapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+
+                this.$nextTick(() => {
+                    requestAnimationFrame(() => {
+                        this.sidebarReady = true;
+                    });
+                });
             },
             toggleSidebar() {
                 this.collapsed = !this.collapsed;
@@ -26,6 +29,7 @@
             }
         }" x-cloak class="mx-auto dark:text-inherit text-black"
             :class="pageWidth === 'full' ? '' : 'max-w-7xl'">
+            <livewire:deployments-indicator />
             <div class="relative z-50 lg:hidden" :class="open ? 'block' : 'hidden'" role="dialog" aria-modal="true">
                 <div class="fixed inset-0 bg-black/80" x-on:click="open = false"></div>
                 <div class="fixed inset-y-0 right-0 h-full flex">
@@ -47,8 +51,8 @@
                 </div>
             </div>
 
-            <div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col min-w-0 transition-[width] duration-200"
-                :class="collapsed ? 'lg:w-16' : 'lg:w-56'">
+            <div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col min-w-0"
+                :class="[collapsed ? 'lg:w-16' : 'lg:w-56', sidebarReady ? 'transition-[width] duration-200' : '']">
                 <div class="flex flex-col overflow-y-auto grow gap-y-5 scrollbar min-w-0">
                     <x-navbar />
                 </div>
@@ -79,10 +83,8 @@
                 </button>
             </div>
 
-            <main class="transition-[padding] duration-200" :class="collapsed ? 'lg:pl-16' : 'lg:pl-56'">
-                <div class="p-4 sm:px-6 lg:px-8 lg:py-6">
+            <main class="p-6" :class="[collapsed ? 'lg:pl-[6rem]' : 'lg:pl-[16rem]', sidebarReady ? 'transition-[padding] duration-200' : '']">
                     {{ $slot }}
-                </div>
             </main>
         </div>
     @endauth
