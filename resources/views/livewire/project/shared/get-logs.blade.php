@@ -274,9 +274,12 @@
                     <div>({{ $pull_request }})</div>
                 @endif
                 @if ($streamLogs)
-                    <x-loading wire:poll.2000ms='getLogs(true)' />
+                    <x-loading />
                 @endif
             </div>
+        @endif
+        @if ($streamLogs)
+            <div class="sr-only" wire:poll.2000ms="getLogs(true)" aria-hidden="true"></div>
         @endif
         <div x-show="expanded" {{ $collapsible ? 'x-collapse' : '' }}
             :class="fullscreen ? 'fullscreen flex flex-col !overflow-visible' : 'relative w-full {{ $collapsible ? 'py-4' : '' }} mx-auto'"
@@ -520,20 +523,19 @@
                                     // Parse timestamp from log line (ISO 8601 format: 2025-12-04T11:48:39.136764033Z)
                                     $timestamp = '';
                                     $logContent = $line;
-                                    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2}:\d{2})(?:\.(\d+))?Z?\s(.*)$/', $line, $matches)) {
-                                        $year = $matches[1];
-                                        $month = $matches[2];
-                                        $day = $matches[3];
-                                        $time = $matches[4];
-                                        $microseconds = isset($matches[5]) ? substr($matches[5], 0, 6) : '000000';
-                                        $logContent = $matches[6];
+                                    if (preg_match('/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?Z?\s(.*)$/', $line, $matches)) {
+                                        $microseconds = isset($matches[2]) ? substr($matches[2], 0, 6) : '000000';
+                                        $logContent = $matches[3];
 
-                                        // Convert month number to abbreviated name
-                                        $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                                        $monthName = $monthNames[(int)$month - 1] ?? $month;
-
-                                        // Format for display: 2025-Dec-04 09:44:58
-                                        $timestamp = "{$year}-{$monthName}-{$day} {$time}";
+                                        // Convert UTC Docker timestamp to server timezone for display
+                                        $carbonTs = \Carbon\Carbon::parse($matches[1], 'UTC');
+                                        $serverTz = getServerTimezone($server);
+                                        try {
+                                            $carbonTs->setTimezone($serverTz);
+                                        } catch (\Exception) {
+                                            // keep UTC
+                                        }
+                                        $timestamp = $carbonTs->format('Y-M-d H:i:s');
                                         // Include microseconds in key for uniqueness
                                         $lineKey = "{$timestamp}.{$microseconds}";
                                     }
