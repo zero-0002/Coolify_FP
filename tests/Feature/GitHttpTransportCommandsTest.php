@@ -118,3 +118,19 @@ it('supports dedicated checkout directories for compose file loading', function 
         ->not->toContain('mktemp')
         ->not->toContain('git_retry_dir');
 });
+
+it('applies http 1 transport to custom bitbucket pull request checkout', function () {
+    $application = applicationWithGitSettings();
+    $application->git_repository = 'https://bitbucket.org/coollabsio/private-app.git';
+
+    $result = $application->generateGitImportCommands(
+        deployment_uuid: 'test-deployment',
+        pull_request_id: 123,
+        git_type: 'bitbucket',
+        exec_in_docker: false,
+        commit: 'abc123def456abc123def456abc123def456abc1',
+    );
+
+    expect($result['commands'])
+        ->toContain("git -c http.version=HTTP/1.1 checkout 'abc123def456abc123def456abc123def456abc1'");
+});
