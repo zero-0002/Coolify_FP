@@ -136,6 +136,20 @@ current_postgres_image() {
     docker inspect coolify-db --format '{{.Config.Image}}' 2>/dev/null
 }
 
+current_coolify_image_tag() {
+    local image
+    local image_without_digest
+    local last_segment
+
+    image=$(docker inspect coolify --format '{{.Config.Image}}' 2>/dev/null || true)
+    image_without_digest="${image%@*}"
+    last_segment="${image_without_digest##*/}"
+
+    if [[ "$last_segment" == *:* ]]; then
+        printf '%s' "${last_segment##*:}"
+    fi
+}
+
 write_override_file() {
     local image="$1"
     local volume="$2"
@@ -175,11 +189,12 @@ EOF
 }
 
 start_stack() {
+    local coolify_image_tag="${1:-${LATEST_IMAGE:-latest}}"
     local files
     files=$(compose_files)
 
     # shellcheck disable=SC2086
-    LATEST_IMAGE="${LATEST_IMAGE:-latest}" docker compose --env-file "$ENV_FILE" $files up -d --remove-orphans --wait --wait-timeout 120
+    LATEST_IMAGE="$coolify_image_tag" docker compose --env-file "$ENV_FILE" $files up -d --remove-orphans --wait --wait-timeout 120
 }
 
 print_rollback_instructions() {
@@ -220,10 +235,13 @@ rollback_postgres() {
     [ -n "${PREVIOUS_MOUNT_PATH:-}" ] || fail "Rollback metadata is missing PREVIOUS_MOUNT_PATH."
     [ -n "${PREVIOUS_OVERRIDE_PRESENT:-}" ] || fail "Rollback metadata is missing PREVIOUS_OVERRIDE_PRESENT."
 
+    CURRENT_COOLIFY_IMAGE_TAG=$(current_coolify_image_tag)
+
     log "Rolling back Coolify internal PostgreSQL."
     log "Previous image: ${PREVIOUS_IMAGE}"
     log "Previous volume: ${PREVIOUS_VOLUME}"
     log "Previous mount path: ${PREVIOUS_MOUNT_PATH}"
+    log "Current Coolify image tag: ${CURRENT_COOLIFY_IMAGE_TAG:-latest}"
 
     docker volume inspect "$PREVIOUS_VOLUME" >/dev/null 2>&1 || fail "Previous volume '${PREVIOUS_VOLUME}' does not exist."
 
@@ -242,7 +260,7 @@ rollback_postgres() {
     fi
 
     log "Starting Coolify stack with rollback database volume."
-    start_stack >>"$LOGFILE" 2>&1 || fail "Could not start Coolify stack after rollback. See ${LOGFILE}."
+    start_stack "$CURRENT_COOLIFY_IMAGE_TAG" >>"$LOGFILE" 2>&1 || fail "Could not start Coolify stack after rollback. See ${LOGFILE}."
 
     log "Rollback completed successfully."
     cat <<EOF | tee -a "$LOGFILE"
@@ -283,6 +301,7 @@ upgrade_postgres() {
     PREVIOUS_VOLUME=$(current_postgres_mount_name)
     PREVIOUS_MOUNT_PATH=$(current_postgres_mount_path)
     PREVIOUS_IMAGE=$(current_postgres_image)
+    CURRENT_COOLIFY_IMAGE_TAG=$(current_coolify_image_tag)
 
     [ -n "$PREVIOUS_VOLUME" ] || fail "Could not detect current PostgreSQL Docker volume."
     [ -n "$PREVIOUS_MOUNT_PATH" ] || fail "Could not detect current PostgreSQL mount path."
@@ -298,6 +317,7 @@ upgrade_postgres() {
     log "Current active volume: ${PREVIOUS_VOLUME}"
     log "Current image: ${PREVIOUS_IMAGE}"
     log "Current mount path: ${PREVIOUS_MOUNT_PATH}"
+    log "Current Coolify image tag: ${CURRENT_COOLIFY_IMAGE_TAG:-latest}"
 
     if [ "$CURRENT_MAJOR" -eq "$TARGET_MAJOR" ]; then
         log "PostgreSQL is already on major ${TARGET_MAJOR}. Nothing to do."
@@ -358,11 +378,15 @@ upgrade_postgres() {
     docker rm -f coolify-db >>"$LOGFILE" 2>&1 || true
 
     log "Starting Coolify stack with PostgreSQL ${TARGET_MAJOR}."
-    start_stack >>"$LOGFILE" 2>&1 || fail "Could not start Coolify stack with upgraded PostgreSQL. See ${LOGFILE}."
+    start_stack "$CURRENT_COOLIFY_IMAGE_TAG" >>"$LOGFILE" 2>&1 || fail "Could not start Coolify stack with upgraded PostgreSQL. See ${LOGFILE}."
 
     log "Coolify internal PostgreSQL upgrade completed successfully."
     print_rollback_instructions
 }
+
+if [ "${COOLIFY_POSTGRES_UPGRADE_SOURCE_ONLY:-false}" = "true" ] && [ "${BASH_SOURCE[0]}" != "$0" ]; then
+    return 0
+fi
 
 case "$COMMAND" in
     rollback)
