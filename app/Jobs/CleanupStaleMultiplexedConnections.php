@@ -21,38 +21,8 @@ class CleanupStaleMultiplexedConnections implements ShouldQueue
     {
         $this->cleanupStaleConnections();
         $this->cleanupNonExistentServerConnections();
-        $this->cleanupDuplicateSshProcesses();
         $this->cleanupOrphanedSshProcesses();
         $this->cleanupOrphanedCloudflaredProcesses();
-    }
-
-    /**
-     * Once two background ssh masters share the same ControlPath, OpenSSH's
-     * control socket state is no longer trustworthy: `ssh -O check` may report
-     * one PID while the socket lifecycle is tied to another. Reset the whole
-     * duplicate group rather than trying to choose an owner.
-     */
-    private function cleanupDuplicateSshProcesses(): void
-    {
-        $muxDir = storage_path('app/ssh/mux');
-        $groups = [];
-
-        foreach ($this->listProcesses() as $process) {
-            $controlPath = $this->extractControlPath($process['args']);
-            if (! is_string($controlPath) || ! str_starts_with($controlPath, $muxDir.'/')) {
-                continue;
-            }
-
-            $groups[$controlPath][] = $process;
-        }
-
-        foreach ($groups as $controlPath => $processes) {
-            if (count($processes) < 2) {
-                continue;
-            }
-
-            $this->resetDuplicateGroup($controlPath, $processes);
-        }
     }
 
     /**
@@ -71,13 +41,17 @@ class CleanupStaleMultiplexedConnections implements ShouldQueue
         $minAge = (int) config('constants.ssh.mux_orphan_min_age');
 
         foreach ($this->listProcesses() as $process) {
-            // Only ever touch ssh processes pointing at Coolify's mux directory.
-            $controlPath = $this->extractControlPath($process['args']);
-            if (! is_string($controlPath) || ! str_starts_with($controlPath, $muxDir.'/')) {
+            // Backgrounded ssh master: current `ssh -fN` or legacy `ssh -fNM`.
+            if (! preg_match('#(^|/)ssh -fN#', $process['args'])) {
                 continue;
             }
 
-            if ($process['etimes'] >= $minAge && ! file_exists($controlPath)) {
+            // Only ever touch ssh processes pointing at Coolify's mux directory.
+            if (! preg_match('#ControlPath=('.preg_quote($muxDir, '#').'/\S+)#', $process['args'], $pathMatch)) {
+                continue;
+            }
+
+            if ($process['etimes'] >= $minAge && ! file_exists($pathMatch[1])) {
                 $this->reapOrphan('ssh', $process);
             }
         }
@@ -173,47 +147,6 @@ class CleanupStaleMultiplexedConnections implements ShouldQueue
         }
 
         return $processes;
-    }
-
-    /**
-     * @param  list<array{pid: string, ppid: string, etimes: int, args: string}>  $processes
-     */
-    private function resetDuplicateGroup(string $controlPath, array $processes): void
-    {
-        if (! config('constants.ssh.mux_orphan_reap_enabled')) {
-            Log::info('Duplicate ssh mux processes detected (dry-run, not killed)', [
-                'control_path' => $controlPath,
-                'pids' => array_column($processes, 'pid'),
-            ]);
-
-            return;
-        }
-
-        foreach ($processes as $process) {
-            Process::run('kill '.escapeshellarg($process['pid']));
-        }
-
-        if (file_exists($controlPath)) {
-            @unlink($controlPath);
-        }
-
-        Log::info('Reset duplicate ssh mux processes', [
-            'control_path' => $controlPath,
-            'pids' => array_column($processes, 'pid'),
-        ]);
-    }
-
-    private function extractControlPath(string $args): ?string
-    {
-        if (! preg_match('/(?:^|\s)-o\s+ControlPath=(?:"([^"]+)"|\'([^\']+)\'|(\S+))/', $args, $matches)) {
-            if (preg_match('/^ssh:\s+(\S+)\s+\[mux\]$/', $args, $matches)) {
-                return $matches[1];
-            }
-
-            return null;
-        }
-
-        return $matches[1] ?: ($matches[2] ?: $matches[3]);
     }
 
     private function cleanupStaleConnections()
