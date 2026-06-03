@@ -36,7 +36,7 @@ x-init="$watch('slideOverOpen', value => {
                                         </h2>
                                         <div class="flex items-center h-auto ml-3">
                                             <button @click="slideOverOpen=false"
-                                                class="absolute cursor-pointer hover:bg-neutral-100 dark:hover:bg-coolgray-300 top-0 right-0 z-30 flex items-center justify-center w-8 h-8 mt-5 mr-5 space-x-1 text-xs font-normal border-none rounded-full">
+                                                class="absolute cursor-pointer top-0 right-0 z-30 flex items-center justify-center w-8 h-8 mt-5 mr-5 rounded-full dark:text-white hover:bg-neutral-100 dark:hover:bg-coolgray-300 outline-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coollabs dark:focus-visible:ring-warning focus-visible:ring-offset-2 dark:focus-visible:ring-offset-base">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none"
                                                     viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
