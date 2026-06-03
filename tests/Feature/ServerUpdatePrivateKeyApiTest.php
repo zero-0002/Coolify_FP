@@ -92,3 +92,28 @@ it('keeps the existing private key when private_key_uuid is omitted', function (
     expect($server->name)->toBe('Renamed Server')
         ->and($server->private_key_id)->toBe($this->oldPrivateKey->id);
 });
+
+it('rejects an invalid disk usage check frequency without partially updating the server', function () {
+    $this->server->proxy->set('type', 'TRAEFIK');
+    $this->server->save();
+    $this->server->settings()->update(['is_build_server' => false]);
+
+    patchServerUpdatePrivateKeyApi($this, $this->server, $this->bearerToken, [
+        'name' => 'Renamed Server',
+        'is_build_server' => true,
+        'proxy_type' => 'none',
+        'server_disk_usage_check_frequency' => 'not a valid schedule',
+    ])->assertUnprocessable()
+        ->assertJson([
+            'message' => 'Validation failed.',
+            'errors' => [
+                'server_disk_usage_check_frequency' => ['Invalid Cron / Human expression for Disk Usage Check Frequency.'],
+            ],
+        ]);
+
+    $server = $this->server->fresh();
+
+    expect($server->name)->not->toBe('Renamed Server')
+        ->and($server->settings->is_build_server)->toBeFalse()
+        ->and($server->proxy->get('type'))->toBe('TRAEFIK');
+});
