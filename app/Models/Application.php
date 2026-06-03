@@ -204,6 +204,7 @@ class Application extends BaseModel
         'config_hash',
         'last_online_at',
         'restart_count',
+        'max_restart_count',
         'last_restart_at',
         'last_restart_type',
         'uuid',
@@ -227,6 +228,7 @@ class Application extends BaseModel
             'manual_webhook_secret_bitbucket' => 'encrypted',
             'manual_webhook_secret_gitea' => 'encrypted',
             'restart_count' => 'integer',
+            'max_restart_count' => 'integer',
             'last_restart_at' => 'datetime',
         ];
     }
@@ -568,6 +570,15 @@ class Application extends BaseModel
         }
 
         return null;
+    }
+
+    public function stoppedAfterRestartLimit(): bool
+    {
+        return str($this->status)->startsWith('exited')
+            && ($this->restart_count ?? 0) > 0
+            && ($this->max_restart_count ?? 0) > 0
+            && $this->restart_count >= $this->max_restart_count
+            && $this->last_restart_type === 'crash';
     }
 
     public function taskLink($task_uuid)
