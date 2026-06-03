@@ -466,7 +466,9 @@ class GetContainersStatus
                 }
 
                 // Wrap all database updates in a transaction to ensure consistency
-                DB::transaction(function () use ($application, $maxRestartCount, $containerStatuses) {
+                $restartLimitReached = false;
+
+                DB::transaction(function () use ($application, $maxRestartCount, $containerStatuses, &$restartLimitReached) {
                     $previousRestartCount = $application->restart_count ?? 0;
 
                     if ($maxRestartCount > $previousRestartCount) {
@@ -480,8 +482,7 @@ class GetContainersStatus
                         // Check if restart limit has been reached
                         $maxAllowedRestarts = $application->max_restart_count ?? 0;
                         if ($maxAllowedRestarts > 0 && $maxRestartCount >= $maxAllowedRestarts && $previousRestartCount < $maxAllowedRestarts) {
-                            StopApplication::dispatch($application);
-                            $application->environment->project->team?->notify(new ApplicationRestartLimitReached($application));
+                            $restartLimitReached = true;
                         }
                     }
 
@@ -496,6 +497,12 @@ class GetContainersStatus
                         }
                     }
                 });
+
+                if ($restartLimitReached) {
+                    $application->refresh();
+                    StopApplication::dispatch($application, false, true, false);
+                    $application->environment->project->team?->notify(new ApplicationRestartLimitReached($application));
+                }
             }
         }
 
