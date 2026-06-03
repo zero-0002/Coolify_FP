@@ -25,13 +25,13 @@ class Sentinel extends Component
     public ?string $sentinelUpdatedAt = null;
 
     #[Validate(['required', 'integer', 'min:1'])]
-    public int $sentinelMetricsRefreshRateSeconds;
+    public int|string $sentinelMetricsRefreshRateSeconds;
 
     #[Validate(['required', 'integer', 'min:1'])]
-    public int $sentinelMetricsHistoryDays;
+    public int|string $sentinelMetricsHistoryDays;
 
     #[Validate(['required', 'integer', 'min:10'])]
-    public int $sentinelPushIntervalSeconds;
+    public int|string $sentinelPushIntervalSeconds;
 
     #[Validate(['nullable', 'url'])]
     public ?string $sentinelCustomUrl = null;
@@ -93,7 +93,9 @@ class Sentinel extends Component
     {
         if ($event['serverUuid'] === $this->server->uuid) {
             $this->server->refresh();
-            $this->syncData();
+            // Only refresh display-only state; never re-sync text-input properties
+            // (would clobber any unsaved typing — see coolify#6062 / #6354 / #9695).
+            $this->sentinelUpdatedAt = $this->server->sentinel_updated_at;
             $this->dispatch('success', 'Sentinel has been restarted successfully.');
         }
     }
