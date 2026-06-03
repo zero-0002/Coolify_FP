@@ -346,8 +346,17 @@
                         <button
                             x-on:click="
                                 $wire.copyLogs().then(logs => {
-                                    navigator.clipboard.writeText(logs);
-                                    Livewire.dispatch('success', ['Logs copied to clipboard.']);
+                                    if (!navigator.clipboard?.writeText) {
+                                        Livewire.dispatch('error', ['Clipboard is not available. Please use HTTPS or localhost.']);
+                                        return;
+                                    }
+                                    navigator.clipboard.writeText(logs).then(() => {
+                                        Livewire.dispatch('success', ['Logs copied to clipboard.']);
+                                    }).catch(() => {
+                                        Livewire.dispatch('error', ['Failed to copy logs to clipboard.']);
+                                    });
+                                }).catch(() => {
+                                    Livewire.dispatch('error', ['Failed to prepare logs for clipboard.']);
                                 });
                             "
                             title="Copy Logs"
