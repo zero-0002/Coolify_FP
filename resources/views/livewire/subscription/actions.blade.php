@@ -160,7 +160,7 @@
                                             <span class="dark:text-white" x-text="fmt(preview?.recurring_tax)"></span>
                                         </div>
                                         <div class="flex justify-between gap-6 text-sm font-bold pt-1.5 border-t dark:border-coolgray-400 border-neutral-200">
-                                            <span class="dark:text-white">Total / {{ $billingInterval === 'yearly' ? 'year' : 'month' }}</span>
+                                            <span class="dark:text-white">Total / <span x-text="preview?.billing_interval === 'year' ? 'year' : 'month'">month</span></span>
                                             <span class="dark:text-white" x-text="fmt(preview?.recurring_total)"></span>
                                         </div>
                                     </div>
@@ -249,23 +249,23 @@
         {{-- Refund --}}
         <section>
             <h3 class="pb-2">Refund</h3>
-            <div class="flex flex-wrap items-center gap-2">
-                @if ($refundCheckLoading)
-                    <x-forms.button disabled>Request Full Refund</x-forms.button>
-                @elseif ($isRefundEligible && !currentTeam()->subscription->stripe_cancel_at_period_end)
-                    <x-modal-confirmation title="Request Full Refund?" buttonTitle="Request Full Refund"
-                        isErrorButton submitAction="refundSubscription"
-                        :actions="[
-                            'Your latest payment will be fully refunded.',
-                            'Your subscription will be cancelled immediately.',
-                            'All servers will be deactivated.',
-                        ]" confirmationText="{{ currentTeam()->name }}"
-                        confirmationLabel="Enter your team name to confirm" shortConfirmationLabel="Team Name"
-                        step2ButtonText="Confirm Refund & Cancel" />
-                @else
-                    <x-forms.button disabled>Request Full Refund</x-forms.button>
-                @endif
-            </div>
+            @if ($refundCheckLoading || ($isRefundEligible && !currentTeam()->subscription->stripe_cancel_at_period_end))
+                <div class="flex flex-wrap items-center gap-2">
+                    @if ($refundCheckLoading)
+                        <x-forms.button disabled>Request Full Refund</x-forms.button>
+                    @else
+                        <x-modal-confirmation title="Request Full Refund?" buttonTitle="Request Full Refund"
+                            isErrorButton submitAction="refundSubscription"
+                            :actions="[
+                                'Your latest payment will be fully refunded.',
+                                'Your subscription will be cancelled immediately.',
+                                'All servers will be deactivated.',
+                            ]" confirmationText="{{ currentTeam()->name }}"
+                            confirmationLabel="Enter your team name to confirm" shortConfirmationLabel="Team Name"
+                            step2ButtonText="Confirm Refund & Cancel" />
+                    @endif
+                </div>
+            @endif
             <p class="mt-2 text-sm text-neutral-500">
                 @if ($refundCheckLoading)
                     Checking refund eligibility...

@@ -59,7 +59,6 @@ paths:
                 - git_repository
                 - git_branch
                 - build_pack
-                - ports_exposes
               properties:
                 project_uuid:
                   type: string
@@ -81,7 +80,7 @@ paths:
                   description: 'The git branch.'
                 build_pack:
                   type: string
-                  enum: [nixpacks, static, dockerfile, dockercompose]
+                  enum: [nixpacks, railpack, static, dockerfile, dockercompose]
                   description: 'The build pack type.'
                 ports_exposes:
                   type: string
@@ -258,7 +257,7 @@ paths:
                 docker_compose_domains:
                   type: array
                   description: 'Array of URLs to be applied to containers of a dockercompose application.'
-                  items: { properties: { name: { type: string, description: 'The service name as defined in docker-compose.' }, domain: { type: string, description: 'Comma-separated list of URLs (e.g. "http://app.coolify.io,https://app2.coolify.io")' } }, type: object }
+                  items: { properties: { name: { type: string, description: 'The service name as defined in docker-compose.' }, domain: { type: string, description: 'Comma-separated list of URLs (e.g. "https://app.coolify.io,https://app2.coolify.io")' } }, type: object }
                 watch_paths:
                   type: string
                   description: 'The watch paths.'
@@ -291,6 +290,10 @@ paths:
                   type: boolean
                   default: true
                   description: 'Escape special characters in labels. By default, $ (and other chars) is escaped. So if you write $ in the labels, it will be saved as $$. If you want to use env variables inside the labels, turn this off.'
+                is_preserve_repository_enabled:
+                  type: boolean
+                  default: false
+                  description: 'Preserve repository during deployment.'
               type: object
       responses:
         '201':
@@ -340,7 +343,6 @@ paths:
                 - git_repository
                 - git_branch
                 - build_pack
-                - ports_exposes
               properties:
                 project_uuid:
                   type: string
@@ -371,7 +373,7 @@ paths:
                   description: 'The destination UUID.'
                 build_pack:
                   type: string
-                  enum: [nixpacks, static, dockerfile, dockercompose]
+                  enum: [nixpacks, railpack, static, dockerfile, dockercompose]
                   description: 'The build pack type.'
                 name:
                   type: string
@@ -542,7 +544,7 @@ paths:
                 docker_compose_domains:
                   type: array
                   description: 'Array of URLs to be applied to containers of a dockercompose application.'
-                  items: { properties: { name: { type: string, description: 'The service name as defined in docker-compose.' }, domain: { type: string, description: 'Comma-separated list of URLs (e.g. "http://app.coolify.io,https://app2.coolify.io")' } }, type: object }
+                  items: { properties: { name: { type: string, description: 'The service name as defined in docker-compose.' }, domain: { type: string, description: 'Comma-separated list of URLs (e.g. "https://app.coolify.io,https://app2.coolify.io")' } }, type: object }
                 watch_paths:
                   type: string
                   description: 'The watch paths.'
@@ -575,6 +577,10 @@ paths:
                   type: boolean
                   default: true
                   description: 'Escape special characters in labels. By default, $ (and other chars) is escaped. So if you write $ in the labels, it will be saved as $$. If you want to use env variables inside the labels, turn this off.'
+                is_preserve_repository_enabled:
+                  type: boolean
+                  default: false
+                  description: 'Preserve repository during deployment.'
               type: object
       responses:
         '201':
@@ -624,7 +630,6 @@ paths:
                 - git_repository
                 - git_branch
                 - build_pack
-                - ports_exposes
               properties:
                 project_uuid:
                   type: string
@@ -655,7 +660,7 @@ paths:
                   description: 'The destination UUID.'
                 build_pack:
                   type: string
-                  enum: [nixpacks, static, dockerfile, dockercompose]
+                  enum: [nixpacks, railpack, static, dockerfile, dockercompose]
                   description: 'The build pack type.'
                 name:
                   type: string
@@ -826,7 +831,7 @@ paths:
                 docker_compose_domains:
                   type: array
                   description: 'Array of URLs to be applied to containers of a dockercompose application.'
-                  items: { properties: { name: { type: string, description: 'The service name as defined in docker-compose.' }, domain: { type: string, description: 'Comma-separated list of URLs (e.g. "http://app.coolify.io,https://app2.coolify.io")' } }, type: object }
+                  items: { properties: { name: { type: string, description: 'The service name as defined in docker-compose.' }, domain: { type: string, description: 'Comma-separated list of URLs (e.g. "https://app.coolify.io,https://app2.coolify.io")' } }, type: object }
                 watch_paths:
                   type: string
                   description: 'The watch paths.'
@@ -859,6 +864,10 @@ paths:
                   type: boolean
                   default: true
                   description: 'Escape special characters in labels. By default, $ (and other chars) is escaped. So if you write $ in the labels, it will be saved as $$. If you want to use env variables inside the labels, turn this off.'
+                is_preserve_repository_enabled:
+                  type: boolean
+                  default: false
+                  description: 'Preserve repository during deployment.'
               type: object
       responses:
         '201':
@@ -923,7 +932,7 @@ paths:
                   description: 'The Dockerfile content.'
                 build_pack:
                   type: string
-                  enum: [nixpacks, static, dockerfile, dockercompose]
+                  enum: [dockerfile]
                   description: 'The build pack type.'
                 ports_exposes:
                   type: string
@@ -1129,7 +1138,6 @@ paths:
                 - environment_name
                 - environment_uuid
                 - docker_registry_image_name
-                - ports_exposes
               properties:
                 project_uuid:
                   type: string
@@ -1325,95 +1333,6 @@ paths:
       security:
         -
           bearerAuth: []
-  /applications/dockercompose:
-    post:
-      tags:
-        - Applications
-      summary: 'Create (Docker Compose)'
-      description: 'Deprecated: Use POST /api/v1/services instead.'
-      operationId: create-dockercompose-application
-      requestBody:
-        description: 'Application object that needs to be created.'
-        required: true
-        content:
-          application/json:
-            schema:
-              required:
-                - project_uuid
-                - server_uuid
-                - environment_name
-                - environment_uuid
-                - docker_compose_raw
-              properties:
-                project_uuid:
-                  type: string
-                  description: 'The project UUID.'
-                server_uuid:
-                  type: string
-                  description: 'The server UUID.'
-                environment_name:
-                  type: string
-                  description: 'The environment name. You need to provide at least one of environment_name or environment_uuid.'
-                environment_uuid:
-                  type: string
-                  description: 'The environment UUID. You need to provide at least one of environment_name or environment_uuid.'
-                docker_compose_raw:
-                  type: string
-                  description: 'The Docker Compose raw content.'
-                destination_uuid:
-                  type: string
-                  description: 'The destination UUID if the server has more than one destinations.'
-                name:
-                  type: string
-                  description: 'The application name.'
-                description:
-                  type: string
-                  description: 'The application description.'
-                instant_deploy:
-                  type: boolean
-                  description: 'The flag to indicate if the application should be deployed instantly.'
-                use_build_server:
-                  type: boolean
-                  nullable: true
-                  description: 'Use build server.'
-                connect_to_docker_network:
-                  type: boolean
-                  description: 'The flag to connect the service to the predefined Docker network.'
-                force_domain_override:
-                  type: boolean
-                  description: 'Force domain usage even if conflicts are detected. Default is false.'
-                is_container_label_escape_enabled:
-                  type: boolean
-                  default: true
-                  description: 'Escape special characters in labels. By default, $ (and other chars) is escaped. So if you write $ in the labels, it will be saved as $$. If you want to use env variables inside the labels, turn this off.'
-              type: object
-      responses:
-        '201':
-          description: 'Application created successfully.'
-          content:
-            application/json:
-              schema:
-                properties:
-                  uuid: { type: string }
-                type: object
-        '401':
-          $ref: '#/components/responses/401'
-        '400':
-          $ref: '#/components/responses/400'
-        '409':
-          description: 'Domain conflicts detected.'
-          content:
-            application/json:
-              schema:
-                properties:
-                  message: { type: string, example: 'Domain conflicts detected. Use force_domain_override=true to proceed.' }
-                  warning: { type: string, example: 'Using the same domain for multiple resources can cause routing conflicts and unpredictable behavior.' }
-                  conflicts: { type: array, items: { properties: { domain: { type: string, example: example.com }, resource_name: { type: string, example: 'My Application' }, resource_uuid: { type: string, nullable: true, example: abc123-def456 }, resource_type: { type: string, enum: [application, service, instance], example: application }, message: { type: string, example: "Domain example.com is already in use by application 'My Application'" } }, type: object } }
-                type: object
-      deprecated: true
-      security:
-        -
-          bearerAuth: []
   '/applications/{uuid}':
     get:
       tags:
@@ -1556,7 +1475,7 @@ paths:
                   description: 'The destination UUID.'
                 build_pack:
                   type: string
-                  enum: [nixpacks, static, dockerfile, dockercompose]
+                  enum: [nixpacks, railpack, static, dockerfile, dockercompose]
                   description: 'The build pack type.'
                 name:
                   type: string
@@ -1723,7 +1642,7 @@ paths:
                 docker_compose_domains:
                   type: array
                   description: 'Array of URLs to be applied to containers of a dockercompose application.'
-                  items: { properties: { name: { type: string, description: 'The service name as defined in docker-compose.' }, domain: { type: string, description: 'Comma-separated list of URLs (e.g. "http://app.coolify.io,https://app2.coolify.io")' } }, type: object }
+                  items: { properties: { name: { type: string, description: 'The service name as defined in docker-compose.' }, domain: { type: string, description: 'Comma-separated list of URLs (e.g. "https://app.coolify.io,https://app2.coolify.io")' } }, type: object }
                 watch_paths:
                   type: string
                   description: 'The watch paths.'
@@ -1741,6 +1660,9 @@ paths:
                   type: boolean
                   default: true
                   description: 'Escape special characters in labels. By default, $ (and other chars) is escaped. So if you write $ in the labels, it will be saved as $$. If you want to use env variables inside the labels, turn this off.'
+                is_preserve_repository_enabled:
+                  type: boolean
+                  description: 'Preserve git repository during application update. If false, the existing repository will be removed and replaced with the new one. If true, the existing repository will be kept and the new one will be ignored. Default is false.'
               type: object
       responses:
         '200':
@@ -2383,6 +2305,48 @@ paths:
       security:
         -
           bearerAuth: []
+  '/applications/{uuid}/previews/{pull_request_id}':
+    delete:
+      tags:
+        - Applications
+      summary: 'Delete Preview Deployment'
+      description: 'Delete a preview deployment for a pull request. Cancels active deployments, stops containers, removes volumes/networks, and deletes the preview record.'
+      operationId: delete-preview-deployment-by-pull-request-id
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the application.'
+          required: true
+          schema:
+            type: string
+        -
+          name: pull_request_id
+          in: path
+          description: 'Pull request ID of the preview to delete.'
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Preview deletion queued.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string }
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+        '422':
+          $ref: '#/components/responses/422'
+      security:
+        -
+          bearerAuth: []
   /cloud-tokens:
     get:
       tags:
@@ -2708,8 +2672,8 @@ paths:
                   type: integer
                   description: 'Number of days to retain backups locally'
                 database_backup_retention_max_storage_locally:
-                  type: integer
-                  description: 'Max storage (MB) for local backups'
+                  type: number
+                  description: 'Max storage (GB) for local backups'
                 database_backup_retention_amount_s3:
                   type: integer
                   description: 'Number of backups to retain in S3'
@@ -2717,8 +2681,12 @@ paths:
                   type: integer
                   description: 'Number of days to retain backups in S3'
                 database_backup_retention_max_storage_s3:
+                  type: number
+                  description: 'Max storage (GB) for S3 backups'
+                timeout:
                   type: integer
-                  description: 'Max storage (MB) for S3 backups'
+                  description: 'Backup job timeout in seconds (min: 60, max: 36000)'
+                  default: 3600
               type: object
       responses:
         '201':
@@ -2873,6 +2841,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -2975,6 +2946,30 @@ paths:
                 mysql_conf:
                   type: string
                   description: 'MySQL conf'
+                health_check_enabled:
+                  type: boolean
+                  description: 'Enable the database healthcheck probe.'
+                  default: true
+                health_check_interval:
+                  type: integer
+                  description: 'Healthcheck interval in seconds.'
+                  minimum: 1
+                  default: 15
+                health_check_timeout:
+                  type: integer
+                  description: 'Healthcheck timeout in seconds.'
+                  minimum: 1
+                  default: 5
+                health_check_retries:
+                  type: integer
+                  description: 'Healthcheck retries count.'
+                  minimum: 1
+                  default: 5
+                health_check_start_period:
+                  type: integer
+                  description: 'Healthcheck start period in seconds.'
+                  minimum: 0
+                  default: 5
               type: object
       responses:
         '200':
@@ -3096,7 +3091,7 @@ paths:
                   type: integer
                   description: 'Retention days of the backup locally'
                 database_backup_retention_max_storage_locally:
-                  type: integer
+                  type: number
                   description: 'Max storage of the backup locally'
                 database_backup_retention_amount_s3:
                   type: integer
@@ -3105,8 +3100,12 @@ paths:
                   type: integer
                   description: 'Retention days of the backup in s3'
                 database_backup_retention_max_storage_s3:
-                  type: integer
+                  type: number
                   description: 'Max storage of the backup in S3'
+                timeout:
+                  type: integer
+                  description: 'Backup job timeout in seconds (min: 60, max: 36000)'
+                  default: 3600
               type: object
       responses:
         '200':
@@ -3189,6 +3188,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3281,6 +3283,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3370,6 +3375,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3462,6 +3470,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3554,6 +3565,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3655,6 +3669,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3756,6 +3773,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -3848,6 +3868,9 @@ paths:
                 public_port:
                   type: integer
                   description: 'Public port of the database'
+                public_port_timeout:
+                  type: integer
+                  description: 'Public port timeout in seconds (default: 3600)'
                 limits_memory:
                   type: string
                   description: 'Memory limit of the database'
@@ -4668,6 +4691,18 @@ paths:
           description: 'Pull Request Id for deploying specific PR builds. Cannot be used with tag parameter.'
           schema:
             type: integer
+        -
+          name: pull_request_id
+          in: query
+          description: 'Preview deployment identifier. Alias of pr.'
+          schema:
+            type: integer
+        -
+          name: docker_tag
+          in: query
+          description: 'Docker image tag for Docker Image preview deployments. Requires pull_request_id.'
+          schema:
+            type: string
       responses:
         '200':
           description: "Get deployment(s) UUID's"
@@ -5372,6 +5407,64 @@ paths:
               schema:
                 properties:
                   message: { type: string, example: 'You are not allowed to disable the API.' }
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '400':
+          $ref: '#/components/responses/400'
+      security:
+        -
+          bearerAuth: []
+  /mcp/enable:
+    post:
+      summary: 'Enable MCP Server'
+      description: 'Enable the MCP server endpoint at /mcp (only with root permissions).'
+      operationId: enable-mcp
+      responses:
+        '200':
+          description: 'MCP server enabled.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'MCP server enabled.' }
+                type: object
+        '403':
+          description: 'You are not allowed to enable the MCP server.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'You are not allowed to enable the MCP server.' }
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '400':
+          $ref: '#/components/responses/400'
+      security:
+        -
+          bearerAuth: []
+  /mcp/disable:
+    post:
+      summary: 'Disable MCP Server'
+      description: 'Disable the MCP server endpoint at /mcp (only with root permissions).'
+      operationId: disable-mcp
+      responses:
+        '200':
+          description: 'MCP server disabled.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'MCP server disabled.' }
+                type: object
+        '403':
+          description: 'You are not allowed to disable the MCP server.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'You are not allowed to disable the MCP server.' }
                 type: object
         '401':
           $ref: '#/components/responses/401'
@@ -6615,6 +6708,24 @@ paths:
                   type: string
                   enum: [traefik, caddy, none]
                   description: 'The proxy type.'
+                concurrent_builds:
+                  type: integer
+                  description: 'Number of concurrent builds.'
+                dynamic_timeout:
+                  type: integer
+                  description: 'Deployment timeout in seconds.'
+                deployment_queue_limit:
+                  type: integer
+                  description: 'Maximum number of queued deployments.'
+                server_disk_usage_notification_threshold:
+                  type: integer
+                  description: 'Server disk usage notification threshold (%).'
+                server_disk_usage_check_frequency:
+                  type: string
+                  description: 'Cron expression for disk usage check frequency.'
+                connection_timeout:
+                  type: integer
+                  description: 'SSH connection timeout in seconds (1-300). Default: 10.'
               type: object
       responses:
         '201':
@@ -6809,7 +6920,7 @@ paths:
                 urls:
                   type: array
                   description: 'Array of URLs to be applied to containers of a service.'
-                  items: { properties: { name: { type: string, description: 'The service name as defined in docker-compose.' }, url: { type: string, description: 'Comma-separated list of URLs (e.g. "http://app.coolify.io,https://app2.coolify.io").' } }, type: object }
+                  items: { properties: { name: { type: string, description: 'The service name as defined in docker-compose.' }, url: { type: string, description: 'Comma-separated list of URLs (e.g. "https://app.coolify.io,https://app2.coolify.io").' } }, type: object }
                 force_domain_override:
                   type: boolean
                   default: false
@@ -6998,7 +7109,7 @@ paths:
                 urls:
                   type: array
                   description: 'Array of URLs to be applied to containers of a service.'
-                  items: { properties: { name: { type: string, description: 'The service name as defined in docker-compose.' }, url: { type: string, description: 'Comma-separated list of URLs (e.g. "http://app.coolify.io,https://app2.coolify.io").' } }, type: object }
+                  items: { properties: { name: { type: string, description: 'The service name as defined in docker-compose.' }, url: { type: string, description: 'Comma-separated list of URLs (e.g. "https://app.coolify.io,https://app2.coolify.io").' } }, type: object }
                 force_domain_override:
                   type: boolean
                   default: false
@@ -7797,6 +7908,7 @@ components:
           description: 'Build pack.'
           enum:
             - nixpacks
+            - railpack
             - static
             - dockerfile
             - dockercompose
@@ -8063,6 +8175,18 @@ components:
           type: string
         pull_request_id:
           type: integer
+        docker_registry_image_tag:
+          type: string
+          nullable: true
+        configuration_hash:
+          type: string
+          nullable: true
+        configuration_snapshot:
+          type: object
+          nullable: true
+        configuration_diff:
+          type: object
+          nullable: true
         force_rebuild:
           type: boolean
         commit:
@@ -8416,6 +8540,9 @@ components:
         delete_unused_networks:
           type: boolean
           description: 'The flag to indicate if the unused networks should be deleted.'
+        connection_timeout:
+          type: integer
+          description: 'SSH connection timeout in seconds.'
       type: object
     Service:
       description: 'Service model'
