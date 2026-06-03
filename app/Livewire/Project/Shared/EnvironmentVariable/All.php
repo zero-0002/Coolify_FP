@@ -7,6 +7,8 @@ use App\Models\EnvironmentVariable;
 use App\Support\ValidationPatterns;
 use App\Traits\EnvironmentVariableProtection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 class All extends Component
@@ -75,11 +77,24 @@ class All extends Component
 
     public function getEnvironmentVariablesProperty()
     {
-        $query = $this->resource->environment_variables()
-            ->orderByRaw("CASE WHEN is_required = true AND (value IS NULL OR value = '') THEN 0 ELSE 1 END");
+        return $this->getEnvironmentVariables(false);
+    }
 
-        if ($this->search !== '') {
-            $query->where('key', 'like', "%{$this->search}%");
+    public function getEnvironmentVariablesPreviewProperty()
+    {
+        return $this->getEnvironmentVariables(true);
+    }
+
+    private function getEnvironmentVariables(bool $isPreview, bool $withSearch = true): Collection
+    {
+        $query = $isPreview
+            ? $this->resource->environment_variables_preview()
+            : $this->resource->environment_variables();
+
+        $query->orderByRaw("CASE WHEN is_required = true AND (value IS NULL OR value = '') THEN 0 ELSE 1 END");
+
+        if ($withSearch && $this->searchTerm() !== '') {
+            $query->whereRaw('LOWER(key) LIKE ?', ['%'.Str::lower($this->searchTerm()).'%']);
         }
 
         if ($this->is_env_sorting_enabled) {
@@ -91,22 +106,9 @@ class All extends Component
         return $query->get();
     }
 
-    public function getEnvironmentVariablesPreviewProperty()
+    private function searchTerm(): string
     {
-        $query = $this->resource->environment_variables_preview()
-            ->orderByRaw("CASE WHEN is_required = true AND (value IS NULL OR value = '') THEN 0 ELSE 1 END");
-
-        if ($this->search !== '') {
-            $query->where('key', 'like', "%{$this->search}%");
-        }
-
-        if ($this->is_env_sorting_enabled) {
-            $query->orderBy('key');
-        } else {
-            $query->orderBy('order');
-        }
-
-        return $query->get();
+        return trim($this->search);
     }
 
     public function getHardcodedEnvironmentVariablesProperty()
@@ -156,9 +158,9 @@ class All extends Component
             return ! in_array($var['key'], $managedKeys);
         });
 
-        if ($this->search !== '') {
+        if ($this->searchTerm() !== '') {
             $hardcodedVars = $hardcodedVars->filter(function ($var) {
-                return str($var['key'])->contains($this->search, true);
+                return str($var['key'])->contains($this->searchTerm(), true);
             });
         }
 
@@ -173,9 +175,9 @@ class All extends Component
 
     public function getDevView()
     {
-        $this->variables = $this->formatEnvironmentVariables($this->environmentVariables);
+        $this->variables = $this->formatEnvironmentVariables($this->getEnvironmentVariables(false, false));
         if ($this->showPreview) {
-            $this->variablesPreview = $this->formatEnvironmentVariables($this->environmentVariablesPreview);
+            $this->variablesPreview = $this->formatEnvironmentVariables($this->getEnvironmentVariables(true, false));
         }
     }
 

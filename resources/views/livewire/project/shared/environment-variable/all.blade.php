@@ -50,17 +50,17 @@
             </div>
             <div class="w-full md:w-96">
                 <div class="relative">
-                    <input type="search" placeholder="Search" wire:model.live.debounce.300ms="search"
-                        class="w-full input pl-10" />
+                    <input type="search" placeholder="Search" aria-label="Search environment variables"
+                        wire:model.live.debounce.300ms="search" class="w-full input pl-10" />
                     <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                         <div class="relative w-4 h-4">
-                            <svg wire:loading.remove wire:target="search"
+                            <svg wire:loading.remove wire:target="search" aria-hidden="true"
                                 class="absolute inset-0 w-4 h-4 dark:text-neutral-400" fill="none"
                                 stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
-                            <svg wire:loading wire:target="search"
+                            <svg wire:loading wire:target="search" aria-hidden="true"
                                 class="absolute inset-0 w-4 h-4 text-coollabs dark:text-warning animate-spin"
                                 fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
