@@ -24,8 +24,6 @@ class Show extends Component
     #[Validate(['string', 'required'])]
     public string $serverIp;
 
-    public array $resources = [];
-
     public function mount(string $destination_uuid)
     {
         try {
@@ -35,69 +33,9 @@ class Show extends Component
             }
             $this->destination = $destination;
             $this->syncData();
-            $this->loadResources();
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
-    }
-
-    public function loadResources(): void
-    {
-        if ($this->destination->getMorphClass() !== \App\Models\StandaloneDocker::class) {
-            return;
-        }
-
-        $this->resources = $this->collectResources([
-            $this->destination->applications,
-            $this->destination->services,
-            $this->destination->postgresqls,
-            $this->destination->redis,
-            $this->destination->mongodbs,
-            $this->destination->mysqls,
-            $this->destination->mariadbs,
-            $this->destination->keydbs,
-            $this->destination->dragonflies,
-            $this->destination->clickhouses,
-        ]);
-    }
-
-    protected function collectResources(array $groups): array
-    {
-        $rows = [];
-        foreach ($groups as $group) {
-            foreach ($group as $resource) {
-                $rows[] = $this->resourceRow($resource);
-            }
-        }
-
-        return $rows;
-    }
-
-    protected function resourceRow($resource): array
-    {
-        $type = match (true) {
-            $resource instanceof \App\Models\Application => 'application',
-            $resource instanceof \App\Models\Service => 'service',
-            default => 'database',
-        };
-        $environment = $resource->environment;
-        $project = $environment?->project;
-        $routeName = "project.{$type}.configuration";
-        $url = ($project && $environment)
-            ? route($routeName, [
-                'project_uuid' => $project->uuid,
-                'environment_uuid' => $environment->uuid,
-                "{$type}_uuid" => $resource->uuid,
-            ])
-            : null;
-
-        return [
-            'type' => $type,
-            'name' => $resource->name,
-            'project' => $project?->name,
-            'environment' => $environment?->name,
-            'url' => $url,
-        ];
     }
 
     public function syncData(bool $toModel = false)
