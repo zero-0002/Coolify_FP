@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\Server;
 use App\Models\Team;
 use App\Services\ConfigurationRepository;
+use App\Support\ValidationPatterns;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -278,7 +279,7 @@ class Index extends Component
             'remoteServerName' => 'required|string',
             'remoteServerHost' => 'required|string',
             'remoteServerPort' => 'required|integer',
-            'remoteServerUser' => 'required|string|regex:/^[a-zA-Z0-9._-]+$/',
+            'remoteServerUser' => ValidationPatterns::serverUsernameRules(),
         ]);
 
         $this->privateKey = formatPrivateKey($this->privateKey);
@@ -467,7 +468,7 @@ class Index extends Component
     {
         $this->validate([
             'remoteServerPort' => 'required|integer|min:1|max:65535',
-            'remoteServerUser' => 'required|string|regex:/^[a-zA-Z0-9._-]+$/',
+            'remoteServerUser' => ValidationPatterns::serverUsernameRules(),
         ]);
 
         $this->createdServer->update([

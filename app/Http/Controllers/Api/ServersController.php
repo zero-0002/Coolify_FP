@@ -13,6 +13,7 @@ use App\Models\PrivateKey;
 use App\Models\Project;
 use App\Models\Server as ModelsServer;
 use App\Rules\ValidServerIp;
+use App\Support\ValidationPatterns;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
@@ -487,7 +488,7 @@ class ServersController extends Controller
             'ip' => ['string', 'required', new ValidServerIp],
             'port' => 'integer|nullable|between:1,65535',
             'private_key_uuid' => 'string|required',
-            'user' => ['string', 'nullable', 'regex:/^[a-zA-Z0-9._-]+$/'],
+            'user' => ValidationPatterns::serverUsernameRules(required: false),
             'is_build_server' => 'boolean|nullable',
             'instant_validate' => 'boolean|nullable',
             'proxy_type' => 'string|nullable',
@@ -666,7 +667,7 @@ class ServersController extends Controller
             'ip' => ['string', 'nullable', new ValidServerIp],
             'port' => 'integer|nullable|between:1,65535',
             'private_key_uuid' => 'string|nullable',
-            'user' => ['string', 'nullable', 'regex:/^[a-zA-Z0-9._-]+$/'],
+            'user' => ValidationPatterns::serverUsernameRules(required: false),
             'is_build_server' => 'boolean|nullable',
             'instant_validate' => 'boolean|nullable',
             'proxy_type' => 'string|nullable',
