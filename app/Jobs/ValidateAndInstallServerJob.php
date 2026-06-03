@@ -45,7 +45,8 @@ class ValidateAndInstallServerJob implements ShouldBeEncrypted, ShouldQueue
             // Validate connection
             ['uptime' => $uptime, 'error' => $error] = $this->server->validateConnection();
             if (! $uptime) {
-                $errorMessage = 'Server is not reachable. Please validate your configuration and connection.<br>Check this <a target="_blank" class="underline" href="https://coolify.io/docs/knowledge-base/server/openssh">documentation</a> for further help. <br><br>Error: '.$error;
+                $sanitizedError = htmlspecialchars($error ?? '', ENT_QUOTES, 'UTF-8');
+                $errorMessage = 'Server is not reachable. Please validate your configuration and connection.<br>Check this <a target="_blank" class="underline" href="https://coolify.io/docs/knowledge-base/server/openssh">documentation</a> for further help. <br><br>Error: '.$sanitizedError;
                 $this->server->update([
                     'validation_logs' => $errorMessage,
                     'is_validating' => false,
@@ -179,6 +180,9 @@ class ValidateAndInstallServerJob implements ShouldBeEncrypted, ShouldQueue
             // Mark validation as complete
             $this->server->update(['is_validating' => false]);
 
+            // Auto-fetch server details now that validation passed
+            $this->server->gatherServerMetadata();
+
             // Refresh server to get latest state
             $this->server->refresh();
 
@@ -194,7 +198,7 @@ class ValidateAndInstallServerJob implements ShouldBeEncrypted, ShouldQueue
             ]);
 
             $this->server->update([
-                'validation_logs' => 'An error occurred during validation: '.$e->getMessage(),
+                'validation_logs' => 'An error occurred during validation: '.htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'),
                 'is_validating' => false,
             ]);
         }
