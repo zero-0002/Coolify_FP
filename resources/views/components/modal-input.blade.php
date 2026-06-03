@@ -60,7 +60,8 @@
                             </svg>
                         </button>
                     </div>
-                    <div class="relative min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-1">
+                    <div class="relative min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-1"
+                        style="-webkit-overflow-scrolling: touch;">
                         {{ $slot }}
                     </div>
                 </div>
