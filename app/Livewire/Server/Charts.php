@@ -32,7 +32,7 @@ class Charts extends Component
         }
     }
 
-    public function toggleMetrics()
+    public function toggleMetrics(): void
     {
         try {
             $this->authorize('update', $this->server);
@@ -42,14 +42,16 @@ class Charts extends Component
 
             if ($this->server->isMetricsEnabled()) {
                 StartSentinel::run($this->server, true);
-                $this->dispatch('success', 'Metrics enabled. Restarting Sentinel.');
+                $this->dispatch('success', 'Metrics enabled. Starting Sentinel.');
+                $this->dispatch('refreshServerShow');
                 $this->redirect(route('server.metrics', ['server_uuid' => $this->server->uuid]), navigate: true);
             } else {
                 $this->server->restartSentinel();
                 $this->dispatch('success', 'Metrics disabled. Restarting Sentinel.');
+                $this->dispatch('refreshServerShow');
             }
         } catch (\Throwable $e) {
-            return handleError($e, $this);
+            handleError($e, $this);
         }
     }
 

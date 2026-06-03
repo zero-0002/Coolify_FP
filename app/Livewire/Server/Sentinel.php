@@ -104,7 +104,7 @@ class Sentinel extends Component
         }
     }
 
-    public function toggleSentinel()
+    public function toggleSentinel(): void
     {
         try {
             $this->authorize('manageSentinel', $this->server);
@@ -124,8 +124,9 @@ class Sentinel extends Component
                 StopSentinel::dispatch($this->server);
             }
             $this->submit();
+            $this->dispatch('refreshServerShow');
         } catch (\Throwable $e) {
-            return handleError($e, $this);
+            handleError($e, $this);
         }
     }
 

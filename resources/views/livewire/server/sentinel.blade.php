@@ -35,7 +35,8 @@
                         $wire.set('sentinelCustomDockerImage', this.customImage);
                     }
                 }" x-init="$wire.set('sentinelCustomDockerImage', customImage)">
-                    <x-forms.input x-model="customImage" @input.debounce.500ms="saveCustomImage()"
+                    <x-forms.input canGate="update" :canResource="$server" x-model="customImage"
+                        @input.debounce.500ms="saveCustomImage()"
                         placeholder="e.g., sentinel:latest or myregistry/sentinel:dev"
                         label="Custom Sentinel Docker Image (Dev Only)"
                         helper="Override the default Sentinel Docker image for testing. Leave empty to use the default." />

@@ -3,28 +3,26 @@
 namespace App\Livewire\Server\Sentinel;
 
 use App\Models\Server;
+use Illuminate\View\View;
 use Livewire\Component;
 
 class Logs extends Component
 {
     public ?Server $server = null;
 
-    public $parameters = [];
+    public array $parameters = [];
 
-    public function mount()
+    public function mount(): void
     {
         $this->parameters = get_route_parameters();
         try {
-            $this->server = Server::ownedByCurrentTeam()->whereUuid(request()->server_uuid)->first();
-            if (is_null($this->server)) {
-                return redirect()->route('server.index');
-            }
+            $this->server = Server::ownedByCurrentTeam()->whereUuid(request()->server_uuid)->firstOrFail();
         } catch (\Throwable $e) {
-            return handleError($e, $this);
+            handleError($e, $this);
         }
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.server.sentinel.logs');
     }
