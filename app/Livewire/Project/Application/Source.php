@@ -3,7 +3,10 @@
 namespace App\Livewire\Project\Application;
 
 use App\Models\Application;
+use App\Models\GithubApp;
+use App\Models\GitlabApp;
 use App\Models\PrivateKey;
+use App\Rules\ValidGitBranch;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Validate;
@@ -21,13 +24,13 @@ class Source extends Component
     #[Validate(['nullable', 'string'])]
     public ?string $privateKeyName = null;
 
-    #[Validate(['nullable', 'integer'])]
+    #[Locked]
     public ?int $privateKeyId = null;
 
     #[Validate(['required', 'string'])]
     public string $gitRepository;
 
-    #[Validate(['required', 'string'])]
+    #[Validate(['required', 'string', new ValidGitBranch])]
     public string $gitBranch;
 
     #[Validate(['nullable', 'string', 'regex:/^[a-zA-Z0-9][a-zA-Z0-9._\-\/]*$/'])]
@@ -103,7 +106,8 @@ class Source extends Component
     {
         try {
             $this->authorize('update', $this->application);
-            $this->privateKeyId = $privateKeyId;
+            $key = PrivateKey::ownedByCurrentTeam()->findOrFail($privateKeyId);
+            $this->privateKeyId = $key->id;
             $this->syncData(true);
             $this->getPrivateKeys();
             $this->application->refresh();
@@ -136,8 +140,11 @@ class Source extends Component
 
         try {
             $this->authorize('update', $this->application);
+            $allowedSourceTypes = [GithubApp::class, GitlabApp::class];
+            abort_unless(in_array($sourceType, $allowedSourceTypes, true), 404);
+            $source = $sourceType::ownedByCurrentTeam()->findOrFail($sourceId);
             $this->application->update([
-                'source_id' => $sourceId,
+                'source_id' => $source->id,
                 'source_type' => $sourceType,
             ]);
 
