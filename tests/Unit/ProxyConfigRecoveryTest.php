@@ -163,7 +163,7 @@ it('accepts stored Caddy config when proxy type is CADDY', function () {
 });
 
 it('accepts stored config when YAML parsing fails', function () {
-    $invalidYaml = "this: is: not: [valid yaml: {{{}}}";
+    $invalidYaml = 'this: is: not: [valid yaml: {{{}}}';
     $server = mockServerWithDbConfig($invalidYaml, 'TRAEFIK');
 
     // Invalid YAML should not block — configMatchesProxyType returns true on parse failure
