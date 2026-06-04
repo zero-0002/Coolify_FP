@@ -15,7 +15,7 @@ use Livewire\Livewire;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    InstanceSettings::updateOrCreate(['id' => 0]);
+    InstanceSettings::unguarded(fn () => InstanceSettings::updateOrCreate(['id' => 0], ['id' => 0]));
 
     $this->team = Team::factory()->create();
 
@@ -275,3 +275,75 @@ test('member cannot send test on any notification channel', function () {
     expect($this->member->can('sendTest', $this->team->pushoverNotificationSettings))->toBeFalse();
     expect($this->member->can('sendTest', $this->team->webhookNotificationSettings))->toBeFalse();
 });
+
+test('member cannot view notification secrets', function (string $component, string $settingsRelation, array $secrets) {
+    $settings = $this->team->{$settingsRelation};
+    $settings->update($secrets);
+
+    $this->actingAs($this->member);
+    session(['currentTeam' => $this->team]);
+
+    $componentTest = Livewire::test($component);
+
+    foreach ($secrets as $column => $value) {
+        $property = str($column)->camel()->toString();
+
+        $componentTest
+            ->assertSet($property, null)
+            ->assertDontSee($value);
+    }
+
+    $componentTest->assertSee('Hidden (only admins can view)');
+})->with([
+    'discord webhook' => [DiscordNotification::class, 'discordNotificationSettings', [
+        'discord_webhook_url' => 'https://discord.com/api/webhooks/secret-member',
+    ]],
+    'slack webhook' => [SlackNotification::class, 'slackNotificationSettings', [
+        'slack_webhook_url' => 'https://hooks.slack.com/services/secret-member',
+    ]],
+    'telegram token and chat id' => [TelegramNotification::class, 'telegramNotificationSettings', [
+        'telegram_token' => 'telegram-secret-token',
+        'telegram_chat_id' => 'telegram-secret-chat',
+    ]],
+    'pushover credentials' => [PushoverNotification::class, 'pushoverNotificationSettings', [
+        'pushover_user_key' => 'pushover-secret-user',
+        'pushover_api_token' => 'pushover-secret-token',
+    ]],
+    'generic webhook' => [WebhookNotification::class, 'webhookNotificationSettings', [
+        'webhook_url' => 'https://example.com/secret-webhook',
+    ]],
+]);
+
+test('admin can view notification secrets', function (string $component, string $settingsRelation, array $secrets) {
+    $settings = $this->team->{$settingsRelation};
+    $settings->update($secrets);
+
+    $this->actingAs($this->admin);
+    session(['currentTeam' => $this->team]);
+
+    $componentTest = Livewire::test($component);
+
+    foreach ($secrets as $column => $value) {
+        $property = str($column)->camel()->toString();
+
+        $componentTest->assertSet($property, $value);
+    }
+})->with([
+    'discord webhook' => [DiscordNotification::class, 'discordNotificationSettings', [
+        'discord_webhook_url' => 'https://discord.com/api/webhooks/secret-admin',
+    ]],
+    'slack webhook' => [SlackNotification::class, 'slackNotificationSettings', [
+        'slack_webhook_url' => 'https://hooks.slack.com/services/secret-admin',
+    ]],
+    'telegram token and chat id' => [TelegramNotification::class, 'telegramNotificationSettings', [
+        'telegram_token' => 'telegram-admin-token',
+        'telegram_chat_id' => 'telegram-admin-chat',
+    ]],
+    'pushover credentials' => [PushoverNotification::class, 'pushoverNotificationSettings', [
+        'pushover_user_key' => 'pushover-admin-user',
+        'pushover_api_token' => 'pushover-admin-token',
+    ]],
+    'generic webhook' => [WebhookNotification::class, 'webhookNotificationSettings', [
+        'webhook_url' => 'https://example.com/admin-webhook',
+    ]],
+]);

@@ -20,7 +20,7 @@ use Livewire\Livewire;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    InstanceSettings::updateOrCreate(['id' => 0]);
+    InstanceSettings::unguarded(fn () => InstanceSettings::updateOrCreate(['id' => 0], ['id' => 0]));
 
     $this->team = Team::factory()->create();
 
@@ -165,6 +165,51 @@ test('member cannot update application webhooks', function () {
 
 test('admin can update application webhooks', function () {
     expect($this->admin->can('update', $this->application))->toBeTrue();
+});
+
+test('member cannot view application webhook secrets', function () {
+    $this->application->update([
+        'git_repository' => 'coollabsio/coolify',
+        'git_branch' => 'main',
+        'manual_webhook_secret_github' => 'github-secret-value',
+        'manual_webhook_secret_gitlab' => 'gitlab-secret-value',
+        'manual_webhook_secret_bitbucket' => 'bitbucket-secret-value',
+        'manual_webhook_secret_gitea' => 'gitea-secret-value',
+    ]);
+
+    $this->actingAs($this->member);
+    session(['currentTeam' => $this->team]);
+
+    Livewire::test(Webhooks::class, ['resource' => $this->application->fresh()])
+        ->assertSet('githubManualWebhookSecret', null)
+        ->assertSet('gitlabManualWebhookSecret', null)
+        ->assertSet('bitbucketManualWebhookSecret', null)
+        ->assertSet('giteaManualWebhookSecret', null)
+        ->assertSee('Hidden (only admins can view)')
+        ->assertDontSee('github-secret-value')
+        ->assertDontSee('gitlab-secret-value')
+        ->assertDontSee('bitbucket-secret-value')
+        ->assertDontSee('gitea-secret-value');
+});
+
+test('admin can view application webhook secrets', function () {
+    $this->application->update([
+        'git_repository' => 'coollabsio/coolify',
+        'git_branch' => 'main',
+        'manual_webhook_secret_github' => 'github-secret-value',
+        'manual_webhook_secret_gitlab' => 'gitlab-secret-value',
+        'manual_webhook_secret_bitbucket' => 'bitbucket-secret-value',
+        'manual_webhook_secret_gitea' => 'gitea-secret-value',
+    ]);
+
+    $this->actingAs($this->admin);
+    session(['currentTeam' => $this->team]);
+
+    Livewire::test(Webhooks::class, ['resource' => $this->application->fresh()])
+        ->assertSet('githubManualWebhookSecret', 'github-secret-value')
+        ->assertSet('gitlabManualWebhookSecret', 'gitlab-secret-value')
+        ->assertSet('bitbucketManualWebhookSecret', 'bitbucket-secret-value')
+        ->assertSet('giteaManualWebhookSecret', 'gitea-secret-value');
 });
 
 // --- Resource Limits (policy checks, mount requires full resource data) ---
