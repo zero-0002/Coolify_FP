@@ -61,9 +61,35 @@ class ApplicationsController extends Controller
             $application->makeHidden([
                 'private_key_id',
             ]);
+            $this->hideNestedServerSecrets($application);
         }
 
         return serializeApiResponse($application);
+    }
+
+    private function hideNestedServerSecrets($model): void
+    {
+        $server = $model->destination?->server ?? null;
+        if (! $server) {
+            return;
+        }
+
+        $server->makeHidden([
+            'logdrain_axiom_api_key',
+            'logdrain_newrelic_license_key',
+        ]);
+
+        $settings = $server->settings ?? null;
+        if ($settings) {
+            $settings->makeHidden([
+                'sentinel_token',
+                'sentinel_custom_url',
+                'logdrain_newrelic_license_key',
+                'logdrain_axiom_api_key',
+                'logdrain_custom_config',
+                'logdrain_custom_config_parser',
+            ]);
+        }
     }
 
     /**
