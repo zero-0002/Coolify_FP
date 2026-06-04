@@ -7,7 +7,6 @@ use App\Actions\Docker\GetContainersStatus;
 use App\Models\Application;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
-use Visus\Cuid2\Cuid2;
 
 class Heading extends Component
 {
@@ -129,7 +128,7 @@ class Heading extends Component
 
     protected function setDeploymentUuid()
     {
-        $this->deploymentUuid = new Cuid2;
+        $this->deploymentUuid = new_public_id();
         $this->parameters['deployment_uuid'] = $this->deploymentUuid;
     }
 

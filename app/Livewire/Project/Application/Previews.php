@@ -9,7 +9,6 @@ use App\Models\ApplicationPreview;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Collection;
 use Livewire\Component;
-use Visus\Cuid2\Cuid2;
 
 class Previews extends Component
 {
@@ -312,7 +311,7 @@ class Previews extends Component
 
     protected function setDeploymentUuid()
     {
-        $this->deployment_uuid = new Cuid2;
+        $this->deployment_uuid = new_public_id();
         $this->parameters['deployment_uuid'] = $this->deployment_uuid;
     }
 

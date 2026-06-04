@@ -6,7 +6,6 @@ use App\Models\Project;
 use App\Support\ValidationPatterns;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
-use Visus\Cuid2\Cuid2;
 
 class AddEmpty extends Component
 {
@@ -38,7 +37,7 @@ class AddEmpty extends Component
                 'name' => $this->name,
                 'description' => $this->description,
                 'team_id' => currentTeam()->id,
-                'uuid' => (string) new Cuid2,
+                'uuid' => new_public_id(),
             ]);
 
             $productionEnvironment = $project->environments()->where('name', 'production')->first();

@@ -142,7 +142,8 @@
             </div>
             <div class="flex flex-col gap-2">
                 @forelse($initScripts ?? [] as $script)
-                    <livewire:project.database.init-script :script="$script" :wire:key="$script['index']" />
+                    <livewire:project.database.init-script :database="$database" :script="$script"
+                        :wire:key="$script['index']" />
                 @empty
                     <div>No initialization scripts found.</div>
                 @endforelse

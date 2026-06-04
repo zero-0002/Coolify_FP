@@ -10,7 +10,6 @@ use App\Models\StandaloneDocker;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Collection;
 use Livewire\Component;
-use Visus\Cuid2\Cuid2;
 
 class Destination extends Component
 {
@@ -80,7 +79,7 @@ class Destination extends Component
 
                 return;
             }
-            $deployment_uuid = new Cuid2;
+            $deployment_uuid = new_public_id();
             $server = Server::ownedByCurrentTeam()->findOrFail($server_id);
             $destination = $server->standaloneDockers->where('id', $network_id)->firstOrFail();
             $result = queue_application_deployment(

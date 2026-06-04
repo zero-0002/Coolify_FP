@@ -22,7 +22,6 @@ use App\Models\StandaloneRedis;
 use App\Models\SwarmDocker;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
-use Visus\Cuid2\Cuid2;
 
 class ResourceOperations extends Component
 {
@@ -66,7 +65,7 @@ class ResourceOperations extends Component
             if (! $new_destination) {
                 return $this->addError('destination_id', 'Destination not found.');
             }
-            $uuid = (string) new Cuid2;
+            $uuid = new_public_id();
             $server = $new_destination->server;
 
             if ($this->resource->getMorphClass() === Application::class) {
@@ -89,7 +88,7 @@ class ResourceOperations extends Component
                 $this->resource->getMorphClass() === StandaloneDragonfly::class ||
                 $this->resource->getMorphClass() === StandaloneClickhouse::class
             ) {
-                $uuid = (string) new Cuid2;
+                $uuid = new_public_id();
                 $new_resource = $this->resource->replicate([
                     'id',
                     'created_at',
@@ -180,7 +179,7 @@ class ResourceOperations extends Component
 
                 $scheduledBackups = $this->resource->scheduledBackups()->get();
                 foreach ($scheduledBackups as $backup) {
-                    $uuid = (string) new Cuid2;
+                    $uuid = new_public_id();
                     $newBackup = $backup->replicate([
                         'id',
                         'created_at',
@@ -216,7 +215,7 @@ class ResourceOperations extends Component
 
                 return redirect()->to($route);
             } elseif ($this->resource->type() === 'service') {
-                $uuid = (string) new Cuid2;
+                $uuid = new_public_id();
                 $new_resource = $this->resource->replicate([
                     'id',
                     'created_at',
@@ -243,7 +242,7 @@ class ResourceOperations extends Component
                         'created_at',
                         'updated_at',
                     ])->fill([
-                        'uuid' => (string) new Cuid2,
+                        'uuid' => new_public_id(),
                         'service_id' => $new_resource->id,
                         'team_id' => currentTeam()->id,
                     ]);

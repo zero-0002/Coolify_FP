@@ -13,7 +13,6 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Visus\Cuid2\Cuid2;
 
 class Index extends Component
 {
@@ -470,7 +469,7 @@ class Index extends Component
         $this->createdProject = Project::create([
             'name' => 'My first project',
             'team_id' => currentTeam()->id,
-            'uuid' => (string) new Cuid2,
+            'uuid' => new_public_id(),
         ]);
         $this->currentState = 'create-resource';
     }

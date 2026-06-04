@@ -7,8 +7,11 @@ use App\Models\PersonalAccessToken;
 use App\Models\PrivateKey;
 use App\Models\Team;
 use App\Models\User;
+use App\Policies\CloudInitScriptPolicy;
+use App\Policies\CloudProviderTokenPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
@@ -129,6 +132,11 @@ test('admin can view any cloud init scripts', function () {
     session(['currentTeam' => $this->team]);
 
     expect(auth()->user()->can('viewAny', CloudInitScript::class))->toBeTrue();
+});
+
+test('cloud provider and cloud init policies are explicitly registered', function () {
+    expect(Gate::getPolicyFor(CloudProviderToken::class))->toBeInstanceOf(CloudProviderTokenPolicy::class)
+        ->and(Gate::getPolicyFor(CloudInitScript::class))->toBeInstanceOf(CloudInitScriptPolicy::class);
 });
 
 // --- Personal Access Token (API Token) Policy ---

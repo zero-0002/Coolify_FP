@@ -549,8 +549,17 @@ class CloudProviderTokensController extends Controller
         if (! $cloudToken) {
             return response()->json(['message' => 'Cloud provider token not found.'], 404);
         }
+        $this->authorize('view', $cloudToken);
 
         $validation = $this->validateProviderToken($cloudToken->provider, $cloudToken->token);
+
+        auditLog('api.cloud_token.validated', [
+            'team_id' => $teamId,
+            'cloud_token_uuid' => $cloudToken->uuid,
+            'cloud_token_name' => $cloudToken->name,
+            'provider' => $cloudToken->provider,
+            'valid' => $validation['valid'],
+        ]);
 
         return response()->json([
             'valid' => $validation['valid'],
