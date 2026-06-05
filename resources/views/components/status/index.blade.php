@@ -18,18 +18,13 @@
         <x-status.stopped :status="$resource->status" />
     @endif
     @if (isset($resource->restart_count) && $resource->restart_count > 0 && (!str($resource->status)->startsWith('exited') || $stoppedAfterRestartLimit))
-        <div class="flex items-center">
-            <span class="text-xs dark:text-warning" title="Container has restarted {{ $resource->restart_count }} time{{ $resource->restart_count > 1 ? 's' : '' }}. Last restart: {{ $resource->last_restart_at?->diffForHumans() }}">
-                ({{ $resource->restart_count }}x restarts)
-            </span>
-        </div>
+        <x-status-badge status="{{ $resource->restart_count }}x restarts" type="warning"
+            title="Container has restarted {{ $resource->restart_count }} time{{ $resource->restart_count > 1 ? 's' : '' }}. Last restart: {{ $resource->last_restart_at?->diffForHumans() }}" />
     @endif
     @if ($stoppedAfterRestartLimit)
-        <div class="flex items-center">
-            <span class="text-xs dark:text-warning" title="Container has crashed and Coolify stopped it after {{ $resource->restart_count }} restart attempts.">
-                Stopped after reaching restart limit ({{ $resource->restart_count }}/{{ $resource->max_restart_count }}).
-            </span>
-        </div>
+        <x-status-badge status="Stopped after reaching restart limit ({{ $resource->restart_count }}/{{ $resource->max_restart_count }})."
+            type="warning"
+            title="Container has crashed and Coolify stopped it after {{ $resource->restart_count }} restart attempts." />
     @endif
     @if (!str($resource->status)->contains('exited') && $showRefreshButton)
         <x-status-badge as="button" wire:target="manualCheckStatus" wire:loading.attr="disabled"
