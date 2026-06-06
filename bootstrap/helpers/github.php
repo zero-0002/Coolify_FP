@@ -120,7 +120,11 @@ function githubApi(GithubApp|GitlabApp|null $source, string $endpoint, string $m
 function getInstallationPath(GithubApp $source): string
 {
     $name = str(Str::kebab($source->name));
-    $installation_path = $source->html_url === 'https://github.com' ? 'apps' : 'github-apps';
+    $baseUrl = rtrim($source->html_url, '/');
+    $host = parse_url($source->html_url, PHP_URL_HOST);
+    $host = blank($host) ? null : Str::lower($host);
+    $usesDataResidencyPath = filled($host) && Str::endsWith($host, '.ghe.com');
+    $installation_path = $host === 'github.com' || $usesDataResidencyPath ? 'apps' : 'github-apps';
     $state = Str::random(64);
 
     Cache::put('github-app-setup-state:'.hash('sha256', $state), [
@@ -129,7 +133,15 @@ function getInstallationPath(GithubApp $source): string
         'team_id' => $source->team_id,
     ], now()->addMinutes(60));
 
-    return "$source->html_url/$installation_path/$name/installations/new?".http_build_query(['state' => $state]);
+    if ($usesDataResidencyPath) {
+        $organization = str($source->organization)->trim('/');
+
+        if ($organization->isNotEmpty()) {
+            return "$baseUrl/$installation_path/$organization/$name/installations/new?".http_build_query(['state' => $state]);
+        }
+    }
+
+    return "$baseUrl/$installation_path/$name/installations/new?".http_build_query(['state' => $state]);
 }
 
 function getPermissionsPath(GithubApp $source)

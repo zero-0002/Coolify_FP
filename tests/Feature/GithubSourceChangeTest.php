@@ -147,6 +147,30 @@ describe('GitHub Source Change Component', function () {
             ]);
     });
 
+    test('ghe.com installation path uses github cloud owner scoped route', function () {
+        $githubApp = new GithubApp;
+        $githubApp->forceFill([
+            'id' => 123,
+            'name' => 'provided-github-app',
+            'organization' => 'acme-enterprise',
+            'html_url' => 'https://octocorp.ghe.com',
+            'team_id' => 456,
+        ]);
+
+        $installationUrl = getInstallationPath($githubApp);
+        parse_str(parse_url($installationUrl, PHP_URL_QUERY), $query);
+        $installState = $query['state'] ?? null;
+
+        expect($installationUrl)->toStartWith('https://octocorp.ghe.com/apps/acme-enterprise/provided-github-app/installations/new?')
+            ->and($installState)->not->toBeEmpty()
+            ->and(Cache::get('github-app-setup-state:'.hash('sha256', $installState)))
+            ->toMatchArray([
+                'action' => 'install',
+                'github_app_id' => 123,
+                'team_id' => 456,
+            ]);
+    });
+
     test('defaults webhook endpoint to app url when it is the first available endpoint', function () {
         config(['app.url' => 'http://localhost:8000']);
 
