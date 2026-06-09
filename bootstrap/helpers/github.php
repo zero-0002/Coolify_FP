@@ -13,6 +13,85 @@ use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Token\Builder;
 
+function githubUrlHost(?string $url): ?string
+{
+    if (blank($url)) {
+        return null;
+    }
+
+    $host = parse_url($url, PHP_URL_HOST);
+
+    if (! is_string($host) || blank($host)) {
+        return null;
+    }
+
+    return strtolower($host);
+}
+
+function githubUrlOrigin(string $url): string
+{
+    $scheme = parse_url($url, PHP_URL_SCHEME) ?: 'https';
+    $host = githubUrlHost($url);
+    $port = parse_url($url, PHP_URL_PORT);
+
+    if (! $host) {
+        return rtrim($url, '/');
+    }
+
+    return $scheme.'://'.$host.($port ? ":{$port}" : '');
+}
+
+function isGithubDotComHost(?string $htmlUrl): bool
+{
+    return githubUrlHost($htmlUrl) === 'github.com';
+}
+
+function isGheDotComHost(?string $htmlUrl): bool
+{
+    $host = githubUrlHost($htmlUrl);
+
+    return is_string($host)
+        && Str::endsWith($host, '.ghe.com')
+        && ! Str::startsWith($host, 'api.');
+}
+
+function isGithubCloudFamilyHost(?string $htmlUrl): bool
+{
+    return isGithubDotComHost($htmlUrl) || isGheDotComHost($htmlUrl);
+}
+
+function isGithubEnterpriseServerHost(?string $htmlUrl): bool
+{
+    return filled($htmlUrl) && ! isGithubCloudFamilyHost($htmlUrl);
+}
+
+function githubApiUrlFromHtmlUrl(string $htmlUrl): string
+{
+    if (isGithubDotComHost($htmlUrl)) {
+        return 'https://api.github.com';
+    }
+
+    if (isGheDotComHost($htmlUrl)) {
+        return 'https://api.'.githubUrlHost($htmlUrl);
+    }
+
+    return githubUrlOrigin($htmlUrl).'/api/v3';
+}
+
+function normalizeGithubOrganization(?string $organization): ?string
+{
+    if (blank($organization)) {
+        return null;
+    }
+
+    return trim((string) $organization, "/ \t\n\r\0\x0B");
+}
+
+function encodeGithubPathSegment(string $segment): string
+{
+    return rawurlencode($segment);
+}
+
 function generateGithubToken(GithubApp $source, string $type)
 {
     $response = Http::get("{$source->api_url}/zen");
@@ -119,9 +198,17 @@ function githubApi(GithubApp|GitlabApp|null $source, string $endpoint, string $m
 
 function getInstallationPath(GithubApp $source): string
 {
-    $name = str(Str::kebab($source->name));
-    $installation_path = $source->html_url === 'https://github.com' ? 'apps' : 'github-apps';
+    $name = encodeGithubPathSegment(Str::kebab($source->name));
     $state = Str::random(64);
+    $organization = normalizeGithubOrganization($source->organization);
+
+    if (isGithubEnterpriseServerHost($source->html_url)) {
+        $path = "github-apps/{$name}";
+    } elseif (isGheDotComHost($source->html_url) && filled($organization)) {
+        $path = 'apps/'.encodeGithubPathSegment($organization)."/{$name}";
+    } else {
+        $path = "apps/{$name}";
+    }
 
     Cache::put('github-app-setup-state:'.hash('sha256', $state), [
         'action' => 'install',
@@ -129,15 +216,19 @@ function getInstallationPath(GithubApp $source): string
         'team_id' => $source->team_id,
     ], now()->addMinutes(60));
 
-    return "$source->html_url/$installation_path/$name/installations/new?".http_build_query(['state' => $state]);
+    return rtrim($source->html_url, '/')."/{$path}/installations/new?".http_build_query(['state' => $state]);
 }
 
 function getPermissionsPath(GithubApp $source)
 {
-    $github = GithubApp::where('uuid', $source->uuid)->first();
-    $name = str(Str::kebab($github->name));
+    $name = encodeGithubPathSegment(Str::kebab($source->name));
+    $organization = normalizeGithubOrganization($source->organization);
 
-    return "$github->html_url/settings/apps/$name/permissions";
+    if (filled($organization)) {
+        return rtrim($source->html_url, '/').'/organizations/'.encodeGithubPathSegment($organization)."/settings/apps/{$name}/permissions";
+    }
+
+    return rtrim($source->html_url, '/')."/settings/apps/{$name}/permissions";
 }
 
 function loadRepositoryByPage(GithubApp $source, string $token, int $page)

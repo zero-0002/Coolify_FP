@@ -147,6 +147,20 @@ describe('GitHub Source Change Component', function () {
             ]);
     });
 
+    test('ghe dot com installation path includes encoded organization segment', function () {
+        $githubApp = new GithubApp;
+        $githubApp->forceFill([
+            'id' => 123,
+            'name' => 'Provided GitHub App',
+            'organization' => 'octo+corp',
+            'html_url' => 'https://octocorp.ghe.com',
+            'team_id' => 456,
+        ]);
+
+        expect(getInstallationPath($githubApp))
+            ->toStartWith('https://octocorp.ghe.com/apps/octo%2Bcorp/provided-git-hub-app/installations/new?');
+    });
+
     test('defaults webhook endpoint to app url when it is the first available endpoint', function () {
         config(['app.url' => 'http://localhost:8000']);
 
@@ -275,6 +289,49 @@ describe('GitHub Source Change Component', function () {
         expect($githubApp->installation_id)->toBe(67890);
         expect($githubApp->client_id)->toBe('new-client-id');
         expect($githubApp->private_key_id)->toBe($privateKey->id);
+    });
+
+    test('normalizes ghe dot com api url when saving github app settings', function () {
+        $githubApp = GithubApp::create([
+            'name' => 'Test GitHub App',
+            'api_url' => 'https://octocorp.ghe.com/api/v3',
+            'html_url' => 'https://github.com',
+            'custom_user' => 'git',
+            'custom_port' => 22,
+            'team_id' => $this->team->id,
+            'is_system_wide' => false,
+        ]);
+
+        Livewire::withQueryParams(['github_app_uuid' => $githubApp->uuid])
+            ->test(Change::class)
+            ->assertSuccessful()
+            ->set('htmlUrl', 'https://octocorp.ghe.com')
+            ->set('apiUrl', 'https://octocorp.ghe.com/api/v3')
+            ->call('submit')
+            ->assertDispatched('success')
+            ->assertSet('apiUrl', 'https://api.octocorp.ghe.com');
+
+        $githubApp->refresh();
+        expect($githubApp->api_url)->toBe('https://api.octocorp.ghe.com');
+    });
+
+    test('rejects invalid github organization values', function () {
+        $githubApp = GithubApp::create([
+            'name' => 'Test GitHub App',
+            'api_url' => 'https://api.github.com',
+            'html_url' => 'https://github.com',
+            'custom_user' => 'git',
+            'custom_port' => 22,
+            'team_id' => $this->team->id,
+            'is_system_wide' => false,
+        ]);
+
+        Livewire::withQueryParams(['github_app_uuid' => $githubApp->uuid])
+            ->test(Change::class)
+            ->assertSuccessful()
+            ->set('organization', 'octo/corp')
+            ->call('submit')
+            ->assertHasErrors(['organization']);
     });
 
     test('validation allows nullable values for app configuration', function () {
@@ -428,5 +485,41 @@ describe('GitHub Source Change Component', function () {
         expect($githubApp->contents)->toBe('read')
             ->and($githubApp->metadata)->toBe('read')
             ->and($githubApp->pull_requests)->toBe('write');
+    });
+
+    test('sync name uses normalized ghe dot com api url', function () {
+        $privateKey = PrivateKey::create([
+            'name' => 'Test Key',
+            'private_key' => validPrivateKey(),
+            'team_id' => $this->team->id,
+        ]);
+
+        $githubApp = GithubApp::create([
+            'name' => 'Test GitHub App',
+            'api_url' => 'https://api.octocorp.ghe.com',
+            'html_url' => 'https://octocorp.ghe.com',
+            'custom_user' => 'git',
+            'custom_port' => 22,
+            'app_id' => 12345,
+            'installation_id' => 67890,
+            'private_key_id' => $privateKey->id,
+            'team_id' => $this->team->id,
+            'is_system_wide' => false,
+        ]);
+
+        Http::preventStrayRequests();
+        Http::fake([
+            'https://api.octocorp.ghe.com/app' => Http::response([
+                'slug' => 'octocorp-app',
+            ]),
+        ]);
+
+        Livewire::withQueryParams(['github_app_uuid' => $githubApp->uuid])
+            ->test(Change::class)
+            ->assertSuccessful()
+            ->call('updateGithubAppName')
+            ->assertDispatched('success');
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.octocorp.ghe.com/app');
     });
 });

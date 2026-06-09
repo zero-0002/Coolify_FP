@@ -30,14 +30,22 @@ class Create extends Component
         $this->name = substr(generate_random_name(), 0, 30);
     }
 
+    public function updatedHtmlUrl(): void
+    {
+        $this->api_url = githubApiUrlFromHtmlUrl($this->html_url);
+    }
+
     public function createGitHubApp()
     {
         try {
             $this->authorize('createAnyResource');
 
+            $this->organization = normalizeGithubOrganization($this->organization);
+            $this->api_url = githubApiUrlFromHtmlUrl($this->html_url);
+
             $this->validate([
                 'name' => 'required|string',
-                'organization' => 'nullable|string',
+                'organization' => ['nullable', 'string', 'regex:/\A[^\s\/?#]+\z/'],
                 'api_url' => ['required', 'string', 'url', new SafeExternalUrl],
                 'html_url' => ['required', 'string', 'url', new SafeExternalUrl],
                 'custom_user' => 'required|string',
