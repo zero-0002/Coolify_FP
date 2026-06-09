@@ -2,6 +2,7 @@
 
 use App\Models\GithubApp;
 use App\Models\GitlabApp;
+use App\Models\PrivateKey;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
@@ -117,8 +118,75 @@ function githubApi(GithubApp|GitlabApp|null $source, string $endpoint, string $m
     ];
 }
 
+function generateGithubAppJwt(string $privateKey, string|int $appId): string
+{
+    $algorithm = new Sha256;
+    $tokenBuilder = (new Builder(new JoseEncoder, ChainedFormatter::default()));
+    $now = CarbonImmutable::now()->setTimezone('UTC');
+    $now = $now->setTime($now->format('H'), $now->format('i'), $now->format('s'));
+
+    return $tokenBuilder
+        ->issuedBy((string) $appId)
+        ->issuedAt($now->modify('-1 minute'))
+        ->expiresAt($now->modify('+8 minutes'))
+        ->getToken($algorithm, InMemory::plainText($privateKey))
+        ->toString();
+}
+
+function syncGithubAppName(GithubApp $source, bool $throw = false): ?string
+{
+    try {
+        if (blank($source->app_id) || blank($source->private_key_id)) {
+            return null;
+        }
+
+        $privateKey = $source->privateKey ?: PrivateKey::find($source->private_key_id);
+
+        if (! $privateKey) {
+            return null;
+        }
+
+        $jwt = generateGithubAppJwt($privateKey->private_key, $source->app_id);
+
+        $response = Http::withHeaders([
+            'Accept' => 'application/vnd.github+json',
+            'X-GitHub-Api-Version' => '2022-11-28',
+            'Authorization' => "Bearer {$jwt}",
+        ])->get("{$source->api_url}/app");
+
+        if (! $response->successful()) {
+            throw new RuntimeException(data_get($response->json(), 'message', 'Failed to fetch GitHub App information.'));
+        }
+
+        $appSlug = data_get($response->json(), 'slug');
+
+        if (blank($appSlug)) {
+            return null;
+        }
+
+        $source->name = $appSlug;
+
+        if ($source->exists) {
+            $source->save();
+        }
+
+        $privateKey->name = "github-app-{$appSlug}";
+        $privateKey->save();
+
+        return $appSlug;
+    } catch (Throwable $e) {
+        if ($throw) {
+            throw $e;
+        }
+
+        return null;
+    }
+}
+
 function getInstallationPath(GithubApp $source): string
 {
+    syncGithubAppName($source);
+
     $name = str(Str::kebab($source->name));
     $baseUrl = rtrim($source->html_url, '/');
     $host = parse_url($source->html_url, PHP_URL_HOST);
@@ -137,6 +205,8 @@ function getInstallationPath(GithubApp $source): string
         $organization = str($source->organization)->trim('/');
 
         if ($organization->isNotEmpty()) {
+            $organization = rawurlencode((string) $organization);
+
             return "$baseUrl/$installation_path/$organization/$name/installations/new?".http_build_query(['state' => $state]);
         }
     }
