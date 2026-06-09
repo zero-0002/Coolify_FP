@@ -304,7 +304,17 @@ class Change extends Component
         try {
             $this->authorize('update', $this->github_app);
 
-            if (! PrivateKey::ownedByCurrentTeam()->find($this->github_app->private_key_id)) {
+            $this->github_app->app_id = $this->appId;
+            $this->github_app->private_key_id = $this->privateKeyId;
+            $this->github_app->unsetRelation('privateKey');
+
+            if (! $this->appId) {
+                $this->dispatch('error', 'App ID is required before synchronizing the GitHub App name.');
+
+                return;
+            }
+
+            if (! PrivateKey::ownedByCurrentTeam()->find($this->privateKeyId)) {
                 $this->dispatch('error', 'No private key found for this GitHub App.');
 
                 return;
@@ -314,7 +324,7 @@ class Change extends Component
 
             if ($appSlug) {
                 $this->name = str($appSlug)->kebab();
-                $this->dispatch('success', 'GitHub App name and SSH key name synchronized successfully.');
+                $this->dispatch('success', 'GitHub App name and private key name synchronized successfully.');
             } else {
                 $this->dispatch('info', 'Could not find App Name (slug) in GitHub response.');
             }

@@ -14,9 +14,9 @@ use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Token\Builder;
 
-function generateGithubToken(GithubApp $source, string $type)
+function assertGithubClockInSync(string $apiUrl): void
 {
-    $response = Http::get("{$source->api_url}/zen");
+    $response = Http::get("{$apiUrl}/zen");
     $serverTime = CarbonImmutable::now()->setTimezone('UTC');
     $githubTime = Carbon::parse($response->header('date'));
     $timeDiff = abs($serverTime->diffInSeconds($githubTime));
@@ -30,6 +30,11 @@ function generateGithubToken(GithubApp $source, string $type)
             'Please synchronize your system clock.'
         );
     }
+}
+
+function generateGithubToken(GithubApp $source, string $type)
+{
+    assertGithubClockInSync($source->api_url);
 
     $signingKey = InMemory::plainText($source->privateKey->private_key);
     $algorithm = new Sha256;
@@ -145,6 +150,8 @@ function syncGithubAppName(GithubApp $source, bool $throw = false): ?string
         if (! $privateKey) {
             return null;
         }
+
+        assertGithubClockInSync($source->api_url);
 
         $jwt = generateGithubAppJwt($privateKey->private_key, $source->app_id);
 
