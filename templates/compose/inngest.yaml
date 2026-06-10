@@ -11,8 +11,8 @@ services:
     command: 'inngest start --host 0.0.0.0'
     environment:
       - SERVICE_FQDN_INNGEST_8288
-      - 'INNGEST_EVENT_KEY=${SERVICE_PASSWORD_EVENTKEY}'
-      - 'INNGEST_SIGNING_KEY=${SERVICE_PASSWORD_SIGNINGKEY}'
+      - 'INNGEST_EVENT_KEY=${SERVICE_HEX_32_EVENTKEY}'
+      - 'INNGEST_SIGNING_KEY=${SERVICE_HEX_32_SIGNINGKEY}'
       - 'INNGEST_POSTGRES_URI=postgres://inngest:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/inngest'
       - 'INNGEST_REDIS_URI=redis://redis:6379'
     depends_on:
