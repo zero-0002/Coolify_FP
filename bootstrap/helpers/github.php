@@ -13,6 +13,12 @@ use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Token\Builder;
 
+/**
+ * Extract and normalize the hostname from a GitHub URL.
+ *
+ * @param  string|null  $url  The URL to parse
+ * @return string|null The lowercase hostname, or null if the URL is blank or has no parseable host
+ */
 function githubUrlHost(?string $url): ?string
 {
     if (blank($url)) {
@@ -28,6 +34,17 @@ function githubUrlHost(?string $url): ?string
     return strtolower($host);
 }
 
+/**
+ * Build the scheme://host[:port] origin for a GitHub URL.
+ *
+ * When the host cannot be parsed (e.g. a scheme-less or malformed URL such as
+ * "not-a-url"), the input is returned verbatim with any trailing slashes
+ * trimmed. Callers should pass already-validated URLs (see SafeExternalUrl),
+ * so this fallback only guards against unexpected input.
+ *
+ * @param  string  $url  The URL to derive the origin from
+ * @return string The normalized origin, or the trimmed input when the host is unparseable
+ */
 function githubUrlOrigin(string $url): string
 {
     $scheme = parse_url($url, PHP_URL_SCHEME) ?: 'https';
@@ -41,11 +58,21 @@ function githubUrlOrigin(string $url): string
     return $scheme.'://'.$host.($port ? ":{$port}" : '');
 }
 
+/**
+ * Determine whether the URL points at github.com.
+ *
+ * @param  string|null  $htmlUrl  The GitHub HTML URL to check
+ */
 function isGithubDotComHost(?string $htmlUrl): bool
 {
     return githubUrlHost($htmlUrl) === 'github.com';
 }
 
+/**
+ * Determine whether the URL points at a *.ghe.com GitHub Enterprise Cloud host.
+ *
+ * @param  string|null  $htmlUrl  The GitHub HTML URL to check
+ */
 function isGheDotComHost(?string $htmlUrl): bool
 {
     $host = githubUrlHost($htmlUrl);
@@ -55,16 +82,32 @@ function isGheDotComHost(?string $htmlUrl): bool
         && ! Str::startsWith($host, 'api.');
 }
 
+/**
+ * Determine whether the URL belongs to GitHub's cloud family (github.com or *.ghe.com).
+ *
+ * @param  string|null  $htmlUrl  The GitHub HTML URL to check
+ */
 function isGithubCloudFamilyHost(?string $htmlUrl): bool
 {
     return isGithubDotComHost($htmlUrl) || isGheDotComHost($htmlUrl);
 }
 
+/**
+ * Determine whether the URL belongs to a self-hosted GitHub Enterprise Server.
+ *
+ * @param  string|null  $htmlUrl  The GitHub HTML URL to check
+ */
 function isGithubEnterpriseServerHost(?string $htmlUrl): bool
 {
     return filled($htmlUrl) && ! isGithubCloudFamilyHost($htmlUrl);
 }
 
+/**
+ * Derive the GitHub REST API base URL from a GitHub HTML URL.
+ *
+ * @param  string  $htmlUrl  The GitHub HTML URL
+ * @return string The API base URL (api.github.com, api.<host> for *.ghe.com, or <origin>/api/v3 for GHES)
+ */
 function githubApiUrlFromHtmlUrl(string $htmlUrl): string
 {
     if (isGithubDotComHost($htmlUrl)) {
@@ -78,6 +121,12 @@ function githubApiUrlFromHtmlUrl(string $htmlUrl): string
     return githubUrlOrigin($htmlUrl).'/api/v3';
 }
 
+/**
+ * Normalize a GitHub organization slug by trimming surrounding slashes and whitespace.
+ *
+ * @param  string|null  $organization  The raw organization value
+ * @return string|null The trimmed organization, or null when blank
+ */
 function normalizeGithubOrganization(?string $organization): ?string
 {
     if (blank($organization)) {
@@ -87,6 +136,12 @@ function normalizeGithubOrganization(?string $organization): ?string
     return trim((string) $organization, "/ \t\n\r\0\x0B");
 }
 
+/**
+ * URL-encode a single GitHub path segment.
+ *
+ * @param  string  $segment  The raw path segment
+ * @return string The raw-URL-encoded segment
+ */
 function encodeGithubPathSegment(string $segment): string
 {
     return rawurlencode($segment);

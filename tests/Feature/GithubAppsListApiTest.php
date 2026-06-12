@@ -27,6 +27,14 @@ beforeEach(function () {
     ]);
 });
 
+/**
+ * Generate a temporary 2048-bit RSA private key for GitHub Apps API tests.
+ *
+ * Generated in-process so tests do not depend on external files or secrets;
+ * the key is used only as a signing fixture and is never persisted.
+ *
+ * @return string PEM-encoded RSA private key
+ */
 function validGithubAppsApiPrivateKey(): string
 {
     $key = openssl_pkey_new([

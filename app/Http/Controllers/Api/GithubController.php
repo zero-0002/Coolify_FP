@@ -254,7 +254,7 @@ class GithubController extends Controller
             $payload = [
                 'uuid' => Str::uuid(),
                 'name' => $request->input('name'),
-                'organization' => normalizeGithubOrganization($request->input('organization')),
+                'organization' => $request->input('organization'),
                 'api_url' => githubApiUrlFromHtmlUrl($request->input('html_url')),
                 'html_url' => $request->input('html_url'),
                 'custom_user' => $request->input('custom_user', 'git'),
@@ -650,8 +650,6 @@ class GithubController extends Controller
             }
             if (isset($payload['html_url'])) {
                 $payload['api_url'] = githubApiUrlFromHtmlUrl($payload['html_url']);
-            } elseif (isset($payload['api_url'])) {
-                $payload['api_url'] = githubApiUrlFromHtmlUrl($githubApp->html_url);
             }
 
             // Handle private_key_uuid -> private_key_id conversion
