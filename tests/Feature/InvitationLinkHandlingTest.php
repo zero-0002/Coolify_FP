@@ -77,6 +77,34 @@ it('accepts a valid magic link invitation only once and rotates the temporary pa
     $this->assertGuest();
 });
 
+it('accepts a magic link when opened from a different public origin', function () {
+    [$team, $user, $password, $token] = createInvitationLinkFixture();
+
+    $this->get('https://coolify.example.com/auth/link?token='.urlencode($token))
+        ->assertRedirect(route('dashboard'));
+
+    $this->assertAuthenticatedAs($user);
+    $this->assertDatabaseMissing('team_invitations', ['email' => $user->email]);
+    expect($user->teams()->where('team_id', $team->id)->exists())->toBeTrue();
+
+    $user->refresh();
+    expect(Hash::check($password, $user->password))->toBeFalse();
+});
+
+it('rejects a magic link when the stored invitation token differs', function () {
+    [, $user, , $token, $invitation] = createInvitationLinkFixture();
+    $differentToken = Crypt::encryptString("{$user->email}@@@{$invitation->uuid}@@@different-password");
+
+    $invitation->forceFill([
+        'link' => route('auth.link', ['token' => $differentToken]),
+    ])->save();
+
+    $this->get(route('auth.link', ['token' => $token]))
+        ->assertRedirect(route('login'));
+
+    $this->assertGuest();
+});
+
 it('rejects a magic link when the invitation was revoked', function () {
     [, $user, , $token, $invitation] = createInvitationLinkFixture();
     $invitation->delete();

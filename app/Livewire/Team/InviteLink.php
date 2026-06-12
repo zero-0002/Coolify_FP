@@ -40,6 +40,16 @@ class InviteLink extends Component
         $this->generateInviteLink(sendEmail: false);
     }
 
+    private function invitationUrl(string $routeName, array $parameters): string
+    {
+        $fqdn = instanceSettings()->fqdn;
+        if (filled($fqdn)) {
+            return rtrim($fqdn, '/').route($routeName, $parameters, false);
+        }
+
+        return route($routeName, $parameters);
+    }
+
     private function generateInviteLink(bool $sendEmail = false)
     {
         try {
@@ -62,7 +72,7 @@ class InviteLink extends Component
                 return handleError(livewire: $this, customErrorMessage: "$this->email is already a member of ".currentTeam()->name.'.');
             }
             $uuid = (string) new Cuid2(32);
-            $link = url('/').config('constants.invitation.link.base_url').$uuid;
+            $link = $this->invitationUrl('team.invitation.show', ['uuid' => $uuid]);
             $user = User::whereEmail($this->email)->first();
 
             if (is_null($user)) {
@@ -74,7 +84,7 @@ class InviteLink extends Component
                     'force_password_reset' => true,
                 ]);
                 $token = Crypt::encryptString("{$user->email}@@@{$uuid}@@@{$password}");
-                $link = route('auth.link', ['token' => $token]);
+                $link = $this->invitationUrl('auth.link', ['token' => $token]);
             }
             $invitation = TeamInvitation::whereEmail($this->email)->first();
             if (! is_null($invitation)) {
