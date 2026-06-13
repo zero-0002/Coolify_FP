@@ -40,17 +40,11 @@ We welcome contributions that help stabilize v4, but larger changes will be save
 ## What Makes a Strong Contribution
 The following types of contributions are most likely to be accepted:
 
-- **Bug fixes** (with clear reproduction steps)
-- **Documentation improvements** (typos, clarifications, examples, guides)
-- **Features discussed and aligned beforehand**
-- **New service templates** requested by the community
-- **Small, focused pull requests**
+#### Code Quality and Testing
+All contributions must adhere to the highest standards of code quality and testing:
 
 If your change is small and obvious (typo fix, small bug, minor docs update), you may open a pull request directly.
 
-
-## Keep Changes Focused
-Only modify what is necessary to achieve your goal.
 
 If you are fixing a bug in `file.yaml`, do not:
 - Reformat unrelated files

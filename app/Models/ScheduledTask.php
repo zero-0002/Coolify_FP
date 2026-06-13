@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasSafeStringAttribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use OpenApi\Attributes as OA;
@@ -25,9 +26,21 @@ use OpenApi\Attributes as OA;
 )]
 class ScheduledTask extends BaseModel
 {
+    use HasFactory;
     use HasSafeStringAttribute;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'uuid',
+        'enabled',
+        'name',
+        'command',
+        'frequency',
+        'container',
+        'timeout',
+        'team_id',
+        'application_id',
+        'service_id',
+    ];
 
     public static function ownedByCurrentTeamAPI(int $teamId)
     {
@@ -63,20 +76,14 @@ class ScheduledTask extends BaseModel
         return $this->hasMany(ScheduledTaskExecution::class)->orderBy('created_at', 'desc');
     }
 
-    public function server()
+    public function server(): ?Server
     {
         if ($this->application) {
-            if ($this->application->destination && $this->application->destination->server) {
-                return $this->application->destination->server;
-            }
-        } elseif ($this->service) {
-            if ($this->service->destination && $this->service->destination->server) {
-                return $this->service->destination->server;
-            }
-        } elseif ($this->database) {
-            if ($this->database->destination && $this->database->destination->server) {
-                return $this->database->destination->server;
-            }
+            return $this->application->destination?->server;
+        }
+
+        if ($this->service) {
+            return $this->service->destination?->server;
         }
 
         return null;
