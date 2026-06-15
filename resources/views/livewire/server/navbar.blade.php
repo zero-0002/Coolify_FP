@@ -78,7 +78,7 @@
                             @endif
                         </a>
             @endif
-            @if ($server->isFunctional() && !$server->isSwarm() && !$server->settings->is_build_server)
+            @if ($server->isFunctional() && !$server->isSwarm() && !$server->settings->is_build_server && auth()->user()?->can('viewSentinel', $server))
                         <a class="{{ request()->routeIs('server.sentinel') || request()->routeIs('server.sentinel.*') ? 'dark:text-white' : '' }} flex items-center gap-1" href="{{ route('server.sentinel', [
                     'server_uuid' => data_get($server, 'uuid'),
                 ]) }}" {{ wireNavigate() }}>

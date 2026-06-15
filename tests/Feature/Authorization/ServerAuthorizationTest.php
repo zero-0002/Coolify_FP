@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Livewire\Server\Navbar as ServerNavbar;
 use App\Models\InstanceSettings;
 use App\Models\Server;
@@ -13,7 +14,9 @@ use Livewire\Livewire;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    InstanceSettings::updateOrCreate(['id' => 0]);
+    $this->withoutMiddleware(PreventRequestsDuringMaintenance::class);
+
+    InstanceSettings::unguarded(fn () => InstanceSettings::updateOrCreate(['id' => 0], ['id' => 0]));
 
     $this->team = Team::factory()->create();
 
@@ -215,6 +218,44 @@ test('member can access server page', function () {
     session(['currentTeam' => $this->team]);
 
     $this->get("/server/{$this->server->uuid}")->assertSuccessful();
+});
+
+test('admin can access sentinel configuration and logs pages', function () {
+    $this->actingAs($this->admin);
+    session(['currentTeam' => $this->team]);
+
+    $this->get(route('server.sentinel', ['server_uuid' => $this->server->uuid]))
+        ->assertSuccessful();
+
+    $this->get(route('server.sentinel.logs', ['server_uuid' => $this->server->uuid]))
+        ->assertSuccessful();
+});
+
+test('member cannot access sentinel configuration and logs pages', function () {
+    $this->actingAs($this->member);
+    session(['currentTeam' => $this->team]);
+
+    $this->get(route('server.sentinel', ['server_uuid' => $this->server->uuid]))
+        ->assertForbidden();
+
+    $this->get(route('server.sentinel.logs', ['server_uuid' => $this->server->uuid]))
+        ->assertForbidden();
+});
+
+test('sentinel navigation is only visible to team admins', function () {
+    $this->actingAs($this->member);
+    session(['currentTeam' => $this->team]);
+
+    $this->get("/server/{$this->server->uuid}")
+        ->assertSuccessful()
+        ->assertDontSee(route('server.sentinel', ['server_uuid' => $this->server->uuid]));
+
+    $this->actingAs($this->admin);
+    session(['currentTeam' => $this->team]);
+
+    $this->get("/server/{$this->server->uuid}")
+        ->assertSuccessful()
+        ->assertSee(route('server.sentinel', ['server_uuid' => $this->server->uuid]));
 });
 
 test('unauthenticated user cannot access server page', function () {

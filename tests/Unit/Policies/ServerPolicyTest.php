@@ -152,6 +152,18 @@ it('allows team admin to manage sentinel, ca certificate, and view security', fu
 
     $policy = new ServerPolicy;
     expect($policy->manageSentinel($user, $server))->toBeTrue();
+    expect($policy->viewSentinel($user, $server))->toBeTrue();
     expect($policy->manageCaCertificate($user, $server))->toBeTrue();
     expect($policy->viewSecurity($user, $server))->toBeTrue();
+});
+
+it('denies team member to view sentinel', function () {
+    $user = Mockery::mock(User::class)->makePartial();
+    $user->shouldReceive('isAdminOfTeam')->with(1)->andReturn(false);
+
+    $server = Mockery::mock(Server::class)->makePartial();
+    $server->team_id = 1;
+
+    $policy = new ServerPolicy;
+    expect($policy->viewSentinel($user, $server))->toBeFalse();
 });

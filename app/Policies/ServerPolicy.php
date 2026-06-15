@@ -80,6 +80,14 @@ class ServerPolicy
     }
 
     /**
+     * Determine whether the user can view Sentinel configuration and logs.
+     */
+    public function viewSentinel(User $user, Server $server): bool
+    {
+        return $user->isAdminOfTeam($server->team_id);
+    }
+
+    /**
      * Determine whether the user can manage CA certificates.
      */
     public function manageCaCertificate(User $user, Server $server): bool
