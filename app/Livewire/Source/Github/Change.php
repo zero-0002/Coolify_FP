@@ -204,6 +204,8 @@ class Change extends Component
                 return;
             }
 
+            syncGithubAppName($this->github_app);
+
             GithubAppPermissionJob::dispatchSync($this->github_app);
             $this->github_app->refresh()->makeVisible('client_secret')->makeVisible('webhook_secret');
             $this->syncData(false);

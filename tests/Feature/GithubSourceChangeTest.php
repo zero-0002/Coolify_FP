@@ -171,10 +171,8 @@ describe('GitHub Source Change Component', function () {
             ]);
     });
 
-    test('installation path synchronizes github app slug before generating the url', function () {
-        Http::fake([
-            'https://api.github.com/app' => Http::response(['slug' => 'actual-github-slug']),
-        ]);
+    test('installation path is pure and never calls github or mutates the app', function () {
+        Http::fake();
 
         $privateKey = PrivateKey::create([
             'name' => 'github-app-local-name',
@@ -198,7 +196,42 @@ describe('GitHub Source Change Component', function () {
 
         $installationUrl = getInstallationPath($githubApp);
 
-        expect($installationUrl)->toStartWith('https://octocorp.ghe.com/apps/acme-enterprise/actual-github-slug/installations/new?')
+        Http::assertNothingSent();
+
+        expect($installationUrl)->toStartWith('https://octocorp.ghe.com/apps/acme-enterprise/local-display-name/installations/new?')
+            ->and($githubApp->refresh()->name)->toBe('Local Display Name')
+            ->and($privateKey->refresh()->name)->toBe('github-app-local-name');
+    });
+
+    test('syncGithubAppName persists the github slug and renames the private key', function () {
+        Http::fake([
+            '*/app' => Http::response(['slug' => 'actual-github-slug']),
+            '*/zen' => Http::response('Keep it logically awesome.'),
+        ]);
+
+        $privateKey = PrivateKey::create([
+            'name' => 'github-app-local-name',
+            'private_key' => validPrivateKey(),
+            'team_id' => $this->team->id,
+            'is_git_related' => true,
+        ]);
+
+        $githubApp = GithubApp::create([
+            'name' => 'Local Display Name',
+            'organization' => 'acme-enterprise',
+            'api_url' => 'https://api.github.com',
+            'html_url' => 'https://octocorp.ghe.com',
+            'custom_user' => 'git',
+            'custom_port' => 22,
+            'app_id' => 12345,
+            'private_key_id' => $privateKey->id,
+            'team_id' => $this->team->id,
+            'is_system_wide' => false,
+        ]);
+
+        $appSlug = syncGithubAppName($githubApp, true);
+
+        expect($appSlug)->toBe('actual-github-slug')
             ->and($githubApp->refresh()->name)->toBe('actual-github-slug')
             ->and($privateKey->refresh()->name)->toBe('github-app-actual-github-slug');
     });

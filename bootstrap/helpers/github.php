@@ -192,8 +192,6 @@ function syncGithubAppName(GithubApp $source, bool $throw = false): ?string
 
 function getInstallationPath(GithubApp $source): string
 {
-    syncGithubAppName($source);
-
     $name = str(Str::kebab($source->name));
     $baseUrl = rtrim($source->html_url, '/');
     $host = parse_url($source->html_url, PHP_URL_HOST);
