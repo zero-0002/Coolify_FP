@@ -37,7 +37,6 @@ use JsonException;
 use Spatie\Url\Url;
 use Symfony\Component\Yaml\Yaml;
 use Throwable;
-use Visus\Cuid2\Cuid2;
 
 class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -2207,7 +2206,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
                 continue;
             }
-            $deployment_uuid = new Cuid2;
+            $deployment_uuid = new_public_id();
             queue_application_deployment(
                 deployment_uuid: $deployment_uuid,
                 application: $this->application,
@@ -2260,7 +2259,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $sshCommand = "ssh -o ConnectTimeout=30 -p {$this->customPort} -o Port={$this->customPort} -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null";
 
         if ($identityFile !== null) {
-            $sshCommand .= " -i {$identityFile}";
+            $sshCommand .= " -i {$identityFile} -o IdentitiesOnly=yes";
         }
 
         return 'GIT_SSH_COMMAND="'.$sshCommand.'" git ls-remote '.escapeshellarg($this->fullRepoUrl).' '.escapeshellarg($lsRemoteRef);
@@ -2300,18 +2299,19 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $private_key = data_get($this->application, 'private_key.private_key');
         if ($private_key) {
             $private_key = base64_encode($private_key);
+            $customSshKeyLocation = "/root/.ssh/id_rsa_coolify_{$this->deployment_uuid}";
             $this->execute_remote_command(
                 [
                     executeInDocker($this->deployment_uuid, 'mkdir -p /root/.ssh'),
                 ],
                 [
-                    executeInDocker($this->deployment_uuid, "echo '{$private_key}' | base64 -d | tee /root/.ssh/id_rsa > /dev/null"),
+                    executeInDocker($this->deployment_uuid, "echo '{$private_key}' | base64 -d | tee {$customSshKeyLocation} > /dev/null"),
                 ],
                 [
-                    executeInDocker($this->deployment_uuid, 'chmod 600 /root/.ssh/id_rsa'),
+                    executeInDocker($this->deployment_uuid, "chmod 600 {$customSshKeyLocation}"),
                 ],
                 [
-                    executeInDocker($this->deployment_uuid, $this->gitLsRemoteCommand($lsRemoteRef, '/root/.ssh/id_rsa')),
+                    executeInDocker($this->deployment_uuid, $this->gitLsRemoteCommand($lsRemoteRef, $customSshKeyLocation)),
                     'hidden' => true,
                     'save' => 'git_commit_sha',
                 ]
