@@ -13,18 +13,13 @@ class CloudProviderTokenFactory extends Factory
 {
     protected $model = CloudProviderToken::class;
 
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
             'team_id' => Team::factory(),
             'provider' => 'hetzner',
-            'token' => $this->faker->sha256(),
-            'name' => $this->faker->words(2, true),
+            'token' => 'test-cloud-provider-token',
+            'name' => fake()->words(3, true),
         ];
     }
 }

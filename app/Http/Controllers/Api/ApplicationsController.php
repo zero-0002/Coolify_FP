@@ -30,7 +30,6 @@ use Illuminate\Validation\Rule;
 use OpenApi\Attributes as OA;
 use Spatie\Url\Url;
 use Symfony\Component\Yaml\Yaml;
-use Visus\Cuid2\Cuid2;
 
 class ApplicationsController extends Controller
 {
@@ -62,6 +61,10 @@ class ApplicationsController extends Controller
                 'private_key_id',
             ]);
             $this->hideNestedServerSecrets($application);
+        }
+
+        if ($application->is_shown_once ?? false) {
+            $application->makeHidden(['value', 'real_value']);
         }
 
         return serializeApiResponse($application);
@@ -1251,7 +1254,7 @@ class ApplicationsController extends Controller
             $application->isConfigurationChanged(true);
 
             if ($instantDeploy) {
-                $deployment_uuid = new Cuid2;
+                $deployment_uuid = new_public_id();
 
                 $result = queue_application_deployment(
                     application: $application,
@@ -1490,7 +1493,7 @@ class ApplicationsController extends Controller
             $application->isConfigurationChanged(true);
 
             if ($instantDeploy) {
-                $deployment_uuid = new Cuid2;
+                $deployment_uuid = new_public_id();
 
                 $result = queue_application_deployment(
                     application: $application,
@@ -1699,7 +1702,7 @@ class ApplicationsController extends Controller
             $application->isConfigurationChanged(true);
 
             if ($instantDeploy) {
-                $deployment_uuid = new Cuid2;
+                $deployment_uuid = new_public_id();
 
                 $result = queue_application_deployment(
                     application: $application,
@@ -1745,7 +1748,7 @@ class ApplicationsController extends Controller
                 ], 422);
             }
             if (! $request->has('name')) {
-                $request->offsetSet('name', 'dockerfile-'.new Cuid2);
+                $request->offsetSet('name', 'dockerfile-'.new_public_id());
             }
 
             $return = $this->validateDataApplications($request, $server);
@@ -1819,7 +1822,7 @@ class ApplicationsController extends Controller
             $application->isConfigurationChanged(true);
 
             if ($instantDeploy) {
-                $deployment_uuid = new Cuid2;
+                $deployment_uuid = new_public_id();
 
                 $result = queue_application_deployment(
                     application: $application,
@@ -1863,7 +1866,7 @@ class ApplicationsController extends Controller
                 ], 422);
             }
             if (! $request->has('name')) {
-                $request->offsetSet('name', 'docker-image-'.new Cuid2);
+                $request->offsetSet('name', 'docker-image-'.new_public_id());
             }
             $return = $this->validateDataApplications($request, $server);
             if ($return instanceof JsonResponse) {
@@ -1938,7 +1941,7 @@ class ApplicationsController extends Controller
             $application->isConfigurationChanged(true);
 
             if ($instantDeploy) {
-                $deployment_uuid = new Cuid2;
+                $deployment_uuid = new_public_id();
 
                 $result = queue_application_deployment(
                     application: $application,
@@ -2736,7 +2739,7 @@ class ApplicationsController extends Controller
         ]);
 
         if ($instantDeploy) {
-            $deployment_uuid = new Cuid2;
+            $deployment_uuid = new_public_id();
 
             $result = queue_application_deployment(
                 application: $application,
@@ -3643,7 +3646,7 @@ class ApplicationsController extends Controller
 
         $this->authorize('deploy', $application);
 
-        $deployment_uuid = new Cuid2;
+        $deployment_uuid = new_public_id();
 
         $result = queue_application_deployment(
             application: $application,
@@ -3841,7 +3844,7 @@ class ApplicationsController extends Controller
 
         $this->authorize('deploy', $application);
 
-        $deployment_uuid = new Cuid2;
+        $deployment_uuid = new_public_id();
 
         $result = queue_application_deployment(
             application: $application,
