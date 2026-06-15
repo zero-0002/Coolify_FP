@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Destination\RemoveStandaloneDockerNetwork;
 use App\Models\InstanceSettings;
 use App\Models\Project;
 use App\Models\Server;
@@ -69,7 +70,8 @@ describe('GET /api/v1/destinations', function () {
         $response->assertOk();
         $uuids = collect($response->json())->pluck('uuid');
 
-        expect($uuids)->toContain($this->destination->uuid)
+        expect($response->json('0'))->not->toHaveKey('id')
+            ->and($uuids)->toContain($this->destination->uuid)
             ->not->toContain($otherDestination->uuid);
     });
 });
@@ -110,6 +112,20 @@ describe('POST /api/v1/servers/{server_uuid}/destinations', function () {
         $response->assertForbidden();
     });
 
+    test('rejects create requests from non-admin team members', function () {
+        $member = User::factory()->create();
+        $this->team->members()->attach($member->id, ['role' => 'member']);
+        $memberToken = destinationsApiToken($member, $this->team, ['*']);
+
+        $response = $this->withHeaders(destinationsApiHeaders($memberToken))
+            ->postJson("/api/v1/servers/{$this->server->uuid}/destinations", [
+                'network' => 'member-network',
+            ]);
+
+        $response->assertForbidden();
+        expect(StandaloneDocker::where('server_id', $this->server->id)->where('network', 'member-network')->exists())->toBeFalse();
+    });
+
     test('rejects non-json requests before creating a destination', function () {
         $response = $this->withHeaders([
             'Authorization' => 'Bearer '.$this->bearerToken,
@@ -129,8 +145,8 @@ describe('POST /api/v1/servers/{server_uuid}/destinations', function () {
                 'unexpected' => 'value',
             ]);
 
-        $response->assertStatus(422);
-        $response->assertJsonPath('fields.0', 'unexpected');
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['unexpected']);
     });
 
     test('rejects unsafe docker network names', function () {
@@ -139,7 +155,7 @@ describe('POST /api/v1/servers/{server_uuid}/destinations', function () {
                 'network' => 'bad;network',
             ]);
 
-        $response->assertStatus(422);
+        $response->assertUnprocessable();
         $response->assertJsonValidationErrors(['network']);
     });
 
@@ -150,7 +166,7 @@ describe('POST /api/v1/servers/{server_uuid}/destinations', function () {
                 'type' => 'swarm',
             ]);
 
-        $response->assertStatus(422);
+        $response->assertUnprocessable();
         expect(SwarmDocker::where('server_id', $this->server->id)->where('network', 'wrong-type-network')->exists())->toBeFalse();
     });
 
@@ -180,6 +196,42 @@ describe('POST /api/v1/servers/{server_uuid}/destinations', function () {
 });
 
 describe('DELETE /api/v1/destinations/{uuid}', function () {
+    test('requires a write token', function () {
+        $readOnlyToken = destinationsApiToken($this->user, $this->team, ['read']);
+
+        $response = $this->withHeaders(destinationsApiHeaders($readOnlyToken))
+            ->deleteJson("/api/v1/destinations/{$this->destination->uuid}");
+
+        $response->assertForbidden();
+        $this->assertModelExists($this->destination);
+    });
+
+    test('rejects delete requests from non-admin team members', function () {
+        $member = User::factory()->create();
+        $this->team->members()->attach($member->id, ['role' => 'member']);
+        $memberToken = destinationsApiToken($member, $this->team, ['*']);
+
+        $response = $this->withHeaders(destinationsApiHeaders($memberToken))
+            ->deleteJson("/api/v1/destinations/{$this->destination->uuid}");
+
+        $response->assertForbidden();
+        $this->assertModelExists($this->destination);
+    });
+
+    test('deletes standalone destinations after removing the docker network', function () {
+        $cleanup = Mockery::mock(RemoveStandaloneDockerNetwork::class);
+        $cleanup->shouldReceive('handle')
+            ->once()
+            ->with(Mockery::on(fn (StandaloneDocker $destination) => $destination->is($this->destination)));
+        $this->app->instance(RemoveStandaloneDockerNetwork::class, $cleanup);
+
+        $response = $this->withHeaders(destinationsApiHeaders($this->bearerToken))
+            ->deleteJson("/api/v1/destinations/{$this->destination->uuid}");
+
+        $response->assertOk();
+        $this->assertModelMissing($this->destination);
+    });
+
     test('blocks deleting a destination with an attached service', function () {
         $project = Project::factory()->create(['team_id' => $this->team->id]);
         $environment = $project->environments()->first();
