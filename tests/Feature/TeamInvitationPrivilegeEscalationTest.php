@@ -202,7 +202,8 @@ describe('privilege escalation prevention', function () {
 
         $invitation = TeamInvitation::whereEmail('fallback-invitee@example.com')->firstOrFail();
 
-        expect($invitation->link)->toStartWith('http://localhost/auth/link?token=');
+        $expectedPrefix = route('auth.link', ['token' => '']);
+        expect($invitation->link)->toStartWith($expectedPrefix);
     });
 
     test('member cannot bypass policy by calling viaEmail', function () {
