@@ -355,4 +355,8 @@
         gap: 0;
         margin-inline: auto;
     }
+
+    .sidebar-collapsed .sidebar-collapsed-label {
+        display: none;
+    }
 }
