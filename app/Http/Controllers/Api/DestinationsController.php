@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Server;
 use App\Models\StandaloneDocker;
 use App\Models\SwarmDocker;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -28,7 +29,7 @@ class DestinationsController extends Controller
     /**
      * Resolve the calling token's team id, or return a 403 response.
      */
-    private function teamIdOrAbort(): int|\Illuminate\Http\JsonResponse
+    private function teamIdOrAbort(): int|JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -97,6 +98,12 @@ class DestinationsController extends Controller
         if (! is_int($teamId)) {
             return $teamId;
         }
+
+        $return = validateIncomingRequest($request);
+        if ($return instanceof JsonResponse) {
+            return $return;
+        }
+
         $server = Server::whereTeamId($teamId)->whereUuid($server_uuid)->firstOrFail();
 
         $allowed = ['name', 'network', 'type'];
@@ -114,7 +121,12 @@ class DestinationsController extends Controller
             return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
-        $type = $request->input('type', 'standalone');
+        $expectedType = $server->isSwarm() ? 'swarm' : 'standalone';
+        $type = $request->input('type', $expectedType);
+        if ($type !== $expectedType) {
+            return response()->json(['message' => "Destination type must be {$expectedType} for this server."], 422);
+        }
+
         $name = $request->input('name') ?: ($server->name.'-'.$request->input('network'));
         $class = $type === 'swarm' ? SwarmDocker::class : StandaloneDocker::class;
 

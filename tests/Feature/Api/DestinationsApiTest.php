@@ -1,0 +1,200 @@
+<?php
+
+use App\Models\InstanceSettings;
+use App\Models\Project;
+use App\Models\Server;
+use App\Models\Service;
+use App\Models\StandaloneDocker;
+use App\Models\SwarmDocker;
+use App\Models\Team;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
+
+uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    config([
+        'cache.default' => 'array',
+        'session.driver' => 'array',
+        'queue.default' => 'sync',
+        'app.maintenance.driver' => 'file',
+    ]);
+
+    InstanceSettings::unguarded(fn () => InstanceSettings::firstOrCreate(
+        ['id' => 0],
+        ['is_api_enabled' => true],
+    ));
+
+    $this->team = Team::factory()->create();
+    $this->user = User::factory()->create();
+    $this->team->members()->attach($this->user->id, ['role' => 'owner']);
+    session(['currentTeam' => $this->team]);
+
+    $this->bearerToken = destinationsApiToken($this->user, $this->team, ['*']);
+    $this->server = Server::factory()->create(['team_id' => $this->team->id]);
+    $this->destination = StandaloneDocker::where('server_id', $this->server->id)->first();
+});
+
+function destinationsApiHeaders(string $bearerToken): array
+{
+    return [
+        'Authorization' => 'Bearer '.$bearerToken,
+        'Content-Type' => 'application/json',
+    ];
+}
+
+function destinationsApiToken(User $user, Team $team, array $abilities): string
+{
+    $plainTextToken = Str::random(40);
+    $token = $user->tokens()->create([
+        'name' => 'destinations-api-test-'.Str::random(6),
+        'token' => hash('sha256', $plainTextToken),
+        'abilities' => $abilities,
+        'team_id' => $team->id,
+    ]);
+
+    return $token->getKey().'|'.$plainTextToken;
+}
+
+describe('GET /api/v1/destinations', function () {
+    test('lists only destinations owned by the token team', function () {
+        $otherTeam = Team::factory()->create();
+        $otherServer = Server::factory()->create(['team_id' => $otherTeam->id]);
+        $otherDestination = StandaloneDocker::where('server_id', $otherServer->id)->first();
+
+        $response = $this->withHeaders(destinationsApiHeaders($this->bearerToken))
+            ->getJson('/api/v1/destinations');
+
+        $response->assertOk();
+        $uuids = collect($response->json())->pluck('uuid');
+
+        expect($uuids)->toContain($this->destination->uuid)
+            ->not->toContain($otherDestination->uuid);
+    });
+});
+
+describe('GET /api/v1/destinations/{uuid}', function () {
+    test('does not expose another team destination', function () {
+        $otherTeam = Team::factory()->create();
+        $otherServer = Server::factory()->create(['team_id' => $otherTeam->id]);
+        $otherDestination = StandaloneDocker::where('server_id', $otherServer->id)->first();
+
+        $response = $this->withHeaders(destinationsApiHeaders($this->bearerToken))
+            ->getJson("/api/v1/destinations/{$otherDestination->uuid}");
+
+        $response->assertNotFound();
+    });
+});
+
+describe('GET /api/v1/servers/{server_uuid}/destinations', function () {
+    test('lists destinations for a team server', function () {
+        $response = $this->withHeaders(destinationsApiHeaders($this->bearerToken))
+            ->getJson("/api/v1/servers/{$this->server->uuid}/destinations");
+
+        $response->assertOk();
+        expect($response->json())->toHaveCount(1)
+            ->and($response->json('0.uuid'))->toBe($this->destination->uuid);
+    });
+});
+
+describe('POST /api/v1/servers/{server_uuid}/destinations', function () {
+    test('requires a write token', function () {
+        $readOnlyToken = destinationsApiToken($this->user, $this->team, ['read']);
+
+        $response = $this->withHeaders(destinationsApiHeaders($readOnlyToken))
+            ->postJson("/api/v1/servers/{$this->server->uuid}/destinations", [
+                'network' => 'new-network',
+            ]);
+
+        $response->assertForbidden();
+    });
+
+    test('rejects non-json requests before creating a destination', function () {
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+        ])->post("/api/v1/servers/{$this->server->uuid}/destinations", [
+            'network' => 'api-swarm-network',
+            'type' => 'swarm',
+        ]);
+
+        $response->assertStatus(400);
+        expect(SwarmDocker::where('server_id', $this->server->id)->where('network', 'api-swarm-network')->exists())->toBeFalse();
+    });
+
+    test('rejects unknown fields', function () {
+        $response = $this->withHeaders(destinationsApiHeaders($this->bearerToken))
+            ->postJson("/api/v1/servers/{$this->server->uuid}/destinations", [
+                'network' => 'new-network',
+                'unexpected' => 'value',
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('fields.0', 'unexpected');
+    });
+
+    test('rejects unsafe docker network names', function () {
+        $response = $this->withHeaders(destinationsApiHeaders($this->bearerToken))
+            ->postJson("/api/v1/servers/{$this->server->uuid}/destinations", [
+                'network' => 'bad;network',
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['network']);
+    });
+
+    test('rejects a destination type that does not match the server mode', function () {
+        $response = $this->withHeaders(destinationsApiHeaders($this->bearerToken))
+            ->postJson("/api/v1/servers/{$this->server->uuid}/destinations", [
+                'network' => 'wrong-type-network',
+                'type' => 'swarm',
+            ]);
+
+        $response->assertStatus(422);
+        expect(SwarmDocker::where('server_id', $this->server->id)->where('network', 'wrong-type-network')->exists())->toBeFalse();
+    });
+
+    test('creates a swarm destination on a swarm server', function () {
+        $this->server->settings()->update(['is_swarm_manager' => true]);
+
+        $response = $this->withHeaders(destinationsApiHeaders($this->bearerToken))
+            ->postJson("/api/v1/servers/{$this->server->uuid}/destinations", [
+                'name' => 'API Swarm',
+                'network' => 'api-swarm-network',
+                'type' => 'swarm',
+            ]);
+
+        $response->assertCreated();
+        $response->assertJsonStructure(['uuid']);
+        expect(SwarmDocker::where('server_id', $this->server->id)->where('network', 'api-swarm-network')->exists())->toBeTrue();
+    });
+
+    test('rejects duplicate networks on the same server and type', function () {
+        $response = $this->withHeaders(destinationsApiHeaders($this->bearerToken))
+            ->postJson("/api/v1/servers/{$this->server->uuid}/destinations", [
+                'network' => $this->destination->network,
+            ]);
+
+        $response->assertStatus(409);
+    });
+});
+
+describe('DELETE /api/v1/destinations/{uuid}', function () {
+    test('blocks deleting a destination with an attached service', function () {
+        $project = Project::factory()->create(['team_id' => $this->team->id]);
+        $environment = $project->environments()->first();
+
+        Service::factory()->create([
+            'environment_id' => $environment->id,
+            'server_id' => $this->server->id,
+            'destination_id' => $this->destination->id,
+            'destination_type' => $this->destination->getMorphClass(),
+        ]);
+
+        $response = $this->withHeaders(destinationsApiHeaders($this->bearerToken))
+            ->deleteJson("/api/v1/destinations/{$this->destination->uuid}");
+
+        $response->assertStatus(409);
+        $this->assertModelExists($this->destination);
+    });
+});
