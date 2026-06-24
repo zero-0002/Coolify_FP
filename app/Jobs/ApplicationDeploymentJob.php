@@ -2667,12 +2667,22 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $cacheArgs .= ' --build-arg secrets-hash='.$this->generate_secrets_hash($variables);
         }
 
-        $environmentPrefix = $this->railpack_build_environment_prefix($variables);
+        // Build-time variables reach the build through the sourced build-time .env file
+        // (written by save_buildtime_environment_variables), which interpolates shell-style
+        // references such as BETTER_AUTH_URL=$COOLIFY_URL. Passing them inline via `env`
+        // would forward the literal `$COOLIFY_URL` because each value is single-quoted and
+        // `env` does not interpolate its own assignments. Only buildpack control variables
+        // (NIXPACKS_/RAILPACK_) — which are excluded from the build-time .env file and never
+        // need interpolation — are still passed inline.
+        $controlVariables = $variables->filter(
+            fn ($value, $key) => str($key)->startsWith(EnvironmentVariable::BUILDPACK_CONTROL_VARIABLE_PREFIXES)
+        );
+
+        $environmentPrefix = $this->railpack_build_environment_prefix($controlVariables);
         $secretFlags = $this->railpack_build_secret_flags($variables);
         $frontendImage = 'ghcr.io/railwayapp/railpack-frontend:v'.config('constants.coolify.railpack_version');
 
-        return 'docker buildx create --name coolify-railpack --driver docker-container 2>/dev/null || true'
-            ." && {$environmentPrefix}docker buildx build --builder coolify-railpack"
+        $buildxBuildCommand = "{$environmentPrefix}docker buildx build --builder coolify-railpack"
             ." {$this->addHosts} --network host"
             ." --build-arg BUILDKIT_SYNTAX=\"{$frontendImage}\""
             ." {$cacheArgs}"
@@ -2682,6 +2692,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             .' --load'
             ." -t {$imageName}"
             ." {$this->workdir}";
+
+        return 'docker buildx create --name coolify-railpack --driver docker-container 2>/dev/null || true'
+            .' && '.$this->wrap_build_command_with_env_export($buildxBuildCommand);
     }
 
     private function decode_railpack_config(string $config, string $source): array
