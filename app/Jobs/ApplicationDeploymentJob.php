@@ -2306,6 +2306,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ],
                 [
                     executeInDocker($this->deployment_uuid, "echo '{$private_key}' | base64 -d | tee {$customSshKeyLocation} > /dev/null"),
+                    'hidden' => true,
+                    'skip_command_log' => true,
                 ],
                 [
                     executeInDocker($this->deployment_uuid, "chmod 600 {$customSshKeyLocation}"),

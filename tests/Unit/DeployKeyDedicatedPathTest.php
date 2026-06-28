@@ -19,6 +19,23 @@ afterEach(function () {
  */
 $keyPath = '/root/.ssh/id_rsa_coolify_test-deployment-uuid';
 
+it('skips logging the docker deploy key materialization command before ls-remote', function () {
+    $source = file_get_contents(__DIR__.'/../../app/Jobs/ApplicationDeploymentJob.php');
+    $commandPosition = strpos($source, 'base64 -d | tee {$customSshKeyLocation}');
+
+    expect($commandPosition)->not->toBeFalse()
+        ->and(substr($source, $commandPosition, 200))->toContain("'skip_command_log' => true");
+});
+
+it('supports skipping command log entries without adding a hidden command entry', function () {
+    $source = file_get_contents(__DIR__.'/../../app/Traits/ExecuteRemoteCommand.php');
+
+    expect($source)
+        ->toContain('$skip_command_log = data_get($single_command, \'skip_command_log\', false);')
+        ->toContain('if ($command_hidden && ! $skip_command_log && isset($this->application_deployment_queue))')
+        ->toContain('\'command\' => $skip_command_log || $command_hidden ? null : $this->redact_sensitive_info($command),');
+});
+
 it('writes a deploy key to a per-deployment path and cleans it up for ls-remote on the host', function () use ($keyPath) {
     $privateKey = Mockery::mock(PrivateKey::class)->makePartial();
     $privateKey->shouldReceive('getAttribute')->with('private_key')->andReturn('fake-private-key');
