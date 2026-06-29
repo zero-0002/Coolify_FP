@@ -1833,8 +1833,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                     ]
                 );
             }
-        } elseif ($this->build_pack === 'dockercompose' || $this->build_pack === 'dockerfile') {
-            // For Docker Compose and Dockerfile, create an empty .env file even if there are no build-time variables
+        } elseif (in_array($this->build_pack, ['dockercompose', 'dockerfile', 'railpack'], true)) {
+            // For build packs that source the build-time .env file, create an empty file even if there are no build-time variables
             // This ensures the file exists when referenced in build commands
             $this->application_deployment_queue->addLogEntry('Creating empty build-time .env file in /artifacts (no build-time variables defined).', hidden: true);
 

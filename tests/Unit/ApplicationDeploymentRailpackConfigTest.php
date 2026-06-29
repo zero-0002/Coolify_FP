@@ -3,6 +3,8 @@
 use App\Exceptions\DeploymentException;
 use App\Jobs\ApplicationDeploymentJob;
 use App\Models\Application;
+use App\Models\ApplicationSetting;
+use App\Models\EnvironmentVariable;
 use Illuminate\Support\Collection;
 use Tests\TestCase;
 
@@ -279,4 +281,42 @@ it('interpolates build-time variable references for railpack by sourcing the bui
     expect($command)->not->toContain("env 'BETTER_AUTH_URL");
     expect($command)->toContain("--secret 'id=BETTER_AUTH_URL,env=BETTER_AUTH_URL'");
     expect($command)->toContain("--secret 'id=COOLIFY_URL,env=COOLIFY_URL'");
+});
+
+it('creates an empty build-time env file for railpack when there are no generated build-time variables', function () {
+    [$job, $reflection] = makeRailpackDeploymentJob([
+        'build_pack' => 'railpack',
+        'compose_parsing_version' => '3',
+    ]);
+
+    $applicationProperty = $reflection->getProperty('application');
+    $applicationProperty->setAccessible(true);
+    $application = $applicationProperty->getValue($job);
+    $application->setRelation('settings', new ApplicationSetting([
+        'include_source_commit_in_build' => false,
+        'is_env_sorting_enabled' => false,
+    ]));
+    $application->setRelation('environment_variables', collect([
+        new EnvironmentVariable(['key' => 'COOLIFY_FQDN']),
+        new EnvironmentVariable(['key' => 'COOLIFY_URL']),
+        new EnvironmentVariable(['key' => 'COOLIFY_BRANCH']),
+        new EnvironmentVariable(['key' => 'COOLIFY_RESOURCE_UUID']),
+    ]));
+
+    foreach ([
+        'application_deployment_queue' => new class
+        {
+            public function addLogEntry(string $message, string $type = 'info', bool $hidden = false): void {}
+        },
+        'build_pack' => 'railpack',
+        'pull_request_id' => 0,
+    ] as $property => $value) {
+        $reflectionProperty = $reflection->getProperty($property);
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($job, $value);
+    }
+
+    invokeRailpackMethod($job, $reflection, 'save_buildtime_environment_variables');
+
+    expect(collect($job->recordedCommands)->flatten()->implode(' '))->toContain('touch /artifacts/build-time.env');
 });
