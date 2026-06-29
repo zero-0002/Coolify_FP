@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\DatabaseBackupFileValidator;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Controller as BaseController;
@@ -12,6 +13,8 @@ use Pion\Laravel\ChunkUpload\Receiver\FileReceiver;
 
 class UploadController extends BaseController
 {
+    use AuthorizesRequests;
+
     private const MAX_BYTES = 10 * 1024 * 1024 * 1024; // 10 GiB
 
     private const ALLOWED_EXTENSIONS = DatabaseBackupFileValidator::ALLOWED_EXTENSIONS;
@@ -23,6 +26,8 @@ class UploadController extends BaseController
         if (is_null($resource)) {
             return response()->json(['error' => 'You do not have permission for this database'], 500);
         }
+
+        $this->authorize('uploadBackup', $resource);
 
         $chunk = $request->file('file');
         $originalName = $chunk instanceof UploadedFile ? $chunk->getClientOriginalName() : null;

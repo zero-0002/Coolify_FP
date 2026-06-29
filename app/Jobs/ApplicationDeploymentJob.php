@@ -37,7 +37,6 @@ use JsonException;
 use Spatie\Url\Url;
 use Symfony\Component\Yaml\Yaml;
 use Throwable;
-use Visus\Cuid2\Cuid2;
 
 class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -2207,7 +2206,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
                 continue;
             }
-            $deployment_uuid = new Cuid2;
+            $deployment_uuid = new_public_id();
             queue_application_deployment(
                 deployment_uuid: $deployment_uuid,
                 application: $this->application,
@@ -2307,6 +2306,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ],
                 [
                     executeInDocker($this->deployment_uuid, "echo '{$private_key}' | base64 -d | tee {$customSshKeyLocation} > /dev/null"),
+                    'hidden' => true,
+                    'skip_command_log' => true,
                 ],
                 [
                     executeInDocker($this->deployment_uuid, "chmod 600 {$customSshKeyLocation}"),
@@ -2366,12 +2367,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         if ($this->pull_request_id !== 0) {
             $this->application_deployment_queue->addLogEntry("Checking out tag pull/{$this->pull_request_id}/head.");
         }
-        $this->execute_remote_command(
-            [
-                $importCommands,
-                'hidden' => true,
-            ]
-        );
+        $this->execute_remote_command(...$this->gitCommandDefinitions($importCommands));
         $this->create_workdir();
         $this->execute_remote_command(
             [
@@ -2399,6 +2395,39 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         );
 
         return $commands;
+    }
+
+    private function gitCommandDefinitions(Collection|array|string $commands): array
+    {
+        if (is_string($commands)) {
+            return [
+                [
+                    $commands,
+                    'hidden' => true,
+                ],
+            ];
+        }
+
+        return collect($commands)
+            ->map(function ($command): array {
+                if (is_string($command)) {
+                    return [
+                        $command,
+                        'hidden' => true,
+                    ];
+                }
+
+                if (is_array($command)) {
+                    return $command + ['hidden' => true];
+                }
+
+                return [
+                    'command' => $command,
+                    'hidden' => true,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function cleanup_git()
