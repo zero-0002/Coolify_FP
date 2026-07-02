@@ -165,6 +165,7 @@ class S3Storage extends BaseModel
                 'http' => [
                     'connect_timeout' => self::CONNECTION_TIMEOUT_SECONDS,
                     'timeout' => self::REQUEST_TIMEOUT_SECONDS,
+                    'allow_redirects' => false,
                 ],
             ]);
             // Test the connection by listing files with ListObjectsV2 (S3)

@@ -53,6 +53,7 @@ test('S3Storage model fillable attributes are configured correctly', function ()
     $s3Storage = new S3Storage;
 
     expect($s3Storage->getFillable())->toBe([
+        'team_id',
         'name',
         'description',
         'region',
@@ -74,6 +75,7 @@ test('S3Storage connection validation uses short s3 client timeouts', function (
         ->with(Mockery::on(function (array $config) {
             expect($config['http']['connect_timeout'])->toBe(15);
             expect($config['http']['timeout'])->toBe(15);
+            expect($config['http']['allow_redirects'])->toBeFalse();
 
             return true;
         }))
