@@ -60,19 +60,10 @@ class ServicesController extends Controller
             return str($urlValue)->replaceStart(',', '')->replaceEnd(',', '')->trim()->explode(',')->map(fn ($url) => trim($url))->filter();
         });
 
-        $urls = $urls->map(function ($url) use (&$errors) {
-            if (! filter_var($url, FILTER_VALIDATE_URL)) {
-                $errors[] = "Invalid URL: {$url}";
-
-                return $url;
-            }
-            $scheme = parse_url($url, PHP_URL_SCHEME) ?? '';
-            if (! in_array(strtolower($scheme), ['http', 'https'])) {
-                $errors[] = "Invalid URL scheme: {$scheme} for URL: {$url}. Only http and https are supported.";
-            }
-
-            return $url;
-        });
+        $errors = ValidationPatterns::validateApplicationDomains($urls->implode(','));
+        $urls = collect(ValidationPatterns::applicationDomainList(
+            ValidationPatterns::normalizeApplicationDomains($urls->implode(','))
+        ));
 
         $duplicates = $urls->duplicates()->unique()->values();
         if ($duplicates->isNotEmpty() && ! $forceDomainOverride) {
@@ -101,10 +92,10 @@ class ServicesController extends Controller
             }
 
             if (filled($containerUrls)) {
-                $containerUrls = str($containerUrls)->replaceStart(',', '')->replaceEnd(',', '')->trim();
-                $containerUrls = str($containerUrls)->explode(',')->map(fn ($url) => str(trim($url))->lower());
+                $containerUrls = ValidationPatterns::normalizeApplicationDomains($containerUrls);
+                $containerUrlCollection = collect(ValidationPatterns::applicationDomainList($containerUrls));
 
-                $result = checkIfDomainIsAlreadyUsedViaAPI($containerUrls, $teamId, $application->uuid);
+                $result = checkIfDomainIsAlreadyUsedViaAPI($containerUrlCollection, $teamId, $application->uuid);
                 if (isset($result['error'])) {
                     $errors[] = $result['error'];
 
@@ -116,8 +107,6 @@ class ServicesController extends Controller
 
                     return;
                 }
-
-                $containerUrls = $containerUrls->filter(fn ($u) => filled($u))->unique()->implode(',');
             } else {
                 $containerUrls = null;
             }
