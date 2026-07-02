@@ -94,6 +94,15 @@ class ValidationPatterns
     public const DOCKER_NETWORK_PATTERN = '/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/';
 
     /**
+     * Pattern for S3 bucket names.
+     *
+     * Bucket names must be 3-63 lowercase characters, start and end with a
+     * letter or digit, and contain only lowercase letters, digits, dots, and
+     * hyphens. Additional semantic checks live in isValidS3BucketName().
+     */
+    public const S3_BUCKET_NAME_PATTERN = '/\A(?=.{3,63}\z)[a-z0-9][a-z0-9.-]*[a-z0-9]\z/';
+
+    /**
      * Pattern for Docker-compatible environment variable keys.
      * Environment variable keys are later interpolated into shell commands as Docker build args, so only shell-safe identifier characters are allowed.
      */
@@ -175,6 +184,22 @@ class ValidationPatterns
     public static function isValidEnvironmentVariableKey(string $value): bool
     {
         return preg_match(self::ENVIRONMENT_VARIABLE_KEY_PATTERN, $value) === 1;
+    }
+
+    /**
+     * Check if a string is a valid S3 bucket name.
+     */
+    public static function isValidS3BucketName(string $value): bool
+    {
+        if (preg_match(self::S3_BUCKET_NAME_PATTERN, $value) !== 1) {
+            return false;
+        }
+
+        if (str_contains($value, '..') || str_contains($value, '.-') || str_contains($value, '-.')) {
+            return false;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false;
     }
 
     /**
