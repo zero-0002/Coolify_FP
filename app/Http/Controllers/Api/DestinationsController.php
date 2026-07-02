@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Server;
 use App\Models\StandaloneDocker;
 use App\Models\SwarmDocker;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -148,11 +149,19 @@ class DestinationsController extends Controller
             return response()->json(['message' => 'A destination with this network already exists on the server.'], 409);
         }
 
-        $destination = $class::create([
-            'name' => $name,
-            'network' => $request->input('network'),
-            'server_id' => $server->id,
-        ]);
+        try {
+            $destination = $class::create([
+                'name' => $name,
+                'network' => $request->input('network'),
+                'server_id' => $server->id,
+            ]);
+        } catch (QueryException $exception) {
+            if ($this->isUniqueConstraintViolation($exception)) {
+                return response()->json(['message' => 'A destination with this network already exists on the server.'], 409);
+            }
+
+            throw $exception;
+        }
 
         auditLog('api.destination.created', [
             'team_id' => $teamId,
@@ -163,6 +172,15 @@ class DestinationsController extends Controller
         ]);
 
         return response()->json($this->transform($destination->load('server:id,uuid')), 201);
+    }
+
+    private function isUniqueConstraintViolation(QueryException $exception): bool
+    {
+        $sqlState = $exception->errorInfo[0] ?? null;
+        $driverCode = (string) ($exception->errorInfo[1] ?? $exception->getCode());
+
+        return in_array($sqlState, ['23000', '23505'], true)
+            || in_array($driverCode, ['19', '1062', '2067'], true);
     }
 
     public function delete(Request $request, string $uuid): JsonResponse

@@ -10,6 +10,7 @@ use App\Models\SwarmDocker;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
@@ -192,6 +193,35 @@ describe('POST /api/v1/servers/{server_uuid}/destinations', function () {
             ]);
 
         $response->assertStatus(409);
+    });
+
+    test('returns conflict when the database unique constraint wins a create race', function () {
+        $network = 'raced-network';
+
+        StandaloneDocker::creating(function (StandaloneDocker $destination) use ($network) {
+            if ($destination->network !== $network) {
+                return;
+            }
+
+            DB::table('standalone_dockers')->insert([
+                'name' => 'Concurrent destination',
+                'uuid' => (string) Str::uuid(),
+                'network' => $network,
+                'server_id' => $destination->server_id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+
+        $response = $this->withHeaders(destinationsApiHeaders($this->bearerToken))
+            ->postJson("/api/v1/servers/{$this->server->uuid}/destinations", [
+                'network' => $network,
+            ]);
+
+        $response->assertStatus(409)
+            ->assertJson(['message' => 'A destination with this network already exists on the server.']);
+
+        expect(StandaloneDocker::where('server_id', $this->server->id)->where('network', $network)->count())->toBe(1);
     });
 });
 
