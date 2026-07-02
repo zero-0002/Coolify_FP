@@ -60,35 +60,9 @@ class DatabasesController extends Controller
                 'mariadb_root_password',
             ]);
             $this->exposeNestedServerSecrets($database);
-        } else {
-            $this->hideNestedServerSecrets($database);
         }
 
         return serializeApiResponse($database);
-    }
-
-    private function hideNestedServerSecrets(Model $model): void
-    {
-        $server = $model->destination?->server;
-        if ($server === null) {
-            return;
-        }
-
-        $server->makeHidden([
-            'logdrain_axiom_api_key',
-            'logdrain_newrelic_license_key',
-        ]);
-
-        if ($server->settings !== null) {
-            $server->settings->makeHidden([
-                'sentinel_token',
-                'sentinel_custom_url',
-                'logdrain_newrelic_license_key',
-                'logdrain_axiom_api_key',
-                'logdrain_custom_config',
-                'logdrain_custom_config_parser',
-            ]);
-        }
     }
 
     /**

@@ -11,6 +11,7 @@ use App\Models\Service;
 use App\Models\StandalonePostgresql;
 use App\Models\Team;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
@@ -548,6 +549,23 @@ describe('GET /api/v1/databases sensitive field gating', function () {
             'destination_id' => $destination->id,
             'destination_type' => $destination->getMorphClass(),
         ]);
+    });
+
+    test('read token database list does not lazy load nested server relations', function () {
+        $token = makeApiToken($this->user, $this->team, ['read']);
+
+        $preventedLazyLoading = Model::preventsLazyLoading();
+        Model::preventLazyLoading();
+
+        try {
+            $response = $this->withoutExceptionHandling()->withHeaders([
+                'Authorization' => 'Bearer '.$token,
+            ])->getJson('/api/v1/databases');
+        } finally {
+            Model::preventLazyLoading($preventedLazyLoading);
+        }
+
+        $response->assertStatus(200);
     });
 
     test('read token does not leak postgres_password or db urls', function () {
