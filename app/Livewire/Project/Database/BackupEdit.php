@@ -131,7 +131,7 @@ class BackupEdit extends Component
             $this->databaseBackupRetentionMaxStorageS3 = $this->backup->database_backup_retention_max_storage_s3;
             $this->saveS3 = $this->backup->save_s3;
             $this->disableLocalBackup = $this->backup->disable_local_backup ?? false;
-            $this->s3StorageId = $this->backup->s3_storage_id;
+            $this->s3StorageId = $this->backup->s3_storage_id ?? $this->availableS3StorageIds()->first();
             $this->databasesToBackup = $this->backup->databases_to_backup;
             $this->dumpAll = $this->backup->dump_all;
             $this->timeout = $this->backup->timeout;
@@ -217,6 +217,11 @@ class BackupEdit extends Component
         }
     }
 
+    public function updatedS3StorageId(): void
+    {
+        $this->instantSave();
+    }
+
     private function customValidate()
     {
         if (! is_numeric($this->backup->s3_storage_id)) {
@@ -225,17 +230,13 @@ class BackupEdit extends Component
 
         // S3 backup cannot be enabled without a valid S3 storage owned by the team
         $availableS3Ids = $this->availableS3StorageIds();
-        if ($this->backup->save_s3 && ! $availableS3Ids->contains($this->backup->s3_storage_id)) {
-            if ($availableS3Ids->isEmpty()) {
-                $this->backup->s3_storage_id = $this->s3StorageId = null;
+        if ($availableS3Ids->isEmpty()) {
+            $this->backup->s3_storage_id = $this->s3StorageId = null;
+            if ($this->backup->save_s3) {
                 $this->backup->save_s3 = $this->saveS3 = false;
-            } elseif ($this->backup->s3_storage_id === null && $availableS3Ids->count() === 1) {
-                $this->backup->s3_storage_id = $this->s3StorageId = $availableS3Ids->first();
-            } else {
-                $this->backup->s3_storage_id = $this->s3StorageId = null;
-
-                throw new Exception('Please select a valid S3 storage to enable S3 backups.');
             }
+        } elseif (! $availableS3Ids->contains($this->backup->s3_storage_id)) {
+            $this->backup->s3_storage_id = $this->s3StorageId = $availableS3Ids->first();
         }
 
         // Validate that disable_local_backup can only be true when S3 backup is enabled
@@ -254,9 +255,14 @@ class BackupEdit extends Component
     {
         $storages = collect($this->availableS3Storages);
         $storageIds = $storages->pluck('id')->filter()->all();
+
+        if (empty($storageIds)) {
+            return collect();
+        }
+
         $teamIds = $storages->pluck('team_id')->reject(fn ($teamId) => $teamId === null)->unique()->values()->all();
 
-        if (empty($storageIds) || empty($teamIds)) {
+        if (empty($teamIds)) {
             return collect();
         }
 

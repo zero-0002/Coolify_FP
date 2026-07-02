@@ -117,8 +117,8 @@ it('keeps S3 enabled by selecting the only available team storage when none is s
     expect($backup->s3_storage_id)->toBe($s3->id);
 });
 
-it('requires an explicit S3 selection when multiple storages are available', function () {
-    createS3StorageForBackupEditValidationTest($this->team, 'First S3');
+it('defaults to the first available storage when multiple storages are available', function () {
+    $firstS3 = createS3StorageForBackupEditValidationTest($this->team, 'First S3');
     createS3StorageForBackupEditValidationTest($this->team, 'Second S3');
     $backup = createBackupForEditValidationTest($this->team, [
         'save_s3' => false,
@@ -126,13 +126,14 @@ it('requires an explicit S3 selection when multiple storages are available', fun
     ]);
 
     Livewire::test(BackupEdit::class, ['backup' => $backup->fresh(), 'availableS3Storages' => $this->team->s3s])
+        ->assertSet('s3StorageId', $firstS3->id)
         ->set('saveS3', true)
         ->call('instantSave')
-        ->assertDispatched('error');
+        ->assertDispatched('success');
 
     $backup->refresh();
-    expect($backup->save_s3)->toBeFalsy();
-    expect($backup->s3_storage_id)->toBeNull();
+    expect($backup->save_s3)->toBeTruthy();
+    expect($backup->s3_storage_id)->toBe($firstS3->id);
 });
 
 it('accepts the S3 storage scope passed to the component', function () {
@@ -151,4 +152,56 @@ it('accepts the S3 storage scope passed to the component', function () {
     $backup->refresh();
     expect($backup->save_s3)->toBeTruthy();
     expect($backup->s3_storage_id)->toBe($s3->id);
+});
+
+it('shows available S3 storages even when S3 backup is disabled', function () {
+    createS3StorageForBackupEditValidationTest($this->team, 'First S3');
+    createS3StorageForBackupEditValidationTest($this->team, 'Second S3');
+    $backup = createBackupForEditValidationTest($this->team, [
+        'save_s3' => false,
+        's3_storage_id' => null,
+    ]);
+
+    Livewire::test(BackupEdit::class, ['backup' => $backup->fresh(), 'availableS3Storages' => $this->team->s3s])
+        ->assertSee('First S3')
+        ->assertSee('Second S3');
+});
+
+it('shows disabled S3 storage dropdown when no storages are available', function () {
+    $backup = createBackupForEditValidationTest($this->team, [
+        'save_s3' => false,
+        's3_storage_id' => null,
+    ]);
+
+    Livewire::test(BackupEdit::class, ['backup' => $backup->fresh(), 'availableS3Storages' => $this->team->s3s])
+        ->assertSee('No S3 storage available');
+});
+
+it('shows when S3 backups are currently disabled', function () {
+    createS3StorageForBackupEditValidationTest($this->team);
+    $backup = createBackupForEditValidationTest($this->team, [
+        'save_s3' => false,
+        's3_storage_id' => null,
+    ]);
+
+    Livewire::test(BackupEdit::class, ['backup' => $backup->fresh(), 'availableS3Storages' => $this->team->s3s])
+        ->assertSee('S3 Storage')
+        ->assertSee('(currently disabled)');
+});
+
+it('saves selected S3 storage immediately when it changes', function () {
+    createS3StorageForBackupEditValidationTest($this->team, 'First S3');
+    $secondS3 = createS3StorageForBackupEditValidationTest($this->team, 'Second S3');
+    $backup = createBackupForEditValidationTest($this->team, [
+        'save_s3' => false,
+        's3_storage_id' => null,
+    ]);
+
+    Livewire::test(BackupEdit::class, ['backup' => $backup->fresh(), 'availableS3Storages' => $this->team->s3s])
+        ->set('s3StorageId', $secondS3->id)
+        ->assertDispatched('success');
+
+    $backup->refresh();
+    expect($backup->save_s3)->toBeFalsy();
+    expect($backup->s3_storage_id)->toBe($secondS3->id);
 });

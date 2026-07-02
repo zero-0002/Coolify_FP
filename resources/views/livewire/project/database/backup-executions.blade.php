@@ -1,6 +1,6 @@
 <div wire:init='refreshBackupExecutions'>
     @isset($backup)
-        <div class="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-col gap-3 py-4 sm:flex-row sm:flex-wrap sm:items-center">
             <h3 class="py-0">Executions <span class="text-xs">({{ $executions_count }})</span></h3>
             @if ($executions_count > 0)
                 <div class="flex items-center gap-2">
@@ -21,14 +21,18 @@
                     </x-forms.button>
                 </div>
             @endif
-            <div class="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:flex sm:flex-wrap sm:justify-end">
+            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <x-forms.button wire:click='cleanupFailed' class="w-full sm:w-auto">Cleanup Failed Backups</x-forms.button>
-                <x-modal-confirmation title="Cleanup Deleted Backup Entries?" buttonTitle="Cleanup Deleted" isErrorButton
-                    buttonFullWidth submitAction="cleanupDeleted()"
+                <x-modal-confirmation title="Cleanup Deleted Backup Entries?" isErrorButton
+                    submitAction="cleanupDeleted()"
                     :actions="['This will permanently delete all backup execution entries that are marked as deleted from local storage.', 'This only removes database entries, not actual backup files.']"
                     confirmationText="cleanup deleted backups"
                     confirmationLabel="Please confirm by typing 'cleanup deleted backups' below"
-                    shortConfirmationLabel="Confirmation" />
+                    shortConfirmationLabel="Confirmation">
+                    <x-slot:trigger>
+                        <x-forms.button isError class="w-full sm:w-auto">Cleanup Deleted</x-forms.button>
+                    </x-slot:trigger>
+                </x-modal-confirmation>
             </div>
         </div>
         <div @if (!$skip) wire:poll.5000ms="refreshBackupExecutions" @endif
@@ -156,9 +160,9 @@
                             <pre class="whitespace-pre-wrap text-sm">{{ data_get($execution, 'message') }}</pre>
                         </div>
                     @endif
-                    <div class="flex flex-col gap-2 mt-4 min-[420px]:flex-row min-[420px]:flex-wrap">
+                    <div class="grid grid-cols-2 gap-2 mt-4 sm:flex sm:flex-wrap">
                         @if (data_get($execution, 'status') === 'success')
-                            <x-forms.button class="w-full dark:hover:bg-coolgray-400 min-[420px]:w-auto"
+                            <x-forms.button class="w-full dark:hover:bg-coolgray-400 sm:w-auto"
                                 x-on:click="download_file('{{ data_get($execution, 'id') }}')">Download</x-forms.button>
                         @endif
                         @php
@@ -177,11 +181,15 @@
                                 $deleteActions[] = 'This backup execution record will be deleted.';
                             }
                         @endphp
-                        <x-modal-confirmation title="Confirm Backup Deletion?" buttonTitle="Delete" isErrorButton
+                        <x-modal-confirmation title="Confirm Backup Deletion?" isErrorButton
                             submitAction="deleteBackup({{ data_get($execution, 'id') }})" :checkboxes="$executionCheckboxes"
                             :actions="$deleteActions" confirmationText="{{ data_get($execution, 'filename') }}"
                             confirmationLabel="Please confirm the execution of the actions by entering the Backup Filename below"
-                            shortConfirmationLabel="Backup Filename" 1 />
+                            shortConfirmationLabel="Backup Filename">
+                            <x-slot:trigger>
+                                <x-forms.button isError class="w-full sm:w-auto">Delete</x-forms.button>
+                            </x-slot:trigger>
+                        </x-modal-confirmation>
                     </div>
                 </div>
             @empty

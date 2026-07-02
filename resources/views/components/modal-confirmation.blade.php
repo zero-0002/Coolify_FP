@@ -132,10 +132,10 @@
     @class([
         'relative h-auto',
         'w-full' => $buttonFullWidth,
-        'w-auto' => ! $buttonFullWidth,
+        'w-full sm:w-auto' => ! $buttonFullWidth,
     ])>
     @if (isset($trigger))
-        <div @click="modalOpen=true">
+        <div class="w-full" @click="modalOpen=true">
             {{ $trigger }}
         </div>
     @elseif ($customButton)
