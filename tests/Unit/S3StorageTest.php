@@ -75,6 +75,7 @@ test('S3Storage connection validation uses short s3 client timeouts', function (
         ->with(Mockery::on(function (array $config) {
             expect($config['http']['connect_timeout'])->toBe(15);
             expect($config['http']['timeout'])->toBe(15);
+            expect($config['http']['allow_redirects'])->toBeFalse();
 
             return true;
         }))

@@ -1031,7 +1031,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 );
             }
             foreach ($this->application->fileStorages as $fileStorage) {
-                if (! $fileStorage->is_based_on_git && ! $fileStorage->is_directory) {
+                if (! $fileStorage->is_host_file && ! $fileStorage->is_based_on_git && ! $fileStorage->is_directory) {
                     $fileStorage->saveStorageOnServer();
                 }
             }
