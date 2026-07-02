@@ -159,6 +159,26 @@ it('rejects unresolvable hostnames by default', function () {
     expect($validator->fails())->toBeTrue('Expected default rejection for unresolvable host');
 });
 
+it('keeps webhook DNS resolution enabled when general DNS validation is disabled', function () {
+    InstanceSettings::unguarded(fn () => InstanceSettings::query()->updateOrCreate(['id' => 0], ['is_dns_validation_enabled' => false]));
+
+    $rule = new SafeWebhookUrl(fn (string $host): array => ['127.0.0.1']);
+
+    $validator = Validator::make(['url' => 'http://rebinding.example.test/webhook'], ['url' => $rule]);
+
+    expect($validator->fails())->toBeTrue('Expected webhook SSRF DNS checks to remain enabled');
+});
+
+it('reads configured custom DNS servers for webhook hostname resolution', function () {
+    InstanceSettings::unguarded(fn () => InstanceSettings::query()->updateOrCreate(['id' => 0], ['custom_dns_servers' => '1.1.1.1, invalid, 2606:4700:4700::1111']));
+
+    $method = new ReflectionMethod(SafeWebhookUrl::class, 'customDnsServers');
+    $method->setAccessible(true);
+
+    expect($method->invoke(new SafeWebhookUrl))
+        ->toBe(['1.1.1.1', '2606:4700:4700::1111']);
+});
+
 it('allows explicitly configured intranet webhook targets', function (string $url, array $resolvedIps, array $allowlist) {
     InstanceSettings::unguarded(fn () => InstanceSettings::query()->updateOrCreate(['id' => 0], ['webhook_allowed_internal_hosts' => $allowlist]));
 

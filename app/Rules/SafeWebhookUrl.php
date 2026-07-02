@@ -6,6 +6,8 @@ use App\Models\InstanceSettings;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\Log;
+use PurplePixie\PhpDns\DNSQuery;
+use PurplePixie\PhpDns\DNSTypes;
 use Throwable;
 
 class SafeWebhookUrl implements ValidationRule
@@ -208,6 +210,15 @@ class SafeWebhookUrl implements ValidationRule
             return array_values(array_filter(($this->resolver)($host), fn (string $ip): bool => filter_var($ip, FILTER_VALIDATE_IP) !== false));
         }
 
+        if ($host === 'localhost') {
+            return ['127.0.0.1', '::1'];
+        }
+
+        $customDnsServers = $this->customDnsServers();
+        if ($customDnsServers !== []) {
+            return $this->resolveHostWithCustomDnsServers($host, $customDnsServers);
+        }
+
         $records = @dns_get_record($host, DNS_A | DNS_AAAA);
         if ($records === false) {
             $records = [];
@@ -232,6 +243,55 @@ class SafeWebhookUrl implements ValidationRule
         }
 
         return array_values(array_unique($ips));
+    }
+
+    /**
+     * @param  array<int, string>  $dnsServers
+     * @return array<int, string>
+     */
+    private function resolveHostWithCustomDnsServers(string $host, array $dnsServers): array
+    {
+        $ips = [];
+
+        foreach ($dnsServers as $dnsServer) {
+            foreach ([DNSTypes::NAME_A, DNSTypes::NAME_AAAA] as $type) {
+                try {
+                    $query = new DNSQuery($dnsServer, 53, 5);
+                    $records = $query->query($host, $type);
+
+                    if ($records === false || $query->hasError()) {
+                        continue;
+                    }
+
+                    foreach ($records as $record) {
+                        if ($record->getType() === $type && filter_var($record->getData(), FILTER_VALIDATE_IP)) {
+                            $ips[] = $record->getData();
+                        }
+                    }
+                } catch (Throwable) {
+                    continue;
+                }
+            }
+        }
+
+        return array_values(array_unique($ips));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function customDnsServers(): array
+    {
+        $servers = $this->instanceSettings()?->custom_dns_servers ?? '';
+
+        if (! is_string($servers)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            fn (string $server): string => trim($server),
+            explode(',', $servers),
+        ), fn (string $server): bool => filter_var($server, FILTER_VALIDATE_IP) !== false));
     }
 
     private function isAllowedIp(string $ip, string $host): bool
