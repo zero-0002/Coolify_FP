@@ -33,6 +33,15 @@ use Symfony\Component\Yaml\Yaml;
 
 class ApplicationsController extends Controller
 {
+    private function exposeFileStorageContentIfAllowed(LocalFileVolume|LocalPersistentVolume $storage): LocalFileVolume|LocalPersistentVolume
+    {
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $storage->makeVisible(['content']);
+        }
+
+        return $storage;
+    }
+
     private function removeSensitiveData($application)
     {
         $application->makeHidden([
@@ -2031,7 +2040,7 @@ class ApplicationsController extends Controller
         if (! $uuid) {
             return response()->json(['message' => 'UUID is required.'], 400);
         }
-        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->uuid)->first();
+        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->route('uuid'))->first();
         if (! $application) {
             return response()->json(['message' => 'Application not found.'], 404);
         }
@@ -2112,7 +2121,7 @@ class ApplicationsController extends Controller
         if (! $uuid) {
             return response()->json(['message' => 'UUID is required.'], 400);
         }
-        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->uuid)->first();
+        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->route('uuid'))->first();
         if (! $application) {
             return response()->json(['message' => 'Application not found.'], 404);
         }
@@ -2205,7 +2214,7 @@ class ApplicationsController extends Controller
         if (! $request->uuid) {
             return response()->json(['message' => 'UUID is required.'], 404);
         }
-        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->uuid)->first();
+        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->route('uuid'))->first();
 
         if (! $application) {
             return response()->json([
@@ -2416,7 +2425,7 @@ class ApplicationsController extends Controller
             return $return;
         }
 
-        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->uuid)->first();
+        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->route('uuid'))->first();
         if (! $application) {
             return response()->json([
                 'message' => 'Application not found',
@@ -4028,6 +4037,7 @@ class ApplicationsController extends Controller
 
         $persistentStorages = $application->persistentStorages->sortBy('id')->values();
         $fileStorages = $application->fileStorages->sortBy('id')->values();
+        $fileStorages->each(fn (LocalFileVolume $storage) => $this->exposeFileStorageContentIfAllowed($storage));
 
         return response()->json([
             'persistent_storages' => $persistentStorages,
@@ -4242,7 +4252,7 @@ class ApplicationsController extends Controller
             'mount_path' => $storage->mount_path ?? null,
         ]);
 
-        return response()->json($storage);
+        return response()->json($this->exposeFileStorageContentIfAllowed($storage));
     }
 
     #[OA\Post(
@@ -4429,7 +4439,7 @@ class ApplicationsController extends Controller
             'mount_path' => $storage->mount_path,
         ]);
 
-        return response()->json($storage, 201);
+        return response()->json($this->exposeFileStorageContentIfAllowed($storage), 201);
     }
 
     #[OA\Delete(

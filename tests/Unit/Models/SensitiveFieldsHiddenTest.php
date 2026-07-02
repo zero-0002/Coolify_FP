@@ -8,6 +8,7 @@ use App\Models\DiscordNotificationSettings;
 use App\Models\EmailNotificationSettings;
 use App\Models\EnvironmentVariable;
 use App\Models\InstanceSettings;
+use App\Models\LocalFileVolume;
 use App\Models\OauthSetting;
 use App\Models\PrivateKey;
 use App\Models\PushoverNotificationSettings;
@@ -63,9 +64,7 @@ describe('Sensitive model fields are hidden by default', function () {
             'manual_webhook_secret_gitea',
             'dockerfile',
             'docker_compose',
-            'docker_compose_pr',
             'docker_compose_raw',
-            'docker_compose_pr_raw',
             'custom_labels',
         );
     });
@@ -92,6 +91,12 @@ describe('Sensitive model fields are hidden by default', function () {
         $hidden = (new ApplicationDeploymentQueue)->getHidden();
 
         expect($hidden)->toContain('logs');
+    });
+
+    test('LocalFileVolume hides file content', function () {
+        $hidden = (new LocalFileVolume)->getHidden();
+
+        expect($hidden)->toContain('content');
     });
 
     test('PrivateKey hides private key material', function () {

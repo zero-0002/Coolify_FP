@@ -28,6 +28,15 @@ use OpenApi\Attributes as OA;
 
 class DatabasesController extends Controller
 {
+    private function exposeFileStorageContentIfAllowed(LocalFileVolume|LocalPersistentVolume $storage): LocalFileVolume|LocalPersistentVolume
+    {
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $storage->makeVisible(['content']);
+        }
+
+        return $storage;
+    }
+
     private function removeSensitiveData($database)
     {
         $database->makeHidden([
@@ -3664,6 +3673,7 @@ class DatabasesController extends Controller
 
         $persistentStorages = $database->persistentStorages->sortBy('id')->values();
         $fileStorages = $database->fileStorages->sortBy('id')->values();
+        $fileStorages->each(fn (LocalFileVolume $storage) => $this->exposeFileStorageContentIfAllowed($storage));
 
         return response()->json([
             'persistent_storages' => $persistentStorages,
@@ -3855,7 +3865,7 @@ class DatabasesController extends Controller
             'mount_path' => $storage->mount_path,
         ]);
 
-        return response()->json($storage, 201);
+        return response()->json($this->exposeFileStorageContentIfAllowed($storage), 201);
     }
 
     #[OA\Patch(
@@ -4062,7 +4072,7 @@ class DatabasesController extends Controller
             'mount_path' => $storage->mount_path ?? null,
         ]);
 
-        return response()->json($storage);
+        return response()->json($this->exposeFileStorageContentIfAllowed($storage));
     }
 
     #[OA\Delete(

@@ -176,11 +176,8 @@ class Application extends BaseModel
         'manual_webhook_secret_bitbucket',
         'manual_webhook_secret_gitea',
         'docker_compose_location',
-        'docker_compose_pr_location',
         'docker_compose',
-        'docker_compose_pr',
         'docker_compose_raw',
-        'docker_compose_pr_raw',
         'docker_compose_domains',
         'docker_compose_custom_start_command',
         'docker_compose_custom_build_command',
@@ -232,9 +229,7 @@ class Application extends BaseModel
         'manual_webhook_secret_gitea',
         'dockerfile',
         'docker_compose',
-        'docker_compose_pr',
         'docker_compose_raw',
-        'docker_compose_pr_raw',
         'custom_labels',
     ];
 

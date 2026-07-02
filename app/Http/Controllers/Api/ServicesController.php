@@ -24,8 +24,21 @@ use Symfony\Component\Yaml\Yaml;
 
 class ServicesController extends Controller
 {
+    private function exposeFileStorageContentIfAllowed(LocalFileVolume|LocalPersistentVolume $storage): LocalFileVolume|LocalPersistentVolume
+    {
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $storage->makeVisible(['content']);
+        }
+
+        return $storage;
+    }
+
     private function removeSensitiveData($service)
     {
+        if ($service instanceof Collection) {
+            return $service->map(fn (Service $item) => $this->removeSensitiveData($item));
+        }
+
         $service->makeHidden([
             'id',
             'resourceable',
@@ -2065,6 +2078,8 @@ class ServicesController extends Controller
             );
         }
 
+        $fileStorages->each(fn (LocalFileVolume $storage) => $this->exposeFileStorageContentIfAllowed($storage));
+
         return response()->json([
             'persistent_storages' => $persistentStorages->sortBy('id')->values(),
             'file_storages' => $fileStorages->sortBy('id')->values(),
@@ -2265,7 +2280,7 @@ class ServicesController extends Controller
             'mount_path' => $storage->mount_path,
         ]);
 
-        return response()->json($storage, 201);
+        return response()->json($this->exposeFileStorageContentIfAllowed($storage), 201);
     }
 
     #[OA\Patch(
@@ -2502,7 +2517,7 @@ class ServicesController extends Controller
             'mount_path' => $storage->mount_path ?? null,
         ]);
 
-        return response()->json($storage);
+        return response()->json($this->exposeFileStorageContentIfAllowed($storage));
     }
 
     #[OA\Delete(

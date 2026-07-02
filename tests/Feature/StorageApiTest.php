@@ -18,8 +18,14 @@ use Illuminate\Support\Str;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    config()->set('app.maintenance.driver', 'file');
+    config()->set('cache.default', 'array');
+
     Bus::fake();
-    InstanceSettings::updateOrCreate(['id' => 0]);
+    InstanceSettings::query()->delete();
+    $settings = new InstanceSettings;
+    $settings->id = 0;
+    $settings->save();
 
     $this->team = Team::factory()->create();
     $this->user = User::factory()->create();
@@ -42,8 +48,15 @@ beforeEach(function () {
 
 function createTestApplication($context): Application
 {
-    return Application::factory()->create([
+    return Application::create([
+        'name' => 'test-storage-app',
+        'git_repository' => 'https://github.com/test/test',
+        'git_branch' => 'main',
+        'build_pack' => 'nixpacks',
+        'ports_exposes' => '3000',
         'environment_id' => $context->environment->id,
+        'destination_id' => $context->destination->id,
+        'destination_type' => $context->destination->getMorphClass(),
     ]);
 }
 
@@ -59,6 +72,19 @@ function createTestDatabase($context): StandalonePostgresql
         'destination_id' => $context->destination->id,
         'destination_type' => $context->destination->getMorphClass(),
     ]);
+}
+
+function createStorageApiToken($context, array $abilities): string
+{
+    $plainTextToken = Str::random(40);
+    $token = $context->user->tokens()->create([
+        'name' => 'storage-test-token',
+        'token' => hash('sha256', $plainTextToken),
+        'abilities' => $abilities,
+        'team_id' => $context->team->id,
+    ]);
+
+    return $token->getKey().'|'.$plainTextToken;
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -91,6 +117,39 @@ describe('GET /api/v1/applications/{uuid}/storages', function () {
         ])->getJson('/api/v1/applications/non-existent-uuid/storages');
 
         $response->assertStatus(404);
+    });
+
+    test('hides file storage content for read tokens and reveals it for sensitive tokens', function () {
+        $app = createTestApplication($this);
+
+        LocalFileVolume::create([
+            'fs_path' => '/tmp/config.json',
+            'mount_path' => '/app/config.json',
+            'content' => '{"secret": "hidden"}',
+            'is_directory' => false,
+            'resource_id' => $app->id,
+            'resource_type' => $app->getMorphClass(),
+        ]);
+
+        $readToken = createStorageApiToken($this, ['read']);
+        $sensitiveToken = createStorageApiToken($this, ['read', 'read:sensitive']);
+
+        $readResponse = $this->withHeaders([
+            'Authorization' => 'Bearer '.$readToken,
+        ])->getJson("/api/v1/applications/{$app->uuid}/storages");
+
+        auth()->forgetGuards();
+
+        $sensitiveResponse = $this->withHeaders([
+            'Authorization' => 'Bearer '.$sensitiveToken,
+        ])->getJson("/api/v1/applications/{$app->uuid}/storages");
+
+        $readResponse->assertSuccessful();
+        $sensitiveResponse->assertSuccessful();
+
+        expect($readResponse->getContent())->not->toContain('"content":')
+            ->and($sensitiveResponse->getContent())->toContain('"content":')
+            ->and($sensitiveResponse->getContent())->toContain('hidden');
     });
 });
 
@@ -140,6 +199,39 @@ describe('POST /api/v1/applications/{uuid}/storages', function () {
         expect($vol)->not->toBeNull();
         expect($vol->mount_path)->toBe('/app/config.json');
         expect($vol->is_directory)->toBeFalse();
+    });
+
+    test('hides created file storage content for write tokens and reveals it for sensitive tokens', function () {
+        $app = createTestApplication($this);
+        $writeToken = createStorageApiToken($this, ['write']);
+        $sensitiveToken = createStorageApiToken($this, ['write', 'read:sensitive']);
+
+        $writeResponse = $this->withHeaders([
+            'Authorization' => 'Bearer '.$writeToken,
+            'Content-Type' => 'application/json',
+        ])->postJson("/api/v1/applications/{$app->uuid}/storages", [
+            'type' => 'file',
+            'mount_path' => '/app/hidden.json',
+            'content' => '{"secret": "write-hidden"}',
+        ]);
+
+        auth()->forgetGuards();
+
+        $sensitiveResponse = $this->withHeaders([
+            'Authorization' => 'Bearer '.$sensitiveToken,
+            'Content-Type' => 'application/json',
+        ])->postJson("/api/v1/applications/{$app->uuid}/storages", [
+            'type' => 'file',
+            'mount_path' => '/app/visible.json',
+            'content' => '{"secret": "write-visible"}',
+        ]);
+
+        $writeResponse->assertCreated();
+        $sensitiveResponse->assertCreated();
+
+        expect($writeResponse->getContent())->not->toContain('"content":')
+            ->and($sensitiveResponse->getContent())->toContain('"content":')
+            ->and($sensitiveResponse->getContent())->toContain('write-visible');
     });
 
     test('rejects persistent storage without name', function () {
