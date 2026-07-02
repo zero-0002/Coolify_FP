@@ -2229,7 +2229,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         // Only include SOURCE_COMMIT in build context if enabled in settings
         if ($this->application->settings->include_source_commit_in_build) {
-            $this->coolify_variables .= "SOURCE_COMMIT={$this->commit} ";
+            $this->coolify_variables .= 'SOURCE_COMMIT='.escapeShellValue($this->commit).' ';
         }
         if ($this->pull_request_id === 0) {
             $fqdn = $this->application->fqdn;
@@ -2241,17 +2241,33 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $fqdn = $url->getHost();
             $url = $url->withHost($fqdn)->withPort(null)->__toString();
             if ((int) $this->application->compose_parsing_version >= 3) {
-                $this->coolify_variables .= "COOLIFY_URL={$url} ";
-                $this->coolify_variables .= "COOLIFY_FQDN={$fqdn} ";
+                $this->coolify_variables .= 'COOLIFY_URL='.escapeShellValue($url).' ';
+                $this->coolify_variables .= 'COOLIFY_FQDN='.escapeShellValue($fqdn).' ';
             } else {
-                $this->coolify_variables .= "COOLIFY_URL={$fqdn} ";
-                $this->coolify_variables .= "COOLIFY_FQDN={$url} ";
+                $this->coolify_variables .= 'COOLIFY_URL='.escapeShellValue($fqdn).' ';
+                $this->coolify_variables .= 'COOLIFY_FQDN='.escapeShellValue($url).' ';
             }
         }
         if (isset($this->application->git_branch)) {
             $this->coolify_variables .= 'COOLIFY_BRANCH='.escapeShellValue($this->application->git_branch).' ';
         }
-        $this->coolify_variables .= "COOLIFY_RESOURCE_UUID={$this->application->uuid} ";
+        $this->coolify_variables .= 'COOLIFY_RESOURCE_UUID='.escapeShellValue($this->application->uuid).' ';
+    }
+
+    private function shellAssignmentForDockerfileArg(string $assignment): string
+    {
+        [$key, $value] = array_pad(explode('=', $assignment, 2), 2, null);
+
+        if ($value === null) {
+            return $assignment;
+        }
+
+        if (str_starts_with($value, "'") && str_ends_with($value, "'")) {
+            $value = substr($value, 1, -1);
+            $value = str_replace("'\\''", "'", $value);
+        }
+
+        return "{$key}={$value}";
     }
 
     private function gitLsRemoteCommand(string $lsRemoteRef, ?string $identityFile = null): string
@@ -4220,7 +4236,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 $coolify_vars = collect(explode(' ', trim($this->coolify_variables)))
                     ->filter()
                     ->map(function ($var) {
-                        return "ARG {$var}";
+                        return 'ARG '.$this->shellAssignmentForDockerfileArg($var);
                     });
                 $argsToInsert = $argsToInsert->merge($coolify_vars);
             }
@@ -4242,7 +4258,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 $coolify_vars = collect(explode(' ', trim($this->coolify_variables)))
                     ->filter()
                     ->map(function ($var) {
-                        return "ARG {$var}";
+                        return 'ARG '.$this->shellAssignmentForDockerfileArg($var);
                     });
                 $argsToInsert = $argsToInsert->merge($coolify_vars);
             }
