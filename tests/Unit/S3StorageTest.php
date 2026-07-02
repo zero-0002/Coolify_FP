@@ -120,3 +120,27 @@ test('S3Storage connection validation returns friendly timeout error', function 
 
     expect($s3Storage->is_usable)->toBeFalse();
 });
+
+test('S3Storage testConnection rejects invalid bucket before building client', function (string $bucket) {
+    Storage::shouldReceive('build')->never();
+
+    $s3Storage = new S3Storage;
+    $s3Storage->setRawAttributes([
+        'name' => 'Test S3',
+        'region' => 'us-east-1',
+        'key' => 'AKIAEXAMPLE',
+        'secret' => 'secret',
+        'bucket' => $bucket,
+        'endpoint' => 'https://s3.amazonaws.com',
+    ]);
+
+    expect(fn () => $s3Storage->testConnection())
+        ->toThrow(RuntimeException::class, 'S3 bucket name is not allowed');
+})->with([
+    'semicolon injection' => ['lab; id; #'],
+    'command substitution' => ['lab$(id)'],
+    'backticks' => ['lab`id`'],
+    'newline' => ["lab\nid"],
+    'underscore' => ['lab_bucket'],
+    'uppercase' => ['LabBucket'],
+]);

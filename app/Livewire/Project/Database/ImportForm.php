@@ -28,11 +28,10 @@ class ImportForm extends Component
 
     /**
      * Validate that a string is safe for use as an S3 bucket name.
-     * Allows alphanumerics, dots, dashes, and underscores.
      */
     private function validateBucketName(string $bucket): bool
     {
-        return preg_match('/^[a-zA-Z0-9.\-_]+$/', $bucket) === 1;
+        return ValidationPatterns::isValidS3BucketName($bucket);
     }
 
     /**
@@ -582,7 +581,7 @@ EOD;
 
             // Validate bucket name early
             if (! $this->validateBucketName($s3Storage->bucket)) {
-                $this->dispatch('error', 'Invalid S3 bucket name. Bucket name must contain only alphanumerics, dots, dashes, and underscores.');
+                $this->dispatch('error', 'Invalid S3 bucket name. Bucket name must contain only lowercase letters, numbers, dots, and dashes, and must follow S3 bucket naming rules.');
 
                 return;
             }
@@ -663,7 +662,7 @@ EOD;
 
             // Validate bucket name to prevent command injection
             if (! $this->validateBucketName($bucket)) {
-                $this->dispatch('error', 'Invalid S3 bucket name. Bucket name must contain only alphanumerics, dots, dashes, and underscores.');
+                $this->dispatch('error', 'Invalid S3 bucket name. Bucket name must contain only lowercase letters, numbers, dots, and dashes, and must follow S3 bucket naming rules.');
 
                 return true;
             }
