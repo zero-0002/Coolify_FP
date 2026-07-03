@@ -138,10 +138,11 @@ class Controller extends BaseController
                 }
                 $invitation->delete();
 
-                Auth::login($user);
                 $user->forceFill([
                     'password' => Hash::make(Str::random(64)),
                 ])->save();
+
+                Auth::login($user);
                 session(['currentTeam' => $team]);
 
                 return redirect()->route('dashboard');

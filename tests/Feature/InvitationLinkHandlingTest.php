@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Once;
 use Visus\Cuid2\Cuid2;
@@ -85,6 +86,27 @@ it('accepts a magic link when opened from a different public origin', function (
 
     $this->assertAuthenticatedAs($user);
     $this->assertDatabaseMissing('team_invitations', ['email' => $user->email]);
+    expect($user->teams()->where('team_id', $team->id)->exists())->toBeTrue();
+
+    $user->refresh();
+    expect(Hash::check($password, $user->password))->toBeFalse();
+});
+
+it('keeps the invited user authenticated after rotating the temporary password with database sessions', function () {
+    $this->withMiddleware([CheckForcePasswordReset::class, DecideWhatToDoWithUser::class]);
+    Config::set('session.driver', 'database');
+
+    [$team, $user, $password, $token] = createInvitationLinkFixture();
+
+    $this->get(route('auth.link', ['token' => $token]))
+        ->assertRedirect(route('dashboard'));
+
+    expect(DB::table('sessions')->where('user_id', $user->id)->exists())->toBeTrue();
+
+    $this->get(route('dashboard'))
+        ->assertRedirect(route('auth.force-password-reset'));
+
+    $this->assertAuthenticatedAs($user);
     expect($user->teams()->where('team_id', $team->id)->exists())->toBeTrue();
 
     $user->refresh();
