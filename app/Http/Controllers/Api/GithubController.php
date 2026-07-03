@@ -183,6 +183,7 @@ class GithubController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
+        $this->authorize('create', [GithubApp::class]);
         $return = validateIncomingRequest($request);
         if ($return instanceof JsonResponse) {
             return $return;
@@ -568,6 +569,7 @@ class GithubController extends Controller
             $githubApp = GithubApp::where('id', $github_app_id)
                 ->where('team_id', $teamId)
                 ->firstOrFail();
+            $this->authorize('update', $githubApp);
 
             // Define allowed fields for update
             $allowedFields = [
@@ -752,6 +754,7 @@ class GithubController extends Controller
             $githubApp = GithubApp::where('id', $github_app_id)
                 ->where('team_id', $teamId)
                 ->firstOrFail();
+            $this->authorize('delete', $githubApp);
 
             // Check if the GitHub app is being used by any applications
             if ($githubApp->applications->isNotEmpty()) {
