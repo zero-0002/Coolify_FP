@@ -419,7 +419,7 @@ describe('GitHub Source Change Component', function () {
         expect($githubApp->private_key_id)->toBe($privateKey->id);
     });
 
-    test('normalizes resolvable ghe dot com api url when saving github app settings', function () {
+    test('preserves custom ghe api url when saving github app settings', function () {
         $githubApp = GithubApp::create([
             'name' => 'Test GitHub App',
             'api_url' => 'https://github.ghe.com/api/v3',
@@ -437,10 +437,10 @@ describe('GitHub Source Change Component', function () {
             ->set('apiUrl', 'https://github.ghe.com/api/v3')
             ->call('submit')
             ->assertDispatched('success')
-            ->assertSet('apiUrl', 'https://api.github.ghe.com');
+            ->assertSet('apiUrl', 'https://github.ghe.com/api/v3');
 
         $githubApp->refresh();
-        expect($githubApp->api_url)->toBe('https://api.github.ghe.com');
+        expect($githubApp->api_url)->toBe('https://github.ghe.com/api/v3');
     });
 
     test('rejects invalid github organization values', function () {

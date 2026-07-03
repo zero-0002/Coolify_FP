@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\GithubApp;
+use App\Models\InstanceSettings;
 use App\Models\PrivateKey;
 use App\Models\Team;
 use App\Models\User;
@@ -10,19 +11,22 @@ use Illuminate\Support\Facades\Http;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    InstanceSettings::forceCreate(['id' => 0, 'is_api_enabled' => true]);
+
     // Create a team with owner
     $this->team = Team::factory()->create();
     $this->user = User::factory()->create();
     $this->team->members()->attach($this->user->id, ['role' => 'owner']);
+    session(['currentTeam' => $this->team]);
 
     // Create an API token for the user
-    $this->token = $this->user->createToken('test-token', ['*'], $this->team->id);
+    $this->token = $this->user->createToken('test-token');
     $this->bearerToken = $this->token->plainTextToken;
 
     // Create a private key for the team
     $this->privateKey = PrivateKey::create([
         'name' => 'Test Key',
-        'private_key' => 'test-private-key-content',
+        'private_key' => validGithubAppsApiPrivateKey(),
         'team_id' => $this->team->id,
     ]);
 });
@@ -139,7 +143,8 @@ describe('GET /api/v1/github-apps', function () {
         $otherTeam = Team::factory()->create();
         $otherUser = User::factory()->create();
         $otherTeam->members()->attach($otherUser->id, ['role' => 'owner']);
-        $otherToken = $otherUser->createToken('other-token', ['*'], $otherTeam->id);
+        session(['currentTeam' => $otherTeam]);
+        $otherToken = $otherUser->createToken('other-token');
 
         // System-wide apps should be visible to other teams
         $response = $this->withHeaders([
@@ -173,7 +178,7 @@ describe('GET /api/v1/github-apps', function () {
         $otherTeam = Team::factory()->create();
         $otherPrivateKey = PrivateKey::create([
             'name' => 'Other Key',
-            'private_key' => 'other-key',
+            'private_key' => validGithubAppsApiPrivateKey(),
             'team_id' => $otherTeam->id,
         ]);
         GithubApp::create([
@@ -249,7 +254,7 @@ describe('GitHub app API url normalization', function () {
         ])->postJson('/api/v1/github-apps', [
             'name' => 'GHE App',
             'organization' => '/octocorp/',
-            'html_url' => 'https://octocorp.ghe.com',
+            'html_url' => 'https://github.ghe.com',
             'app_id' => 12345,
             'installation_id' => 67890,
             'client_id' => 'test-client-id',
@@ -261,12 +266,36 @@ describe('GitHub app API url normalization', function () {
         $response->assertCreated()
             ->assertJsonFragment([
                 'organization' => 'octocorp',
-                'api_url' => 'https://api.octocorp.ghe.com',
-                'html_url' => 'https://octocorp.ghe.com',
+                'api_url' => 'https://api.github.ghe.com',
+                'html_url' => 'https://github.ghe.com',
             ]);
     });
 
-    test('normalizes ghe dot com api url when updating github apps', function () {
+    test('preserves provided api url when creating github apps', function () {
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+        ])->postJson('/api/v1/github-apps', [
+            'name' => 'GHE App',
+            'organization' => '/octocorp/',
+            'api_url' => 'https://github.com/api/v3',
+            'html_url' => 'https://github.com',
+            'app_id' => 12345,
+            'installation_id' => 67890,
+            'client_id' => 'test-client-id',
+            'client_secret' => 'test-client-secret',
+            'webhook_secret' => 'test-webhook-secret',
+            'private_key_uuid' => $this->privateKey->uuid,
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonFragment([
+                'organization' => 'octocorp',
+                'api_url' => 'https://github.com/api/v3',
+                'html_url' => 'https://github.com',
+            ]);
+    });
+
+    test('preserves provided api url when updating github apps', function () {
         $githubApp = GithubApp::create([
             'name' => 'GHE App',
             'api_url' => 'https://github.company.internal/api/v3',
@@ -285,12 +314,12 @@ describe('GitHub app API url normalization', function () {
         $response = $this->withHeaders([
             'Authorization' => 'Bearer '.$this->bearerToken,
         ])->patchJson("/api/v1/github-apps/{$githubApp->id}", [
-            'html_url' => 'https://octocorp.ghe.com',
-            'api_url' => 'https://octocorp.ghe.com/api/v3',
+            'html_url' => 'https://github.com',
+            'api_url' => 'https://github.com/api/v3',
         ]);
 
         $response->assertSuccessful()
-            ->assertJsonPath('data.api_url', 'https://api.octocorp.ghe.com');
+            ->assertJsonPath('data.api_url', 'https://github.com/api/v3');
     });
 
     test('rejects invalid organization when creating github apps', function () {

@@ -5,6 +5,7 @@ namespace App\Livewire\Source\Github;
 use App\Models\GithubApp;
 use App\Rules\SafeExternalUrl;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 class Create extends Component
@@ -25,14 +26,24 @@ class Create extends Component
 
     public bool $is_system_wide = false;
 
+    private bool $shouldDeriveApiUrlAfterHtmlUrlUpdate = false;
+
     public function mount()
     {
         $this->name = substr(generate_random_name(), 0, 30);
     }
 
+    public function updatingHtmlUrl(): void
+    {
+        $this->shouldDeriveApiUrlAfterHtmlUrlUpdate = blank($this->api_url)
+            || $this->api_url === githubApiUrlFromHtmlUrl($this->html_url);
+    }
+
     public function updatedHtmlUrl(): void
     {
-        $this->api_url = githubApiUrlFromHtmlUrl($this->html_url);
+        if ($this->shouldDeriveApiUrlAfterHtmlUrlUpdate) {
+            $this->api_url = githubApiUrlFromHtmlUrl($this->html_url);
+        }
     }
 
     public function createGitHubApp()
@@ -41,7 +52,9 @@ class Create extends Component
             $this->authorize('createAnyResource');
 
             $this->organization = normalizeGithubOrganization($this->organization);
-            $this->api_url = githubApiUrlFromHtmlUrl($this->html_url);
+            $this->api_url = filled($this->api_url)
+                ? $this->api_url
+                : githubApiUrlFromHtmlUrl($this->html_url);
 
             $this->validate([
                 'name' => 'required|string',
@@ -68,6 +81,8 @@ class Create extends Component
             }
 
             return redirectRoute($this, 'source.github.show', ['github_app_uuid' => $github_app->uuid]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }

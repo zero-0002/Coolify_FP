@@ -256,7 +256,9 @@ class GithubController extends Controller
                 'uuid' => Str::uuid(),
                 'name' => $request->input('name'),
                 'organization' => $request->input('organization'),
-                'api_url' => githubApiUrlFromHtmlUrl($request->input('html_url')),
+                'api_url' => filled($request->input('api_url'))
+                    ? $request->input('api_url')
+                    : githubApiUrlFromHtmlUrl($request->input('html_url')),
                 'html_url' => $request->input('html_url'),
                 'custom_user' => $request->input('custom_user', 'git'),
                 'custom_port' => $request->input('custom_port', 22),
@@ -650,7 +652,7 @@ class GithubController extends Controller
             if (array_key_exists('organization', $payload)) {
                 $payload['organization'] = normalizeGithubOrganization($payload['organization']);
             }
-            if (isset($payload['html_url'])) {
+            if (isset($payload['html_url']) && ! filled($payload['api_url'] ?? null)) {
                 $payload['api_url'] = githubApiUrlFromHtmlUrl($payload['html_url']);
             }
 

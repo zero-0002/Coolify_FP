@@ -79,6 +79,8 @@ class Change extends Component
 
     public string $activeTab = 'general';
 
+    private bool $shouldDeriveApiUrlAfterHtmlUrlUpdate = false;
+
     protected function rules(): array
     {
         return [
@@ -104,9 +106,17 @@ class Change extends Component
         ];
     }
 
+    public function updatingHtmlUrl(): void
+    {
+        $this->shouldDeriveApiUrlAfterHtmlUrlUpdate = blank($this->apiUrl)
+            || $this->apiUrl === githubApiUrlFromHtmlUrl($this->htmlUrl);
+    }
+
     public function updatedHtmlUrl(): void
     {
-        $this->apiUrl = githubApiUrlFromHtmlUrl($this->htmlUrl);
+        if ($this->shouldDeriveApiUrlAfterHtmlUrlUpdate) {
+            $this->apiUrl = githubApiUrlFromHtmlUrl($this->htmlUrl);
+        }
     }
 
     public function boot()
@@ -126,7 +136,9 @@ class Change extends Component
         if ($toModel) {
             // Sync TO model (before save)
             $this->organization = normalizeGithubOrganization($this->organization);
-            $this->apiUrl = githubApiUrlFromHtmlUrl($this->htmlUrl);
+            $this->apiUrl = filled($this->apiUrl)
+                ? $this->apiUrl
+                : githubApiUrlFromHtmlUrl($this->htmlUrl);
 
             $this->github_app->name = $this->name;
             $this->github_app->organization = $this->organization;
@@ -354,7 +366,9 @@ class Change extends Component
 
             $this->github_app->makeVisible('client_secret')->makeVisible('webhook_secret');
             $this->organization = normalizeGithubOrganization($this->organization);
-            $this->apiUrl = githubApiUrlFromHtmlUrl($this->htmlUrl);
+            $this->apiUrl = filled($this->apiUrl)
+                ? $this->apiUrl
+                : githubApiUrlFromHtmlUrl($this->htmlUrl);
             $this->validate();
 
             $this->syncData(true);
