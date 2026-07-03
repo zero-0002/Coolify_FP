@@ -502,25 +502,37 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     ]);
                 }
 
-                // Also populate docker_compose_domains for dockercompose apps (mirrors Path 1 at lines 601-627)
-                if ($resource->build_pack === 'dockercompose') {
-                    $normalizedFqdnFor = str($fqdnFor)->replace('-', '_')->replace('.', '_')->value();
-                    $serviceExists = false;
-                    foreach (array_keys($services) as $serviceNameKey) {
-                        if (str($serviceNameKey)->replace('-', '_')->replace('.', '_')->value() === $normalizedFqdnFor) {
-                            $serviceExists = true;
-                            break;
-                        }
+            }
+
+            // Also populate docker_compose_domains for dockercompose apps from direct SERVICE_* declarations.
+            if ($resource->build_pack === 'dockercompose' && ($key->startsWith('SERVICE_FQDN_') || $key->startsWith('SERVICE_URL_'))) {
+                $parsed = parseServiceEnvironmentVariable($key->value());
+                $normalizedServiceName = str($parsed['service_name'])->replace('-', '_')->replace('.', '_')->value();
+                $serviceExists = false;
+                foreach (array_keys($services) as $serviceNameKey) {
+                    if (str($serviceNameKey)->replace('-', '_')->replace('.', '_')->value() === $normalizedServiceName) {
+                        $serviceExists = true;
+                        break;
                     }
-                    if ($serviceExists) {
-                        $domains = collect(json_decode(data_get($resource, 'docker_compose_domains'))) ?? collect([]);
-                        $domainExists = data_get($domains->get($normalizedFqdnFor), 'domain');
-                        if (is_null($domainExists)) {
-                            $domainValue = $fqdn;
-                            $domains->put($normalizedFqdnFor, ['domain' => $domainValue]);
-                            $resource->docker_compose_domains = $domains->toJson();
-                            $resource->save();
+                }
+                if ($serviceExists) {
+                    $domains = collect(json_decode(data_get($resource, 'docker_compose_domains') ?: '[]'));
+                    $domainExists = data_get($domains->get($normalizedServiceName), 'domain');
+                    if (is_null($domainExists)) {
+                        $serviceNameForDomain = str($parsed['service_name'])->replace('_', '-')->value();
+                        $domainValue = generateUrl(server: $server, random: "$serviceNameForDomain-$uuid");
+                        if ($value && get_class($value) === Illuminate\Support\Stringable::class && $value->startsWith('/')) {
+                            $path = $value->value();
+                            if ($path !== '/') {
+                                $domainValue = "$domainValue$path";
+                            }
                         }
+                        if ($parsed['port'] && is_numeric($parsed['port'])) {
+                            $domainValue = "$domainValue:{$parsed['port']}";
+                        }
+                        $domains->put($normalizedServiceName, ['domain' => $domainValue]);
+                        $resource->docker_compose_domains = $domains->toJson();
+                        $resource->save();
                     }
                 }
             }
@@ -630,7 +642,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
 
                         // Only add domain if the service exists
                         if ($serviceExists) {
-                            $domains = collect(json_decode(data_get($resource, 'docker_compose_domains'))) ?? collect([]);
+                            $domains = collect(json_decode(data_get($resource, 'docker_compose_domains') ?: '[]'));
                             $domainExists = data_get($domains->get($serviceName), 'domain');
 
                             // Update domain using URL with port if applicable
