@@ -10,11 +10,18 @@ use Symfony\Component\Yaml\Yaml;
 
 class LocalFileVolume extends BaseModel
 {
+    public const MAX_CONTENT_SIZE = 5_242_880;
+
+    public const BINARY_PLACEHOLDER = '[binary file]';
+
+    public const TOO_LARGE_PLACEHOLDER = '[file too large to display]';
+
     protected $casts = [
         // 'fs_path' => 'encrypted',
         // 'mount_path' => 'encrypted',
         'content' => 'encrypted',
         'is_directory' => 'boolean',
+        'is_host_file' => 'boolean',
         'is_preview_suffix_enabled' => 'boolean',
     ];
 
@@ -27,17 +34,22 @@ class LocalFileVolume extends BaseModel
         'resource_type',
         'resource_id',
         'is_directory',
+        'is_host_file',
         'chown',
         'chmod',
         'is_based_on_git',
         'is_preview_suffix_enabled',
     ];
 
-    public $appends = ['is_binary'];
+    public $appends = ['is_binary', 'is_too_large'];
 
     protected static function booted()
     {
         static::created(function (LocalFileVolume $fileVolume) {
+            if ($fileVolume->is_host_file) {
+                return;
+            }
+
             $fileVolume->load(['service']);
             dispatch(new ServerStorageSaveJob($fileVolume));
         });
@@ -46,9 +58,14 @@ class LocalFileVolume extends BaseModel
     protected function isBinary(): Attribute
     {
         return Attribute::make(
-            get: function () {
-                return $this->content === '[binary file]';
-            }
+            get: fn () => $this->content === self::BINARY_PLACEHOLDER
+        );
+    }
+
+    protected function isTooLarge(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->content === self::TOO_LARGE_PLACEHOLDER
         );
     }
 
@@ -59,6 +76,10 @@ class LocalFileVolume extends BaseModel
 
     public function loadStorageOnServer()
     {
+        if ($this->is_host_file) {
+            return;
+        }
+
         $this->load(['service']);
         $isService = data_get($this->resource, 'service');
         if ($isService) {
@@ -81,10 +102,17 @@ class LocalFileVolume extends BaseModel
 
         $isFile = instant_remote_process(["test -f {$escapedPath} && echo OK || echo NOK"], $server);
         if ($isFile === 'OK') {
+            if ($this->remoteFileExceedsLimit($escapedPath, $server)) {
+                $this->content = self::TOO_LARGE_PLACEHOLDER;
+                $this->is_directory = false;
+                $this->save();
+
+                return;
+            }
             $content = instant_remote_process(["cat {$escapedPath}"], $server, false);
             // Check if content contains binary data by looking for null bytes or non-printable characters
             if (str_contains($content, "\0") || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', $content)) {
-                $content = '[binary file]';
+                $content = self::BINARY_PLACEHOLDER;
             }
             $this->content = $content;
             $this->is_directory = false;
@@ -92,8 +120,24 @@ class LocalFileVolume extends BaseModel
         }
     }
 
+    protected function remoteFileExceedsLimit(string $escapedPath, $server): bool
+    {
+        $sizeOutput = instant_remote_process(
+            ["stat -c%s {$escapedPath} 2>/dev/null || wc -c < {$escapedPath}"],
+            $server,
+            false,
+        );
+        $size = (int) trim((string) $sizeOutput);
+
+        return $size > self::MAX_CONTENT_SIZE;
+    }
+
     public function deleteStorageOnServer()
     {
+        if ($this->is_host_file) {
+            return;
+        }
+
         $this->load(['service']);
         $isService = data_get($this->resource, 'service');
         if ($isService) {
@@ -131,6 +175,10 @@ class LocalFileVolume extends BaseModel
 
     public function saveStorageOnServer()
     {
+        if ($this->is_host_file) {
+            return;
+        }
+
         $this->load(['service']);
         $isService = data_get($this->resource, 'service');
         if ($isService) {
@@ -141,26 +189,26 @@ class LocalFileVolume extends BaseModel
             $server = $this->resource->destination->server;
         }
         $commands = collect([]);
-
-        // Validate fs_path early before any shell interpolation
-        validateShellSafePath($this->fs_path, 'storage path');
-        $escapedFsPath = escapeshellarg($this->fs_path);
         $escapedWorkdir = escapeshellarg($workdir);
 
         if ($this->is_directory) {
+            // Validate fs_path early before any shell interpolation
+            validateShellSafePath($this->fs_path, 'storage path');
+            $escapedFsPath = escapeshellarg($this->fs_path);
             $commands->push("mkdir -p {$escapedFsPath} > /dev/null 2>&1 || true");
             $commands->push("mkdir -p {$escapedWorkdir} > /dev/null 2>&1 || true");
             $commands->push("cd {$escapedWorkdir}");
         }
-        if (str($this->fs_path)->startsWith('.') || str($this->fs_path)->startsWith('/') || str($this->fs_path)->startsWith('~')) {
-            $parent_dir = str($this->fs_path)->beforeLast('/');
+        $path = data_get_str($this, 'fs_path');
+        $content = data_get($this, 'content');
+        $pathForParentDirectory = str($this->fs_path);
+        if ($pathForParentDirectory->startsWith('.') || $pathForParentDirectory->startsWith('/') || $pathForParentDirectory->startsWith('~')) {
+            $parent_dir = $pathForParentDirectory->beforeLast('/');
             if ($parent_dir != '') {
                 $escapedParentDir = escapeshellarg($parent_dir);
                 $commands->push("mkdir -p {$escapedParentDir} > /dev/null 2>&1 || true");
             }
         }
-        $path = data_get_str($this, 'fs_path');
-        $content = data_get($this, 'content');
         if ($path->startsWith('.')) {
             $path = $path->after('.');
             $path = $workdir.$path;
@@ -173,9 +221,12 @@ class LocalFileVolume extends BaseModel
         $isFile = instant_remote_process(["test -f {$escapedPath} && echo OK || echo NOK"], $server);
         $isDir = instant_remote_process(["test -d {$escapedPath} && echo OK || echo NOK"], $server);
         if ($isFile === 'OK' && $this->is_directory) {
-            $content = instant_remote_process(["cat {$escapedPath}"], $server, false);
+            if ($this->remoteFileExceedsLimit($escapedPath, $server)) {
+                $this->content = self::TOO_LARGE_PLACEHOLDER;
+            } else {
+                $this->content = instant_remote_process(["cat {$escapedPath}"], $server, false);
+            }
             $this->is_directory = false;
-            $this->content = $content;
             $this->save();
             FileStorageChanged::dispatch(data_get($server, 'team_id'));
             throw new \Exception('The following file is a file on the server, but you are trying to mark it as a directory. Please delete the file on the server or mark it as directory.');
