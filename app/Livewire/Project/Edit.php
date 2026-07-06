@@ -3,18 +3,32 @@
 namespace App\Livewire\Project;
 
 use App\Models\Project;
-use Livewire\Attributes\Validate;
+use App\Support\ValidationPatterns;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class Edit extends Component
 {
+    use AuthorizesRequests;
+
     public Project $project;
 
-    #[Validate(['required', 'string', 'min:3', 'max:255'])]
     public string $name;
 
-    #[Validate(['nullable', 'string', 'max:255'])]
     public ?string $description = null;
+
+    protected function rules(): array
+    {
+        return [
+            'name' => ValidationPatterns::nameRules(),
+            'description' => ValidationPatterns::descriptionRules(),
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return ValidationPatterns::combinedMessages();
+    }
 
     public function mount(string $project_uuid)
     {
@@ -43,6 +57,7 @@ class Edit extends Component
     public function submit()
     {
         try {
+            $this->authorize('update', $this->project);
             $this->syncData(true);
             $this->dispatch('success', 'Project updated.');
         } catch (\Throwable $e) {

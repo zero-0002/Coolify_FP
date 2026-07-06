@@ -6,7 +6,10 @@ ARG MINIO_VERSION=RELEASE.2025-05-21T01-59-54Z
 # https://github.com/cloudflare/cloudflared/releases
 ARG CLOUDFLARED_VERSION=2025.7.0
 # https://www.postgresql.org/support/versioning/
-ARG POSTGRES_VERSION=15
+# Note: We are using version 18 of the postgres client (while still using postgres 15 for the postgres server) as version 15 has been removed from Alpine 3.23+ https://pkgs.alpinelinux.org/packages?name=postgresql*-client&branch=v3.23&repo=&arch=x86_64&origin=&flagged=&maintainer=
+ARG POSTGRES_VERSION=18
+# https://nginx.org/en/linux_packages.html
+ARG NGINX_VERSION=1.31.0-r1
 
 # Add user/group
 ARG USER_ID=9999
@@ -19,6 +22,19 @@ FROM serversideup/php:${SERVERSIDEUP_PHP_VERSION} AS base
 
 USER root
 
+# Install patched Nginx from the official nginx.org Alpine repository
+ARG NGINX_VERSION
+RUN set -eux; \
+    apk add --no-cache ca-certificates curl; \
+    NGINX_ALPINE_VERSION="$(egrep -o '^[0-9]+\.[0-9]+' /etc/alpine-release)"; \
+    NGINX_REPOSITORY="https://nginx.org/packages/mainline/alpine/v${NGINX_ALPINE_VERSION}/main"; \
+    sed -i 's|http://nginx.org/packages|https://nginx.org/packages|g' /etc/apk/repositories; \
+    grep -qxF "@nginx ${NGINX_REPOSITORY}" /etc/apk/repositories || echo "@nginx ${NGINX_REPOSITORY}" >> /etc/apk/repositories; \
+    curl -fsSL https://nginx.org/keys/nginx_signing.rsa.pub -o /etc/apk/keys/nginx_signing.rsa.pub; \
+    apk add --no-cache --upgrade "nginx@nginx=${NGINX_VERSION}"; \
+    rm -f /etc/nginx/nginx.conf /etc/nginx/conf.d/default.conf; \
+    nginx -v
+
 ARG USER_ID
 ARG GROUP_ID
 
@@ -27,7 +43,8 @@ RUN docker-php-serversideup-set-id www-data $USER_ID:$GROUP_ID && \
 
 WORKDIR /var/www/html
 COPY --chown=www-data:www-data composer.json composer.lock ./
-RUN composer install --no-dev --no-interaction --no-plugins --no-scripts --prefer-dist
+RUN --mount=type=cache,target=/tmp/cache \
+    COMPOSER_CACHE_DIR=/tmp/cache composer install --no-dev --no-interaction --no-plugins --no-scripts --prefer-dist
 
 USER www-data
 
@@ -38,7 +55,8 @@ FROM node:24-alpine AS static-assets
 
 WORKDIR /app
 COPY package*.json vite.config.js postcss.config.cjs ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 COPY . .
 RUN npm run build
 
@@ -57,11 +75,24 @@ ARG GROUP_ID
 ARG TARGETPLATFORM
 ARG POSTGRES_VERSION
 ARG CLOUDFLARED_VERSION
+ARG NGINX_VERSION
 ARG CI=true
 
 WORKDIR /var/www/html
 
 USER root
+
+# Install patched Nginx from the official nginx.org Alpine repository
+RUN set -eux; \
+    apk add --no-cache ca-certificates curl; \
+    NGINX_ALPINE_VERSION="$(egrep -o '^[0-9]+\.[0-9]+' /etc/alpine-release)"; \
+    NGINX_REPOSITORY="https://nginx.org/packages/mainline/alpine/v${NGINX_ALPINE_VERSION}/main"; \
+    sed -i 's|http://nginx.org/packages|https://nginx.org/packages|g' /etc/apk/repositories; \
+    grep -qxF "@nginx ${NGINX_REPOSITORY}" /etc/apk/repositories || echo "@nginx ${NGINX_REPOSITORY}" >> /etc/apk/repositories; \
+    curl -fsSL https://nginx.org/keys/nginx_signing.rsa.pub -o /etc/apk/keys/nginx_signing.rsa.pub; \
+    apk add --no-cache --upgrade "nginx@nginx=${NGINX_VERSION}"; \
+    rm -f /etc/nginx/nginx.conf /etc/nginx/conf.d/default.conf; \
+    nginx -v
 
 RUN docker-php-serversideup-set-id www-data $USER_ID:$GROUP_ID && \
     docker-php-serversideup-set-file-permissions --owner $USER_ID:$GROUP_ID --service nginx
@@ -72,7 +103,9 @@ RUN apk add --no-cache gnupg && \
     curl -fSsL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor > /usr/share/keyrings/postgresql.gpg
 
 # Install system dependencies
-RUN apk add --no-cache \
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk upgrade && \
+    apk add --no-cache \
     postgresql${POSTGRES_VERSION}-client \
     openssh-client \
     git \
@@ -120,6 +153,7 @@ COPY --chown=www-data:www-data templates ./templates
 COPY --chown=www-data:www-data resources/views ./resources/views
 COPY --chown=www-data:www-data artisan artisan
 COPY --chown=www-data:www-data openapi.yaml ./openapi.yaml
+COPY --chown=www-data:www-data changelogs/ ./changelogs/
 
 RUN composer dump-autoload
 

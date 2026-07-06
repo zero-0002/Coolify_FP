@@ -3,13 +3,22 @@
 namespace App\Livewire\Project\Service;
 
 use App\Models\Service;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class EditCompose extends Component
 {
+    use AuthorizesRequests;
+
     public Service $service;
 
     public $serviceId;
+
+    public ?string $dockerComposeRaw = null;
+
+    public ?string $dockerCompose = null;
+
+    public bool $isContainerLabelEscapeEnabled = false;
 
     protected $listeners = [
         'refreshEnvs',
@@ -18,30 +27,45 @@ class EditCompose extends Component
     ];
 
     protected $rules = [
-        'service.docker_compose_raw' => 'required',
-        'service.docker_compose' => 'required',
-        'service.is_container_label_escape_enabled' => 'required',
+        'dockerComposeRaw' => 'required',
+        'dockerCompose' => 'required',
+        'isContainerLabelEscapeEnabled' => 'required',
     ];
 
     public function envsUpdated()
     {
-        $this->dispatch('saveCompose', $this->service->docker_compose_raw);
+        $this->dispatch('saveCompose', $this->dockerComposeRaw);
         $this->refreshEnvs();
     }
 
     public function refreshEnvs()
     {
         $this->service = Service::ownedByCurrentTeam()->find($this->serviceId);
+        $this->syncData(false);
     }
 
     public function mount()
     {
         $this->service = Service::ownedByCurrentTeam()->find($this->serviceId);
+        $this->syncData(false);
+    }
+
+    private function syncData(bool $toModel = false): void
+    {
+        if ($toModel) {
+            $this->service->docker_compose_raw = $this->dockerComposeRaw;
+            $this->service->docker_compose = $this->dockerCompose;
+            $this->service->is_container_label_escape_enabled = $this->isContainerLabelEscapeEnabled;
+        } else {
+            $this->dockerComposeRaw = $this->service->docker_compose_raw;
+            $this->dockerCompose = $this->service->docker_compose;
+            $this->isContainerLabelEscapeEnabled = $this->service->is_container_label_escape_enabled ?? false;
+        }
     }
 
     public function validateCompose()
     {
-        $isValid = validateComposeFile($this->service->docker_compose_raw, $this->service->server_id);
+        $isValid = validateComposeFile($this->dockerComposeRaw, $this->service->server_id);
         if ($isValid !== 'OK') {
             $this->dispatch('error', "Invalid docker-compose file.\n$isValid");
         } else {
@@ -51,18 +75,29 @@ class EditCompose extends Component
 
     public function saveEditedCompose()
     {
-        $this->dispatch('info', 'Saving new docker compose...');
-        $this->dispatch('saveCompose', $this->service->docker_compose_raw);
-        $this->dispatch('refreshStorages');
+        try {
+            $this->authorize('update', $this->service);
+            $this->dispatch('info', 'Saving new docker compose...');
+            $this->dispatch('saveCompose', $this->dockerComposeRaw);
+            $this->dispatch('refreshStorages');
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function instantSave()
     {
-        $this->validate([
-            'service.is_container_label_escape_enabled' => 'required',
-        ]);
-        $this->service->save(['is_container_label_escape_enabled' => $this->service->is_container_label_escape_enabled]);
-        $this->dispatch('success', 'Service updated successfully');
+        try {
+            $this->authorize('update', $this->service);
+            $this->validate([
+                'isContainerLabelEscapeEnabled' => 'required',
+            ]);
+            $this->syncData(true);
+            $this->service->save(['is_container_label_escape_enabled' => $this->isContainerLabelEscapeEnabled]);
+            $this->dispatch('success', 'Service updated successfully');
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function render()

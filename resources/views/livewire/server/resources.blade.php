@@ -32,8 +32,11 @@
                     </div>
                 </div>
             </div>
-            @if ($containers->count() > 0)
-                @if ($activeTab === 'managed')
+            @if ($activeTab === 'managed')
+                @php
+                    $managedResources = $server->definedResources()->sortBy('name', SORT_NATURAL);
+                @endphp
+                @if ($managedResources->count() > 0)
                     <div class="flex flex-col">
                         <div class="flex flex-col">
                             <div class="overflow-x-auto">
@@ -59,7 +62,7 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @forelse ($server->definedResources()->sortBy('name',SORT_NATURAL) as $resource)
+                                                @foreach ($managedResources as $resource)
                                                     <tr>
                                                         <td class="px-5 py-4 text-sm whitespace-nowrap">
                                                             {{ data_get($resource->project(), 'name') }}
@@ -68,7 +71,7 @@
                                                             {{ data_get($resource, 'environment.name') }}
                                                         </td>
                                                         <td class="px-5 py-4 text-sm whitespace-nowrap hover:underline">
-                                                            <a class=""
+                                                            <a class="" {{ wireNavigate() }}
                                                                 href="{{ $resource->link() }}">{{ $resource->name }}
                                                                 <x-internal-link /></a>
                                                         </td>
@@ -83,8 +86,7 @@
                                                             @endif
                                                         </td>
                                                     </tr>
-                                                @empty
-                                                @endforelse
+                                                @endforeach
                                             </tbody>
                                         </table>
                                     </div>
@@ -92,7 +94,11 @@
                             </div>
                         </div>
                     </div>
-                @elseif ($activeTab === 'unmanaged')
+                @else
+                    <div>No managed resources found.</div>
+                @endif
+            @elseif ($activeTab === 'unmanaged')
+                @if (count($unmanagedContainers) > 0)
                     <div class="flex flex-col">
                         <div class="flex flex-col">
                             <div class="overflow-x-auto">
@@ -116,7 +122,7 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @forelse ($containers->sortBy('name',SORT_NATURAL) as $resource)
+                                                @foreach (collect($unmanagedContainers)->sortBy('name', SORT_NATURAL) as $resource)
                                                     <tr>
                                                         <td class="px-5 py-4 text-sm whitespace-nowrap">
                                                             {{ data_get($resource, 'Names') }}
@@ -128,37 +134,33 @@
                                                             {{ data_get($resource, 'State') }}
                                                         </td>
                                                         <td class="flex gap-2 px-5 py-4 text-sm whitespace-nowrap">
-                                                            @if (data_get($resource, 'State') === 'running')
-                                                                <x-forms.button
-                                                                    wire:click="restartUnmanaged('{{ data_get($resource, 'ID') }}')"
-                                                                    wire:key="{{ data_get($resource, 'ID') }}">Restart</x-forms.button>
-                                                                <x-forms.button isError
-                                                                    wire:click="stopUnmanaged('{{ data_get($resource, 'ID') }}')"
-                                                                    wire:key="{{ data_get($resource, 'ID') }}">Stop</x-forms.button>
-                                                            @elseif (data_get($resource, 'State') === 'exited')
-                                                                <x-forms.button
-                                                                    wire:click="startUnmanaged('{{ data_get($resource, 'ID') }}')"
-                                                                    wire:key="{{ data_get($resource, 'ID') }}">Start</x-forms.button>
-                                                            @elseif (data_get($resource, 'State') === 'restarting')
-                                                                <x-forms.button
-                                                                    wire:click="stopUnmanaged('{{ data_get($resource, 'ID') }}')"
-                                                                    wire:key="{{ data_get($resource, 'ID') }}">Stop</x-forms.button>
-                                                            @endif
+                                                                @if (data_get($resource, 'State') === 'running')
+                                                                    <x-forms.button canGate="update" :canResource="$server"
+                                                                        wire:click="restartUnmanaged('{{ data_get($resource, 'ID') }}')"
+                                                                        wire:key="{{ data_get($resource, 'ID') }}">Restart</x-forms.button>
+                                                                    <x-forms.button canGate="update" :canResource="$server" isError
+                                                                        wire:click="stopUnmanaged('{{ data_get($resource, 'ID') }}')"
+                                                                        wire:key="{{ data_get($resource, 'ID') }}">Stop</x-forms.button>
+                                                                @elseif (data_get($resource, 'State') === 'exited')
+                                                                    <x-forms.button canGate="update" :canResource="$server"
+                                                                        wire:click="startUnmanaged('{{ data_get($resource, 'ID') }}')"
+                                                                        wire:key="{{ data_get($resource, 'ID') }}">Start</x-forms.button>
+                                                                @elseif (data_get($resource, 'State') === 'restarting')
+                                                                    <x-forms.button canGate="update" :canResource="$server"
+                                                                        wire:click="stopUnmanaged('{{ data_get($resource, 'ID') }}')"
+                                                                        wire:key="{{ data_get($resource, 'ID') }}">Stop</x-forms.button>
+                                                                @endif
                                                         </td>
                                                     </tr>
-                                                @empty
-                                                @endforelse
+                                                @endforeach
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                @endif
-            @else
-                @if ($activeTab === 'managed')
-                    <div>No managed resources found.</div>
-                @elseif ($activeTab === 'unmanaged')
+                    </div>
+                @else
                     <div>No unmanaged resources found.</div>
                 @endif
             @endif

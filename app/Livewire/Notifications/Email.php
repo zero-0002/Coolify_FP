@@ -5,6 +5,7 @@ namespace App\Livewire\Notifications;
 use App\Models\EmailNotificationSettings;
 use App\Models\Team;
 use App\Notifications\Test;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Validate;
@@ -12,6 +13,8 @@ use Livewire\Component;
 
 class Email extends Component
 {
+    use AuthorizesRequests;
+
     protected $listeners = ['refresh' => '$refresh'];
 
     #[Locked]
@@ -39,10 +42,10 @@ class Email extends Component
     public ?string $smtpHost = null;
 
     #[Validate(['nullable', 'numeric', 'min:1', 'max:65535'])]
-    public ?int $smtpPort = null;
+    public ?string $smtpPort = null;
 
     #[Validate(['nullable', 'string', 'in:starttls,tls,none'])]
-    public ?string $smtpEncryption = null;
+    public ?string $smtpEncryption = 'starttls';
 
     #[Validate(['nullable', 'string'])]
     public ?string $smtpUsername = null;
@@ -51,7 +54,7 @@ class Email extends Component
     public ?string $smtpPassword = null;
 
     #[Validate(['nullable', 'numeric'])]
-    public ?int $smtpTimeout = null;
+    public ?string $smtpTimeout = null;
 
     #[Validate(['boolean'])]
     public bool $resendEnabled = false;
@@ -101,6 +104,9 @@ class Email extends Component
     #[Validate(['boolean'])]
     public bool $serverPatchEmailNotifications = false;
 
+    #[Validate(['boolean'])]
+    public bool $traefikOutdatedEmailNotifications = true;
+
     #[Validate(['nullable', 'email'])]
     public ?string $testEmailAddress = null;
 
@@ -110,6 +116,7 @@ class Email extends Component
             $this->team = auth()->user()->currentTeam();
             $this->emails = auth()->user()->email;
             $this->settings = $this->team->emailNotificationSettings;
+            $this->authorize('view', $this->settings);
             $this->syncData();
             $this->testEmailAddress = auth()->user()->email;
         } catch (\Throwable $e) {
@@ -121,6 +128,7 @@ class Email extends Component
     {
         if ($toModel) {
             $this->validate();
+            $this->authorize('update', $this->settings);
             $this->settings->smtp_enabled = $this->smtpEnabled;
             $this->settings->smtp_from_address = $this->smtpFromAddress;
             $this->settings->smtp_from_name = $this->smtpFromName;
@@ -150,6 +158,7 @@ class Email extends Component
             $this->settings->server_reachable_email_notifications = $this->serverReachableEmailNotifications;
             $this->settings->server_unreachable_email_notifications = $this->serverUnreachableEmailNotifications;
             $this->settings->server_patch_email_notifications = $this->serverPatchEmailNotifications;
+            $this->settings->traefik_outdated_email_notifications = $this->traefikOutdatedEmailNotifications;
             $this->settings->save();
 
         } else {
@@ -161,11 +170,15 @@ class Email extends Component
             $this->smtpPort = $this->settings->smtp_port;
             $this->smtpEncryption = $this->settings->smtp_encryption;
             $this->smtpUsername = $this->settings->smtp_username;
-            $this->smtpPassword = $this->settings->smtp_password;
+            $this->smtpPassword = auth()->user()->can('update', $this->settings)
+                ? $this->settings->smtp_password
+                : null;
             $this->smtpTimeout = $this->settings->smtp_timeout;
 
             $this->resendEnabled = $this->settings->resend_enabled;
-            $this->resendApiKey = $this->settings->resend_api_key;
+            $this->resendApiKey = auth()->user()->can('update', $this->settings)
+                ? $this->settings->resend_api_key
+                : null;
 
             $this->useInstanceEmailSettings = $this->settings->use_instance_email_settings;
 
@@ -182,6 +195,7 @@ class Email extends Component
             $this->serverReachableEmailNotifications = $this->settings->server_reachable_email_notifications;
             $this->serverUnreachableEmailNotifications = $this->settings->server_unreachable_email_notifications;
             $this->serverPatchEmailNotifications = $this->settings->server_patch_email_notifications;
+            $this->traefikOutdatedEmailNotifications = $this->settings->traefik_outdated_email_notifications;
         }
     }
 
@@ -232,6 +246,8 @@ class Email extends Component
 
     public function submitSmtp()
     {
+        $this->authorize('update', $this->settings);
+
         try {
             $this->resetErrorBag();
             $this->validate([
@@ -279,6 +295,8 @@ class Email extends Component
 
     public function submitResend()
     {
+        $this->authorize('update', $this->settings);
+
         try {
             $this->resetErrorBag();
             $this->validate([
@@ -311,6 +329,7 @@ class Email extends Component
     public function sendTestEmail()
     {
         try {
+            $this->authorize('sendTest', $this->settings);
             $this->validate([
                 'testEmailAddress' => 'required|email',
             ], [
@@ -338,6 +357,7 @@ class Email extends Component
 
     public function copyFromInstanceSettings()
     {
+        $this->authorize('update', $this->settings);
         $settings = instanceSettings();
         $this->smtpFromAddress = $settings->smtp_from_address;
         $this->smtpFromName = $settings->smtp_from_name;

@@ -5,12 +5,16 @@ namespace App\Livewire\Project\Shared;
 use App\Models\Application;
 use App\Models\Server;
 use App\Models\Service;
+use App\Support\ValidationPatterns;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 class ExecuteContainerCommand extends Component
 {
+    use AuthorizesRequests;
+
     public $selected_container = 'default';
 
     public Collection $containers;
@@ -33,15 +37,13 @@ class ExecuteContainerCommand extends Component
 
     public function mount()
     {
-        if (! auth()->user()->isAdmin()) {
-            abort(403);
-        }
         $this->parameters = get_route_parameters();
         $this->containers = collect();
         $this->servers = collect();
         if (data_get($this->parameters, 'application_uuid')) {
             $this->type = 'application';
-            $this->resource = Application::where('uuid', $this->parameters['application_uuid'])->firstOrFail();
+            $this->resource = Application::ownedByCurrentTeam()->where('uuid', $this->parameters['application_uuid'])->firstOrFail();
+            $this->authorize('view', $this->resource);
             if ($this->resource->destination->server->isFunctional()) {
                 $this->servers = $this->servers->push($this->resource->destination->server);
             }
@@ -58,20 +60,23 @@ class ExecuteContainerCommand extends Component
                 abort(404);
             }
             $this->resource = $resource;
+            $this->authorize('view', $this->resource);
             if ($this->resource->destination->server->isFunctional()) {
                 $this->servers = $this->servers->push($this->resource->destination->server);
             }
             $this->loadContainers();
         } elseif (data_get($this->parameters, 'service_uuid')) {
             $this->type = 'service';
-            $this->resource = Service::where('uuid', $this->parameters['service_uuid'])->firstOrFail();
+            $this->resource = Service::ownedByCurrentTeam()->where('uuid', $this->parameters['service_uuid'])->firstOrFail();
+            $this->authorize('view', $this->resource);
             if ($this->resource->server->isFunctional()) {
                 $this->servers = $this->servers->push($this->resource->server);
             }
             $this->loadContainers();
         } elseif (data_get($this->parameters, 'server_uuid')) {
             $this->type = 'server';
-            $this->resource = Server::where('uuid', $this->parameters['server_uuid'])->firstOrFail();
+            $this->resource = Server::ownedByCurrentTeam()->where('uuid', $this->parameters['server_uuid'])->firstOrFail();
+            $this->authorize('view', $this->resource);
             $this->servers = $this->servers->push($this->resource);
         }
         $this->servers = $this->servers->sortByDesc(fn ($server) => $server->isTerminalEnabled());
@@ -132,6 +137,12 @@ class ExecuteContainerCommand extends Component
                 });
             }
         }
+
+        // Sort containers alphabetically by name
+        $this->containers = $this->containers->sortBy(function ($container) {
+            return data_get($container, 'container.Names');
+        });
+
         if ($this->containers->count() === 1) {
             $this->selected_container = data_get($this->containers->first(), 'container.Names');
         }
@@ -148,7 +159,9 @@ class ExecuteContainerCommand extends Component
     public function connectToServer()
     {
         try {
+            $this->authorize('canAccessTerminal');
             $server = $this->servers->first();
+            $this->authorize('view', $server);
             if ($server->isForceDisabled()) {
                 throw new \RuntimeException('Server is disabled.');
             }
@@ -177,8 +190,9 @@ class ExecuteContainerCommand extends Component
             return;
         }
         try {
+            $this->authorize('canAccessTerminal');
             // Validate container name format
-            if (! preg_match('/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/', $this->selected_container)) {
+            if (! ValidationPatterns::isValidContainerName($this->selected_container)) {
                 throw new \InvalidArgumentException('Invalid container name format');
             }
 
@@ -193,6 +207,8 @@ class ExecuteContainerCommand extends Component
             if (! $server || ! $server instanceof Server) {
                 throw new \RuntimeException('Invalid server configuration.');
             }
+
+            $this->authorize('view', $server);
 
             if ($server->isForceDisabled()) {
                 throw new \RuntimeException('Server is disabled.');

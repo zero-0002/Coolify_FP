@@ -3,6 +3,7 @@
 use App\Models\EnvironmentVariable;
 use App\Models\S3Storage;
 use App\Models\Server;
+use App\Models\ServiceDatabase;
 use App\Models\StandaloneClickhouse;
 use App\Models\StandaloneDocker;
 use App\Models\StandaloneDragonfly;
@@ -12,18 +13,18 @@ use App\Models\StandaloneMongodb;
 use App\Models\StandaloneMysql;
 use App\Models\StandalonePostgresql;
 use App\Models\StandaloneRedis;
+use App\Models\SwarmDocker;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
-use Visus\Cuid2\Cuid2;
+use Illuminate\Support\Str;
 
-function create_standalone_postgresql($environmentId, $destinationUuid, ?array $otherData = null, string $databaseImage = 'postgres:16-alpine'): StandalonePostgresql
+function create_standalone_postgresql($environmentId, StandaloneDocker|SwarmDocker $destination, ?array $otherData = null, string $databaseImage = 'postgres:16-alpine'): StandalonePostgresql
 {
-    $destination = StandaloneDocker::where('uuid', $destinationUuid)->firstOrFail();
     $database = new StandalonePostgresql;
-    $database->uuid = (new Cuid2);
+    $database->uuid = new_public_id();
     $database->name = 'postgresql-database-'.$database->uuid;
     $database->image = $databaseImage;
-    $database->postgres_password = \Illuminate\Support\Str::password(length: 64, symbols: false);
+    $database->postgres_password = Str::password(length: 64, symbols: false);
     $database->environment_id = $environmentId;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
@@ -35,13 +36,18 @@ function create_standalone_postgresql($environmentId, $destinationUuid, ?array $
     return $database;
 }
 
-function create_standalone_redis($environment_id, $destination_uuid, ?array $otherData = null): StandaloneRedis
+function create_standalone_redis($environment_id, StandaloneDocker|SwarmDocker $destination, ?array $otherData = null): StandaloneRedis
 {
-    $destination = StandaloneDocker::where('uuid', $destination_uuid)->firstOrFail();
     $database = new StandaloneRedis;
-    $database->uuid = (new Cuid2);
+    $database->uuid = new_public_id();
     $database->name = 'redis-database-'.$database->uuid;
-    $redis_password = \Illuminate\Support\Str::password(length: 64, symbols: false);
+
+    $redis_password = Str::password(length: 64, symbols: false);
+    if ($otherData && isset($otherData['redis_password'])) {
+        $redis_password = $otherData['redis_password'];
+        unset($otherData['redis_password']);
+    }
+
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
@@ -69,13 +75,12 @@ function create_standalone_redis($environment_id, $destination_uuid, ?array $oth
     return $database;
 }
 
-function create_standalone_mongodb($environment_id, $destination_uuid, ?array $otherData = null): StandaloneMongodb
+function create_standalone_mongodb($environment_id, StandaloneDocker|SwarmDocker $destination, ?array $otherData = null): StandaloneMongodb
 {
-    $destination = StandaloneDocker::where('uuid', $destination_uuid)->firstOrFail();
     $database = new StandaloneMongodb;
-    $database->uuid = (new Cuid2);
+    $database->uuid = new_public_id();
     $database->name = 'mongodb-database-'.$database->uuid;
-    $database->mongo_initdb_root_password = \Illuminate\Support\Str::password(length: 64, symbols: false);
+    $database->mongo_initdb_root_password = Str::password(length: 64, symbols: false);
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
@@ -87,14 +92,13 @@ function create_standalone_mongodb($environment_id, $destination_uuid, ?array $o
     return $database;
 }
 
-function create_standalone_mysql($environment_id, $destination_uuid, ?array $otherData = null): StandaloneMysql
+function create_standalone_mysql($environment_id, StandaloneDocker|SwarmDocker $destination, ?array $otherData = null): StandaloneMysql
 {
-    $destination = StandaloneDocker::where('uuid', $destination_uuid)->firstOrFail();
     $database = new StandaloneMysql;
-    $database->uuid = (new Cuid2);
+    $database->uuid = new_public_id();
     $database->name = 'mysql-database-'.$database->uuid;
-    $database->mysql_root_password = \Illuminate\Support\Str::password(length: 64, symbols: false);
-    $database->mysql_password = \Illuminate\Support\Str::password(length: 64, symbols: false);
+    $database->mysql_root_password = Str::password(length: 64, symbols: false);
+    $database->mysql_password = Str::password(length: 64, symbols: false);
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
@@ -106,14 +110,13 @@ function create_standalone_mysql($environment_id, $destination_uuid, ?array $oth
     return $database;
 }
 
-function create_standalone_mariadb($environment_id, $destination_uuid, ?array $otherData = null): StandaloneMariadb
+function create_standalone_mariadb($environment_id, StandaloneDocker|SwarmDocker $destination, ?array $otherData = null): StandaloneMariadb
 {
-    $destination = StandaloneDocker::where('uuid', $destination_uuid)->firstOrFail();
     $database = new StandaloneMariadb;
-    $database->uuid = (new Cuid2);
+    $database->uuid = new_public_id();
     $database->name = 'mariadb-database-'.$database->uuid;
-    $database->mariadb_root_password = \Illuminate\Support\Str::password(length: 64, symbols: false);
-    $database->mariadb_password = \Illuminate\Support\Str::password(length: 64, symbols: false);
+    $database->mariadb_root_password = Str::password(length: 64, symbols: false);
+    $database->mariadb_password = Str::password(length: 64, symbols: false);
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
@@ -125,13 +128,12 @@ function create_standalone_mariadb($environment_id, $destination_uuid, ?array $o
     return $database;
 }
 
-function create_standalone_keydb($environment_id, $destination_uuid, ?array $otherData = null): StandaloneKeydb
+function create_standalone_keydb($environment_id, StandaloneDocker|SwarmDocker $destination, ?array $otherData = null): StandaloneKeydb
 {
-    $destination = StandaloneDocker::where('uuid', $destination_uuid)->firstOrFail();
     $database = new StandaloneKeydb;
-    $database->uuid = (new Cuid2);
+    $database->uuid = new_public_id();
     $database->name = 'keydb-database-'.$database->uuid;
-    $database->keydb_password = \Illuminate\Support\Str::password(length: 64, symbols: false);
+    $database->keydb_password = Str::password(length: 64, symbols: false);
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
@@ -143,13 +145,12 @@ function create_standalone_keydb($environment_id, $destination_uuid, ?array $oth
     return $database;
 }
 
-function create_standalone_dragonfly($environment_id, $destination_uuid, ?array $otherData = null): StandaloneDragonfly
+function create_standalone_dragonfly($environment_id, StandaloneDocker|SwarmDocker $destination, ?array $otherData = null): StandaloneDragonfly
 {
-    $destination = StandaloneDocker::where('uuid', $destination_uuid)->firstOrFail();
     $database = new StandaloneDragonfly;
-    $database->uuid = (new Cuid2);
+    $database->uuid = new_public_id();
     $database->name = 'dragonfly-database-'.$database->uuid;
-    $database->dragonfly_password = \Illuminate\Support\Str::password(length: 64, symbols: false);
+    $database->dragonfly_password = Str::password(length: 64, symbols: false);
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
@@ -161,13 +162,12 @@ function create_standalone_dragonfly($environment_id, $destination_uuid, ?array 
     return $database;
 }
 
-function create_standalone_clickhouse($environment_id, $destination_uuid, ?array $otherData = null): StandaloneClickhouse
+function create_standalone_clickhouse($environment_id, StandaloneDocker|SwarmDocker $destination, ?array $otherData = null): StandaloneClickhouse
 {
-    $destination = StandaloneDocker::where('uuid', $destination_uuid)->firstOrFail();
     $database = new StandaloneClickhouse;
-    $database->uuid = (new Cuid2);
+    $database->uuid = new_public_id();
     $database->name = 'clickhouse-database-'.$database->uuid;
-    $database->clickhouse_admin_password = \Illuminate\Support\Str::password(length: 64, symbols: false);
+    $database->clickhouse_admin_password = Str::password(length: 64, symbols: false);
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
@@ -237,11 +237,17 @@ function removeOldBackups($backup): void
 {
     try {
         if ($backup->executions) {
-            $localBackupsToDelete = deleteOldBackupsLocally($backup);
-            if ($localBackupsToDelete->isNotEmpty()) {
-                $backup->executions()
-                    ->whereIn('id', $localBackupsToDelete->pluck('id'))
-                    ->update(['local_storage_deleted' => true]);
+            // Delete old local backups (only if local backup is NOT disabled)
+            // Note: When disable_local_backup is enabled, each execution already marks its own
+            // local_storage_deleted status at the time of backup, so we don't need to retroactively
+            // update old executions
+            if (! $backup->disable_local_backup) {
+                $localBackupsToDelete = deleteOldBackupsLocally($backup);
+                if ($localBackupsToDelete->isNotEmpty()) {
+                    $backup->executions()
+                        ->whereIn('id', $localBackupsToDelete->pluck('id'))
+                        ->update(['local_storage_deleted' => true]);
+                }
             }
         }
 
@@ -254,12 +260,20 @@ function removeOldBackups($backup): void
             }
         }
 
+        // Delete execution records where all backup copies are gone
+        // Case 1: Both local and S3 backups are deleted
         $backup->executions()
             ->where('local_storage_deleted', true)
             ->where('s3_storage_deleted', true)
             ->delete();
 
-    } catch (\Exception $e) {
+        // Case 2: Local backup is deleted and S3 was never used (s3_uploaded is null)
+        $backup->executions()
+            ->where('local_storage_deleted', true)
+            ->whereNull('s3_uploaded')
+            ->delete();
+
+    } catch (Exception $e) {
         throw $e;
     }
 }
@@ -325,7 +339,7 @@ function deleteOldBackupsLocally($backup): Collection
     $processedBackups = collect();
 
     $server = null;
-    if ($backup->database_type === \App\Models\ServiceDatabase::class) {
+    if ($backup->database_type === ServiceDatabase::class) {
         $server = $backup->database->service->server;
     } else {
         $server = $backup->database->destination->server;

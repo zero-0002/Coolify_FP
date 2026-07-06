@@ -3,11 +3,13 @@
 namespace App\Livewire\Project\Service;
 
 use App\Models\Service;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class Configuration extends Component
 {
+    use AuthorizesRequests;
+
     public $currentRoute;
 
     public $project;
@@ -24,14 +26,10 @@ class Configuration extends Component
 
     public array $parameters;
 
-    public function getListeners()
-    {
-        $teamId = Auth::user()->currentTeam()->id;
-
-        return [
-            "echo-private:team.{$teamId},ServiceChecked" => 'serviceChecked',
-        ];
-    }
+    protected $listeners = [
+        'refreshServices' => 'refreshServices',
+        'refresh' => 'refreshServices',
+    ];
 
     public function render()
     {
@@ -40,24 +38,30 @@ class Configuration extends Component
 
     public function mount()
     {
-        $this->parameters = get_route_parameters();
-        $this->currentRoute = request()->route()->getName();
-        $this->query = request()->query();
-        $project = currentTeam()
-            ->projects()
-            ->select('id', 'uuid', 'team_id')
-            ->where('uuid', request()->route('project_uuid'))
-            ->firstOrFail();
-        $environment = $project->environments()
-            ->select('id', 'uuid', 'name', 'project_id')
-            ->where('uuid', request()->route('environment_uuid'))
-            ->firstOrFail();
-        $this->service = $environment->services()->whereUuid(request()->route('service_uuid'))->firstOrFail();
+        try {
+            $this->parameters = get_route_parameters();
+            $this->currentRoute = request()->route()->getName();
+            $this->query = request()->query();
+            $project = currentTeam()
+                ->projects()
+                ->select('id', 'uuid', 'name', 'team_id')
+                ->where('uuid', request()->route('project_uuid'))
+                ->firstOrFail();
+            $environment = $project->environments()
+                ->select('id', 'uuid', 'name', 'project_id')
+                ->where('uuid', request()->route('environment_uuid'))
+                ->firstOrFail();
+            $this->service = $environment->services()->whereUuid(request()->route('service_uuid'))->firstOrFail();
 
-        $this->project = $project;
-        $this->environment = $environment;
-        $this->applications = $this->service->applications->sort();
-        $this->databases = $this->service->databases->sort();
+            $this->authorize('view', $this->service);
+
+            $this->project = $project;
+            $this->environment = $environment;
+            $this->applications = $this->service->applications->sort();
+            $this->databases = $this->service->databases->sort();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function refreshServices()
@@ -70,6 +74,7 @@ class Configuration extends Component
     public function restartApplication($id)
     {
         try {
+            $this->authorize('update', $this->service);
             $application = $this->service->applications->find($id);
             if ($application) {
                 $application->restart();
@@ -83,25 +88,12 @@ class Configuration extends Component
     public function restartDatabase($id)
     {
         try {
+            $this->authorize('update', $this->service);
             $database = $this->service->databases->find($id);
             if ($database) {
                 $database->restart();
                 $this->dispatch('success', 'Service database restarted successfully.');
             }
-        } catch (\Exception $e) {
-            return handleError($e, $this);
-        }
-    }
-
-    public function serviceChecked()
-    {
-        try {
-            $this->service->applications->each(function ($application) {
-                $application->refresh();
-            });
-            $this->service->databases->each(function ($database) {
-                $database->refresh();
-            });
         } catch (\Exception $e) {
             return handleError($e, $this);
         }

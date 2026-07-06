@@ -2,6 +2,7 @@
 
 namespace App\Actions\Server;
 
+use App\Events\SentinelRestarted;
 use App\Models\Server;
 use Lorisleiva\Actions\Concerns\AsAction;
 
@@ -9,7 +10,7 @@ class StartSentinel
 {
     use AsAction;
 
-    public function handle(Server $server, bool $restart = false, ?string $latestVersion = null)
+    public function handle(Server $server, bool $restart = false, ?string $latestVersion = null, ?string $customImage = null)
     {
         if ($server->isSwarm() || $server->isBuildServer()) {
             return;
@@ -21,11 +22,11 @@ class StartSentinel
         $metricsHistory = data_get($server, 'settings.sentinel_metrics_history_days');
         $refreshRate = data_get($server, 'settings.sentinel_metrics_refresh_rate_seconds');
         $pushInterval = data_get($server, 'settings.sentinel_push_interval_seconds');
-        $token = data_get($server, 'settings.sentinel_token');
+        $token = $server->settings->ensureValidSentinelToken();
         $endpoint = data_get($server, 'settings.sentinel_custom_url');
         $debug = data_get($server, 'settings.is_sentinel_debug_enabled');
         $mountDir = '/data/coolify/sentinel';
-        $image = config('constants.coolify.registry_url').'/coollabsio/sentinel:'.$version;
+        $image = coolifyRegistryUrl().'/coollabsio/sentinel:'.$version;
         if (! $endpoint) {
             throw new \RuntimeException('You should set FQDN in Instance Settings.');
         }
@@ -43,10 +44,12 @@ class StartSentinel
         ];
         if (isDev()) {
             // data_set($environments, 'DEBUG', 'true');
-            // $image = 'sentinel';
+            if ($customImage && ! empty($customImage)) {
+                $image = $customImage;
+            }
             $mountDir = '/var/lib/docker/volumes/coolify_dev_coolify_data/_data/sentinel';
         }
-        $dockerEnvironments = '-e "'.implode('" -e "', array_map(fn ($key, $value) => "$key=$value", array_keys($environments), $environments)).'"';
+        $dockerEnvironments = implode(' ', array_map(fn ($key, $value) => '-e '.escapeshellarg("$key=$value"), array_keys($environments), $environments));
         $dockerLabels = implode(' ', array_map(fn ($key, $value) => "$key=$value", array_keys($labels), $labels));
         $dockerCommand = "docker run -d $dockerEnvironments --name coolify-sentinel -v /var/run/docker.sock:/var/run/docker.sock -v $mountDir:/app/db --pid host --health-cmd \"curl --fail http://127.0.0.1:8888/api/health || exit 1\" --health-interval 10s --health-retries 3 --add-host=host.docker.internal:host-gateway --label $dockerLabels $image";
 
@@ -61,5 +64,8 @@ class StartSentinel
         $server->settings->is_sentinel_enabled = true;
         $server->settings->save();
         $server->sentinelHeartbeat();
+
+        // Dispatch event to notify UI components
+        SentinelRestarted::dispatch($server, $version);
     }
 }

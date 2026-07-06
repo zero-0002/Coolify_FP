@@ -7,13 +7,14 @@ use App\Models\SslCertificate;
 use App\Models\Team;
 use App\Notifications\SslExpirationNotification;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class RegenerateSslCertJob implements ShouldQueue
+class RegenerateSslCertJob implements ShouldBeEncrypted, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -45,7 +46,7 @@ class RegenerateSslCertJob implements ShouldQueue
 
         $query->cursor()->each(function ($certificate) use ($regenerated) {
             try {
-                $caCert = SslCertificate::where('server_id', $certificate->server_id)
+                $caCert = $certificate->server->sslCertificates()
                     ->where('is_ca_certificate', true)
                     ->first();
 

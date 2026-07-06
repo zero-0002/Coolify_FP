@@ -37,3 +37,6 @@ scripts/load-test/*
 docker/coolify-realtime/node_modules
 .DS_Store
 CHANGELOG.md
+/.workspaces
+tests/Browser/Screenshots
+tests/v4/Browser/Screenshots

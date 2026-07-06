@@ -14,14 +14,30 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-    --font-sans: Inter, sans-serif;
+    --font-sans: 'Geist Sans', Inter, sans-serif;
+    --font-mono: 'Geist Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --font-geist-sans: 'Geist Sans', Inter, sans-serif;
+    --font-logs: 'Geist Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 
     --color-base: #101010;
     --color-warning: #fcd452;
-    --color-success: #16a34a;
+    --color-warning-50: #fefce8;
+    --color-warning-100: #fef9c3;
+    --color-warning-200: #fef08a;
+    --color-warning-300: #fde047;
+    --color-warning-400: #fcd452;
+    --color-warning-500: #facc15;
+    --color-warning-600: #ca8a04;
+    --color-warning-700: #a16207;
+    --color-warning-800: #854d0e;
+    --color-warning-900: #713f12;
+    --color-success: #22C55E;
     --color-error: #dc2626;
+    --color-coollabs-50: #f5f0ff;
     --color-coollabs: #6b16ed;
     --color-coollabs-100: #7317ff;
+    --color-coollabs-200: #5a12c7;
+    --color-coollabs-300: #4a0fa3;
     --color-coolgray-100: #181818;
     --color-coolgray-200: #202020;
     --color-coolgray-300: #242424;
@@ -37,6 +53,13 @@
   If we ever want to remove these styles, we need to add an explicit border
   color utility to any element that depends on these defaults.
 */
+
+@layer components {
+    .terminal-mobile-key {
+        @apply min-h-10 rounded-md border border-white/10 bg-white/10 px-2 py-2 text-sm font-semibold text-white shadow-inner active:bg-white/25;
+    }
+}
+
 @layer base {
 
     *,
@@ -79,11 +102,21 @@
 */
 html,
 body {
-    @apply w-full min-h-full bg-neutral-50 dark:bg-base dark:text-neutral-400;
+    @apply w-full min-h-full bg-gray-50 dark:bg-base dark:text-neutral-400;
 }
 
 body {
-    @apply min-h-screen text-sm antialiased scrollbar;
+    @apply min-h-screen text-sm font-sans antialiased scrollbar overflow-x-hidden;
+}
+
+.coolify-monaco-editor {
+    @apply min-w-0 w-full;
+    overflow-x: hidden;
+}
+
+.coolify-monaco-editor .monaco-editor,
+.coolify-monaco-editor .overflow-guard {
+    max-width: 100%;
 }
 
 option {
@@ -91,11 +124,11 @@ option {
 }
 
 button[isError]:not(:disabled) {
-    @apply text-white bg-red-600 hover:bg-red-700;
+    @apply text-red-800 dark:text-red-300 bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-800 hover:bg-red-300 hover:text-white dark:hover:bg-red-800 dark:hover:text-white;
 }
 
 button[isHighlighted]:not(:disabled) {
-    @apply text-white bg-coollabs hover:bg-coollabs-100;
+    @apply text-coollabs-200 dark:text-white bg-coollabs-50 dark:bg-coollabs/20 border-coollabs dark:border-coollabs-100 hover:bg-coollabs hover:text-white dark:hover:bg-coollabs-100 dark:hover:text-white;
 }
 
 h1 {
@@ -118,6 +151,11 @@ a {
     @apply hover:text-black dark:hover:text-white;
 }
 
+button:focus-visible,
+a:focus-visible {
+    @apply outline-none ring-2 ring-coollabs dark:ring-warning ring-offset-2 dark:ring-offset-coolgray-100;
+}
+
 label {
     @apply dark:text-neutral-400;
 }
@@ -135,7 +173,7 @@ tbody {
 }
 
 tr {
-    @apply text-black dark:text-neutral-400 dark:hover:bg-black hover:bg-neutral-200;
+    @apply text-black dark:text-neutral-400 dark:hover:bg-coolgray-300 hover:bg-neutral-100;
 }
 
 tr th {
@@ -167,4 +205,15 @@ section {
 
 .lds-heart {
     animation: lds-heart 1.2s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
+.log-highlight {
+    background-color: rgba(234, 179, 8, 0.4);
+    border-radius: 2px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+.dark .log-highlight {
+    background-color: rgba(234, 179, 8, 0.3);
 }

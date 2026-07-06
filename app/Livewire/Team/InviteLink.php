@@ -4,15 +4,17 @@ namespace App\Livewire\Team;
 
 use App\Models\TeamInvitation;
 use App\Models\User;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Livewire\Component;
-use Visus\Cuid2\Cuid2;
 
 class InviteLink extends Component
 {
+    use AuthorizesRequests;
+
     public string $email;
 
     public string $role = 'member';
@@ -37,19 +39,39 @@ class InviteLink extends Component
         $this->generateInviteLink(sendEmail: false);
     }
 
+    private function invitationUrl(string $routeName, array $parameters): string
+    {
+        $fqdn = instanceSettings()->fqdn;
+        if (filled($fqdn)) {
+            return rtrim($fqdn, '/').route($routeName, $parameters, false);
+        }
+
+        return route($routeName, $parameters);
+    }
+
     private function generateInviteLink(bool $sendEmail = false)
     {
         try {
+            $this->authorize('manageInvitations', currentTeam());
             $this->validate();
-            if (auth()->user()->role() === 'admin' && $this->role === 'owner') {
+
+            // Prevent privilege escalation: users cannot invite someone with higher privileges
+            $userRole = auth()->user()->role();
+            if (is_null($userRole) || ($userRole === 'member' && in_array($this->role, ['admin', 'owner']))) {
+                throw new \Exception('Members cannot invite admins or owners.');
+            }
+            if ($userRole === 'admin' && $this->role === 'owner') {
                 throw new \Exception('Admins cannot invite owners.');
             }
+
+            $this->email = strtolower($this->email);
+
             $member_emails = currentTeam()->members()->get()->pluck('email');
             if ($member_emails->contains($this->email)) {
                 return handleError(livewire: $this, customErrorMessage: "$this->email is already a member of ".currentTeam()->name.'.');
             }
-            $uuid = new Cuid2(32);
-            $link = url('/').config('constants.invitation.link.base_url').$uuid;
+            $uuid = new_public_id(32);
+            $link = $this->invitationUrl('team.invitation.show', ['uuid' => $uuid]);
             $user = User::whereEmail($this->email)->first();
 
             if (is_null($user)) {
@@ -60,8 +82,8 @@ class InviteLink extends Component
                     'password' => Hash::make($password),
                     'force_password_reset' => true,
                 ]);
-                $token = Crypt::encryptString("{$user->email}@@@$password");
-                $link = route('auth.link', ['token' => $token]);
+                $token = Crypt::encryptString("{$user->email}@@@{$uuid}@@@{$password}");
+                $link = $this->invitationUrl('auth.link', ['token' => $token]);
             }
             $invitation = TeamInvitation::whereEmail($this->email)->first();
             if (! is_null($invitation)) {

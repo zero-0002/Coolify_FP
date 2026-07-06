@@ -2,7 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Models\ScheduledDatabaseBackup;
 use App\Models\TeamInvitation;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -11,6 +13,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class CleanupInstanceStuffsJob implements ShouldBeEncrypted, ShouldBeUnique, ShouldQueue
@@ -30,6 +33,8 @@ class CleanupInstanceStuffsJob implements ShouldBeEncrypted, ShouldBeUnique, Sho
     {
         try {
             $this->cleanupInvitationLink();
+            $this->cleanupExpiredEmailChangeRequests();
+            $this->enforceBackupRetention();
         } catch (\Throwable $e) {
             Log::error('CleanupInstanceStuffsJob failed with error: '.$e->getMessage());
         }
@@ -40,6 +45,38 @@ class CleanupInstanceStuffsJob implements ShouldBeEncrypted, ShouldBeUnique, Sho
         $invitation = TeamInvitation::all();
         foreach ($invitation as $item) {
             $item->isValid();
+        }
+    }
+
+    private function cleanupExpiredEmailChangeRequests()
+    {
+        User::whereNotNull('email_change_code_expires_at')
+            ->where('email_change_code_expires_at', '<', now())
+            ->update([
+                'pending_email' => null,
+                'email_change_code' => null,
+                'email_change_code_expires_at' => null,
+            ]);
+    }
+
+    private function enforceBackupRetention(): void
+    {
+        if (! Cache::add('backup-retention-enforcement', true, 1800)) {
+            return;
+        }
+
+        try {
+            $backups = ScheduledDatabaseBackup::where('enabled', true)->get();
+            foreach ($backups as $backup) {
+                try {
+                    removeOldBackups($backup);
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to enforce retention for backup '.$backup->id.': '.$e->getMessage());
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to enforce backup retention: '.$e->getMessage());
+            Cache::forget('backup-retention-enforcement');
         }
     }
 }

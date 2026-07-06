@@ -4,94 +4,173 @@ namespace App\Livewire\Project\Database\Redis;
 
 use App\Actions\Database\StartDatabaseProxy;
 use App\Actions\Database\StopDatabaseProxy;
-use App\Helpers\SslHelper;
 use App\Models\Server;
-use App\Models\SslCertificate;
 use App\Models\StandaloneRedis;
-use Carbon\Carbon;
+use App\Support\ValidationPatterns;
 use Exception;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class General extends Component
 {
-    public Server $server;
+    use AuthorizesRequests;
+
+    public ?Server $server = null;
 
     public StandaloneRedis $database;
 
-    public string $redis_username;
+    public string $name;
 
-    public ?string $redis_password;
+    public ?string $description = null;
 
-    public string $redis_version;
+    public ?string $redisConf = null;
 
-    public ?string $db_url = null;
+    public string $image;
 
-    public ?string $db_url_public = null;
+    public ?string $portsMappings = null;
 
-    public ?Carbon $certificateValidUntil = null;
+    public ?bool $isPublic = null;
 
-    public function getListeners()
+    public mixed $publicPort = null;
+
+    public mixed $publicPortTimeout = 3600;
+
+    public bool $isLogDrainEnabled = false;
+
+    public ?string $customDockerRunOptions = null;
+
+    public string $redisUsername;
+
+    public string $redisPassword;
+
+    public string $redisVersion;
+
+    public bool $isPasswordHiddenForMember = false;
+
+    protected $listeners = [
+        'envsUpdated' => 'refresh',
+    ];
+
+    protected function rules(): array
     {
-        $userId = Auth::id();
-
         return [
-            "echo-private:user.{$userId},DatabaseStatusChanged" => '$refresh',
-            'envsUpdated' => 'refresh',
-            'refresh',
+            'name' => ValidationPatterns::nameRules(),
+            'description' => ValidationPatterns::descriptionRules(),
+            'redisConf' => 'nullable',
+            'image' => 'required',
+            'portsMappings' => ValidationPatterns::portMappingRules(),
+            'isPublic' => 'nullable|boolean',
+            'publicPort' => 'nullable|integer|min:1|max:65535',
+            'publicPortTimeout' => 'nullable|integer|min:1',
+            'isLogDrainEnabled' => 'nullable|boolean',
+            'customDockerRunOptions' => 'nullable',
+            'redisUsername' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->redisUsername !== $this->database->redis_username,
+            ),
+            'redisPassword' => ValidationPatterns::databasePasswordRules(
+                enforcePattern: $this->redisPassword !== $this->database->redis_password,
+            ),
         ];
     }
 
-    protected $rules = [
-        'database.name' => 'required',
-        'database.description' => 'nullable',
-        'database.redis_conf' => 'nullable',
-        'database.image' => 'required',
-        'database.ports_mappings' => 'nullable',
-        'database.is_public' => 'nullable|boolean',
-        'database.public_port' => 'nullable|integer',
-        'database.is_log_drain_enabled' => 'nullable|boolean',
-        'database.custom_docker_run_options' => 'nullable',
-        'redis_username' => 'required',
-        'redis_password' => 'required',
-        'database.enable_ssl' => 'boolean',
-    ];
+    protected function messages(): array
+    {
+        return array_merge(
+            ValidationPatterns::combinedMessages(),
+            ValidationPatterns::portMappingMessages(),
+            [
+                'name.required' => 'The Name field is required.',
+                'image.required' => 'The Docker Image field is required.',
+                'publicPort.integer' => 'The Public Port must be an integer.',
+                'publicPort.min' => 'The Public Port must be at least 1.',
+                'publicPort.max' => 'The Public Port must not exceed 65535.',
+                'publicPortTimeout.integer' => 'The Public Port Timeout must be an integer.',
+                'publicPortTimeout.min' => 'The Public Port Timeout must be at least 1.',
+                ...ValidationPatterns::databaseIdentifierMessages('redisUsername', 'Redis Username'),
+                ...ValidationPatterns::databasePasswordMessages('redisPassword', 'Redis Password'),
+            ]
+        );
+    }
 
     protected $validationAttributes = [
-        'database.name' => 'Name',
-        'database.description' => 'Description',
-        'database.redis_conf' => 'Redis Configuration',
-        'database.image' => 'Image',
-        'database.ports_mappings' => 'Port Mapping',
-        'database.is_public' => 'Is Public',
-        'database.public_port' => 'Public Port',
-        'database.custom_docker_run_options' => 'Custom Docker Options',
-        'redis_username' => 'Redis Username',
-        'redis_password' => 'Redis Password',
-        'database.enable_ssl' => 'Enable SSL',
+        'name' => 'Name',
+        'description' => 'Description',
+        'redisConf' => 'Redis Configuration',
+        'image' => 'Image',
+        'portsMappings' => 'Port Mapping',
+        'isPublic' => 'Is Public',
+        'publicPort' => 'Public Port',
+        'publicPortTimeout' => 'Public Port Timeout',
+        'customDockerRunOptions' => 'Custom Docker Options',
+        'redisUsername' => 'Redis Username',
+        'redisPassword' => 'Redis Password',
     ];
 
     public function mount()
     {
-        $this->server = data_get($this->database, 'destination.server');
-        $this->refreshView();
-        $existingCert = $this->database->sslCertificates()->first();
+        try {
+            $this->authorize('view', $this->database);
+            $this->syncData();
+            $this->server = data_get($this->database, 'destination.server');
+            if (! $this->server) {
+                $this->dispatch('error', 'Database destination server is not configured.');
 
-        if ($existingCert) {
-            $this->certificateValidUntil = $existingCert->valid_until;
+                return;
+            }
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
+
+        $this->isPasswordHiddenForMember = auth()->user()?->isMember() ?? false;
+        if ($this->isPasswordHiddenForMember) {
+            $this->redisPassword = '';
+        }
+    }
+
+    public function syncData(bool $toModel = false)
+    {
+        if ($toModel) {
+            $this->validate();
+            $this->database->name = $this->name;
+            $this->database->description = $this->description;
+            $this->database->redis_conf = $this->redisConf;
+            $this->database->image = $this->image;
+            $this->database->ports_mappings = $this->portsMappings;
+            $this->database->is_public = $this->isPublic;
+            $this->database->public_port = $this->publicPort ?: null;
+            $this->database->public_port_timeout = $this->publicPortTimeout ?: null;
+            $this->database->is_log_drain_enabled = $this->isLogDrainEnabled;
+            $this->database->custom_docker_run_options = $this->customDockerRunOptions;
+            $this->database->save();
+        } else {
+            $this->name = $this->database->name;
+            $this->description = $this->database->description;
+            $this->redisConf = $this->database->redis_conf;
+            $this->image = $this->database->image;
+            $this->portsMappings = $this->database->ports_mappings;
+            $this->isPublic = $this->database->is_public;
+            $this->publicPort = $this->database->public_port;
+            $this->publicPortTimeout = $this->database->public_port_timeout;
+            $this->isLogDrainEnabled = $this->database->is_log_drain_enabled;
+            $this->customDockerRunOptions = $this->database->custom_docker_run_options;
+            $this->redisVersion = $this->database->getRedisVersion();
+            $this->redisUsername = $this->database->redis_username;
+            $this->redisPassword = $this->database->redis_password;
         }
     }
 
     public function instantSaveAdvanced()
     {
         try {
+            $this->authorize('update', $this->database);
+
             if (! $this->server->isLogDrainEnabled()) {
-                $this->database->is_log_drain_enabled = false;
+                $this->isLogDrainEnabled = false;
                 $this->dispatch('error', 'Log drain is not enabled on the server. Please enable it first.');
 
                 return;
             }
-            $this->database->save();
+            $this->syncData(true);
             $this->dispatch('success', 'Database updated.');
             $this->dispatch('success', 'You need to restart the service for the changes to take effect.');
         } catch (Exception $e) {
@@ -102,21 +181,26 @@ class General extends Component
     public function submit()
     {
         try {
-            $this->validate();
+            $this->authorize('manageEnvironment', $this->database);
 
-            if (version_compare($this->redis_version, '6.0', '>=')) {
+            if ($this->portsMappings) {
+                $this->portsMappings = str($this->portsMappings)->replace(' ', '')->trim()->toString();
+            }
+            $this->syncData(true);
+
+            if (version_compare($this->redisVersion, '6.0', '>=')) {
                 $this->database->runtime_environment_variables()->updateOrCreate(
                     ['key' => 'REDIS_USERNAME'],
-                    ['value' => $this->redis_username, 'resourceable_id' => $this->database->id]
+                    ['value' => $this->redisUsername, 'resourceable_id' => $this->database->id]
                 );
             }
             $this->database->runtime_environment_variables()->updateOrCreate(
                 ['key' => 'REDIS_PASSWORD'],
-                ['value' => $this->redis_password, 'resourceable_id' => $this->database->id]
+                ['value' => $this->redisPassword, 'resourceable_id' => $this->database->id]
             );
 
-            $this->database->save();
             $this->dispatch('success', 'Database updated.');
+            $this->dispatch('databaseUpdated');
         } catch (Exception $e) {
             return handleError($e, $this);
         } finally {
@@ -127,89 +211,41 @@ class General extends Component
     public function instantSave()
     {
         try {
-            if ($this->database->is_public && ! $this->database->public_port) {
+            $this->authorize('update', $this->database);
+
+            if ($this->isPublic && ! $this->publicPort) {
                 $this->dispatch('error', 'Public port is required.');
-                $this->database->is_public = false;
+                $this->isPublic = false;
 
                 return;
             }
-            if ($this->database->is_public) {
-                if (! str($this->database->status)->startsWith('running')) {
-                    $this->dispatch('error', 'Database must be started to be publicly accessible.');
-                    $this->database->is_public = false;
+            if ($this->isPublic && ! str($this->database->status)->startsWith('running')) {
+                $this->dispatch('error', 'Database must be started to be publicly accessible.');
+                $this->isPublic = false;
 
-                    return;
-                }
+                return;
+            }
+            $this->syncData(true);
+            if ($this->isPublic) {
                 StartDatabaseProxy::run($this->database);
                 $this->dispatch('success', 'Database is now publicly accessible.');
             } else {
                 StopDatabaseProxy::run($this->database);
                 $this->dispatch('success', 'Database is no longer publicly accessible.');
             }
-            $this->db_url_public = $this->database->external_db_url;
-            $this->database->save();
+            $this->dispatch('databaseUpdated');
         } catch (\Throwable $e) {
-            $this->database->is_public = ! $this->database->is_public;
+            $this->isPublic = ! $this->isPublic;
+            $this->syncData(true);
 
             return handleError($e, $this);
-        }
-    }
-
-    public function instantSaveSSL()
-    {
-        try {
-            $this->database->save();
-            $this->dispatch('success', 'SSL configuration updated.');
-        } catch (Exception $e) {
-            return handleError($e, $this);
-        }
-    }
-
-    public function regenerateSslCertificate()
-    {
-        try {
-            $existingCert = $this->database->sslCertificates()->first();
-
-            if (! $existingCert) {
-                $this->dispatch('error', 'No existing SSL certificate found for this database.');
-
-                return;
-            }
-
-            $caCert = SslCertificate::where('server_id', $existingCert->server_id)->where('is_ca_certificate', true)->first();
-
-            SslHelper::generateSslCertificate(
-                commonName: $existingCert->commonName,
-                subjectAlternativeNames: $existingCert->subjectAlternativeNames ?? [],
-                resourceType: $existingCert->resource_type,
-                resourceId: $existingCert->resource_id,
-                serverId: $existingCert->server_id,
-                caCert: $caCert->ssl_certificate,
-                caKey: $caCert->ssl_private_key,
-                configurationDir: $existingCert->configuration_dir,
-                mountPath: $existingCert->mount_path,
-                isPemKeyFileRequired: true,
-            );
-
-            $this->dispatch('success', 'SSL certificates regenerated. Restart database to apply changes.');
-        } catch (Exception $e) {
-            handleError($e, $this);
         }
     }
 
     public function refresh(): void
     {
         $this->database->refresh();
-        $this->refreshView();
-    }
-
-    private function refreshView()
-    {
-        $this->db_url = $this->database->internal_db_url;
-        $this->db_url_public = $this->database->external_db_url;
-        $this->redis_version = $this->database->getRedisVersion();
-        $this->redis_username = $this->database->redis_username;
-        $this->redis_password = $this->database->redis_password;
+        $this->syncData();
     }
 
     public function render()

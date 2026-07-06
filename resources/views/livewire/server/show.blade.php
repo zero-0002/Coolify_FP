@@ -1,4 +1,4 @@
-<div>
+<div x-data x-init="@if ($server->hetzner_server_id && $server->cloudProviderToken && !$hetznerServerStatus) $wire.checkHetznerServerStatus() @endif">
     <x-slot:title>
         {{ data_get_str($server, 'name')->limit(10) }} > General | Coolify
     </x-slot>
@@ -9,14 +9,98 @@
             <form wire:submit.prevent='submit' class="flex flex-col">
                 <div class="flex gap-2">
                     <h2>General</h2>
+                    @if ($server->hetzner_server_id)
+                        <div class="flex items-center">
+                            <div @class([
+                                'flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded transition-all',
+                                'bg-white dark:bg-coolgray-100 dark:text-white',
+                            ])
+                                @if (in_array($hetznerServerStatus, ['starting', 'initializing'])) wire:poll.5s="checkHetznerServerStatus" @endif>
+                                <svg class="w-4 h-4" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                                    <rect width="200" height="200" fill="#D50C2D" rx="8" />
+                                    <path d="M40 40 H60 V90 H140 V40 H160 V160 H140 V110 H60 V160 H40 Z"
+                                        fill="white" />
+                                </svg>
+                                @if ($hetznerServerStatus)
+                                    <span class="pl-1.5">
+                                        @if (in_array($hetznerServerStatus, ['starting', 'initializing']))
+                                            <svg class="inline animate-spin h-3 w-3 mr-1 text-coollabs dark:text-warning-500"
+                                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10"
+                                                    stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor"
+                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                                </path>
+                                            </svg>
+                                        @endif
+                                        <span @class([
+                                            'text-green-500' => $hetznerServerStatus === 'running',
+                                            'text-red-500' => $hetznerServerStatus === 'off',
+                                        ])>
+                                            {{ ucfirst($hetznerServerStatus) }}
+                                        </span>
+                                    </span>
+                                @else
+                                    <span class="pl-1.5">
+                                        <svg class="inline animate-spin h-3 w-3 mr-1 text-coollabs dark:text-warning-500"
+                                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10"
+                                                stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                            </path>
+                                        </svg>
+                                        <span>Checking status...</span>
+                                    </span>
+                                @endif
+                            </div>
+                            <button wire:loading.remove wire:target="checkHetznerServerStatus" title="Refresh Status"
+                                wire:click.prevent='checkHetznerServerStatus(true)'
+                                class="mx-1 dark:hover:fill-white fill-black dark:fill-warning">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M12 2a10.016 10.016 0 0 0-7 2.877V3a1 1 0 1 0-2 0v4.5a1 1 0 0 0 1 1h4.5a1 1 0 0 0 0-2H6.218A7.98 7.98 0 0 1 20 12a1 1 0 0 0 2 0A10.012 10.012 0 0 0 12 2zm7.989 13.5h-4.5a1 1 0 0 0 0 2h2.293A7.98 7.98 0 0 1 4 12a1 1 0 0 0-2 0a9.986 9.986 0 0 0 16.989 7.133V21a1 1 0 0 0 2 0v-4.5a1 1 0 0 0-1-1z" />
+                                </svg>
+                            </button>
+                            <button wire:loading wire:target="checkHetznerServerStatus" title="Refreshing Status"
+                                class="mx-1 dark:hover:fill-white fill-black dark:fill-warning">
+                                <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M12 2a10.016 10.016 0 0 0-7 2.877V3a1 1 0 1 0-2 0v4.5a1 1 0 0 0 1 1h4.5a1 1 0 0 0 0-2H6.218A7.98 7.98 0 0 1 20 12a1 1 0 0 0 2 0A10.012 10.012 0 0 0 12 2zm7.989 13.5h-4.5a1 1 0 0 0 0 2h2.293A7.98 7.98 0 0 1 4 12a1 1 0 0 0-2 0a9.986 9.986 0 0 0 16.989 7.133V21a1 1 0 0 0 2 0v-4.5a1 1 0 0 0-1-1z" />
+                                </svg>
+                            </button>
+                        </div>
+                        @if ($server->cloudProviderToken && !$server->isFunctional() && $hetznerServerStatus === 'off')
+                            <x-forms.button wire:click.prevent='startHetznerServer' isHighlighted canGate="update"
+                                :canResource="$server">
+                                Power On
+                            </x-forms.button>
+                        @endif
+                    @endif
+                    @if ($isValidating)
+                        <div
+                            class="flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-400">
+                            <svg class="inline animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                            <span>Validating...</span>
+                        </div>
+                    @endif
                     @if ($server->id === 0)
                         <x-modal-confirmation title="Confirm Server Settings Change?" buttonTitle="Save"
                             submitAction="submit" :actions="[
                                 'If you misconfigure the server, you could lose a lot of functionalities of Coolify.',
                             ]" :confirmWithText="false" :confirmWithPassword="false"
-                            step2ButtonText="Save" />
+                            step2ButtonText="Save" canGate="update" :canResource="$server" />
                     @else
-                        <x-forms.button type="submit">Save</x-forms.button>
+                        <x-forms.button type="submit" canGate="update" :canResource="$server"
+                            :disabled="$isValidating">Save</x-forms.button>
                         @if ($server->isFunctional())
                             <x-slide-over closeWithX fullScreen>
                                 <x-slot:title>Validate & configure</x-slot:title>
@@ -24,7 +108,7 @@
                                     <livewire:server.validate-and-install :server="$server" ask />
                                 </x-slot:content>
                                 <x-forms.button @click="slideOverOpen=true" wire:click.prevent='validateServer'
-                                    isHighlighted>
+                                    isHighlighted canGate="update" :canResource="$server">
                                     Revalidate server
                                 </x-forms.button>
                             </x-slide-over>
@@ -36,7 +120,34 @@
                 @else
                     You can't use this server until it is validated.
                 @endif
-                @if ((!$isReachable || !$isUsable) && $server->id !== 0)
+                @if ($this->limaStartCommand)
+                    <div
+                        class="mt-4 rounded border border-coolgray-200 bg-coolgray-100 p-3 text-sm dark:border-coolgray-300 dark:bg-coolgray-100">
+                        <div class="font-semibold">Start this Lima VM locally</div>
+                        <div class="mt-1 dark:text-neutral-400">
+                            Run this from the Coolify repository root before validating this server:
+                        </div>
+                        <code
+                            class="mt-2 block overflow-x-auto rounded bg-black px-3 py-2 font-mono text-xs text-white">
+                            {{ $this->limaStartCommand }}
+                        </code>
+                    </div>
+                @endif
+                @if ($isValidating)
+                    <div x-data="{ slideOverOpen: true }">
+                        <x-slide-over closeWithX fullScreen>
+                            <x-slot:title>Validation in Progress</x-slot:title>
+                            <x-slot:content>
+                                <livewire:server.validate-and-install :server="$server" />
+                            </x-slot:content>
+                        </x-slide-over>
+                    </div>
+                @endif
+                @if (
+                    (!$isReachable || !$isUsable) &&
+                        $server->id !== 0 &&
+                        !$isValidating &&
+                        !in_array($hetznerServerStatus, ['initializing', 'starting', 'stopping', 'off']))
                     <x-slide-over closeWithX fullScreen>
                         <x-slot:title>Validate & configure</x-slot:title>
                         <x-slot:content>
@@ -62,185 +173,268 @@
                     </x-forms.button>
                 @endif
                 @if ($server->isForceDisabled() && isCloud())
-                    <div class="pt-4 font-bold text-red-500">The system has disabled the server because you have
-                        exceeded the
-                        number of servers for which you have paid.</div>
+                    <x-callout type="danger" title="Server Disabled" class="mt-4">
+                        The system has disabled the server because you have exceeded the
+                        number of servers for which you have paid.
+                    </x-callout>
                 @endif
                 <div class="flex flex-col gap-2 pt-4">
                     <div class="flex flex-col gap-2 w-full lg:flex-row">
-                        <x-forms.input id="name" label="Name" required />
-                        <x-forms.input id="description" label="Description" />
+                        <x-forms.input canGate="update" :canResource="$server" id="name" label="Name" required
+                            :disabled="$isValidating" />
+                        <x-forms.input canGate="update" :canResource="$server" id="description" label="Description"
+                            :disabled="$isValidating" />
                         @if (!$isSwarmWorker && !$isBuildServer)
-                            <x-forms.input placeholder="https://example.com" id="wildcardDomain" label="Wildcard Domain"
-                                helper='A wildcard domain allows you to receive a randomly generated domain for your new applications. <br><br>For instance, if you set "https://example.com" as your wildcard domain, your applications will receive domains like "https://randomId.example.com".' />
+                            <x-forms.input canGate="update" :canResource="$server" placeholder="https://example.com"
+                                id="wildcardDomain" label="Wildcard Domain"
+                                helper='A wildcard domain allows you to receive a randomly generated domain for your new applications. <br><br>For instance, if you set "https://example.com" as your wildcard domain, your applications will receive domains like "https://randomId.example.com".'
+                                :disabled="$isValidating" />
                         @endif
 
                     </div>
                     <div class="flex flex-col gap-2 w-full lg:flex-row">
-                        <x-forms.input type="password" id="ip" label="IP Address/Domain"
+                        <x-forms.input canGate="update" :canResource="$server" type="password" id="ip"
+                            label="IP Address/Domain"
                             helper="An IP Address (127.0.0.1) or domain (example.com). Make sure there is no protocol like http(s):// so you provide a FQDN not a URL."
-                            required />
+                            required :disabled="$isValidating" />
                         <div class="flex gap-2">
-                            <x-forms.input id="user" label="User" required />
-                            <x-forms.input type="number" id="port" label="Port" required />
+                            <x-forms.input canGate="update" :canResource="$server" id="user" label="User" required
+                                :disabled="$isValidating" />
+                            <x-forms.input canGate="update" :canResource="$server" type="number" id="port"
+                                label="Port" required :disabled="$isValidating" />
                         </div>
                     </div>
-                    <div class="w-full" x-data="{
-                        open: false,
-                        search: '{{ $serverTimezone ?: '' }}',
-                        timezones: @js($this->timezones),
-                        placeholder: '{{ $serverTimezone ? 'Search timezone...' : 'Select Server Timezone' }}',
-                        init() {
-                            this.$watch('search', value => {
-                                if (value === '') {
-                                    this.open = true;
-                                }
-                            })
-                        }
-                    }">
+                    <div class="w-full lg:w-64">
+                        <x-forms.input canGate="update" :canResource="$server" type="number"
+                            id="connectionTimeout" label="SSH Connection Timeout (s)"
+                            helper="Seconds to wait for SSH connection before failing. Default: 10."
+                            min="1" max="300" required :disabled="$isValidating" />
+                    </div>
+                    <div class="w-full">
                         <div class="flex items-center mb-1">
-                            <label for="serverTimezone">Server
-                                Timezone</label>
+                            <label for="serverTimezone">Server Timezone</label>
                             <x-helper class="ml-2"
                                 helper="Server's timezone. This is used for backups, cron jobs, etc." />
                         </div>
-                        <div class="relative">
-                            <div class="inline-flex relative items-center w-64">
-                                <input autocomplete="off"
-                                    wire:dirty.class.remove='dark:focus:ring-coolgray-300 dark:ring-coolgray-300'
-                                    wire:dirty.class="dark:focus:ring-warning dark:ring-warning" x-model="search"
-                                    @focus="open = true" @click.away="open = false" @input="open = true"
-                                    class="w-full input" :placeholder="placeholder" wire:model="serverTimezone">
-                                <svg class="absolute right-0 mr-2 w-4 h-4" xmlns="http://www.w3.org/2000/svg"
-                                    fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
-                                    @click="open = true">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
-                                </svg>
+                        @can('update', $server)
+                            @if ($isValidating)
+                                <div class="relative">
+                                    <div class="inline-flex relative items-center w-64">
+                                        <input readonly disabled autocomplete="off"
+                                            class="w-full input opacity-50 cursor-not-allowed"
+                                            value="{{ $serverTimezone ?: 'No timezone set' }}"
+                                            placeholder="Server Timezone">
+                                        <svg class="absolute right-0 mr-2 w-4 h-4 opacity-50"
+                                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                            stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            @else
+                                <div x-data="{
+                                    open: false,
+                                    search: '{{ $serverTimezone ?: '' }}',
+                                    timezones: @js($this->timezones),
+                                    placeholder: '{{ $serverTimezone ? 'Search timezone...' : 'Select Server Timezone' }}',
+                                    init() {
+                                        this.$watch('search', value => {
+                                            if (value === '') {
+                                                this.open = true;
+                                            }
+                                        })
+                                    }
+                                }">
+                                    <div class="relative">
+                                        <div class="inline-flex relative items-center w-64">
+                                            <input autocomplete="off"
+                                                wire:dirty.class.remove='dark:focus:ring-coolgray-300 dark:ring-coolgray-300'
+                                                wire:dirty.class="dark:focus:ring-warning dark:ring-warning"
+                                                x-model="search" @focus="open = true" @click.away="open = false"
+                                                @input="open = true" class="w-full input" :placeholder="placeholder"
+                                                wire:model="serverTimezone">
+                                            <svg class="absolute right-0 mr-2 w-4 h-4" xmlns="http://www.w3.org/2000/svg"
+                                                fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                                                stroke="currentColor" @click="open = true">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                                            </svg>
+                                        </div>
+                                        <div x-show="open"
+                                            class="overflow-auto overflow-x-hidden absolute z-50 mt-1 w-64 max-h-60 bg-white rounded-md border shadow-lg dark:bg-coolgray-100 dark:border-coolgray-200 scrollbar">
+                                            <template
+                                                x-for="timezone in timezones.filter(tz => tz.toLowerCase().includes(search.toLowerCase()))"
+                                                :key="timezone">
+                                                <div @click="search = timezone; open = false; $wire.set('serverTimezone', timezone); $wire.submit()"
+                                                    class="px-4 py-2 text-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-coolgray-300 dark:text-gray-200"
+                                                    x-text="timezone"></div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+                        @else
+                            <div class="relative">
+                                <div class="inline-flex relative items-center w-64">
+                                    <input readonly disabled autocomplete="off"
+                                        class="w-full input opacity-50 cursor-not-allowed"
+                                        value="{{ $serverTimezone ?: 'No timezone set' }}" placeholder="Server Timezone">
+                                    <svg class="absolute right-0 mr-2 w-4 h-4 opacity-50"
+                                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                                    </svg>
+                                </div>
                             </div>
-                            <div x-show="open"
-                                class="overflow-auto overflow-x-hidden absolute z-50 mt-1 w-64 max-h-60 bg-white rounded-md border shadow-lg dark:bg-coolgray-100 dark:border-coolgray-200 scrollbar">
-                                <template
-                                    x-for="timezone in timezones.filter(tz => tz.toLowerCase().includes(search.toLowerCase()))"
-                                    :key="timezone">
-                                    <div @click="search = timezone; open = false; $wire.set('serverTimezone', timezone); $wire.submit()"
-                                        class="px-4 py-2 text-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-coolgray-300 dark:text-gray-200"
-                                        x-text="timezone"></div>
-                                </template>
-                            </div>
-                        </div>
+                        @endcan
                     </div>
 
                     <div class="w-full">
                         @if (!$server->isLocalhost())
-                            <div class="w-96">
+                            <div class="w-full sm:w-96">
                                 @if ($isBuildServerLocked)
                                     <x-forms.checkbox disabled instantSave id="isBuildServer"
                                         helper="You can't use this server as a build server because it has defined resources."
                                         label="Use it as a build server?" />
                                 @else
-                                    <x-forms.checkbox instantSave id="isBuildServer"
-                                        label="Use it as a build server?" />
+                                    <x-forms.checkbox canGate="update" :canResource="$server" instantSave
+                                        id="isBuildServer" label="Use it as a build server?" :disabled="$isValidating" />
                                 @endif
                             </div>
 
-                            @if (!$server->isBuildServer() && !$server->settings->is_cloudflare_tunnel)
-                                <h3 class="pt-6">Swarm <span class="text-xs text-neutral-500">(experimental)</span>
-                                </h3>
-                                <div class="pb-4">Read the docs <a class='underline dark:text-white'
-                                        href='https://coolify.io/docs/knowledge-base/docker/swarm'
-                                        target='_blank'>here</a>.
-                                </div>
-                                <div class="w-96">
-                                    @if ($server->settings->is_swarm_worker)
-                                        <x-forms.checkbox disabled instantSave type="checkbox" id="isSwarmManager"
-                                            helper="For more information, please read the documentation <a class='dark:text-white' href='https://coolify.io/docs/knowledge-base/docker/swarm' target='_blank'>here</a>."
-                                            label="Is it a Swarm Manager?" />
-                                    @else
-                                        <x-forms.checkbox instantSave type="checkbox" id="isSwarmManager"
-                                            helper="For more information, please read the documentation <a class='dark:text-white' href='https://coolify.io/docs/knowledge-base/docker/swarm' target='_blank'>here</a>."
-                                            label="Is it a Swarm Manager?" />
-                                    @endif
-
-                                    @if ($server->settings->is_swarm_manager)
-                                        <x-forms.checkbox disabled instantSave type="checkbox" id="isSwarmWorker"
-                                            helper="For more information, please read the documentation <a class='dark:text-white' href='https://coolify.io/docs/knowledge-base/docker/swarm' target='_blank'>here</a>."
-                                            label="Is it a Swarm Worker?" />
-                                    @else
-                                        <x-forms.checkbox instantSave type="checkbox" id="isSwarmWorker"
-                                            helper="For more information, please read the documentation <a class='dark:text-white' href='https://coolify.io/docs/knowledge-base/docker/swarm' target='_blank'>here</a>."
-                                            label="Is it a Swarm Worker?" />
-                                    @endif
-                                </div>
-                            @endif
                         @endif
                     </div>
                 </div>
             </form>
-            @if ($server->isFunctional() && !$server->isSwarm() && !$server->isBuildServer())
-                <form wire:submit.prevent='submit'>
-                    <div class="flex gap-2 items-center pt-4 pb-2">
-                        <h3>Sentinel
-                        </h3>
-                        <x-helper helper="Sentinel reports your server's & container's health and collects metrics." />
-                        @if ($server->isSentinelEnabled())
-                            <div class="flex gap-2 items-center">
-                                @if ($server->isSentinelLive())
-                                    <x-status.running status="In sync" noLoading title="{{ $sentinelUpdatedAt }}" />
-                                    <x-forms.button type="submit">Save</x-forms.button>
-                                    <x-forms.button wire:click='restartSentinel'>Restart</x-forms.button>
-                                @else
-                                    <x-status.stopped status="Out of sync" noLoading
-                                        title="{{ $sentinelUpdatedAt }}" />
-                                    <x-forms.button type="submit">Save</x-forms.button>
-                                    <x-forms.button wire:click='restartSentinel'>Sync</x-forms.button>
-                                @endif
-                            </div>
+            @if ($server->isFunctional())
+                <div class="pt-6">
+                    <div class="flex items-center gap-2 mb-3">
+                        <h3>Server Details</h3>
+                        @if ($server->server_metadata)
+                            <button wire:click="refreshServerMetadata" wire:loading.attr="disabled"
+                                wire:target="refreshServerMetadata" title="Refresh server details"
+                                class="dark:hover:fill-white fill-black dark:fill-warning">
+                                <svg wire:loading.remove wire:target="refreshServerMetadata" class="w-4 h-4"
+                                    viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M12 2a10.016 10.016 0 0 0-7 2.877V3a1 1 0 1 0-2 0v4.5a1 1 0 0 0 1 1h4.5a1 1 0 0 0 0-2H6.218A7.98 7.98 0 0 1 20 12a1 1 0 0 0 2 0A10.012 10.012 0 0 0 12 2zm7.989 13.5h-4.5a1 1 0 0 0 0 2h2.293A7.98 7.98 0 0 1 4 12a1 1 0 0 0-2 0a9.986 9.986 0 0 0 16.989 7.133V21a1 1 0 0 0 2 0v-4.5a1 1 0 0 0-1-1z" />
+                                </svg>
+                                <svg wire:loading wire:target="refreshServerMetadata" class="w-4 h-4 animate-spin"
+                                    viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M12 2a10.016 10.016 0 0 0-7 2.877V3a1 1 0 1 0-2 0v4.5a1 1 0 0 0 1 1h4.5a1 1 0 0 0 0-2H6.218A7.98 7.98 0 0 1 20 12a1 1 0 0 0 2 0A10.012 10.012 0 0 0 12 2zm7.989 13.5h-4.5a1 1 0 0 0 0 2h2.293A7.98 7.98 0 0 1 4 12a1 1 0 0 0-2 0a9.986 9.986 0 0 0 16.989 7.133V21a1 1 0 0 0 2 0v-4.5a1 1 0 0 0-1-1z" />
+                                </svg>
+                            </button>
                         @endif
                     </div>
-                    <div class="flex flex-col gap-2">
-
-                        <div class="w-96">
-                            <x-forms.checkbox wire:model.live="isSentinelEnabled" label="Enable Sentinel" />
-                            @if ($server->isSentinelEnabled())
-                                @if (isDev())
-                                    <x-forms.checkbox id="isSentinelDebugEnabled" label="Enable Sentinel (with debug)"
-                                        instantSave />
-                                @endif
-                                <x-forms.checkbox instantSave id="isMetricsEnabled" label="Enable Metrics" />
-                            @else
-                                @if (isDev())
-                                    <x-forms.checkbox id="isSentinelDebugEnabled" label="Enable Sentinel (with debug)"
-                                        disabled instantSave />
-                                @endif
-                                <x-forms.checkbox instantSave disabled id="isMetricsEnabled"
-                                    label="Enable Metrics (enable Sentinel first)" />
-                            @endif
+                    @if ($server->server_metadata)
+                        @php $meta = $server->server_metadata; @endphp
+                        <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm lg:grid-cols-3">
+                            <div><span class="font-medium dark:text-neutral-400">OS:</span>
+                                {{ $meta['os'] ?? 'N/A' }}</div>
+                            <div><span class="font-medium dark:text-neutral-400">Arch:</span>
+                                {{ $meta['arch'] ?? 'N/A' }}</div>
+                            <div><span class="font-medium dark:text-neutral-400">Kernel:</span>
+                                {{ $meta['kernel'] ?? 'N/A' }}</div>
+                            <div><span class="font-medium dark:text-neutral-400">CPU Cores:</span>
+                                {{ $meta['cpus'] ?? 'N/A' }}</div>
+                            <div><span class="font-medium dark:text-neutral-400">RAM:</span>
+                                {{ isset($meta['memory_bytes']) ? round($meta['memory_bytes'] / 1073741824, 1) . ' GB' : 'N/A' }}
+                            </div>
+                            <div><span class="font-medium dark:text-neutral-400">Up Since:</span>
+                                {{ $meta['uptime_since'] ?? 'N/A' }}</div>
                         </div>
-                        @if ($server->isSentinelEnabled())
-                            <div class="flex flex-wrap gap-2 sm:flex-nowrap items-end">
-                                <x-forms.input type="password" id="sentinelToken" label="Sentinel token" required
-                                    helper="Token for Sentinel." />
-                                <x-forms.button wire:click="regenerateSentinelToken">Regenerate</x-forms.button>
-                            </div>
-
-                            <x-forms.input id="sentinelCustomUrl" required label="Coolify URL"
-                                helper="URL to your Coolify instance. If it is empty that means you do not have a FQDN set for your Coolify instance." />
-
-                            <div class="flex flex-col gap-2">
-                                <div class="flex flex-wrap gap-2 sm:flex-nowrap">
-                                    <x-forms.input id="sentinelMetricsRefreshRateSeconds"
-                                        label="Metrics rate (seconds)" required
-                                        helper="Interval used for gathering metrics. Lower values result in more disk space usage." />
-                                    <x-forms.input id="sentinelMetricsHistoryDays" label="Metrics history (days)"
-                                        required helper="Number of days to retain metrics data for." />
-                                    <x-forms.input id="sentinelPushIntervalSeconds" label="Push interval (seconds)"
-                                        required helper="Interval at which metrics data is sent to the collector." />
-                                </div>
-                            </div>
+                        @if (isset($meta['collected_at']))
+                            <p class="mt-2 text-xs dark:text-neutral-500">Last updated:
+                                {{ \Carbon\Carbon::parse($meta['collected_at'])->diffForHumans() }}</p>
                         @endif
+                    @else
+                        <x-forms.button wire:click="refreshServerMetadata" canGate="update"
+                            :canResource="$server">
+                            <span wire:loading.remove wire:target="refreshServerMetadata">Fetch Server
+                                Details</span>
+                            <span wire:loading wire:target="refreshServerMetadata">Fetching...</span>
+                        </x-forms.button>
+                    @endif
+                </div>
+            @endif
+            @if (!$server->hetzner_server_id && $availableHetznerTokens->isNotEmpty())
+                <div class="pt-6">
+                    <h3>Link to Hetzner Cloud</h3>
+                    <p class="pb-4 text-sm dark:text-neutral-400">
+                        Link this server to a Hetzner Cloud instance to enable power controls and status monitoring.
+                    </p>
+
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <div class="w-72">
+                            <x-forms.select wire:model="selectedHetznerTokenId" label="Hetzner Token"
+                                canGate="update" :canResource="$server">
+                                <option value="">Select a token...</option>
+                                @foreach ($availableHetznerTokens as $token)
+                                    <option value="{{ $token->id }}">{{ $token->name }}</option>
+                                @endforeach
+                            </x-forms.select>
+                        </div>
+                        <div class="w-48">
+                            <x-forms.input wire:model="manualHetznerServerId"
+                                label="Server ID"
+                                placeholder="e.g., 12345678"
+                                helper="Enter the Hetzner Server ID from your Hetzner Cloud console"
+                                canGate="update" :canResource="$server" />
+                        </div>
+                        <x-forms.button wire:click="searchHetznerServerById"
+                            wire:loading.attr="disabled"
+                            canGate="update" :canResource="$server">
+                            <span wire:loading.remove wire:target="searchHetznerServerById">Search by ID</span>
+                            <span wire:loading wire:target="searchHetznerServerById">Searching...</span>
+                        </x-forms.button>
+                        <div class="self-end pb-2 text-sm dark:text-neutral-500">OR</div>
+                        <x-forms.button wire:click="searchHetznerServer"
+                            wire:loading.attr="disabled"
+                            canGate="update" :canResource="$server">
+                            <span wire:loading.remove wire:target="searchHetznerServer">Search by IP</span>
+                            <span wire:loading wire:target="searchHetznerServer">Searching...</span>
+                        </x-forms.button>
                     </div>
-                </form>
+
+                    @if ($hetznerSearchError)
+                        <div class="mt-4 p-4 border border-red-500 rounded-md bg-red-50 dark:bg-red-900/20">
+                            <p class="text-red-600 dark:text-red-400">{{ $hetznerSearchError }}</p>
+                        </div>
+                    @endif
+
+                    @if ($hetznerNoMatchFound)
+                        <div class="mt-4 p-4 border border-yellow-500 rounded-md bg-yellow-50 dark:bg-yellow-900/20">
+                            <p class="text-yellow-600 dark:text-yellow-400">
+                                @if ($manualHetznerServerId)
+                                    No Hetzner server found with ID: {{ $manualHetznerServerId }}
+                                @else
+                                    No Hetzner server found matching IP: {{ $server->ip }}
+                                @endif
+                            </p>
+                            <p class="text-sm dark:text-neutral-400 mt-1">
+                                Try a different token, enter the Server ID manually, or verify the details are correct.
+                            </p>
+                        </div>
+                    @endif
+
+                    @if ($matchedHetznerServer)
+                        <div class="mt-4 p-4 border border-green-500 rounded-md bg-green-50 dark:bg-green-900/20">
+                            <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">Match Found!</h4>
+                            <div class="grid grid-cols-2 gap-2 text-sm mb-4">
+                                <div><span class="font-medium">Name:</span> {{ $matchedHetznerServer['name'] }}</div>
+                                <div><span class="font-medium">ID:</span> {{ $matchedHetznerServer['id'] }}</div>
+                                <div><span class="font-medium">Status:</span> {{ ucfirst($matchedHetznerServer['status']) }}</div>
+                                <div><span class="font-medium">Type:</span> {{ data_get($matchedHetznerServer, 'server_type.name', 'Unknown') }}</div>
+                            </div>
+                            <x-forms.button wire:click="linkToHetzner" isHighlighted canGate="update" :canResource="$server">
+                                Link This Server
+                            </x-forms.button>
+                        </div>
+                    @endif
+                </div>
             @endif
         </div>
     </div>

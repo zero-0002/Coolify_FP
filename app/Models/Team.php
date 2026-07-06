@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use App\Actions\User\RevokeUserTeamTokens;
 use App\Events\ServerReachabilityChanged;
 use App\Notifications\Channels\SendsDiscord;
 use App\Notifications\Channels\SendsEmail;
 use App\Notifications\Channels\SendsPushover;
 use App\Notifications\Channels\SendsSlack;
 use App\Traits\HasNotificationSettings;
+use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
 use OpenApi\Attributes as OA;
@@ -36,58 +39,80 @@ use OpenApi\Attributes as OA;
 
 class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, SendsSlack
 {
-    use HasNotificationSettings, Notifiable;
+    use HasFactory, HasNotificationSettings, HasSafeStringAttribute, Notifiable;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'name',
+        'description',
+        'personal_team',
+        'show_boarding',
+        'custom_server_limit',
+        'is_mcp_server_enabled',
+    ];
 
     protected $casts = [
         'personal_team' => 'boolean',
+        'is_mcp_server_enabled' => 'boolean',
     ];
 
     protected static function booted()
     {
         static::created(function ($team) {
-            $team->emailNotificationSettings()->create();
+            $team->emailNotificationSettings()->create([
+                'use_instance_email_settings' => isDev(),
+            ]);
             $team->discordNotificationSettings()->create();
             $team->slackNotificationSettings()->create();
             $team->telegramNotificationSettings()->create();
             $team->pushoverNotificationSettings()->create();
+            $team->webhookNotificationSettings()->create();
         });
 
-        static::saving(function ($team) {
+        static::updating(function ($team) {
             if (auth()->user()?->isMember()) {
                 throw new \Exception('You are not allowed to update this team.');
             }
         });
 
-        static::deleting(function ($team) {
-            $keys = $team->privateKeys;
-            foreach ($keys as $key) {
+        static::deleting(function (Team $team) {
+            RevokeUserTeamTokens::forTeam($team->id);
+
+            foreach ($team->privateKeys as $key) {
                 $key->delete();
             }
-            $sources = $team->sources();
-            foreach ($sources as $source) {
+
+            // Transfer instance-wide sources to root team so they remain available
+            GithubApp::where('team_id', $team->id)->where('is_system_wide', true)->update(['team_id' => 0]);
+            GitlabApp::where('team_id', $team->id)->where('is_system_wide', true)->update(['team_id' => 0]);
+
+            // Delete non-instance-wide sources owned by this team
+            $teamSources = GithubApp::where('team_id', $team->id)->get()
+                ->merge(GitlabApp::where('team_id', $team->id)->get());
+            foreach ($teamSources as $source) {
                 $source->delete();
             }
-            $tags = Tag::whereTeamId($team->id)->get();
-            foreach ($tags as $tag) {
+
+            foreach (Tag::whereTeamId($team->id)->get() as $tag) {
                 $tag->delete();
             }
-            $shared_variables = $team->environment_variables();
-            foreach ($shared_variables as $shared_variable) {
-                $shared_variable->delete();
+
+            foreach ($team->environment_variables()->get() as $sharedVariable) {
+                $sharedVariable->delete();
             }
-            $s3s = $team->s3s;
-            foreach ($s3s as $s3) {
+
+            foreach ($team->s3s as $s3) {
                 $s3->delete();
             }
         });
     }
 
-    public static function serverLimitReached()
+    public static function serverLimitReached(?Team $team = null)
     {
-        $serverLimit = Team::serverLimit();
-        $team = currentTeam();
+        $team = $team ?? currentTeam();
+        if (! $team) {
+            return true;
+        }
+        $serverLimit = Team::serverLimit($team);
         $servers = $team->servers->count();
 
         return $servers >= $serverLimit;
@@ -104,19 +129,23 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
 
     public function serverOverflow()
     {
-        if ($this->serverLimit() < $this->servers->count()) {
+        if (Team::serverLimit($this) < $this->servers->count()) {
             return true;
         }
 
         return false;
     }
 
-    public static function serverLimit()
+    public static function serverLimit(?Team $team = null)
     {
-        if (currentTeam()->id === 0 && isDev()) {
+        $team = $team ?? currentTeam();
+        if (! $team) {
+            return 0;
+        }
+        if ($team->id === 0 && isDev()) {
             return 9999999;
         }
-        $team = Team::find(currentTeam()->id);
+        $team = Team::find($team->id);
         if (! $team) {
             return 0;
         }
@@ -186,12 +215,18 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
             $this->getNotificationSettings('discord')?->isEnabled() ||
             $this->getNotificationSettings('slack')?->isEnabled() ||
             $this->getNotificationSettings('telegram')?->isEnabled() ||
-            $this->getNotificationSettings('pushover')?->isEnabled();
+            $this->getNotificationSettings('pushover')?->isEnabled() ||
+            $this->getNotificationSettings('webhook')?->isEnabled();
     }
 
     public function subscriptionEnded()
     {
+        if (! $this->subscription) {
+            return;
+        }
+
         $this->subscription->update([
+            'stripe_subscription_id' => null,
             'stripe_cancel_at_period_end' => false,
             'stripe_invoice_paid' => false,
             'stripe_trial_already_ended' => false,
@@ -203,12 +238,15 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
                 'is_reachable' => false,
             ]);
             ServerReachabilityChanged::dispatch($server);
+            $server->unreachable_count = 3;
+            $server->unreachable_notification_sent = true;
+            $server->save();
         }
     }
 
     public function environment_variables()
     {
-        return $this->hasMany(SharedEnvironmentVariable::class)->whereNull('project_id')->whereNull('environment_id');
+        return $this->hasMany(SharedEnvironmentVariable::class)->where('type', 'team');
     }
 
     public function members()
@@ -253,6 +291,11 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
     public function privateKeys()
     {
         return $this->hasMany(PrivateKey::class);
+    }
+
+    public function cloudProviderTokens()
+    {
+        return $this->hasMany(CloudProviderToken::class);
     }
 
     public function sources()
@@ -303,5 +346,10 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
     public function pushoverNotificationSettings()
     {
         return $this->hasOne(PushoverNotificationSettings::class);
+    }
+
+    public function webhookNotificationSettings()
+    {
+        return $this->hasOne(WebhookNotificationSettings::class);
     }
 }

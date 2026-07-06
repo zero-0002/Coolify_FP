@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Traits\ClearsGlobalSearchCache;
+use App\Traits\HasSafeStringAttribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use OpenApi\Attributes as OA;
-use Visus\Cuid2\Cuid2;
 
 #[OA\Schema(
     description: 'Project model',
@@ -13,21 +15,38 @@ use Visus\Cuid2\Cuid2;
         'uuid' => ['type' => 'string'],
         'name' => ['type' => 'string'],
         'description' => ['type' => 'string'],
-        'environments' => new OA\Property(
-            property: 'environments',
-            type: 'array',
-            items: new OA\Items(ref: '#/components/schemas/Environment'),
-            description: 'The environments of the project.'
-        ),
     ]
 )]
 class Project extends BaseModel
 {
-    protected $guarded = [];
+    use ClearsGlobalSearchCache;
+    use HasFactory;
+    use HasSafeStringAttribute;
 
+    protected $fillable = [
+        'name',
+        'description',
+        'team_id',
+        'uuid',
+    ];
+
+    /**
+     * Get query builder for projects owned by current team.
+     * If you need all projects without further query chaining, use ownedByCurrentTeamCached() instead.
+     */
     public static function ownedByCurrentTeam()
     {
         return Project::whereTeamId(currentTeam()->id)->orderByRaw('LOWER(name)');
+    }
+
+    /**
+     * Get all projects owned by current team (cached for request duration).
+     */
+    public static function ownedByCurrentTeamCached()
+    {
+        return once(function () {
+            return Project::ownedByCurrentTeam()->get();
+        });
     }
 
     protected static function booted()
@@ -39,7 +58,7 @@ class Project extends BaseModel
             Environment::create([
                 'name' => 'production',
                 'project_id' => $project->id,
-                'uuid' => (string) new Cuid2,
+                'uuid' => new_public_id(),
             ]);
         });
         static::deleting(function ($project) {
@@ -54,7 +73,7 @@ class Project extends BaseModel
 
     public function environment_variables()
     {
-        return $this->hasMany(SharedEnvironmentVariable::class);
+        return $this->hasMany(SharedEnvironmentVariable::class)->where('type', 'project');
     }
 
     public function environments()

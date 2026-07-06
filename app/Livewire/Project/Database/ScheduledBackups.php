@@ -3,10 +3,14 @@
 namespace App\Livewire\Project\Database;
 
 use App\Models\ScheduledDatabaseBackup;
+use App\Models\ServiceDatabase;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class ScheduledBackups extends Component
 {
+    use AuthorizesRequests;
+
     public $database;
 
     public $parameters;
@@ -31,7 +35,7 @@ class ScheduledBackups extends Component
             $this->setSelectedBackup($this->selectedBackupId, true);
         }
         $this->parameters = get_route_parameters();
-        if ($this->database->getMorphClass() === \App\Models\ServiceDatabase::class) {
+        if ($this->database->getMorphClass() === ServiceDatabase::class) {
             $this->type = 'service-database';
         } else {
             $this->type = 'database';
@@ -53,17 +57,30 @@ class ScheduledBackups extends Component
 
     public function setCustomType()
     {
-        $this->database->custom_type = $this->custom_type;
-        $this->database->save();
-        $this->dispatch('success', 'Database type set.');
-        $this->refreshScheduledBackups();
+        try {
+            $this->authorize('update', $this->database);
+
+            $this->database->custom_type = $this->custom_type;
+            $this->database->save();
+            $this->dispatch('success', 'Database type set.');
+            $this->refreshScheduledBackups();
+        } catch (\Throwable $e) {
+            handleError($e, $this);
+        }
     }
 
     public function delete($scheduled_backup_id): void
     {
-        $this->database->scheduledBackups->find($scheduled_backup_id)->delete();
-        $this->dispatch('success', 'Scheduled backup deleted.');
-        $this->refreshScheduledBackups();
+        try {
+            $this->authorize('manageBackups', $this->database);
+
+            $backup = $this->database->scheduledBackups->find($scheduled_backup_id);
+            $backup->delete();
+            $this->dispatch('success', 'Scheduled backup deleted.');
+            $this->refreshScheduledBackups();
+        } catch (\Throwable $e) {
+            handleError($e, $this);
+        }
     }
 
     public function refreshScheduledBackups(?int $id = null): void

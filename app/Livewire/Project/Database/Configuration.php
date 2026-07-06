@@ -2,11 +2,15 @@
 
 namespace App\Livewire\Project\Database;
 
-use Auth;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\ItemNotFoundException;
 use Livewire\Component;
 
 class Configuration extends Component
 {
+    use AuthorizesRequests;
+
     public $currentRoute;
 
     public $database;
@@ -15,38 +19,42 @@ class Configuration extends Component
 
     public $environment;
 
-    public function getListeners()
-    {
-        $teamId = Auth::user()->currentTeam()->id;
-
-        return [
-            "echo-private:team.{$teamId},ServiceChecked" => '$refresh',
-        ];
-    }
-
     public function mount()
     {
-        $this->currentRoute = request()->route()->getName();
+        try {
+            $this->currentRoute = request()->route()->getName();
 
-        $project = currentTeam()
-            ->projects()
-            ->select('id', 'uuid', 'team_id')
-            ->where('uuid', request()->route('project_uuid'))
-            ->firstOrFail();
-        $environment = $project->environments()
-            ->select('id', 'name', 'project_id', 'uuid')
-            ->where('uuid', request()->route('environment_uuid'))
-            ->firstOrFail();
-        $database = $environment->databases()
-            ->where('uuid', request()->route('database_uuid'))
-            ->firstOrFail();
+            $project = currentTeam()
+                ->projects()
+                ->select('id', 'uuid', 'name', 'team_id')
+                ->where('uuid', request()->route('project_uuid'))
+                ->firstOrFail();
+            $environment = $project->environments()
+                ->select('id', 'name', 'project_id', 'uuid')
+                ->where('uuid', request()->route('environment_uuid'))
+                ->firstOrFail();
+            $database = $environment->databases()
+                ->where('uuid', request()->route('database_uuid'))
+                ->firstOrFail();
 
-        $this->database = $database;
-        $this->project = $project;
-        $this->environment = $environment;
-        if (str($this->database->status)->startsWith('running') && is_null($this->database->config_hash)) {
-            $this->database->isConfigurationChanged(true);
-            $this->dispatch('configurationChanged');
+            $this->authorize('view', $database);
+
+            $this->database = $database;
+            $this->project = $project;
+            $this->environment = $environment;
+            if (str($this->database->status)->startsWith('running') && is_null($this->database->config_hash)) {
+                $this->database->isConfigurationChanged(true);
+                $this->dispatch('configurationChanged');
+            }
+        } catch (\Throwable $e) {
+            if ($e instanceof AuthorizationException) {
+                return redirect()->route('dashboard');
+            }
+            if ($e instanceof ItemNotFoundException) {
+                return redirect()->route('dashboard');
+            }
+
+            return handleError($e, $this);
         }
     }
 

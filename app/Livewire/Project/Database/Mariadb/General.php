@@ -4,95 +4,187 @@ namespace App\Livewire\Project\Database\Mariadb;
 
 use App\Actions\Database\StartDatabaseProxy;
 use App\Actions\Database\StopDatabaseProxy;
-use App\Helpers\SslHelper;
 use App\Models\Server;
-use App\Models\SslCertificate;
 use App\Models\StandaloneMariadb;
-use Carbon\Carbon;
+use App\Support\ValidationPatterns;
 use Exception;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class General extends Component
 {
-    protected $listeners = ['refresh'];
+    use AuthorizesRequests;
 
-    public Server $server;
+    public ?Server $server = null;
 
     public StandaloneMariadb $database;
 
-    public ?string $db_url = null;
+    public string $name;
 
-    public ?string $db_url_public = null;
+    public ?string $description = null;
 
-    public ?Carbon $certificateValidUntil = null;
+    public string $mariadbRootPassword;
 
-    public function getListeners()
+    public string $mariadbUser;
+
+    public string $mariadbPassword;
+
+    public string $mariadbDatabase;
+
+    public ?string $mariadbConf = null;
+
+    public string $image;
+
+    public ?string $portsMappings = null;
+
+    public ?bool $isPublic = null;
+
+    public mixed $publicPort = null;
+
+    public mixed $publicPortTimeout = 3600;
+
+    public bool $isLogDrainEnabled = false;
+
+    public ?string $customDockerRunOptions = null;
+
+    public bool $isPasswordHiddenForMember = false;
+
+    protected function rules(): array
     {
-        $userId = Auth::id();
-
         return [
-            "echo-private:user.{$userId},DatabaseStatusChanged" => '$refresh',
-            'refresh' => '$refresh',
+            'name' => ValidationPatterns::nameRules(),
+            'description' => ValidationPatterns::descriptionRules(),
+            'mariadbRootPassword' => ValidationPatterns::databasePasswordRules(
+                enforcePattern: $this->mariadbRootPassword !== $this->database->mariadb_root_password,
+            ),
+            'mariadbUser' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->mariadbUser !== $this->database->mariadb_user,
+            ),
+            'mariadbPassword' => ValidationPatterns::databasePasswordRules(
+                enforcePattern: $this->mariadbPassword !== $this->database->mariadb_password,
+            ),
+            'mariadbDatabase' => ValidationPatterns::databaseIdentifierRules(
+                enforcePattern: $this->mariadbDatabase !== $this->database->mariadb_database,
+            ),
+            'mariadbConf' => 'nullable',
+            'image' => 'required',
+            'portsMappings' => ValidationPatterns::portMappingRules(),
+            'isPublic' => 'nullable|boolean',
+            'publicPort' => 'nullable|integer|min:1|max:65535',
+            'publicPortTimeout' => 'nullable|integer|min:1',
+            'isLogDrainEnabled' => 'nullable|boolean',
+            'customDockerRunOptions' => 'nullable',
         ];
     }
 
-    protected $rules = [
-        'database.name' => 'required',
-        'database.description' => 'nullable',
-        'database.mariadb_root_password' => 'required',
-        'database.mariadb_user' => 'required',
-        'database.mariadb_password' => 'required',
-        'database.mariadb_database' => 'required',
-        'database.mariadb_conf' => 'nullable',
-        'database.image' => 'required',
-        'database.ports_mappings' => 'nullable',
-        'database.is_public' => 'nullable|boolean',
-        'database.public_port' => 'nullable|integer',
-        'database.is_log_drain_enabled' => 'nullable|boolean',
-        'database.custom_docker_run_options' => 'nullable',
-        'database.enable_ssl' => 'boolean',
-    ];
+    protected function messages(): array
+    {
+        return array_merge(
+            ValidationPatterns::combinedMessages(),
+            ValidationPatterns::portMappingMessages(),
+            [
+                'name.required' => 'The Name field is required.',
+                ...ValidationPatterns::databasePasswordMessages('mariadbRootPassword', 'Root Password'),
+                ...ValidationPatterns::databaseIdentifierMessages('mariadbUser', 'MariaDB User'),
+                ...ValidationPatterns::databasePasswordMessages('mariadbPassword', 'MariaDB Password'),
+                ...ValidationPatterns::databaseIdentifierMessages('mariadbDatabase', 'MariaDB Database'),
+                'image.required' => 'The Docker Image field is required.',
+                'publicPort.integer' => 'The Public Port must be an integer.',
+                'publicPort.min' => 'The Public Port must be at least 1.',
+                'publicPort.max' => 'The Public Port must not exceed 65535.',
+                'publicPortTimeout.integer' => 'The Public Port Timeout must be an integer.',
+                'publicPortTimeout.min' => 'The Public Port Timeout must be at least 1.',
+            ]
+        );
+    }
 
     protected $validationAttributes = [
-        'database.name' => 'Name',
-        'database.description' => 'Description',
-        'database.mariadb_root_password' => 'Root Password',
-        'database.mariadb_user' => 'User',
-        'database.mariadb_password' => 'Password',
-        'database.mariadb_database' => 'Database',
-        'database.mariadb_conf' => 'MariaDB Configuration',
-        'database.image' => 'Image',
-        'database.ports_mappings' => 'Port Mapping',
-        'database.is_public' => 'Is Public',
-        'database.public_port' => 'Public Port',
-        'database.custom_docker_run_options' => 'Custom Docker Options',
-        'database.enable_ssl' => 'Enable SSL',
+        'name' => 'Name',
+        'description' => 'Description',
+        'mariadbRootPassword' => 'Root Password',
+        'mariadbUser' => 'User',
+        'mariadbPassword' => 'Password',
+        'mariadbDatabase' => 'Database',
+        'mariadbConf' => 'MariaDB Configuration',
+        'image' => 'Image',
+        'portsMappings' => 'Port Mapping',
+        'isPublic' => 'Is Public',
+        'publicPort' => 'Public Port',
+        'publicPortTimeout' => 'Public Port Timeout',
+        'customDockerRunOptions' => 'Custom Docker Options',
     ];
 
     public function mount()
     {
-        $this->db_url = $this->database->internal_db_url;
-        $this->db_url_public = $this->database->external_db_url;
-        $this->server = data_get($this->database, 'destination.server');
+        try {
+            $this->authorize('view', $this->database);
+            $this->syncData();
+            $this->server = data_get($this->database, 'destination.server');
+            if (! $this->server) {
+                $this->dispatch('error', 'Database destination server is not configured.');
 
-        $existingCert = $this->database->sslCertificates()->first();
+                return;
+            }
+        } catch (Exception $e) {
+            return handleError($e, $this);
+        }
 
-        if ($existingCert) {
-            $this->certificateValidUntil = $existingCert->valid_until;
+        $this->isPasswordHiddenForMember = auth()->user()?->isMember() ?? false;
+        if ($this->isPasswordHiddenForMember) {
+            $this->mariadbRootPassword = '';
+            $this->mariadbPassword = '';
+        }
+    }
+
+    public function syncData(bool $toModel = false)
+    {
+        if ($toModel) {
+            $this->validate();
+            $this->database->name = $this->name;
+            $this->database->description = $this->description;
+            $this->database->mariadb_root_password = $this->mariadbRootPassword;
+            $this->database->mariadb_user = $this->mariadbUser;
+            $this->database->mariadb_password = $this->mariadbPassword;
+            $this->database->mariadb_database = $this->mariadbDatabase;
+            $this->database->mariadb_conf = $this->mariadbConf;
+            $this->database->image = $this->image;
+            $this->database->ports_mappings = $this->portsMappings;
+            $this->database->is_public = $this->isPublic;
+            $this->database->public_port = $this->publicPort ?: null;
+            $this->database->public_port_timeout = $this->publicPortTimeout ?: null;
+            $this->database->is_log_drain_enabled = $this->isLogDrainEnabled;
+            $this->database->custom_docker_run_options = $this->customDockerRunOptions;
+            $this->database->save();
+        } else {
+            $this->name = $this->database->name;
+            $this->description = $this->database->description;
+            $this->mariadbRootPassword = $this->database->mariadb_root_password;
+            $this->mariadbUser = $this->database->mariadb_user;
+            $this->mariadbPassword = $this->database->mariadb_password;
+            $this->mariadbDatabase = $this->database->mariadb_database;
+            $this->mariadbConf = $this->database->mariadb_conf;
+            $this->image = $this->database->image;
+            $this->portsMappings = $this->database->ports_mappings;
+            $this->isPublic = $this->database->is_public;
+            $this->publicPort = $this->database->public_port;
+            $this->publicPortTimeout = $this->database->public_port_timeout;
+            $this->isLogDrainEnabled = $this->database->is_log_drain_enabled;
+            $this->customDockerRunOptions = $this->database->custom_docker_run_options;
         }
     }
 
     public function instantSaveAdvanced()
     {
         try {
+            $this->authorize('update', $this->database);
+
             if (! $this->server->isLogDrainEnabled()) {
-                $this->database->is_log_drain_enabled = false;
+                $this->isLogDrainEnabled = false;
                 $this->dispatch('error', 'Log drain is not enabled on the server. Please enable it first.');
 
                 return;
             }
-            $this->database->save();
+            $this->syncData(true);
             $this->dispatch('success', 'Database updated.');
             $this->dispatch('success', 'You need to restart the service for the changes to take effect.');
         } catch (Exception $e) {
@@ -103,12 +195,17 @@ class General extends Component
     public function submit()
     {
         try {
-            if (str($this->database->public_port)->isEmpty()) {
-                $this->database->public_port = null;
+            $this->authorize('update', $this->database);
+
+            if ($this->portsMappings) {
+                $this->portsMappings = str($this->portsMappings)->replace(' ', '')->trim()->toString();
             }
-            $this->validate();
-            $this->database->save();
+            if (str($this->publicPort)->isEmpty()) {
+                $this->publicPort = null;
+            }
+            $this->syncData(true);
             $this->dispatch('success', 'Database updated.');
+            $this->dispatch('databaseUpdated');
         } catch (Exception $e) {
             return handleError($e, $this);
         } finally {
@@ -123,72 +220,33 @@ class General extends Component
     public function instantSave()
     {
         try {
-            if ($this->database->is_public && ! $this->database->public_port) {
+            $this->authorize('update', $this->database);
+
+            if ($this->isPublic && ! $this->publicPort) {
                 $this->dispatch('error', 'Public port is required.');
-                $this->database->is_public = false;
+                $this->isPublic = false;
 
                 return;
             }
-            if ($this->database->is_public) {
-                if (! str($this->database->status)->startsWith('running')) {
-                    $this->dispatch('error', 'Database must be started to be publicly accessible.');
-                    $this->database->is_public = false;
+            if ($this->isPublic && ! str($this->database->status)->startsWith('running')) {
+                $this->dispatch('error', 'Database must be started to be publicly accessible.');
+                $this->isPublic = false;
 
-                    return;
-                }
+                return;
+            }
+            $this->syncData(true);
+            if ($this->isPublic) {
                 StartDatabaseProxy::run($this->database);
                 $this->dispatch('success', 'Database is now publicly accessible.');
             } else {
                 StopDatabaseProxy::run($this->database);
                 $this->dispatch('success', 'Database is no longer publicly accessible.');
             }
-            $this->db_url_public = $this->database->external_db_url;
-            $this->database->save();
+            $this->dispatch('databaseUpdated');
         } catch (\Throwable $e) {
-            $this->database->is_public = ! $this->database->is_public;
+            $this->isPublic = ! $this->isPublic;
+            $this->syncData(true);
 
-            return handleError($e, $this);
-        }
-    }
-
-    public function instantSaveSSL()
-    {
-        try {
-            $this->database->save();
-            $this->dispatch('success', 'SSL configuration updated.');
-        } catch (Exception $e) {
-            return handleError($e, $this);
-        }
-    }
-
-    public function regenerateSslCertificate()
-    {
-        try {
-            $existingCert = $this->database->sslCertificates()->first();
-
-            if (! $existingCert) {
-                $this->dispatch('error', 'No existing SSL certificate found for this database.');
-
-                return;
-            }
-
-            $caCert = SslCertificate::where('server_id', $existingCert->server_id)->where('is_ca_certificate', true)->first();
-
-            SslHelper::generateSslCertificate(
-                commonName: $existingCert->common_name,
-                subjectAlternativeNames: $existingCert->subject_alternative_names ?? [],
-                resourceType: $existingCert->resource_type,
-                resourceId: $existingCert->resource_id,
-                serverId: $existingCert->server_id,
-                caCert: $caCert->ssl_certificate,
-                caKey: $caCert->ssl_private_key,
-                configurationDir: $existingCert->configuration_dir,
-                mountPath: $existingCert->mount_path,
-                isPemKeyFileRequired: true,
-            );
-
-            $this->dispatch('success', 'SSL certificates have been regenerated. Please restart the database for changes to take effect.');
-        } catch (Exception $e) {
             return handleError($e, $this);
         }
     }
@@ -196,6 +254,7 @@ class General extends Component
     public function refresh(): void
     {
         $this->database->refresh();
+        $this->syncData();
     }
 
     public function render()

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\EncryptedArrayCast;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -16,6 +17,10 @@ use OpenApi\Attributes as OA;
         'application_id' => ['type' => 'string'],
         'deployment_uuid' => ['type' => 'string'],
         'pull_request_id' => ['type' => 'integer'],
+        'docker_registry_image_tag' => ['type' => 'string', 'nullable' => true],
+        'configuration_hash' => ['type' => 'string', 'nullable' => true],
+        'configuration_snapshot' => ['type' => 'object', 'nullable' => true],
+        'configuration_diff' => ['type' => 'object', 'nullable' => true],
         'force_rebuild' => ['type' => 'boolean'],
         'commit' => ['type' => 'string'],
         'status' => ['type' => 'string'],
@@ -39,13 +44,60 @@ use OpenApi\Attributes as OA;
 )]
 class ApplicationDeploymentQueue extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'application_id',
+        'deployment_uuid',
+        'pull_request_id',
+        'docker_registry_image_tag',
+        'configuration_hash',
+        'configuration_snapshot',
+        'configuration_diff',
+        'force_rebuild',
+        'commit',
+        'status',
+        'is_webhook',
+        'logs',
+        'current_process_id',
+        'restart_only',
+        'git_type',
+        'server_id',
+        'application_name',
+        'server_name',
+        'deployment_url',
+        'destination_id',
+        'only_this_server',
+        'rollback',
+        'commit_message',
+        'is_api',
+        'build_server_id',
+        'horizon_job_id',
+        'horizon_job_worker',
+        'finished_at',
+    ];
 
-    public function application(): Attribute
+    /**
+     * The configuration snapshot/diff hold full (decrypted on read) configuration,
+     * including unlocked environment variable values. They are only meant for the
+     * in-app diff modal (which redacts per role) and must never be serialized by the
+     * API, so hide them globally as defense in depth.
+     *
+     * @var array<int, string>
+     */
+    protected $hidden = [
+        'configuration_snapshot',
+        'configuration_diff',
+    ];
+
+    protected $casts = [
+        'pull_request_id' => 'integer',
+        'finished_at' => 'datetime',
+        'configuration_snapshot' => EncryptedArrayCast::class,
+        'configuration_diff' => EncryptedArrayCast::class,
+    ];
+
+    public function application()
     {
-        return Attribute::make(
-            get: fn () => Application::find($this->application_id),
-        );
+        return $this->belongsTo(Application::class);
     }
 
     public function server(): Attribute
@@ -85,6 +137,47 @@ class ApplicationDeploymentQueue extends Model
         return str($this->commit_message)->value();
     }
 
+    private function redactSensitiveInfo($text)
+    {
+        $text = remove_iip($text);
+
+        $app = $this->application;
+        if (! $app) {
+            return $text;
+        }
+
+        $lockedVars = collect([]);
+
+        if ($app->environment_variables) {
+            $lockedVars = $lockedVars->merge(
+                $app->environment_variables
+                    ->where('is_shown_once', true)
+                    ->pluck('real_value', 'key')
+                    ->filter()
+            );
+        }
+
+        if ($this->pull_request_id !== 0 && $app->environment_variables_preview) {
+            $lockedVars = $lockedVars->merge(
+                $app->environment_variables_preview
+                    ->where('is_shown_once', true)
+                    ->pluck('real_value', 'key')
+                    ->filter()
+            );
+        }
+
+        foreach ($lockedVars as $key => $value) {
+            $escapedValue = preg_quote($value, '/');
+            $text = preg_replace(
+                '/'.$escapedValue.'/',
+                REDACTED,
+                $text
+            );
+        }
+
+        return $text;
+    }
+
     public function addLogEntry(string $message, string $type = 'stdout', bool $hidden = false)
     {
         if ($type === 'error') {
@@ -96,7 +189,7 @@ class ApplicationDeploymentQueue extends Model
         }
         $newLogEntry = [
             'command' => null,
-            'output' => remove_iip($message),
+            'output' => $this->redactSensitiveInfo($message),
             'type' => $type,
             'timestamp' => Carbon::now('UTC'),
             'hidden' => $hidden,

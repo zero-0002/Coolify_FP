@@ -1,7 +1,26 @@
 <?php
 
+use App\Models\StandaloneClickhouse;
+use App\Models\StandaloneDragonfly;
+use App\Models\StandaloneKeydb;
+use App\Models\StandaloneMariadb;
+use App\Models\StandaloneMongodb;
+use App\Models\StandaloneMysql;
+use App\Models\StandalonePostgresql;
+use App\Models\StandaloneRedis;
+
 const REDACTED = '<REDACTED>';
 const DATABASE_TYPES = ['postgresql', 'redis', 'mongodb', 'mysql', 'mariadb', 'keydb', 'dragonfly', 'clickhouse'];
+const STANDALONE_DATABASE_MODELS = [
+    'postgresql' => StandalonePostgresql::class,
+    'redis' => StandaloneRedis::class,
+    'mongodb' => StandaloneMongodb::class,
+    'mysql' => StandaloneMysql::class,
+    'mariadb' => StandaloneMariadb::class,
+    'keydb' => StandaloneKeydb::class,
+    'dragonfly' => StandaloneDragonfly::class,
+    'clickhouse' => StandaloneClickhouse::class,
+];
 const VALID_CRON_STRINGS = [
     'every_minute' => '* * * * *',
     'hourly' => '0 * * * *',
@@ -16,18 +35,31 @@ const VALID_CRON_STRINGS = [
     '@yearly' => '0 0 1 1 *',
 ];
 const RESTART_MODE = 'unless-stopped';
+const DEFAULT_STOP_GRACE_PERIOD_SECONDS = 30;
+const MIN_STOP_GRACE_PERIOD_SECONDS = 1;
+const MAX_STOP_GRACE_PERIOD_SECONDS = 3600;
 
 const DATABASE_DOCKER_IMAGES = [
     'bitnami/mariadb',
     'bitnami/mongodb',
     'bitnami/redis',
+    'bitnamilegacy/mariadb',
+    'bitnamilegacy/mongodb',
+    'bitnamilegacy/redis',
+    'bitnamisecure/mariadb',
+    'bitnamisecure/mongodb',
+    'bitnamisecure/redis',
     'mysql',
     'bitnami/mysql',
+    'bitnamilegacy/mysql',
+    'bitnamisecure/mysql',
     'mysql/mysql-server',
     'mariadb',
     'postgis/postgis',
     'postgres',
     'bitnami/postgresql',
+    'bitnamilegacy/postgresql',
+    'bitnamisecure/postgresql',
     'supabase/postgres',
     'elestio/postgres',
     'mongo',
@@ -37,11 +69,18 @@ const DATABASE_DOCKER_IMAGES = [
     'neo4j',
     'influxdb',
     'clickhouse/clickhouse-server',
+    'timescaledb/timescaledb',
+    'timescaledb',  // Matches timescale/timescaledb
+    'timescaledb-ha',  // Matches timescale/timescaledb-ha
+    'pgvector/pgvector',
 ];
 const SPECIFIC_SERVICES = [
     'quay.io/minio/minio',
     'minio/minio',
+    'ghcr.io/coollabsio/minio',
+    'coollabsio/minio',
     'svhd/logto',
+    'dxflrs/garage',
 ];
 
 // Based on /etc/os-release
@@ -53,4 +92,15 @@ const SUPPORTED_OS = [
     'alpine',
 ];
 
-const SHARED_VARIABLE_TYPES = ['team', 'project', 'environment'];
+const NEEDS_TO_CONNECT_TO_PREDEFINED_NETWORK = [
+    'pgadmin',
+    'databasus',
+    'redis-insight',
+];
+const NEEDS_TO_DISABLE_GZIP = [
+    'beszel' => ['beszel'],
+];
+const NEEDS_TO_DISABLE_STRIPPREFIX = [
+    'appwrite' => ['appwrite', 'appwrite-console', 'appwrite-realtime'],
+];
+const SHARED_VARIABLE_TYPES = ['team', 'project', 'environment', 'server'];

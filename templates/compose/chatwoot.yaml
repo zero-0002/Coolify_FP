@@ -1,5 +1,6 @@
 # documentation: https://www.chatwoot.com/docs/self-hosted/
 # slogan: Delightful customer relationships at scale.
+# category: helpdesk
 # tags: chatwoot,chat,api,open,source,rails,redis,postgresql,sidekiq
 # logo: svgs/chatwoot.svg
 # port: 3000
@@ -11,9 +12,9 @@ services:
       - postgres
       - redis
     environment:
-      - SERVICE_FQDN_CHATWOOT_3000
+      - SERVICE_URL_CHATWOOT_3000
       - SECRET_KEY_BASE=$SERVICE_PASSWORD_CHATWOOT
-      - FRONTEND_URL=${SERVICE_FQDN_CHATWOOT}
+      - FRONTEND_URL=${SERVICE_URL_CHATWOOT}
       - DEFAULT_LOCALE=${CHATWOOT_DEFAULT_LOCALE}
       - FORCE_SSL=${FORCE_SSL:-false}
       - ENABLE_ACCOUNT_SIGNUP=${ENABLE_ACCOUNT_SIGNUP:-false}
@@ -37,6 +38,7 @@ services:
       - SMTP_USERNAME=${CHATWOOT_SMTP_USERNAME}
       - SMTP_PASSWORD=${CHATWOOT_SMTP_PASSWORD}
       - ACTIVE_STORAGE_SERVICE=${ACTIVE_STORAGE_SERVICE:-local}
+      - SAFE_FETCH_ALLOW_PRIVATE_NETWORK=${SAFE_FETCH_ALLOW_PRIVATE_NETWORK:-false}
     entrypoint: docker/entrypoints/rails.sh
     command: sh -c "bundle exec rails db:chatwoot_prepare && bundle exec rails s -p 3000 -b 0.0.0.0"
     volumes:
@@ -54,7 +56,7 @@ services:
       - redis
     environment:
       - SECRET_KEY_BASE=$SERVICE_PASSWORD_CHATWOOT
-      - FRONTEND_URL=${SERVICE_FQDN_CHATWOOT}
+      - FRONTEND_URL=${SERVICE_URL_CHATWOOT}
       - DEFAULT_LOCALE=${CHATWOOT_DEFAULT_LOCALE}
       - FORCE_SSL=${FORCE_SSL:-false}
       - ENABLE_ACCOUNT_SIGNUP=${ENABLE_ACCOUNT_SIGNUP:-false}

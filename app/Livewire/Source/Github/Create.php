@@ -3,10 +3,14 @@
 namespace App\Livewire\Source\Github;
 
 use App\Models\GithubApp;
+use App\Rules\SafeExternalUrl;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class Create extends Component
 {
+    use AuthorizesRequests;
+
     public string $name;
 
     public ?string $organization = null;
@@ -29,11 +33,13 @@ class Create extends Component
     public function createGitHubApp()
     {
         try {
+            $this->authorize('createAnyResource');
+
             $this->validate([
                 'name' => 'required|string',
                 'organization' => 'nullable|string',
-                'api_url' => 'required|string',
-                'html_url' => 'required|string',
+                'api_url' => ['required', 'string', 'url', new SafeExternalUrl],
+                'html_url' => ['required', 'string', 'url', new SafeExternalUrl],
                 'custom_user' => 'required|string',
                 'custom_port' => 'required|int',
                 'is_system_wide' => 'required|bool',
@@ -45,17 +51,15 @@ class Create extends Component
                 'html_url' => $this->html_url,
                 'custom_user' => $this->custom_user,
                 'custom_port' => $this->custom_port,
+                'is_system_wide' => $this->is_system_wide,
                 'team_id' => currentTeam()->id,
             ];
-            if (isCloud()) {
-                $payload['is_system_wide'] = $this->is_system_wide;
-            }
             $github_app = GithubApp::create($payload);
             if (session('from')) {
                 session(['from' => session('from') + ['source_id' => $github_app->id]]);
             }
 
-            return redirect()->route('source.github.show', ['github_app_uuid' => $github_app->uuid]);
+            return redirectRoute($this, 'source.github.show', ['github_app_uuid' => $github_app->uuid]);
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }

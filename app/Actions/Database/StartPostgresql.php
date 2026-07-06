@@ -62,11 +62,11 @@ class StartPostgresql
             $this->commands[] = "mkdir -p $this->configuration_dir/ssl";
 
             $server = $this->database->destination->server;
-            $caCert = SslCertificate::where('server_id', $server->id)->where('is_ca_certificate', true)->first();
+            $caCert = $server->sslCertificates()->where('is_ca_certificate', true)->first();
 
             if (! $caCert) {
                 $server->generateCaCertificate();
-                $caCert = SslCertificate::where('server_id', $server->id)->where('is_ca_certificate', true)->first();
+                $caCert = $server->sslCertificates()->where('is_ca_certificate', true)->first();
             }
 
             if (! $caCert) {
@@ -110,16 +110,9 @@ class StartPostgresql
                         $this->database->destination->network,
                     ],
                     'labels' => defaultDatabaseLabels($this->database)->toArray(),
-                    'healthcheck' => [
-                        'test' => [
-                            'CMD-SHELL',
-                            "psql -U {$this->database->postgres_user} -d {$this->database->postgres_db} -c 'SELECT 1' || exit 1",
-                        ],
-                        'interval' => '5s',
-                        'timeout' => '5s',
-                        'retries' => 10,
-                        'start_period' => '5s',
-                    ],
+                    'healthcheck' => $this->database->healthCheckConfiguration([
+                        'CMD', 'psql', '-U', (string) $this->database->postgres_user, '-d', (string) $this->database->postgres_db, '-c', 'SELECT 1',
+                    ]),
                     'mem_limit' => $this->database->limits_memory,
                     'memswap_limit' => $this->database->limits_memory_swap,
                     'mem_swappiness' => $this->database->limits_memory_swappiness,
@@ -185,6 +178,8 @@ class StartPostgresql
             }
         }
 
+        $command = ['postgres'];
+
         if (filled($this->database->postgres_conf)) {
             $docker_compose['services'][$container_name]['volumes'] = array_merge(
                 $docker_compose['services'][$container_name]['volumes'],
@@ -195,29 +190,28 @@ class StartPostgresql
                     'read_only' => true,
                 ]]
             );
-            $docker_compose['services'][$container_name]['command'] = [
-                'postgres',
-                '-c',
-                'config_file=/etc/postgresql/postgresql.conf',
-            ];
+            $command = array_merge($command, ['-c', 'config_file=/etc/postgresql/postgresql.conf']);
         }
 
         if ($this->database->enable_ssl) {
-            $docker_compose['services'][$container_name]['command'] = [
-                'postgres',
-                '-c',
-                'ssl=on',
-                '-c',
-                'ssl_cert_file=/var/lib/postgresql/certs/server.crt',
-                '-c',
-                'ssl_key_file=/var/lib/postgresql/certs/server.key',
-            ];
+            $command = array_merge($command, [
+                '-c', 'ssl=on',
+                '-c', 'ssl_cert_file=/var/lib/postgresql/certs/server.crt',
+                '-c', 'ssl_key_file=/var/lib/postgresql/certs/server.key',
+            ]);
         }
 
         // Add custom docker run options
         $docker_run_options = convertDockerRunToCompose($this->database->custom_docker_run_options);
         $docker_compose = generateCustomDockerRunOptionsForDatabases($docker_run_options, $docker_compose, $container_name, $this->database->destination->network);
 
+        if (count($command) > 1) {
+            $docker_compose['services'][$container_name]['command'] = $command;
+        }
+
+        if (! $this->database->isHealthcheckEnabled()) {
+            unset($docker_compose['services'][$container_name]['healthcheck']);
+        }
         $docker_compose = Yaml::dump($docker_compose, 10);
         $docker_compose_base64 = base64_encode($docker_compose);
         $this->commands[] = "echo '{$docker_compose_base64}' | base64 -d | tee $this->configuration_dir/docker-compose.yml > /dev/null";
@@ -225,9 +219,12 @@ class StartPostgresql
         $this->commands[] = "echo '{$readme}' > $this->configuration_dir/README.md";
         $this->commands[] = "echo 'Pulling {$database->image} image.'";
         $this->commands[] = "docker compose -f $this->configuration_dir/docker-compose.yml pull";
+        $this->commands[] = "docker stop -t 10 $container_name 2>/dev/null || true";
+        $this->commands[] = "docker rm -f $container_name 2>/dev/null || true";
         $this->commands[] = "docker compose -f $this->configuration_dir/docker-compose.yml up -d";
         if ($this->database->enable_ssl) {
-            $this->commands[] = executeInDocker($this->database->uuid, "chown {$this->database->postgres_user}:{$this->database->postgres_user} /var/lib/postgresql/certs/server.key /var/lib/postgresql/certs/server.crt");
+            $postgresUser = escapeshellarg($this->database->postgres_user);
+            $this->commands[] = executeInDocker($this->database->uuid, "chown {$postgresUser}:{$postgresUser} /var/lib/postgresql/certs/server.key /var/lib/postgresql/certs/server.crt");
         }
         $this->commands[] = "echo 'Database started.'";
 
@@ -304,9 +301,18 @@ class StartPostgresql
         foreach ($this->database->init_scripts as $init_script) {
             $filename = data_get($init_script, 'filename');
             $content = data_get($init_script, 'content');
+
+            // Normalise filename without rejecting legacy values so previously created
+            // init scripts keep deploying. basename() strips any directory components
+            // (path traversal) and escapeshellarg() contains every shell metacharacter
+            // in the tee target. Livewire / API validate new filenames up front.
+            $filename = basename((string) $filename);
+
+            $target_path = "$this->configuration_dir/docker-entrypoint-initdb.d/{$filename}";
+            $escaped_target = escapeshellarg($target_path);
             $content_base64 = base64_encode($content);
-            $this->commands[] = "echo '{$content_base64}' | base64 -d | tee $this->configuration_dir/docker-entrypoint-initdb.d/{$filename} > /dev/null";
-            $this->init_scripts[] = "$this->configuration_dir/docker-entrypoint-initdb.d/{$filename}";
+            $this->commands[] = "echo '{$content_base64}' | base64 -d | tee {$escaped_target} > /dev/null";
+            $this->init_scripts[] = $target_path;
         }
     }
 

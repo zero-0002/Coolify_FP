@@ -6,12 +6,15 @@ use App\Helpers\SslHelper;
 use App\Jobs\RegenerateSslCertJob;
 use App\Models\Server;
 use App\Models\SslCertificate;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class Show extends Component
 {
+    use AuthorizesRequests;
+
     #[Locked]
     public Server $server;
 
@@ -36,7 +39,7 @@ class Show extends Component
 
     public function loadCaCertificate()
     {
-        $this->caCertificate = SslCertificate::where('server_id', $this->server->id)->where('is_ca_certificate', true)->first();
+        $this->caCertificate = $this->server->sslCertificates()->where('is_ca_certificate', true)->first();
 
         if ($this->caCertificate) {
             $this->certificateContent = $this->caCertificate->ssl_certificate;
@@ -52,13 +55,20 @@ class Show extends Component
     public function saveCaCertificate()
     {
         try {
+            $this->authorize('manageCaCertificate', $this->server);
             if (! $this->certificateContent) {
                 throw new \Exception('Certificate content cannot be empty.');
             }
 
-            if (! openssl_x509_read($this->certificateContent)) {
+            $parsedCert = openssl_x509_read($this->certificateContent);
+            if (! $parsedCert) {
                 throw new \Exception('Invalid certificate format.');
             }
+
+            if (! openssl_x509_export($parsedCert, $cleanedCertificate)) {
+                throw new \Exception('Failed to process certificate.');
+            }
+            $this->certificateContent = $cleanedCertificate;
 
             if ($this->caCertificate) {
                 $this->caCertificate->ssl_certificate = $this->certificateContent;
@@ -82,6 +92,7 @@ class Show extends Component
     public function regenerateCaCertificate()
     {
         try {
+            $this->authorize('manageCaCertificate', $this->server);
             SslHelper::generateSslCertificate(
                 commonName: 'Coolify CA Certificate',
                 serverId: $this->server->id,
@@ -109,12 +120,14 @@ class Show extends Component
     {
         $caCertPath = config('constants.coolify.base_config_path').'/ssl/';
 
+        $base64Cert = base64_encode($this->certificateContent);
+
         $commands = collect([
             "mkdir -p $caCertPath",
             "chown -R 9999:root $caCertPath",
             "chmod -R 700 $caCertPath",
             "rm -rf $caCertPath/coolify-ca.crt",
-            "echo '{$this->certificateContent}' > $caCertPath/coolify-ca.crt",
+            "echo '{$base64Cert}' | base64 -d | tee $caCertPath/coolify-ca.crt > /dev/null",
             "chmod 644 $caCertPath/coolify-ca.crt",
         ]);
 

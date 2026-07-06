@@ -2,14 +2,40 @@
 
 namespace App\Livewire\Project\Service;
 
+use App\Models\Application;
+use App\Models\LocalFileVolume;
 use App\Models\LocalPersistentVolume;
+use App\Support\ValidationPatterns;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class Storage extends Component
 {
+    use AuthorizesRequests;
+
     public $resource;
 
     public $fileStorage;
+
+    public $isSwarm = false;
+
+    public string $name = '';
+
+    public string $mount_path = '';
+
+    public ?string $host_path = null;
+
+    public string $file_storage_path = '';
+
+    public ?string $file_storage_content = null;
+
+    public string $host_file_storage_source = '';
+
+    public string $host_file_storage_destination = '';
+
+    public string $file_storage_directory_source = '';
+
+    public string $file_storage_directory_destination = '';
 
     public function getListeners()
     {
@@ -24,6 +50,18 @@ class Storage extends Component
 
     public function mount()
     {
+        if (str($this->resource->getMorphClass())->contains('Standalone')) {
+            $this->file_storage_directory_source = database_configuration_dir()."/{$this->resource->uuid}";
+        } else {
+            $this->file_storage_directory_source = application_configuration_dir()."/{$this->resource->uuid}";
+        }
+
+        if ($this->resource->getMorphClass() === Application::class) {
+            if ($this->resource->destination->server->isSwarm()) {
+                $this->isSwarm = true;
+            }
+        }
+
         $this->refreshStorages();
     }
 
@@ -35,27 +73,217 @@ class Storage extends Component
 
     public function refreshStorages()
     {
-        $this->fileStorage = $this->resource->fileStorages()->get();
-        $this->dispatch('$refresh');
+        $this->fileStorage = $this->resource->fileStorages()->get()->each(function (LocalFileVolume $fs) {
+            if (strlen((string) $fs->content) > LocalFileVolume::MAX_CONTENT_SIZE) {
+                $fs->content = LocalFileVolume::TOO_LARGE_PLACEHOLDER;
+            }
+        });
+        $this->resource->load('persistentStorages.resource');
     }
 
-    public function addNewVolume($data)
+    public function getFilesProperty()
+    {
+        return $this->fileStorage->where('is_directory', false);
+    }
+
+    public function getDirectoriesProperty()
+    {
+        return $this->fileStorage->where('is_directory', true);
+    }
+
+    public function getVolumeCountProperty()
+    {
+        return $this->resource->persistentStorages()->count();
+    }
+
+    public function getFileCountProperty()
+    {
+        return $this->files->count();
+    }
+
+    public function getDirectoryCountProperty()
+    {
+        return $this->directories->count();
+    }
+
+    public function submitPersistentVolume()
     {
         try {
+            $this->authorize('update', $this->resource);
+
+            $this->validate([
+                'name' => ValidationPatterns::volumeNameRules(),
+                'mount_path' => 'required|string',
+                'host_path' => $this->isSwarm
+                    ? ['required', 'string', 'regex:'.ValidationPatterns::DIRECTORY_PATH_PATTERN]
+                    : ['nullable', 'string', 'regex:'.ValidationPatterns::DIRECTORY_PATH_PATTERN],
+            ], array_merge(ValidationPatterns::volumeNameMessages(), [
+                'host_path.regex' => 'Host path must start with / and only contain safe path characters.',
+            ]));
+
+            $name = $this->resource->uuid.'-'.$this->name;
+
             LocalPersistentVolume::create([
-                'name' => $data['name'],
-                'mount_path' => $data['mount_path'],
-                'host_path' => $data['host_path'],
+                'name' => $name,
+                'mount_path' => $this->mount_path,
+                'host_path' => $this->host_path,
                 'resource_id' => $this->resource->id,
                 'resource_type' => $this->resource->getMorphClass(),
             ]);
             $this->resource->refresh();
-            $this->dispatch('success', 'Storage added successfully');
-            $this->dispatch('clearAddStorage');
-            $this->dispatch('refreshStorages');
+            $this->dispatch('success', 'Volume added successfully');
+            $this->dispatch('closeStorageModal', 'volume');
+            $this->clearForm();
+            $this->refreshStorages();
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
+    }
+
+    public function submitFileStorage()
+    {
+        try {
+            $this->authorize('update', $this->resource);
+
+            $this->validate([
+                'file_storage_path' => 'required|string',
+                'file_storage_content' => 'nullable|string',
+            ]);
+
+            $this->file_storage_path = validateFileMountPath($this->file_storage_path, 'file storage path');
+
+            $fs_path = confineFileMountPath($this->fileStorageHostPath(), $this->file_storage_path, 'file storage path');
+
+            LocalFileVolume::create([
+                'fs_path' => $fs_path,
+                'mount_path' => $this->file_storage_path,
+                'content' => $this->file_storage_content,
+                'is_directory' => false,
+                'resource_id' => $this->resource->id,
+                'resource_type' => get_class($this->resource),
+            ]);
+
+            $this->dispatch('success', 'File mount added successfully');
+            $this->dispatch('closeStorageModal', 'file');
+            $this->clearForm();
+            $this->refreshStorages();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
+    }
+
+    public function submitHostFileStorage()
+    {
+        try {
+            $this->authorize('update', $this->resource);
+
+            $this->validate([
+                'host_file_storage_source' => 'required|string',
+                'host_file_storage_destination' => 'required|string',
+            ]);
+
+            $this->host_file_storage_source = validateHostFileMountPath($this->host_file_storage_source, 'host file source path');
+            $this->host_file_storage_destination = validateFileMountPath($this->host_file_storage_destination, 'host file destination path');
+
+            LocalFileVolume::create([
+                'fs_path' => $this->host_file_storage_source,
+                'mount_path' => $this->host_file_storage_destination,
+                'content' => null,
+                'is_directory' => false,
+                'is_host_file' => true,
+                'resource_id' => $this->resource->id,
+                'resource_type' => get_class($this->resource),
+            ]);
+
+            $this->dispatch('success', 'Host file mount added successfully');
+            $this->dispatch('closeStorageModal', 'host-file');
+            $this->clearForm();
+            $this->refreshStorages();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
+    }
+
+    public function submitFileStorageDirectory()
+    {
+        try {
+            $this->authorize('update', $this->resource);
+
+            $this->validate([
+                'file_storage_directory_source' => 'required|string',
+                'file_storage_directory_destination' => 'required|string',
+            ]);
+
+            $this->file_storage_directory_source = trim($this->file_storage_directory_source);
+            $this->file_storage_directory_source = str($this->file_storage_directory_source)->start('/')->value();
+            $this->file_storage_directory_destination = trim($this->file_storage_directory_destination);
+            $this->file_storage_directory_destination = str($this->file_storage_directory_destination)->start('/')->value();
+
+            // Validate paths to prevent command injection
+            validateShellSafePath($this->file_storage_directory_source, 'storage source path');
+            validateShellSafePath($this->file_storage_directory_destination, 'storage destination path');
+
+            LocalFileVolume::create([
+                'fs_path' => $this->file_storage_directory_source,
+                'mount_path' => $this->file_storage_directory_destination,
+                'is_directory' => true,
+                'resource_id' => $this->resource->id,
+                'resource_type' => get_class($this->resource),
+            ]);
+
+            $this->dispatch('success', 'Directory mount added successfully');
+            $this->dispatch('closeStorageModal', 'directory');
+            $this->clearForm();
+            $this->refreshStorages();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
+    }
+
+    public function clearForm()
+    {
+        $this->name = '';
+        $this->mount_path = '';
+        $this->host_path = null;
+        $this->file_storage_path = '';
+        $this->file_storage_content = null;
+        $this->file_storage_directory_destination = '';
+        $this->host_file_storage_source = '';
+        $this->host_file_storage_destination = '';
+
+        if (str($this->resource->getMorphClass())->contains('Standalone')) {
+            $this->file_storage_directory_source = database_configuration_dir()."/{$this->resource->uuid}";
+        } else {
+            $this->file_storage_directory_source = application_configuration_dir()."/{$this->resource->uuid}";
+        }
+    }
+
+    public function fileStorageHostPath(): string
+    {
+        if (method_exists($this->resource, 'workdir')) {
+            return $this->resource->workdir();
+        }
+
+        if ($this->resource->getMorphClass() === Application::class) {
+            return application_configuration_dir().'/'.$this->resource->uuid;
+        }
+
+        if (str($this->resource->getMorphClass())->contains('Standalone')) {
+            return database_configuration_dir().'/'.$this->resource->uuid;
+        }
+
+        throw new \Exception('No valid resource type for file mount storage type!');
+    }
+
+    public function fileStoragePreviewPath(): string
+    {
+        $path = str($this->file_storage_path)->trim();
+
+        if ($path->isEmpty()) {
+            return $this->fileStorageHostPath().'/';
+        }
+
+        return $this->fileStorageHostPath().$path->start('/')->value();
     }
 
     public function render()

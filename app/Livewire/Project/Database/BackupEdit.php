@@ -2,22 +2,25 @@
 
 namespace App\Livewire\Project\Database;
 
-use App\Models\InstanceSettings;
+use App\Jobs\DatabaseBackupJob;
+use App\Models\S3Storage;
 use App\Models\ScheduledDatabaseBackup;
+use App\Models\ServiceDatabase;
 use Exception;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
-use Spatie\Url\Url;
 
 class BackupEdit extends Component
 {
+    use AuthorizesRequests;
+
     public ScheduledDatabaseBackup $backup;
 
     #[Locked]
-    public $s3s;
+    public $availableS3Storages;
 
     #[Locked]
     public $parameters;
@@ -64,8 +67,11 @@ class BackupEdit extends Component
     #[Validate(['required', 'boolean'])]
     public bool $saveS3 = false;
 
+    #[Validate(['required', 'boolean'])]
+    public bool $disableLocalBackup = false;
+
     #[Validate(['nullable', 'integer'])]
-    public ?int $s3StorageId = 1;
+    public ?int $s3StorageId = null;
 
     #[Validate(['nullable', 'string'])]
     public ?string $databasesToBackup = null;
@@ -73,12 +79,13 @@ class BackupEdit extends Component
     #[Validate(['required', 'boolean'])]
     public bool $dumpAll = false;
 
-    #[Validate(['required', 'int', 'min:1', 'max:36000'])]
-    public int $timeout = 3600;
+    #[Validate(['required', 'int', 'min:60', 'max:36000'])]
+    public int|string $timeout = 3600;
 
     public function mount()
     {
         try {
+            $this->authorize('view', $this->backup->database);
             $this->parameters = get_route_parameters();
             $this->syncData();
         } catch (Exception $e) {
@@ -98,7 +105,15 @@ class BackupEdit extends Component
             $this->backup->database_backup_retention_days_s3 = $this->databaseBackupRetentionDaysS3;
             $this->backup->database_backup_retention_max_storage_s3 = $this->databaseBackupRetentionMaxStorageS3;
             $this->backup->save_s3 = $this->saveS3;
+            $this->backup->disable_local_backup = $this->disableLocalBackup;
             $this->backup->s3_storage_id = $this->s3StorageId;
+
+            // Validate databases_to_backup to prevent command injection
+            // Handles all formats including MongoDB's "db:col1,col2|db2:col3"
+            if (filled($this->databasesToBackup)) {
+                validateDatabasesBackupInput($this->databasesToBackup);
+            }
+
             $this->backup->databases_to_backup = $this->databasesToBackup;
             $this->backup->dump_all = $this->dumpAll;
             $this->backup->timeout = $this->timeout;
@@ -115,26 +130,25 @@ class BackupEdit extends Component
             $this->databaseBackupRetentionDaysS3 = $this->backup->database_backup_retention_days_s3;
             $this->databaseBackupRetentionMaxStorageS3 = $this->backup->database_backup_retention_max_storage_s3;
             $this->saveS3 = $this->backup->save_s3;
-            $this->s3StorageId = $this->backup->s3_storage_id;
+            $this->disableLocalBackup = $this->backup->disable_local_backup ?? false;
+            $this->s3StorageId = $this->backup->s3_storage_id ?? $this->availableS3StorageIds()->first();
             $this->databasesToBackup = $this->backup->databases_to_backup;
             $this->dumpAll = $this->backup->dump_all;
             $this->timeout = $this->backup->timeout;
         }
     }
 
-    public function delete($password)
+    public function delete($password, $selectedActions = [])
     {
-        if (! data_get(InstanceSettings::get(), 'disable_two_step_confirmation')) {
-            if (! Hash::check($password, Auth::user()->password)) {
-                $this->addError('password', 'The provided password is incorrect.');
+        $this->authorize('manageBackups', $this->backup->database);
 
-                return;
-            }
+        if (! verifyPasswordConfirmation($password, $this)) {
+            return 'The provided password is incorrect.';
         }
 
         try {
             $server = null;
-            if ($this->backup->database instanceof \App\Models\ServiceDatabase) {
+            if ($this->backup->database instanceof ServiceDatabase) {
                 $server = $this->backup->database->service->destination->server;
             } elseif ($this->backup->database->destination && $this->backup->database->destination->server) {
                 $server = $this->backup->database->destination->server;
@@ -160,20 +174,33 @@ class BackupEdit extends Component
 
             $this->backup->delete();
 
-            if ($this->backup->database->getMorphClass() === \App\Models\ServiceDatabase::class) {
-                $previousUrl = url()->previous();
-                $url = Url::fromString($previousUrl);
-                $url = $url->withoutQueryParameter('selectedBackupId');
-                $url = $url->withFragment('backups');
-                $url = $url->getPath()."#{$url->getFragment()}";
+            if ($this->backup->database->getMorphClass() === ServiceDatabase::class) {
+                $serviceDatabase = $this->backup->database;
 
-                return redirect($url);
+                return redirect()->route('project.service.database.backups', [
+                    'project_uuid' => $this->parameters['project_uuid'],
+                    'environment_uuid' => $this->parameters['environment_uuid'],
+                    'service_uuid' => $serviceDatabase->service->uuid,
+                    'stack_service_uuid' => $serviceDatabase->uuid,
+                ]);
             } else {
                 return redirect()->route('project.database.backup.index', $this->parameters);
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->dispatch('error', 'Failed to delete backup: '.$e->getMessage());
 
+            return handleError($e, $this);
+        }
+    }
+
+    public function backupNow()
+    {
+        try {
+            $this->authorize('manageBackups', $this->backup->database);
+
+            DatabaseBackupJob::dispatch($this->backup);
+            $this->dispatch('success', 'Backup queued. It will be available in a few minutes.');
+        } catch (\Throwable $e) {
             return handleError($e, $this);
         }
     }
@@ -181,6 +208,8 @@ class BackupEdit extends Component
     public function instantSave()
     {
         try {
+            $this->authorize('manageBackups', $this->backup->database);
+
             $this->syncData(true);
             $this->dispatch('success', 'Backup updated successfully.');
         } catch (\Throwable $e) {
@@ -188,21 +217,67 @@ class BackupEdit extends Component
         }
     }
 
+    public function updatedS3StorageId(): void
+    {
+        $this->instantSave();
+    }
+
     private function customValidate()
     {
         if (! is_numeric($this->backup->s3_storage_id)) {
             $this->backup->s3_storage_id = null;
         }
+
+        // S3 backup cannot be enabled without a valid S3 storage owned by the team
+        $availableS3Ids = $this->availableS3StorageIds();
+        if ($availableS3Ids->isEmpty()) {
+            $this->backup->s3_storage_id = $this->s3StorageId = null;
+            if ($this->backup->save_s3) {
+                $this->backup->save_s3 = $this->saveS3 = false;
+            }
+        } elseif (! $availableS3Ids->contains($this->backup->s3_storage_id)) {
+            $this->backup->s3_storage_id = $this->s3StorageId = $availableS3Ids->first();
+        }
+
+        // Validate that disable_local_backup can only be true when S3 backup is enabled
+        if ($this->backup->disable_local_backup && ! $this->backup->save_s3) {
+            $this->backup->disable_local_backup = $this->disableLocalBackup = false;
+        }
+
         $isValid = validate_cron_expression($this->backup->frequency);
         if (! $isValid) {
-            throw new \Exception('Invalid Cron / Human expression');
+            throw new Exception('Invalid Cron / Human expression');
         }
         $this->validate();
+    }
+
+    private function availableS3StorageIds(): Collection
+    {
+        $storages = collect($this->availableS3Storages);
+        $storageIds = $storages->pluck('id')->filter()->all();
+
+        if (empty($storageIds)) {
+            return collect();
+        }
+
+        $teamIds = $storages->pluck('team_id')->reject(fn ($teamId) => $teamId === null)->unique()->values()->all();
+
+        if (empty($teamIds)) {
+            return collect();
+        }
+
+        return S3Storage::query()
+            ->whereKey($storageIds)
+            ->whereIn('team_id', $teamIds)
+            ->where('is_usable', true)
+            ->pluck('id');
     }
 
     public function submit()
     {
         try {
+            $this->authorize('manageBackups', $this->backup->database);
+
             $this->syncData(true);
             $this->dispatch('success', 'Backup updated successfully.');
         } catch (\Throwable $e) {

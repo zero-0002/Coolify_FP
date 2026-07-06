@@ -2,15 +2,31 @@
 
 namespace App\Models;
 
+use App\Support\ValidationPatterns;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Url\Url;
-use Visus\Cuid2\Cuid2;
 
 class ApplicationPreview extends BaseModel
 {
     use SoftDeletes;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'uuid',
+        'application_id',
+        'pull_request_id',
+        'pull_request_html_url',
+        'pull_request_issue_comment_id',
+        'fqdn',
+        'status',
+        'git_type',
+        'docker_compose_domains',
+        'docker_registry_image_tag',
+        'last_online_at',
+    ];
+
+    protected $casts = [
+        'pull_request_id' => 'integer',
+    ];
 
     protected static function booted()
     {
@@ -26,18 +42,25 @@ class ApplicationPreview extends BaseModel
                 $networkKeys = collect($networks)->keys();
                 $volumeKeys = collect($volumes)->keys();
                 $volumeKeys->each(function ($key) use ($server) {
-                    instant_remote_process(["docker volume rm -f $key"], $server, false);
+                    if (! preg_match(ValidationPatterns::VOLUME_NAME_PATTERN, $key)) {
+                        return;
+                    }
+                    instant_remote_process(['docker volume rm -f '.escapeshellarg($key)], $server, false);
                 });
                 $networkKeys->each(function ($key) use ($server) {
-                    instant_remote_process(["docker network disconnect $key coolify-proxy"], $server, false);
-                    instant_remote_process(["docker network rm $key"], $server, false);
+                    if (! preg_match(ValidationPatterns::DOCKER_NETWORK_PATTERN, $key)) {
+                        return;
+                    }
+                    $k = escapeshellarg($key);
+                    instant_remote_process(["docker network disconnect {$k} coolify-proxy"], $server, false);
+                    instant_remote_process(["docker network rm {$k}"], $server, false);
                 });
             } else {
                 // Regular application volume cleanup
                 $persistentStorages = $preview->persistentStorages()->get() ?? collect();
                 if ($persistentStorages->count() > 0) {
                     foreach ($persistentStorages as $storage) {
-                        instant_remote_process(["docker volume rm -f $storage->name"], $server, false);
+                        instant_remote_process(['docker volume rm -f '.escapeshellarg($storage->name)], $server, false);
                     }
                 }
             }
@@ -47,7 +70,7 @@ class ApplicationPreview extends BaseModel
         });
         static::saving(function ($preview) {
             if ($preview->isDirty('status')) {
-                $preview->forceFill(['last_online_at' => now()]);
+                $preview->last_online_at = now();
             }
         });
     }
@@ -69,29 +92,29 @@ class ApplicationPreview extends BaseModel
 
     public function persistentStorages()
     {
-        return $this->morphMany(\App\Models\LocalPersistentVolume::class, 'resource');
+        return $this->morphMany(LocalPersistentVolume::class, 'resource');
     }
 
     public function generate_preview_fqdn()
     {
-        if (is_null($this->fqdn) && $this->application->fqdn) {
+        if ($this->application->fqdn) {
             if (str($this->application->fqdn)->contains(',')) {
                 $url = Url::fromString(str($this->application->fqdn)->explode(',')[0]);
-                $preview_fqdn = getFqdnWithoutPort(str($this->application->fqdn)->explode(',')[0]);
             } else {
                 $url = Url::fromString($this->application->fqdn);
-                if ($this->fqdn) {
-                    $preview_fqdn = getFqdnWithoutPort($this->fqdn);
-                }
             }
             $template = $this->application->preview_url_template;
             $host = $url->getHost();
             $schema = $url->getScheme();
-            $random = new Cuid2;
+            $portInt = $url->getPort();
+            $port = $portInt !== null ? ':'.$portInt : '';
+            $urlPath = $url->getPath();
+            $path = ($urlPath !== '' && $urlPath !== '/') ? $urlPath : '';
+            $random = new_public_id();
             $preview_fqdn = str_replace('{{random}}', $random, $template);
             $preview_fqdn = str_replace('{{domain}}', $host, $preview_fqdn);
             $preview_fqdn = str_replace('{{pr_id}}', $this->pull_request_id, $preview_fqdn);
-            $preview_fqdn = "$schema://$preview_fqdn";
+            $preview_fqdn = "$schema://$preview_fqdn{$port}{$path}";
             $this->fqdn = $preview_fqdn;
             $this->save();
         }
@@ -145,11 +168,15 @@ class ApplicationPreview extends BaseModel
                 $template = $this->application->preview_url_template;
                 $host = $url->getHost();
                 $schema = $url->getScheme();
-                $random = new Cuid2;
+                $portInt = $url->getPort();
+                $port = $portInt !== null ? ':'.$portInt : '';
+                $urlPath = $url->getPath();
+                $path = ($urlPath !== '' && $urlPath !== '/') ? $urlPath : '';
+                $random = new_public_id();
                 $preview_fqdn = str_replace('{{random}}', $random, $template);
                 $preview_fqdn = str_replace('{{domain}}', $host, $preview_fqdn);
                 $preview_fqdn = str_replace('{{pr_id}}', $this->pull_request_id, $preview_fqdn);
-                $preview_fqdn = "$schema://$preview_fqdn";
+                $preview_fqdn = "$schema://$preview_fqdn{$port}{$path}";
                 $preview_domains[] = $preview_fqdn;
             }
 
@@ -162,6 +189,16 @@ class ApplicationPreview extends BaseModel
         }
 
         $this->docker_compose_domains = json_encode($docker_compose_domains);
+
+        // Populate fqdn from generated domains so webhook notifications can read it
+        $allDomains = collect($docker_compose_domains)
+            ->pluck('domain')
+            ->filter(fn ($d) => ! empty($d))
+            ->flatMap(fn ($d) => explode(',', $d))
+            ->implode(',');
+
+        $this->fqdn = ! empty($allDomains) ? $allDomains : null;
+
         $this->save();
     }
 }
