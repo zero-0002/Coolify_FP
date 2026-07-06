@@ -731,6 +731,125 @@ class ServicesController extends Controller
         return response()->json($this->removeSensitiveData($service));
     }
 
+    #[OA\Get(
+        summary: 'Get service logs.',
+        description: 'Get logs for a specific service sub-resource by service UUID. The `sub_service_name` query parameter must match the `name` field of one of the service applications or databases returned by `GET /services/{uuid}`.',
+        path: '/services/{uuid}/logs',
+        operationId: 'get-service-logs-by-uuid',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Services'],
+        parameters: [
+            new OA\Parameter(
+                name: 'uuid',
+                in: 'path',
+                description: 'UUID of the service.',
+                required: true,
+                schema: new OA\Schema(
+                    type: 'string',
+                    format: 'uuid',
+                )
+            ),
+            new OA\Parameter(
+                name: 'sub_service_name',
+                in: 'query',
+                description: 'Sub-service name from `GET /services/{uuid}` under `applications[].name` or `databases[].name`. Do not use `human_name` or the Docker container name with the service UUID suffix.',
+                required: true,
+                schema: new OA\Schema(type: 'string', example: 'appwrite-console'),
+            ),
+            new OA\Parameter(
+                name: 'lines',
+                in: 'query',
+                description: 'Number of lines to show from the end of the logs.',
+                required: false,
+                schema: new OA\Schema(
+                    type: 'integer',
+                    format: 'int32',
+                    default: 100,
+                )
+            ),
+            new OA\Parameter(
+                name: 'show_timestamps',
+                in: 'query',
+                description: 'Show timestamps in the logs.',
+                required: false,
+                schema: new OA\Schema(type: 'boolean', default: false),
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Get service logs by UUID.',
+                content: [
+                    new OA\MediaType(
+                        mediaType: 'application/json',
+                        schema: new OA\Schema(
+                            type: 'object',
+                            properties: [
+                                'logs' => ['type' => 'string'],
+                            ]
+                        )
+                    ),
+                ]
+            ),
+            new OA\Response(
+                response: 401,
+                ref: '#/components/responses/401',
+            ),
+            new OA\Response(
+                response: 400,
+                ref: '#/components/responses/400',
+            ),
+            new OA\Response(
+                response: 404,
+                ref: '#/components/responses/404',
+            ),
+        ]
+    )]
+    public function logs_by_uuid(Request $request)
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+        $uuid = $request->route('uuid');
+        if (! $uuid) {
+            return response()->json(['message' => 'UUID is required.'], 400);
+        }
+        $subServiceName = $request->query->get('sub_service_name');
+        if (! $subServiceName) {
+            return response()->json(['message' => 'Sub service name is required.'], 400);
+        }
+        $service = Service::whereRelation('environment.project.team', 'id', $teamId)->whereUuid($request->uuid)->first();
+        if (! $service) {
+            return response()->json(['message' => 'Service not found.'], 404);
+        }
+
+        $name = "{$subServiceName}-{$service->uuid}";
+        $containers = getCurrentServiceSubContainerStatus($service->destination->server, $service->id, $name);
+        $container = $containers->first();
+
+        if (! $container) {
+            return response()->json(['message' => 'Container not found.'], 404);
+        }
+
+        $status = getContainerStatus($service->destination->server, $container['Names']);
+        if ($status !== 'running') {
+            return response()->json([
+                'message' => 'Container is not running.',
+            ], 400);
+        }
+
+        $lines = normalizeLogLines($request->query('lines'));
+        $showTimestamps = parseLogTimestampFlag($request->query('show_timestamps'));
+        $logs = getContainerLogs($service->destination->server, $container['ID'], $lines, $showTimestamps);
+
+        return response()->json([
+            'logs' => $logs,
+        ]);
+    }
+
     #[OA\Delete(
         summary: 'Delete',
         description: 'Delete service by UUID.',
