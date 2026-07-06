@@ -2087,8 +2087,8 @@ class ApplicationsController extends Controller
             ], 400);
         }
 
-        $lines = $request->query->get('lines', 100);
-        $showTimestamps = $request->query->get('show_timestamps', false);
+        $lines = normalizeLogLines($request->query('lines'));
+        $showTimestamps = parseLogTimestampFlag($request->query('show_timestamps'));
         $logs = getContainerLogs($application->destination->server, $container['ID'], $lines, $showTimestamps);
 
         return response()->json([

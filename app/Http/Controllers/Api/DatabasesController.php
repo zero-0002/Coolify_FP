@@ -2246,6 +2246,7 @@ class DatabasesController extends Controller
 
         return response()->json(['message' => 'Invalid database type requested.'], 400);
     }
+
     #[OA\Get(
         summary: 'Get database logs.',
         description: 'Get database logs by UUID.',
@@ -2331,7 +2332,7 @@ class DatabasesController extends Controller
         }
 
         $containers = getCurrentDatabaseContainerStatus($database->destination->server, $database->id);
-        
+
         if ($containers->count() == 0) {
             return response()->json([
                 'message' => 'Database is not running.',
@@ -2347,8 +2348,8 @@ class DatabasesController extends Controller
             ], 400);
         }
 
-        $lines = $request->query->get('lines', 100);
-        $showTimestamps = $request->query->get('show_timestamps', false);
+        $lines = normalizeLogLines($request->query('lines'));
+        $showTimestamps = parseLogTimestampFlag($request->query('show_timestamps'));
         $logs = getContainerLogs($database->destination->server, $container['ID'], $lines, $showTimestamps);
 
         return response()->json([

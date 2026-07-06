@@ -87,15 +87,19 @@ function getCurrentDatabaseContainerStatus(Server $server, int $id): Collection
 
 function getCurrentServiceSubContainerStatus(Server $server, int $id, string $name): Collection
 {
-    $containers = collect([]);
-    if (! $server->isSwarm()) {
-        $containers = instant_remote_process(["docker ps -a --filter='label=coolify.serviceId={$id}' --filter='label=coolify.name={$name}' --format '{{json .}}' "], $server);
-        $containers = format_docker_command_output_to_json($containers);
+    return filterServiceSubContainersByName(getCurrentServiceContainerStatus($server, $id), $name);
+}
 
-        return $containers->filter();
-    }
+function filterServiceSubContainersByName(Collection $containers, string $name): Collection
+{
+    return $containers->filter(function ($container) use ($name) {
+        $labels = data_get($container, 'Labels', []);
+        if (is_string($labels)) {
+            $labels = format_docker_labels_to_json($labels);
+        }
 
-    return $containers;
+        return collect($labels)->get('coolify.name') === $name;
+    })->values();
 }
 
 function format_docker_command_output_to_json($rawOutput): Collection
@@ -1273,7 +1277,22 @@ function validateComposeFile(string $compose, int $server_id): string|Throwable
     }
 }
 
-function getContainerLogs(Server $server, string $container_id, int $lines = 100, bool $showTimestamps = false): string
+function normalizeLogLines(mixed $lines, int $default = 100, int $max = 10000): int
+{
+    $lines = filter_var($lines, FILTER_VALIDATE_INT);
+    if ($lines === false || $lines <= 0) {
+        return $default;
+    }
+
+    return min($lines, $max);
+}
+
+function parseLogTimestampFlag(mixed $showTimestamps): bool
+{
+    return filter_var($showTimestamps, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
+}
+
+function buildContainerLogsCommand(Server $server, string $container_id, int $lines = 100, bool $showTimestamps = false): string
 {
     $command = "docker logs -n {$lines}";
     if ($server->isSwarm()) {
@@ -1284,7 +1303,12 @@ function getContainerLogs(Server $server, string $container_id, int $lines = 100
         $command .= ' --timestamps';
     }
 
-    $output = instant_remote_process(["{$command} {$container_id} 2>&1"], $server);
+    return "{$command} ".escapeshellarg($container_id).' 2>&1';
+}
+
+function getContainerLogs(Server $server, string $container_id, int $lines = 100, bool $showTimestamps = false): string
+{
+    $output = instant_remote_process([buildContainerLogsCommand($server, $container_id, $lines, $showTimestamps)], $server);
     $output = removeAnsiColors($output);
 
     return $output;

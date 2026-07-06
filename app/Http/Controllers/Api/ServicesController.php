@@ -733,7 +733,7 @@ class ServicesController extends Controller
 
     #[OA\Get(
         summary: 'Get service logs.',
-        description: 'Get service logs by UUID.',
+        description: 'Get logs for a specific service sub-resource by service UUID. The `sub_service_name` query parameter must match the `name` field of one of the service applications or databases returned by `GET /services/{uuid}`.',
         path: '/services/{uuid}/logs',
         operationId: 'get-service-logs-by-uuid',
         security: [
@@ -754,9 +754,9 @@ class ServicesController extends Controller
             new OA\Parameter(
                 name: 'sub_service_name',
                 in: 'query',
-                description: 'Sub service name.',
+                description: 'Sub-service name from `GET /services/{uuid}` under `applications[].name` or `databases[].name`. Do not use `human_name` or the Docker container name with the service UUID suffix.',
                 required: true,
-                schema: new OA\Schema(type: 'string'),
+                schema: new OA\Schema(type: 'string', example: 'appwrite-console'),
             ),
             new OA\Parameter(
                 name: 'lines',
@@ -841,8 +841,8 @@ class ServicesController extends Controller
             ], 400);
         }
 
-        $lines = $request->query->get('lines', 100);
-        $showTimestamps = $request->query->get('show_timestamps', false);
+        $lines = normalizeLogLines($request->query('lines'));
+        $showTimestamps = parseLogTimestampFlag($request->query('show_timestamps'));
         $logs = getContainerLogs($service->destination->server, $container['ID'], $lines, $showTimestamps);
 
         return response()->json([
