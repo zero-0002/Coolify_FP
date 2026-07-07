@@ -371,4 +371,23 @@ describe('POST /api/v1/servers/vultr', function () {
         $response->assertStatus(201);
         $response->assertJsonFragment(['ip' => '2001:db8::1']);
     });
+
+    test('requires IPv6 when public IPv4 is disabled', function () {
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+            'Content-Type' => 'application/json',
+        ])->postJson('/api/v1/servers/vultr', [
+            'cloud_provider_token_id' => $this->vultrToken->uuid,
+            'region' => 'ewr',
+            'plan' => 'vc2-1c-1gb',
+            'os_id' => 2284,
+            'name' => 'test-server',
+            'private_key_uuid' => $this->privateKey->uuid,
+            'enable_ipv6' => false,
+            'disable_public_ipv4' => true,
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['enable_ipv6']);
+    });
 });

@@ -2577,7 +2577,7 @@ paths:
               schema:
                 type: array
                 items:
-                  properties: { uuid: { type: string }, name: { type: string }, provider: { type: string, enum: [hetzner, digitalocean] }, team_id: { type: integer }, servers_count: { type: integer }, created_at: { type: string }, updated_at: { type: string } }
+                  properties: { uuid: { type: string }, name: { type: string }, provider: { type: string, enum: [hetzner, digitalocean, vultr] }, team_id: { type: integer }, servers_count: { type: integer }, created_at: { type: string }, updated_at: { type: string } }
                   type: object
         '401':
           $ref: '#/components/responses/401'
@@ -2605,7 +2605,7 @@ paths:
               properties:
                 provider:
                   type: string
-                  enum: [hetzner, digitalocean]
+                  enum: [hetzner, digitalocean, vultr]
                   example: hetzner
                   description: 'The cloud provider.'
                 token:
@@ -8984,6 +8984,93 @@ paths:
       security:
         -
           bearerAuth: []
+  /vultr/regions:
+    get:
+      tags:
+        - Vultr
+      summary: 'Get Vultr Regions'
+      description: 'Get all available Vultr regions.'
+      operationId: get-vultr-regions
+      responses:
+        '200':
+          description: 'List of Vultr regions.'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+  /vultr/plans:
+    get:
+      tags:
+        - Vultr
+      summary: 'Get Vultr Plans'
+      description: 'Get all available Vultr plans.'
+      operationId: get-vultr-plans
+      responses:
+        '200':
+          description: 'List of Vultr plans.'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+  /vultr/os:
+    get:
+      tags:
+        - Vultr
+      summary: 'Get Vultr Operating Systems'
+      description: 'Get all available Vultr operating systems.'
+      operationId: get-vultr-operating-systems
+      responses:
+        '200':
+          description: 'List of Vultr operating systems.'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+  /vultr/ssh-keys:
+    get:
+      tags:
+        - Vultr
+      summary: 'Get Vultr SSH Keys'
+      description: 'Get all Vultr SSH keys available to the selected token.'
+      operationId: get-vultr-ssh-keys
+      responses:
+        '200':
+          description: 'List of Vultr SSH keys.'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+  /servers/vultr:
+    post:
+      tags:
+        - Vultr
+      summary: 'Create Vultr Server'
+      description: 'Create a Vultr instance and link it as a Coolify server.'
+      operationId: create-vultr-server
+      responses:
+        '201':
+          description: 'Vultr server created.'
+        '401':
+          $ref: '#/components/responses/401'
+        '422':
+          description: 'Validation failed.'
+        '429':
+          description: 'Vultr API rate limit exceeded.'
+      security:
+        -
+          bearerAuth: []
 components:
   schemas:
     Application:
@@ -9925,3 +10012,6 @@ tags:
   -
     name: Teams
     description: Teams
+  -
+    name: Vultr
+    description: Vultr

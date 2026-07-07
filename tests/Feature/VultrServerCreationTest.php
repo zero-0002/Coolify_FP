@@ -133,3 +133,18 @@ it('creates a Vultr server through the Livewire flow', function () {
             && $request['user_data'] === base64_encode("#cloud-config\npackages:\n  - curl");
     });
 });
+
+it('requires IPv6 when public IPv4 is disabled', function () {
+    Livewire::test(ByVultr::class)
+        ->set('selected_token_id', $this->vultrToken->id)
+        ->set('current_step', 2)
+        ->set('server_name', 'test-vultr-server')
+        ->set('selected_region', 'ewr')
+        ->set('selected_plan', 'vc2-1c-1gb')
+        ->set('selected_os_id', 2284)
+        ->set('private_key_id', $this->privateKey->id)
+        ->set('enable_ipv6', false)
+        ->set('disable_public_ipv4', true)
+        ->call('submit')
+        ->assertHasErrors(['enable_ipv6']);
+});

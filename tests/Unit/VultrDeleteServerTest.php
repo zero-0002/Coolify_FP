@@ -81,3 +81,38 @@ it('deletes a Vultr instance when requested', function () {
 
     expect(Server::withTrashed()->find($server->id))->toBeNull();
 });
+
+it('does not use another team Vultr token when deleting an instance', function () {
+    Http::fake([
+        'https://api.vultr.com/v2/instances/instance-1' => Http::response([], 204),
+    ]);
+
+    $otherTeam = Team::factory()->create();
+    $otherToken = CloudProviderToken::create([
+        'team_id' => $otherTeam->id,
+        'provider' => 'vultr',
+        'token' => 'other-team-vultr-token',
+        'name' => 'Other Team Vultr Token',
+    ]);
+
+    $server = Server::factory()->create([
+        'team_id' => $this->team->id,
+        'private_key_id' => $this->privateKey->id,
+        'cloud_provider_token_id' => $this->vultrToken->id,
+        'vultr_instance_id' => 'instance-1',
+    ]);
+
+    $server->delete();
+
+    DeleteServer::run(
+        serverId: $server->id,
+        cloudProviderTokenId: $otherToken->id,
+        teamId: $this->team->id,
+        deleteFromVultr: true,
+        vultrInstanceId: 'instance-1'
+    );
+
+    $request = Http::recorded()->first()[0];
+
+    expect($request->header('Authorization'))->toBe(['Bearer test-vultr-token']);
+});

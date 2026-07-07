@@ -150,3 +150,17 @@ it('handles empty successful responses from Vultr API', function () {
 
     Http::assertSentCount(2);
 });
+
+it('encodes instance IDs in request paths', function () {
+    Http::fake([
+        'https://api.vultr.com/v2/instances/instance%2F1' => Http::response([
+            'instance' => ['id' => 'instance/1'],
+        ], 200),
+    ]);
+
+    $service = new VultrService('fake-token');
+
+    expect($service->getInstance('instance/1')['id'])->toBe('instance/1');
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://api.vultr.com/v2/instances/instance%2F1');
+});

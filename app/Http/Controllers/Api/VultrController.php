@@ -15,6 +15,7 @@ use App\Rules\ValidHostname;
 use App\Services\VultrService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use OpenApi\Attributes as OA;
 
 class VultrController extends Controller
 {
@@ -54,7 +55,22 @@ class VultrController extends Controller
         return $token;
     }
 
-    public function regions(Request $request)
+    #[OA\Get(
+        summary: 'Get Vultr Regions',
+        description: 'Get all available Vultr regions.',
+        path: '/vultr/regions',
+        operationId: 'get-vultr-regions',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Vultr'],
+        responses: [
+            new OA\Response(response: 200, description: 'List of Vultr regions.'),
+            new OA\Response(response: 401, ref: '#/components/responses/401'),
+            new OA\Response(response: 404, ref: '#/components/responses/404'),
+        ]
+    )]
+    public function regions(Request $request): JsonResponse
     {
         $token = $this->getVultrToken($request);
         if ($token instanceof JsonResponse) {
@@ -68,7 +84,22 @@ class VultrController extends Controller
         }
     }
 
-    public function plans(Request $request)
+    #[OA\Get(
+        summary: 'Get Vultr Plans',
+        description: 'Get all available Vultr plans.',
+        path: '/vultr/plans',
+        operationId: 'get-vultr-plans',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Vultr'],
+        responses: [
+            new OA\Response(response: 200, description: 'List of Vultr plans.'),
+            new OA\Response(response: 401, ref: '#/components/responses/401'),
+            new OA\Response(response: 404, ref: '#/components/responses/404'),
+        ]
+    )]
+    public function plans(Request $request): JsonResponse
     {
         $token = $this->getVultrToken($request);
         if ($token instanceof JsonResponse) {
@@ -82,7 +113,22 @@ class VultrController extends Controller
         }
     }
 
-    public function operatingSystems(Request $request)
+    #[OA\Get(
+        summary: 'Get Vultr Operating Systems',
+        description: 'Get all available Vultr operating systems.',
+        path: '/vultr/os',
+        operationId: 'get-vultr-operating-systems',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Vultr'],
+        responses: [
+            new OA\Response(response: 200, description: 'List of Vultr operating systems.'),
+            new OA\Response(response: 401, ref: '#/components/responses/401'),
+            new OA\Response(response: 404, ref: '#/components/responses/404'),
+        ]
+    )]
+    public function operatingSystems(Request $request): JsonResponse
     {
         $token = $this->getVultrToken($request);
         if ($token instanceof JsonResponse) {
@@ -96,7 +142,22 @@ class VultrController extends Controller
         }
     }
 
-    public function sshKeys(Request $request)
+    #[OA\Get(
+        summary: 'Get Vultr SSH Keys',
+        description: 'Get all Vultr SSH keys available to the selected token.',
+        path: '/vultr/ssh-keys',
+        operationId: 'get-vultr-ssh-keys',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Vultr'],
+        responses: [
+            new OA\Response(response: 200, description: 'List of Vultr SSH keys.'),
+            new OA\Response(response: 401, ref: '#/components/responses/401'),
+            new OA\Response(response: 404, ref: '#/components/responses/404'),
+        ]
+    )]
+    public function sshKeys(Request $request): JsonResponse
     {
         $token = $this->getVultrToken($request);
         if ($token instanceof JsonResponse) {
@@ -110,7 +171,23 @@ class VultrController extends Controller
         }
     }
 
-    public function createServer(Request $request)
+    #[OA\Post(
+        summary: 'Create Vultr Server',
+        description: 'Create a Vultr instance and link it as a Coolify server.',
+        path: '/servers/vultr',
+        operationId: 'create-vultr-server',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Vultr'],
+        responses: [
+            new OA\Response(response: 201, description: 'Vultr server created.'),
+            new OA\Response(response: 401, ref: '#/components/responses/401'),
+            new OA\Response(response: 422, description: 'Validation failed.'),
+            new OA\Response(response: 429, description: 'Vultr API rate limit exceeded.'),
+        ]
+    )]
+    public function createServer(Request $request): JsonResponse
     {
         $allowedFields = [
             'cloud_provider_token_uuid',
@@ -185,6 +262,10 @@ class VultrController extends Controller
         }
         if (is_null($request->instant_validate)) {
             $request->offsetSet('instant_validate', false);
+        }
+
+        if ($request->disable_public_ipv4 && ! $request->enable_ipv6) {
+            return $this->networkConfigurationErrorResponse();
         }
 
         $token = CloudProviderToken::whereTeamId($teamId)
@@ -307,5 +388,15 @@ class VultrController extends Controller
         $parts = preg_split('/\s+/', trim($publicKey));
 
         return implode(' ', array_slice($parts ?: [], 0, 2));
+    }
+
+    private function networkConfigurationErrorResponse(): JsonResponse
+    {
+        return response()->json([
+            'message' => 'Validation failed.',
+            'errors' => [
+                'enable_ipv6' => ['Enable IPv6 when disabling public IPv4.'],
+            ],
+        ], 422);
     }
 }

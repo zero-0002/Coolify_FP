@@ -153,19 +153,19 @@ class VultrService
 
     public function getInstance(string $instanceId): array
     {
-        $response = $this->request('get', "/instances/{$instanceId}");
+        $response = $this->request('get', $this->instanceEndpoint($instanceId));
 
         return $response['instance'] ?? [];
     }
 
     public function startInstance(string $instanceId): array
     {
-        return $this->request('post', "/instances/{$instanceId}/start");
+        return $this->request('post', $this->instanceEndpoint($instanceId).'/start');
     }
 
     public function deleteInstance(string $instanceId): void
     {
-        $this->request('delete', "/instances/{$instanceId}");
+        $this->request('delete', $this->instanceEndpoint($instanceId));
     }
 
     public function getInstances(): array
@@ -182,5 +182,10 @@ class VultrService
         }
 
         return null;
+    }
+
+    private function instanceEndpoint(string $instanceId): string
+    {
+        return '/instances/'.rawurlencode($instanceId);
     }
 }

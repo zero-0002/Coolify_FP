@@ -33,7 +33,7 @@
                 @if ($provider === 'vultr')
                     Open Account → API Access.
                     <br><br>
-                    Don't have a Vultr account? <a href='https://www.vultr.com/register-steps/' target='_blank'
+                    Don't have a Vultr account? <a href='https://www.vultr.com/?ref=9911335' target='_blank'
                         class='underline dark:text-white'>Sign up here</a>
                     <br>
                     <span class="text-xs">Coolify's affiliate link, only new accounts - supports us</span>
@@ -74,7 +74,7 @@
                     @if ($provider === 'vultr')
                         Open Account → API Access.
                         <br><br>
-                        Don't have a Vultr account? <a href='https://www.vultr.com/register-steps/' target='_blank'
+                        Don't have a Vultr account? <a href='https://www.vultr.com/?ref=9911335' target='_blank'
                             class='underline dark:text-white'>Sign up here</a>
                         <br>
                         <span class="text-xs">Coolify's affiliate link, only new accounts - supports us</span>

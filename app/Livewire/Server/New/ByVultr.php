@@ -330,6 +330,9 @@ class ByVultr extends Component
     public function submit(): mixed
     {
         $this->validate();
+        if (! $this->hasValidPublicNetworkConfiguration()) {
+            return null;
+        }
 
         try {
             $this->authorize('create', Server::class);
@@ -413,5 +416,16 @@ class ByVultr extends Component
         $parts = preg_split('/\s+/', trim($publicKey));
 
         return implode(' ', array_slice($parts ?: [], 0, 2));
+    }
+
+    private function hasValidPublicNetworkConfiguration(): bool
+    {
+        if (! $this->disable_public_ipv4 || $this->enable_ipv6) {
+            return true;
+        }
+
+        $this->addError('enable_ipv6', 'Enable IPv6 when disabling public IPv4.');
+
+        return false;
     }
 }

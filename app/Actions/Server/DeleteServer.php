@@ -35,7 +35,7 @@ class DeleteServer
             );
         }
 
-        ray($server ? 'Deleting server from Coolify' : 'Server already deleted from Coolify, skipping Coolify deletion');
+        logger()->debug($server ? 'Deleting server from Coolify' : 'Server already deleted from Coolify, skipping Coolify deletion');
 
         // If server is already deleted from Coolify, skip this part
         if (! $server) {
@@ -59,7 +59,10 @@ class DeleteServer
             $token = null;
 
             if ($cloudProviderTokenId) {
-                $token = CloudProviderToken::find($cloudProviderTokenId);
+                $token = CloudProviderToken::where('id', $cloudProviderTokenId)
+                    ->where('team_id', $teamId)
+                    ->where('provider', 'hetzner')
+                    ->first();
             }
 
             if (! $token) {
@@ -97,7 +100,10 @@ class DeleteServer
             $token = null;
 
             if ($cloudProviderTokenId) {
-                $token = CloudProviderToken::find($cloudProviderTokenId);
+                $token = CloudProviderToken::where('id', $cloudProviderTokenId)
+                    ->where('team_id', $teamId)
+                    ->where('provider', 'vultr')
+                    ->first();
             }
 
             if (! $token) {
@@ -107,7 +113,7 @@ class DeleteServer
             }
 
             if (! $token) {
-                ray('No Vultr token found for team, skipping Vultr deletion', [
+                logger()->debug('No Vultr token found for team, skipping Vultr deletion', [
                     'team_id' => $teamId,
                     'vultr_instance_id' => $vultrInstanceId,
                 ]);
@@ -118,12 +124,12 @@ class DeleteServer
             $vultrService = new VultrService($token->token);
             $vultrService->deleteInstance($vultrInstanceId);
 
-            ray('Deleted server from Vultr', [
+            logger()->debug('Deleted server from Vultr', [
                 'vultr_instance_id' => $vultrInstanceId,
                 'team_id' => $teamId,
             ]);
         } catch (\Throwable $e) {
-            ray('Failed to delete server from Vultr', [
+            logger()->error('Failed to delete server from Vultr', [
                 'error' => $e->getMessage(),
                 'vultr_instance_id' => $vultrInstanceId,
                 'team_id' => $teamId,
