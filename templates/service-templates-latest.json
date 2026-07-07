@@ -192,7 +192,7 @@
         "category": "media",
         "logo": "svgs/audiobookshelf.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2025-08-17T18:23:57+02:00",
+        "template_last_updated_at": "2026-05-12T09:09:36+02:00",
         "port": "80"
     },
     "authentik": {
@@ -280,7 +280,7 @@
         "category": "monitoring",
         "logo": "svgs/beszel.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2026-02-21T23:17:23+05:30"
+        "template_last_updated_at": "2026-04-24T02:22:08+05:30"
     },
     "beszel": {
         "documentation": "https://github.com/henrygd/beszel?tab=readme-ov-file#getting-started?utm_source=coolify.io",
@@ -296,7 +296,7 @@
         "category": "monitoring",
         "logo": "svgs/beszel.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2026-02-21T23:17:23+05:30",
+        "template_last_updated_at": "2026-04-24T02:21:33+05:30",
         "port": "8090"
     },
     "bitcoin-core": {
@@ -326,7 +326,7 @@
         "category": "backend",
         "logo": "svgs/bluesky.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2026-02-03T22:12:21+01:00",
+        "template_last_updated_at": "2026-05-09T19:19:48+05:30",
         "port": "3000"
     },
     "bookstack": {
@@ -475,7 +475,7 @@
         "category": "security",
         "logo": "svgs/cap-captcha.png",
         "minversion": "0.0.0",
-        "template_last_updated_at": null,
+        "template_last_updated_at": "2026-04-23T01:07:14+05:30",
         "port": "3000"
     },
     "cap": {
@@ -573,7 +573,7 @@
         "category": "helpdesk",
         "logo": "svgs/chatwoot.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2026-04-06T11:35:16-05:00",
+        "template_last_updated_at": "2026-05-27T09:31:29-03:00",
         "port": "3000"
     },
     "checkmate": {
@@ -704,7 +704,7 @@
         "category": "automation",
         "logo": "svgs/cloudflare-ddns.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": null
+        "template_last_updated_at": "2026-05-18T15:42:31+10:00"
     },
     "cloudflared": {
         "documentation": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/?utm_source=coolify.io",
@@ -803,7 +803,7 @@
         "category": "backend",
         "logo": "svgs/convex.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2026-04-03T18:01:53+05:30",
+        "template_last_updated_at": "2026-06-12T10:45:52+02:00",
         "port": "6791"
     },
     "cryptgeon": {
@@ -968,7 +968,7 @@
         "category": "productivity",
         "logo": "svgs/docmost.png",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2025-09-27T04:00:56+02:00",
+        "template_last_updated_at": "2026-05-15T13:36:02+02:00",
         "port": "3000"
     },
     "documenso": {
@@ -1248,7 +1248,7 @@
         "category": "Networking",
         "logo": "svgs/emqx-enterprise.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": null,
+        "template_last_updated_at": "2026-04-27T09:25:48+03:00",
         "port": "18083"
     },
     "ente-photos-with-s3": {
@@ -1732,7 +1732,7 @@
         "category": "storage",
         "logo": "svgs/garage.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2025-12-10T12:57:34+01:00",
+        "template_last_updated_at": "2026-05-31T23:57:46+02:00",
         "port": "3900"
     },
     "getoutline": {
@@ -1746,7 +1746,7 @@
         "category": "productivity",
         "logo": "svgs/getoutline.jpeg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2025-12-16T14:12:15+07:00",
+        "template_last_updated_at": "2026-05-09T19:19:29+05:30",
         "port": "3000"
     },
     "ghost": {
@@ -1779,7 +1779,7 @@
         "category": "devtools",
         "logo": "svgs/gitea.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": null
+        "template_last_updated_at": "2026-06-06T00:11:24+02:00"
     },
     "gitea-with-mariadb": {
         "documentation": "https://docs.gitea.com?utm_source=coolify.io",
@@ -2114,7 +2114,7 @@
         "category": "productivity",
         "logo": "svgs/grocy.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2025-08-17T18:23:57+02:00"
+        "template_last_updated_at": "2026-05-12T09:10:44+02:00"
     },
     "hatchet": {
         "documentation": "https://docs.hatchet.run/self-hosting/docker-compose?utm_source=coolify.io",
@@ -2148,7 +2148,7 @@
         "category": "monitoring",
         "logo": "svgs/healthchecks.webp",
         "minversion": "0.0.0",
-        "template_last_updated_at": null,
+        "template_last_updated_at": "2026-05-25T13:06:59-04:00",
         "port": "80000"
     },
     "heimdall": {
@@ -2183,7 +2183,7 @@
         "category": "ai",
         "logo": "svgs/hermes-agent.png",
         "minversion": "0.0.0",
-        "template_last_updated_at": null,
+        "template_last_updated_at": "2026-05-29T12:14:17+05:30",
         "port": "8787"
     },
     "heyform": {
@@ -2218,7 +2218,7 @@
         "category": "productivity",
         "logo": "svgs/homarr.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2025-10-07T12:19:45+02:00",
+        "template_last_updated_at": "2026-05-09T19:30:07+05:30",
         "port": "7575"
     },
     "home-assistant": {
@@ -2361,7 +2361,7 @@
         "category": "automation",
         "logo": "svgs/inngest.png",
         "minversion": "0.0.0",
-        "template_last_updated_at": null,
+        "template_last_updated_at": "2026-07-02T13:25:47+02:00",
         "port": "8288"
     },
     "invoice-ninja": {
@@ -2410,7 +2410,7 @@
         "category": "media",
         "logo": "svgs/jellyfin.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2025-08-17T18:23:57+02:00",
+        "template_last_updated_at": "2026-05-12T08:58:05+02:00",
         "port": "8096"
     },
     "jenkins": {
@@ -2443,7 +2443,7 @@
         "category": "productivity",
         "logo": "svgs/jitsi.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2025-08-17T18:23:57+02:00",
+        "template_last_updated_at": "2026-04-24T09:40:01+05:30",
         "port": "80"
     },
     "joomla-with-mariadb": {
@@ -2672,7 +2672,7 @@
         "category": "ai",
         "logo": "svgs/langfuse.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2026-03-28T16:21:57+01:00",
+        "template_last_updated_at": "2026-04-23T18:08:40+02:00",
         "port": "3000"
     },
     "leantime": {
@@ -2881,7 +2881,7 @@
         "category": "auth",
         "logo": "svgs/logto_dark.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2025-08-17T18:23:57+02:00"
+        "template_last_updated_at": "2026-04-01T13:19:47Z"
     },
     "lowcoder": {
         "documentation": "https://docs.lowcoder.cloud/?utm_source=coolify.io",
@@ -3021,7 +3021,7 @@
         "category": "productivity",
         "logo": "svgs/mealie.png",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2025-08-17T18:23:57+02:00",
+        "template_last_updated_at": "2026-05-12T09:22:15+02:00",
         "port": "9000"
     },
     "mediawiki": {
@@ -3712,7 +3712,7 @@
         "category": "email",
         "logo": "svgs/openarchiver.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2026-04-06T11:35:16-05:00",
+        "template_last_updated_at": "2026-05-09T19:35:15+05:30",
         "port": "3000"
     },
     "open-webui": {
@@ -3770,7 +3770,7 @@
         "category": "monitoring",
         "logo": "svgs/openobserve.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": null,
+        "template_last_updated_at": "2026-05-19T16:40:18+05:30",
         "port": "5080"
     },
     "openpanel": {
@@ -3891,7 +3891,7 @@
         "category": "storage",
         "logo": "svgs/owncloud.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2025-08-17T18:23:57+02:00",
+        "template_last_updated_at": "2026-06-02T12:12:42+03:00",
         "port": "8080"
     },
     "pairdrop": {
@@ -4075,7 +4075,7 @@
         "category": "productivity",
         "logo": "svgs/plane.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2026-02-24T02:34:35+05:30",
+        "template_last_updated_at": "2026-04-24T00:12:17+05:30",
         "port": "80"
     },
     "plex": {
@@ -4351,7 +4351,7 @@
         "category": "productivity",
         "logo": "svgs/rallly.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2025-08-17T18:23:57+02:00",
+        "template_last_updated_at": "2026-03-19T16:11:50+01:00",
         "port": "3000"
     },
     "reactive-resume": {
@@ -4502,7 +4502,7 @@
         "category": "productivity",
         "logo": "svgs/ryot.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2025-08-17T18:23:57+02:00",
+        "template_last_updated_at": "2026-05-12T08:34:57+02:00",
         "port": "8000"
     },
     "satisfactory": {
@@ -5176,7 +5176,7 @@
         "category": "productivity",
         "logo": "svgs/twenty.svg",
         "minversion": "0.0.0",
-        "template_last_updated_at": "2026-04-06T11:35:16-05:00",
+        "template_last_updated_at": "2026-04-16T23:18:19+05:30",
         "port": "3000"
     },
     "typesense": {

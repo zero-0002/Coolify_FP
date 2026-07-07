@@ -278,6 +278,27 @@ describe('GET /api/v1/hetzner/firewalls', function () {
         $response->assertJsonCount(2);
         $response->assertJsonFragment(['name' => 'web-firewall']);
     });
+
+    test('member read token cannot use a stored cloud provider token', function () {
+        $member = User::factory()->create();
+        $this->team->members()->attach($member->id, ['role' => 'member']);
+        session(['currentTeam' => $this->team]);
+        $memberToken = $member->createToken('member-read', ['read'])->plainTextToken;
+
+        Http::fake([
+            'https://api.hetzner.cloud/v1/firewalls*' => Http::response([
+                'firewalls' => [['id' => 38, 'name' => 'web-firewall']],
+            ], 200),
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$memberToken,
+            'Content-Type' => 'application/json',
+        ])->getJson('/api/v1/hetzner/firewalls?cloud_provider_token_id='.$this->hetznerToken->uuid);
+
+        $response->assertForbidden();
+        Http::assertNothingSent();
+    });
 });
 
 describe('GET /api/v1/hetzner/networks', function () {
@@ -300,6 +321,27 @@ describe('GET /api/v1/hetzner/networks', function () {
         $response->assertSuccessful();
         $response->assertJsonCount(2);
         $response->assertJsonFragment(['name' => 'private-eu']);
+    });
+
+    test('member read token cannot use a stored cloud provider token', function () {
+        $member = User::factory()->create();
+        $this->team->members()->attach($member->id, ['role' => 'member']);
+        session(['currentTeam' => $this->team]);
+        $memberToken = $member->createToken('member-read', ['read'])->plainTextToken;
+
+        Http::fake([
+            'https://api.hetzner.cloud/v1/networks*' => Http::response([
+                'networks' => [['id' => 456, 'name' => 'private-eu']],
+            ], 200),
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$memberToken,
+            'Content-Type' => 'application/json',
+        ])->getJson('/api/v1/hetzner/networks?cloud_provider_token_id='.$this->hetznerToken->uuid);
+
+        $response->assertForbidden();
+        Http::assertNothingSent();
     });
 });
 
@@ -409,6 +451,67 @@ describe('POST /api/v1/servers/hetzner', function () {
 
         Http::assertSent(fn (HttpRequest $request) => $request->method() === 'POST'
             && $request->url() === 'https://api.hetzner.cloud/v1/servers/456/actions/enable_backup');
+    });
+
+    test('registers server when backup enablement fails after Hetzner creation', function () {
+        Http::fake(function (HttpRequest $request) {
+            if ($request->method() === 'GET' && str_starts_with($request->url(), 'https://api.hetzner.cloud/v1/ssh_keys')) {
+                return Http::response([
+                    'ssh_keys' => [],
+                    'meta' => ['pagination' => ['next_page' => null]],
+                ], 200);
+            }
+
+            if ($request->method() === 'POST' && $request->url() === 'https://api.hetzner.cloud/v1/ssh_keys') {
+                return Http::response([
+                    'ssh_key' => ['id' => 123, 'fingerprint' => 'aa:bb:cc:dd'],
+                ], 201);
+            }
+
+            if ($request->method() === 'POST' && $request->url() === 'https://api.hetzner.cloud/v1/servers') {
+                return Http::response([
+                    'server' => [
+                        'id' => 456,
+                        'name' => 'test-server',
+                        'public_net' => [
+                            'ipv4' => ['ip' => '1.2.3.4'],
+                            'ipv6' => ['ip' => '2001:db8::1'],
+                        ],
+                    ],
+                ], 201);
+            }
+
+            if ($request->method() === 'POST' && $request->url() === 'https://api.hetzner.cloud/v1/servers/456/actions/enable_backup') {
+                return Http::response([
+                    'error' => ['message' => 'backup unavailable'],
+                ], 500);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+            'Content-Type' => 'application/json',
+        ])->postJson('/api/v1/servers/hetzner', [
+            'cloud_provider_token_id' => $this->hetznerToken->uuid,
+            'location' => 'nbg1',
+            'server_type' => 'cx11',
+            'image' => 15512617,
+            'name' => 'test-server',
+            'private_key_uuid' => $this->privateKey->uuid,
+            'enable_ipv4' => true,
+            'enable_ipv6' => true,
+            'enable_backups' => true,
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonFragment(['hetzner_server_id' => 456, 'ip' => '1.2.3.4']);
+        $this->assertDatabaseHas('servers', [
+            'name' => 'test-server',
+            'team_id' => $this->team->id,
+            'hetzner_server_id' => 456,
+        ]);
     });
 
     test('generates server name if not provided', function () {
@@ -709,6 +812,40 @@ describe('error responses do not leak exception details', function () {
 
         $response->assertStatus(500);
         $response->assertExactJson(['message' => 'Failed to fetch Hetzner SSH keys.']);
+        expect($response->getContent())->not->toContain('INTERNAL_LEAK_TOKEN_abc');
+    });
+
+    test('firewalls endpoint returns generic 500 message on upstream failure', function () {
+        Http::fake([
+            'https://api.hetzner.cloud/v1/firewalls*' => Http::response([
+                'error' => ['message' => 'INTERNAL_LEAK_TOKEN_abc'],
+            ], 500),
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+            'Content-Type' => 'application/json',
+        ])->getJson('/api/v1/hetzner/firewalls?cloud_provider_token_id='.$this->hetznerToken->uuid);
+
+        $response->assertStatus(500);
+        $response->assertExactJson(['message' => 'Failed to fetch Hetzner firewalls.']);
+        expect($response->getContent())->not->toContain('INTERNAL_LEAK_TOKEN_abc');
+    });
+
+    test('networks endpoint returns generic 500 message on upstream failure', function () {
+        Http::fake([
+            'https://api.hetzner.cloud/v1/networks*' => Http::response([
+                'error' => ['message' => 'INTERNAL_LEAK_TOKEN_abc'],
+            ], 500),
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+            'Content-Type' => 'application/json',
+        ])->getJson('/api/v1/hetzner/networks?cloud_provider_token_id='.$this->hetznerToken->uuid);
+
+        $response->assertStatus(500);
+        $response->assertExactJson(['message' => 'Failed to fetch Hetzner networks.']);
         expect($response->getContent())->not->toContain('INTERNAL_LEAK_TOKEN_abc');
     });
 });

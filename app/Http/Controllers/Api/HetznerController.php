@@ -543,13 +543,14 @@ class HetznerController extends Controller
         if (! $token) {
             return response()->json(['message' => 'Hetzner cloud provider token not found.'], 404);
         }
+        $this->authorize('view', $token);
 
         try {
             $hetznerService = new HetznerService($token->token);
 
             return response()->json($hetznerService->getFirewalls());
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to fetch firewalls: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to fetch Hetzner firewalls.'], 500);
         }
     }
 
@@ -637,13 +638,14 @@ class HetznerController extends Controller
         if (! $token) {
             return response()->json(['message' => 'Hetzner cloud provider token not found.'], 404);
         }
+        $this->authorize('view', $token);
 
         try {
             $hetznerService = new HetznerService($token->token);
 
             return response()->json($hetznerService->getNetworks());
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to fetch networks: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to fetch Hetzner networks.'], 500);
         }
     }
 
@@ -914,10 +916,6 @@ class HetznerController extends Controller
             // Create server on Hetzner
             $hetznerServer = $hetznerService->createServer($params);
 
-            if ($request->enable_backups) {
-                $hetznerService->enableServerBackup((int) $hetznerServer['id']);
-            }
-
             // Determine IP address to use (prefer IPv4, fallback to IPv6)
             $ipAddress = null;
             if ($request->enable_ipv4 && isset($hetznerServer['public_net']['ipv4']['ip'])) {
@@ -945,6 +943,14 @@ class HetznerController extends Controller
             $server->proxy->set('status', 'exited');
             $server->proxy->set('type', ProxyTypes::TRAEFIK->value);
             $server->save();
+
+            if ($request->enable_backups) {
+                try {
+                    $hetznerService->enableServerBackup((int) $hetznerServer['id']);
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
 
             // Validate server if requested
             if ($request->instant_validate) {

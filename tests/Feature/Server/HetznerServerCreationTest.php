@@ -144,15 +144,6 @@ it('validates deduplication when Coolify key is also in selected keys', function
         ->and(count($sshKeys))->toBe(3);
 });
 
-it('validates network array merging removes duplicate Hetzner network ids', function () {
-    $selectedHetznerNetworkIds = [456, 789, 456];
-
-    $networkIds = array_values(array_unique($selectedHetznerNetworkIds));
-
-    expect($networkIds)->toBe([456, 789])
-        ->and(count($networkIds))->toBe(2);
-});
-
 describe('Boarding Flow Integration', function () {
     uses(RefreshDatabase::class);
 
@@ -171,7 +162,7 @@ describe('Boarding Flow Integration', function () {
 
     test('completes boarding when server is created from onboarding', function () {
         // Verify boarding is initially enabled
-        expect($this->team->fresh()->show_boarding)->toBeTrue();
+        expect((bool) $this->team->fresh()->show_boarding)->toBeTrue();
 
         // Mount the component with from_onboarding flag
         $component = Livewire::test(ByHetzner::class)
@@ -188,22 +179,50 @@ describe('Boarding Flow Integration', function () {
 
     test('boarding flag remains unchanged when not from onboarding', function () {
         // Verify boarding is initially enabled
-        expect($this->team->fresh()->show_boarding)->toBeTrue();
+        expect((bool) $this->team->fresh()->show_boarding)->toBeTrue();
 
         // Mount the component without from_onboarding flag (default false)
         Livewire::test(ByHetzner::class)
             ->set('from_onboarding', false);
 
         // Boarding should still be enabled since it wasn't created from onboarding
-        expect($this->team->fresh()->show_boarding)->toBeTrue();
+        expect((bool) $this->team->fresh()->show_boarding)->toBeTrue();
     });
 
-    test('shows the backups option with the pricing note in the create dialog', function () {
+    test('keeps advanced Hetzner options collapsed by default in the create dialog', function () {
         Livewire::test(ByHetzner::class)
             ->set('current_step', 2)
-            ->assertSet('enable_backups', false)
+            ->assertSet('show_advanced_hetzner_options', false)
+            ->assertSee('Advanced Hetzner options')
+            ->assertDontSee('Extra SSH Keys')
+            ->assertDontSee('Firewalls')
+            ->assertDontSee('Private Networks')
+            ->assertDontSee('Enable Hetzner Backups')
+            ->assertDontSee('Cloud-Init Script');
+    });
+
+    test('shows advanced Hetzner options when expanded', function () {
+        Livewire::test(ByHetzner::class)
+            ->set('current_step', 2)
+            ->set('show_advanced_hetzner_options', true)
+            ->assertSee('Extra SSH Keys')
+            ->assertSee('Firewalls')
+            ->assertSee('Private Networks')
             ->assertSee('Enable Hetzner Backups')
+            ->assertSee('Add cloud-init script')
             ->assertSee('additional 20% of the server monthly fee');
+    });
+
+    test('shows the cloud init script name only when saving the script', function () {
+        Livewire::test(ByHetzner::class)
+            ->set('current_step', 2)
+            ->set('show_advanced_hetzner_options', true)
+            ->set('show_cloud_init_script', true)
+            ->assertSee('Cloud-Init Script')
+            ->assertSee('Save this script for later use')
+            ->assertDontSee('Script name...')
+            ->set('save_cloud_init_script', true)
+            ->assertSee('Script name...');
     });
 });
 
@@ -239,7 +258,7 @@ describe('Hetzner data loading', function () {
             ], 200),
             'https://api.hetzner.cloud/v1/server_types*' => Http::response([
                 'server_types' => [
-                    ['id' => 1, 'name' => 'cx11', 'description' => 'CX11', 'locations' => [['name' => 'nbg1']], 'architecture' => 'x86'],
+                    ['id' => 1, 'name' => 'cx11', 'description' => 'CX11', 'cores' => 1, 'memory' => 2.0, 'disk' => 20, 'locations' => [['name' => 'nbg1']], 'architecture' => 'x86'],
                 ],
                 'meta' => ['pagination' => ['next_page' => null]],
             ], 200),
