@@ -1001,3 +1001,163 @@ describe('GET /api/v1/services sensitive field gating', function () {
         expect($serverSettingsQueries->contains(fn (string $sql) => str_contains($sql, '"server_settings"."server_id" in')))->toBeTrue();
     });
 });
+
+describe('GET /api/v1/resources sensitive field gating', function () {
+    beforeEach(function () {
+        $this->project = Project::factory()->create(['team_id' => $this->team->id]);
+        $this->environment = Environment::factory()->create(['project_id' => $this->project->id]);
+        $destination = $this->server->standaloneDockers()->firstOrFail();
+
+        $this->database = StandalonePostgresql::create([
+            'name' => 'resources-sensitive-db',
+            'postgres_user' => 'postgres',
+            'postgres_password' => encrypt('super-secret-db-password'),
+            'postgres_db' => 'app',
+            'image' => 'postgres:16-alpine',
+            'environment_id' => $this->environment->id,
+            'destination_id' => $destination->id,
+            'destination_type' => $destination->getMorphClass(),
+        ]);
+
+        $this->application = Application::create([
+            'name' => 'resources-sensitive-app',
+            'git_repository' => 'https://github.com/test/test',
+            'git_branch' => 'main',
+            'build_pack' => 'nixpacks',
+            'ports_exposes' => '3000',
+            'http_basic_auth_password' => 'basic-auth-secret',
+            'environment_id' => $this->environment->id,
+            'destination_id' => $destination->id,
+            'destination_type' => $destination->getMorphClass(),
+        ]);
+    });
+
+    test('read token does not leak database or application secrets', function () {
+        $token = makeApiToken($this->user, $this->team, ['read']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/v1/resources');
+
+        $response->assertStatus(200);
+
+        $body = $response->getContent();
+        expect($body)->not->toContain('postgres_password');
+        expect($body)->not->toContain('internal_db_url');
+        expect($body)->not->toContain('external_db_url');
+        expect($body)->not->toContain('http_basic_auth_password');
+    });
+
+    test('read sensitive token sees database and application secrets', function () {
+        $token = makeApiToken($this->user, $this->team, ['read', 'read:sensitive']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/v1/resources');
+
+        $response->assertStatus(200);
+
+        $body = $response->getContent();
+        expect($body)->toContain('"postgres_password":');
+        expect($body)->toContain('"internal_db_url":');
+        expect($body)->toContain('"http_basic_auth_password":');
+    });
+
+    test('root token sees database secrets', function () {
+        $token = makeApiToken($this->user, $this->team, ['root']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/v1/resources');
+
+        $response->assertStatus(200);
+
+        expect($response->getContent())->toContain('"postgres_password":');
+    });
+});
+
+describe('GET /api/v1/projects/{uuid}/{environment} sensitive field gating', function () {
+    beforeEach(function () {
+        $this->project = Project::factory()->create(['team_id' => $this->team->id]);
+        $this->environment = Environment::factory()->create(['project_id' => $this->project->id]);
+        $destination = $this->server->standaloneDockers()->firstOrFail();
+
+        $this->database = StandalonePostgresql::create([
+            'name' => 'environment-sensitive-db',
+            'postgres_user' => 'postgres',
+            'postgres_password' => encrypt('super-secret-db-password'),
+            'postgres_db' => 'app',
+            'image' => 'postgres:16-alpine',
+            'environment_id' => $this->environment->id,
+            'destination_id' => $destination->id,
+            'destination_type' => $destination->getMorphClass(),
+        ]);
+
+        $this->application = Application::create([
+            'name' => 'environment-sensitive-app',
+            'git_repository' => 'https://github.com/test/test',
+            'git_branch' => 'main',
+            'build_pack' => 'nixpacks',
+            'ports_exposes' => '3000',
+            'http_basic_auth_password' => 'basic-auth-secret',
+            'environment_id' => $this->environment->id,
+            'destination_id' => $destination->id,
+            'destination_type' => $destination->getMorphClass(),
+        ]);
+    });
+
+    test('read token does not leak database or application secrets', function () {
+        $token = makeApiToken($this->user, $this->team, ['read']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson("/api/v1/projects/{$this->project->uuid}/{$this->environment->name}");
+
+        $response->assertStatus(200);
+
+        $body = $response->getContent();
+        expect($body)->not->toContain('postgres_password');
+        expect($body)->not->toContain('internal_db_url');
+        expect($body)->not->toContain('external_db_url');
+        expect($body)->not->toContain('http_basic_auth_password');
+    });
+
+    test('read sensitive token sees database and application secrets', function () {
+        $token = makeApiToken($this->user, $this->team, ['read', 'read:sensitive']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson("/api/v1/projects/{$this->project->uuid}/{$this->environment->name}");
+
+        $response->assertStatus(200);
+
+        $body = $response->getContent();
+        expect($body)->toContain('"postgres_password":');
+        expect($body)->toContain('"internal_db_url":');
+        expect($body)->toContain('"http_basic_auth_password":');
+    });
+});
+
+describe('instance admin team (id 0) sensitive gating', function () {
+    test('read sensitive token owned by team 0 sees sensitive fields', function () {
+        $team = Team::factory()->create(['id' => 0]);
+        $user = User::factory()->create();
+        $team->members()->attach($user->id, ['role' => 'owner']);
+        session(['currentTeam' => $team]);
+
+        $server = Server::factory()->create(['team_id' => $team->id]);
+        $server->settings->forceFill([
+            'sentinel_token' => encrypt('team-zero-sentinel-token'),
+        ])->saveQuietly();
+
+        $token = makeApiToken($user, $team, ['read', 'read:sensitive']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/v1/servers');
+
+        $response->assertStatus(200);
+
+        expect($response->getContent())->toContain('"sentinel_token":');
+    });
+});

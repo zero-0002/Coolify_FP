@@ -182,7 +182,7 @@ class StandalonePostgresql extends BaseModel
     {
         $newConfigHash = $this->image.$this->ports_mappings.$this->postgres_initdb_args.$this->postgres_host_auth_method;
         $newConfigHash .= $this->healthCheckConfigurationHash();
-        $newConfigHash .= json_encode($this->environment_variables()->get('value')->sort());
+        $newConfigHash .= json_encode($this->environment_variables()->get('value')->makeVisible('value')->sort());
         $newConfigHash = md5($newConfigHash);
         $oldConfigHash = data_get($this, 'config_hash');
         if ($oldConfigHash === null) {

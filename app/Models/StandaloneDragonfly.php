@@ -133,7 +133,7 @@ class StandaloneDragonfly extends BaseModel
     {
         $newConfigHash = $this->image.$this->ports_mappings;
         $newConfigHash .= $this->healthCheckConfigurationHash();
-        $newConfigHash .= json_encode($this->environment_variables()->get('value')->sort());
+        $newConfigHash .= json_encode($this->environment_variables()->get('value')->makeVisible('value')->sort());
         $newConfigHash = md5($newConfigHash);
         $oldConfigHash = data_get($this, 'config_hash');
         if ($oldConfigHash === null) {

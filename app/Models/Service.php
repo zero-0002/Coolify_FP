@@ -105,7 +105,7 @@ class Service extends BaseModel
         $storages = $applicationStorages->merge($databaseStorages)->implode('updated_at');
 
         $newConfigHash = $images.$domains.$images.$storages;
-        $newConfigHash .= json_encode($this->environment_variables()->get('value')->sort());
+        $newConfigHash .= json_encode($this->environment_variables()->get('value')->makeVisible('value')->sort());
         $newConfigHash = md5($newConfigHash);
         $oldConfigHash = data_get($this, 'config_hash');
         if ($oldConfigHash === null) {
