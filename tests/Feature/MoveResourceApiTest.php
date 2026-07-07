@@ -15,6 +15,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -60,6 +61,40 @@ describe('POST /api/v1/applications/{uuid}/move', function () {
 
         $application->refresh();
         expect($application->environment_id)->toBe($this->targetEnvironment->id);
+    });
+
+    test('writes audit log when application is moved', function () {
+        $application = Application::factory()->create([
+            'environment_id' => $this->environment->id,
+            'destination_id' => $this->destination->id,
+            'destination_type' => $this->destination->getMorphClass(),
+        ]);
+
+        $auditChannel = Mockery::mock();
+        $auditChannel->shouldReceive('info')
+            ->once()
+            ->with('api.application.moved', Mockery::on(function (array $context) use ($application) {
+                return $context['event'] === 'api.application.moved'
+                    && $context['resource_uuid'] === $application->uuid
+                    && $context['resource_type'] === 'application'
+                    && $context['from_environment_uuid'] === $this->environment->uuid
+                    && $context['to_environment_uuid'] === $this->targetEnvironment->uuid
+                    && $context['from_project_uuid'] === $this->project->uuid
+                    && $context['to_project_uuid'] === $this->targetProject->uuid;
+            }));
+
+        Log::shouldReceive('channel')->with('audit')->andReturn($auditChannel);
+        Log::shouldReceive('warning')->andReturnNull();
+
+        $this->actingAs($this->user);
+
+        $request = Request::create('/', 'POST', [
+            'environment_uuid' => $this->targetEnvironment->uuid,
+        ]);
+
+        $response = moveResourceToEnvironment($request, $application, 'Application', $this->team->id);
+
+        expect($response->getStatusCode())->toBe(200);
     });
 
     test('returns 404 when application not found', function () {
