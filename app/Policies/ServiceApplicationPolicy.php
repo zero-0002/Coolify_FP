@@ -21,8 +21,7 @@ class ServiceApplicationPolicy
      */
     public function create(User $user): bool
     {
-        // return $user->isAdmin();
-        return true;
+        return $user->isAdmin();
     }
 
     /**
@@ -46,8 +45,7 @@ class ServiceApplicationPolicy
      */
     public function delete(User $user, ServiceApplication $serviceApplication): bool
     {
-        // return Gate::allows('delete', $serviceApplication->service);
-        return true;
+        return Gate::allows('delete', $serviceApplication->service);
     }
 
     /**
@@ -55,8 +53,7 @@ class ServiceApplicationPolicy
      */
     public function restore(User $user, ServiceApplication $serviceApplication): bool
     {
-        // return Gate::allows('update', $serviceApplication->service);
-        return true;
+        return false;
     }
 
     /**
@@ -64,7 +61,6 @@ class ServiceApplicationPolicy
      */
     public function forceDelete(User $user, ServiceApplication $serviceApplication): bool
     {
-        // return Gate::allows('delete', $serviceApplication->service);
-        return true;
+        return false;
     }
 }
