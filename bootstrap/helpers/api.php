@@ -99,7 +99,7 @@ function sharedDataApplications()
         'is_force_https_enabled' => 'boolean',
         'is_preview_deployments_enabled' => 'boolean',
         'static_image' => Rule::enum(StaticImageTypes::class),
-        'domains' => 'string|nullable',
+        'domains' => ValidationPatterns::applicationDomainRules(),
         'redirect' => Rule::enum(RedirectTypes::class),
         'git_commit_sha' => ['string', 'regex:/^[a-zA-Z0-9][a-zA-Z0-9._\-\/]*$/'],
         'docker_registry_image_name' => ValidationPatterns::dockerImageNameRules(),
@@ -205,5 +205,6 @@ function removeUnnecessaryFieldsFromRequest(Request $request)
     $request->offsetUnset('autogenerate_domain');
     $request->offsetUnset('is_container_label_escape_enabled');
     $request->offsetUnset('is_preserve_repository_enabled');
+    $request->offsetUnset('include_source_commit_in_build');
     $request->offsetUnset('docker_compose_raw');
 }
