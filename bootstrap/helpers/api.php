@@ -222,4 +222,5 @@ function removeUnnecessaryFieldsFromRequest(Request $request)
     $request->offsetUnset('is_preserve_repository_enabled');
     $request->offsetUnset('include_source_commit_in_build');
     $request->offsetUnset('docker_compose_raw');
+    $request->offsetUnset('tags');
 }
