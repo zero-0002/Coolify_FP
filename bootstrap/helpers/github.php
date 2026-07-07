@@ -38,22 +38,23 @@ function githubUrlHost(?string $url): ?string
 /**
  * Build the scheme://host[:port] origin for a GitHub URL.
  *
- * When the host cannot be parsed (e.g. a scheme-less or malformed URL such as
- * "not-a-url"), the input is returned verbatim with any trailing slashes
- * trimmed. Callers should pass already-validated URLs (see SafeExternalUrl),
- * so this fallback only guards against unexpected input.
+ * This helper fails explicitly for blank, scheme-less, or malformed input when
+ * githubUrlHost() cannot parse a host, because returning the original input
+ * would not be a valid origin. Callers should pass already-validated URLs.
  *
  * @param  string  $url  The URL to derive the origin from
- * @return string The normalized origin, or the trimmed input when the host is unparseable
+ * @return string The normalized origin
+ *
+ * @throws InvalidArgumentException When the URL does not contain a parseable scheme and host
  */
 function githubUrlOrigin(string $url): string
 {
-    $scheme = parse_url($url, PHP_URL_SCHEME) ?: 'https';
+    $scheme = parse_url($url, PHP_URL_SCHEME);
     $host = githubUrlHost($url);
     $port = parse_url($url, PHP_URL_PORT);
 
-    if (! $host) {
-        return rtrim($url, '/');
+    if (! is_string($scheme) || blank($scheme) || ! $host) {
+        throw new InvalidArgumentException('GitHub URL must include a valid scheme and host.');
     }
 
     return $scheme.'://'.$host.($port ? ":{$port}" : '');

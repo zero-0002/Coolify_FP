@@ -23,6 +23,14 @@ it('derives github api urls from html urls', function (string $htmlUrl, string $
     'github enterprise server' => ['https://github.company.internal', 'https://github.company.internal/api/v3'],
 ]);
 
+it('rejects malformed urls when deriving an origin', function (string $url) {
+    expect(fn () => githubUrlOrigin($url))->toThrow(InvalidArgumentException::class);
+})->with([
+    'blank' => [''],
+    'scheme-less' => ['github.company.internal'],
+    'malformed' => ['not-a-url'],
+]);
+
 it('generates correct install paths for github cloud ghe cloud and ghes', function (array $attributes, string $expectedPrefix) {
     $githubApp = new GithubApp;
     $githubApp->forceFill(array_merge([

@@ -322,6 +322,32 @@ describe('GitHub app API url normalization', function () {
             ->assertJsonPath('data.api_url', 'https://github.com/api/v3');
     });
 
+    test('preserves provided api url when updating api url only', function () {
+        $githubApp = GithubApp::create([
+            'name' => 'GHE App',
+            'api_url' => 'https://api.github.com',
+            'html_url' => 'https://github.com',
+            'app_id' => 12345,
+            'installation_id' => 67890,
+            'client_id' => 'test-client-id',
+            'client_secret' => 'test-client-secret',
+            'webhook_secret' => 'test-webhook-secret',
+            'private_key_id' => $this->privateKey->id,
+            'team_id' => $this->team->id,
+            'is_system_wide' => false,
+            'is_public' => false,
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+        ])->patchJson("/api/v1/github-apps/{$githubApp->id}", [
+            'api_url' => 'https://github.com/api/v3',
+        ]);
+
+        $response->assertSuccessful()
+            ->assertJsonPath('data.api_url', 'https://github.com/api/v3');
+    });
+
     test('rejects invalid organization when creating github apps', function () {
         $response = $this->withHeaders([
             'Authorization' => 'Bearer '.$this->bearerToken,
