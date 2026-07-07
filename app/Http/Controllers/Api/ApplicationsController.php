@@ -2660,7 +2660,6 @@ class ApplicationsController extends Controller
         if ($request->has('include_source_commit_in_build')) {
             $application->settings->include_source_commit_in_build = $includeSourceCommitInBuild;
             $application->settings->save();
-            $request->offsetUnset('include_source_commit_in_build');
         }
         removeUnnecessaryFieldsFromRequest($request);
 
