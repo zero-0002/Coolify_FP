@@ -11434,6 +11434,511 @@
                 ]
             }
         },
+        "\/services\/{uuid}\/applications": {
+            "get": {
+                "tags": [
+                    "Service applications"
+                ],
+                "summary": "List service applications",
+                "description": "List compose service applications (containers) for a single service.",
+                "operationId": "list-service-applications-by-service-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "Service UUID.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Service applications for this service.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/services\/{uuid}\/applications\/{app_uuid}": {
+            "get": {
+                "tags": [
+                    "Service applications"
+                ],
+                "summary": "Get service application",
+                "description": "Get a single compose service application by service UUID and application UUID.",
+                "operationId": "get-service-application-by-service-and-app-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "Service UUID.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "app_uuid",
+                        "in": "path",
+                        "description": "Service application UUID.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Service application.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Service applications"
+                ],
+                "summary": "Update service application",
+                "description": "Update fields for a compose service application. Use `url` for comma-separated public URLs (same rules as `urls[].url` on PATCH \/services\/{uuid}).",
+                "operationId": "patch-service-application-by-service-and-app-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "Service UUID.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "app_uuid",
+                        "in": "path",
+                        "description": "Service application UUID.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "force_domain_override",
+                        "in": "query",
+                        "description": "When true, allow duplicate URLs in the request and proceed despite domain conflicts (same as service PATCH).",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "properties": {
+                                    "url": {
+                                        "description": "Comma-separated list of URLs (e.g. \"http:\/\/app.example.com:8080,https:\/\/app2.example.com\"). Stored as fqdn.",
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "human_name": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "description": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "image": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "exclude_from_status": {
+                                        "type": [
+                                            "boolean",
+                                            "null"
+                                        ]
+                                    },
+                                    "is_log_drain_enabled": {
+                                        "type": [
+                                            "boolean",
+                                            "null"
+                                        ]
+                                    },
+                                    "is_gzip_enabled": {
+                                        "type": [
+                                            "boolean",
+                                            "null"
+                                        ]
+                                    },
+                                    "is_stripprefix_enabled": {
+                                        "type": [
+                                            "boolean",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated service application.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "409": {
+                        "description": "Domain conflicts (unless force_domain_override)."
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/422"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/services\/{uuid}\/applications\/{app_uuid}\/logs": {
+            "get": {
+                "tags": [
+                    "Service applications"
+                ],
+                "summary": "Get service application logs",
+                "description": "Get Docker logs for a single compose service container.",
+                "operationId": "get-service-application-logs-by-service-and-app-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "Service UUID.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "app_uuid",
+                        "in": "path",
+                        "description": "Service application UUID.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "lines",
+                        "in": "query",
+                        "description": "Number of lines to show from the end of the logs.",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Logs.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "logs": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "501": {
+                        "description": "Swarm not supported."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/services\/{uuid}\/applications\/{app_uuid}\/start": {
+            "get": {
+                "tags": [
+                    "Service applications"
+                ],
+                "summary": "Start or redeploy service application container",
+                "description": "Runs docker compose up for a single compose service (no-deps), optionally pulling the image and rebuilding.",
+                "operationId": "start-service-application-by-service-and-app-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "Service UUID.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "app_uuid",
+                        "in": "path",
+                        "description": "Service application UUID.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "force",
+                        "in": "query",
+                        "description": "When true, passes --build to docker compose up.",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    },
+                    {
+                        "name": "latest",
+                        "in": "query",
+                        "description": "When true, pulls the image for this compose service before up.",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deploy request queued.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "501": {
+                        "description": "Swarm not supported."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/services\/{uuid}\/applications\/{app_uuid}\/restart": {
+            "get": {
+                "tags": [
+                    "Service applications"
+                ],
+                "summary": "Restart service application container",
+                "description": "Restarts a single compose service container (docker restart).",
+                "operationId": "restart-service-application-by-service-and-app-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "Service UUID.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "app_uuid",
+                        "in": "path",
+                        "description": "Service application UUID.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Restart queued.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "501": {
+                        "description": "Swarm not supported."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/services\/{uuid}\/applications\/{app_uuid}\/stop": {
+            "get": {
+                "tags": [
+                    "Service applications"
+                ],
+                "summary": "Stop service application container",
+                "description": "Stops a single compose service container (docker stop).",
+                "operationId": "stop-service-application-by-service-and-app-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "Service UUID.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "app_uuid",
+                        "in": "path",
+                        "description": "Service application UUID.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Stop queued.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "501": {
+                        "description": "Swarm not supported."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "\/services": {
             "get": {
                 "tags": [
@@ -14682,6 +15187,10 @@
         {
             "name": "Servers",
             "description": "Servers"
+        },
+        {
+            "name": "Service applications",
+            "description": "Service applications"
         },
         {
             "name": "Services",

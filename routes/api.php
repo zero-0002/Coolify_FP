@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\ScheduledTasksController;
 use App\Http\Controllers\Api\SecurityController;
 use App\Http\Controllers\Api\SentinelController;
 use App\Http\Controllers\Api\ServersController;
+use App\Http\Controllers\Api\ServiceApplicationsController;
 use App\Http\Controllers\Api\ServicesController;
 use App\Http\Controllers\Api\TagsController;
 use App\Http\Controllers\Api\TeamController;
@@ -218,6 +219,14 @@ Route::group([
     Route::match(['get', 'post'], '/services/{uuid}/start', [ServicesController::class, 'action_deploy'])->middleware(['api.ability:deploy']);
     Route::match(['get', 'post'], '/services/{uuid}/restart', [ServicesController::class, 'action_restart'])->middleware(['api.ability:deploy']);
     Route::match(['get', 'post'], '/services/{uuid}/stop', [ServicesController::class, 'action_stop'])->middleware(['api.ability:deploy']);
+
+    Route::get('/services/{uuid}/applications', [ServiceApplicationsController::class, 'index'])->middleware(['api.ability:read']);
+    Route::get('/services/{uuid}/applications/{app_uuid}', [ServiceApplicationsController::class, 'show'])->middleware(['api.ability:read']);
+    Route::patch('/services/{uuid}/applications/{app_uuid}', [ServiceApplicationsController::class, 'update'])->middleware(['api.ability:write']);
+    Route::match(['get', 'post'], '/services/{uuid}/applications/{app_uuid}/logs', [ServiceApplicationsController::class, 'logs_by_uuid'])->middleware(['api.ability:read']);
+    Route::match(['get', 'post'], '/services/{uuid}/applications/{app_uuid}/start', [ServiceApplicationsController::class, 'action_start'])->middleware(['api.ability:deploy']);
+    Route::match(['get', 'post'], '/services/{uuid}/applications/{app_uuid}/restart', [ServiceApplicationsController::class, 'action_restart'])->middleware(['api.ability:deploy']);
+    Route::match(['get', 'post'], '/services/{uuid}/applications/{app_uuid}/stop', [ServiceApplicationsController::class, 'action_stop'])->middleware(['api.ability:deploy']);
 
     Route::get('/applications/{uuid}/scheduled-tasks', [ScheduledTasksController::class, 'scheduled_tasks_by_application_uuid'])->middleware(['api.ability:read']);
     Route::post('/applications/{uuid}/scheduled-tasks', [ScheduledTasksController::class, 'create_scheduled_task_by_application_uuid'])->middleware(['api.ability:write']);
