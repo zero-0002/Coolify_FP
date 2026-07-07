@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasSafeStringAttribute;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 
 #[OA\Schema(
@@ -32,6 +33,13 @@ class Tag extends BaseModel
     public static function ownedByCurrentTeam()
     {
         return Tag::whereTeamId(currentTeam()->id)->orderBy('name');
+    }
+
+    public function deleteIfOrphaned(): void
+    {
+        if (DB::table('taggables')->where('tag_id', $this->id)->doesntExist()) {
+            $this->delete();
+        }
     }
 
     public function applications()

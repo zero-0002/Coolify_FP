@@ -969,6 +969,13 @@ class ApplicationsController extends Controller
             ], 422);
         }
 
+        $return = $this->validateTagsParameter($request);
+        if ($return instanceof JsonResponse) {
+            return $return;
+        }
+
+        $tagNames = $request->input('tags') ?? [];
+
         $environmentUuid = $request->environment_uuid;
         $environmentName = $request->environment_name;
         if (blank($environmentUuid) && blank($environmentName)) {
@@ -1226,8 +1233,8 @@ class ApplicationsController extends Controller
                 $application->custom_labels = str(implode('|coolify|', generateLabelsApplication($application)))->replace('|coolify|', "\n");
                 $application->save();
             }
-            if ($request->has('tags')) {
-                $this->attachTagsToResource($application, $request->tags, $teamId);
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($application, $tagNames, $teamId);
             }
             $application->isConfigurationChanged(true);
 
@@ -1472,8 +1479,8 @@ class ApplicationsController extends Controller
                 $application->custom_labels = str(implode('|coolify|', generateLabelsApplication($application)))->replace('|coolify|', "\n");
                 $application->save();
             }
-            if ($request->has('tags')) {
-                $this->attachTagsToResource($application, $request->tags, $teamId);
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($application, $tagNames, $teamId);
             }
             $application->isConfigurationChanged(true);
 
@@ -1688,8 +1695,8 @@ class ApplicationsController extends Controller
                 $application->custom_labels = str(implode('|coolify|', generateLabelsApplication($application)))->replace('|coolify|', "\n");
                 $application->save();
             }
-            if ($request->has('tags')) {
-                $this->attachTagsToResource($application, $request->tags, $teamId);
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($application, $tagNames, $teamId);
             }
             $application->isConfigurationChanged(true);
 
@@ -1815,8 +1822,8 @@ class ApplicationsController extends Controller
                 $application->custom_labels = str(implode('|coolify|', generateLabelsApplication($application)))->replace('|coolify|', "\n");
                 $application->save();
             }
-            if ($request->has('tags')) {
-                $this->attachTagsToResource($application, $request->tags, $teamId);
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($application, $tagNames, $teamId);
             }
             $application->isConfigurationChanged(true);
 
@@ -1941,8 +1948,8 @@ class ApplicationsController extends Controller
                 $application->custom_labels = str(implode('|coolify|', generateLabelsApplication($application)))->replace('|coolify|', "\n");
                 $application->save();
             }
-            if ($request->has('tags')) {
-                $this->attachTagsToResource($application, $request->tags, $teamId);
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($application, $tagNames, $teamId);
             }
             $application->isConfigurationChanged(true);
 

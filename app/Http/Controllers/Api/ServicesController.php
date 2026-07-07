@@ -352,6 +352,11 @@ class ServicesController extends Controller
             ], 422);
         }
 
+        $return = $this->validateTagsParameter($request);
+        if ($return instanceof JsonResponse) {
+            return $return;
+        }
+
         if (filled($request->type) && filled($request->docker_compose_raw)) {
             return response()->json([
                 'message' => 'You cannot provide both service type and docker_compose_raw. Use one or the other.',
@@ -533,6 +538,8 @@ class ServicesController extends Controller
                 'urls.*.url' => 'string|nullable',
                 'force_domain_override' => 'boolean',
                 'is_container_label_escape_enabled' => 'boolean',
+                'tags' => 'array|nullable',
+                'tags.*' => 'string|min:2',
             ];
             $validationMessages = [
                 'urls.*.array' => 'An item in the urls array has invalid fields. Only name and url fields are supported.',

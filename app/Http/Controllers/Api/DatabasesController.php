@@ -1663,7 +1663,7 @@ class DatabasesController extends Controller
 
     public function create_database(Request $request, NewDatabaseTypes $type)
     {
-        $allowedFields = ['name', 'description', 'image', 'public_port', 'public_port_timeout', 'is_public', 'project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'instant_deploy', 'limits_memory', 'limits_memory_swap', 'limits_memory_swappiness', 'limits_memory_reservation', 'limits_cpus', 'limits_cpuset', 'limits_cpu_shares', 'postgres_user', 'postgres_password', 'postgres_db', 'postgres_initdb_args', 'postgres_host_auth_method', 'postgres_conf', 'clickhouse_admin_user', 'clickhouse_admin_password', 'dragonfly_password', 'redis_password', 'redis_conf', 'keydb_password', 'keydb_conf', 'mariadb_conf', 'mariadb_root_password', 'mariadb_user', 'mariadb_password', 'mariadb_database', 'mongo_conf', 'mongo_initdb_root_username', 'mongo_initdb_root_password', 'mongo_initdb_database', 'mysql_root_password', 'mysql_password', 'mysql_user', 'mysql_database', 'mysql_conf'];
+        $allowedFields = ['name', 'description', 'image', 'public_port', 'public_port_timeout', 'is_public', 'project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'instant_deploy', 'limits_memory', 'limits_memory_swap', 'limits_memory_swappiness', 'limits_memory_reservation', 'limits_cpus', 'limits_cpuset', 'limits_cpu_shares', 'postgres_user', 'postgres_password', 'postgres_db', 'postgres_initdb_args', 'postgres_host_auth_method', 'postgres_conf', 'clickhouse_admin_user', 'clickhouse_admin_password', 'dragonfly_password', 'redis_password', 'redis_conf', 'keydb_password', 'keydb_conf', 'mariadb_conf', 'mariadb_root_password', 'mariadb_user', 'mariadb_password', 'mariadb_database', 'mongo_conf', 'mongo_initdb_root_username', 'mongo_initdb_root_password', 'mongo_initdb_database', 'mysql_root_password', 'mysql_password', 'mysql_user', 'mysql_database', 'mysql_conf', 'tags'];
 
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -1771,6 +1771,13 @@ class DatabasesController extends Controller
                 'errors' => $validator->errors(),
             ], 422);
         }
+        $return = $this->validateTagsParameter($request);
+        if ($return instanceof JsonResponse) {
+            return $return;
+        }
+
+        $tagNames = $request->input('tags') ?? [];
+
         if ($request->public_port) {
             if ($request->public_port < 1024 || $request->public_port > 65535) {
                 return response()->json([
@@ -1830,8 +1837,8 @@ class DatabasesController extends Controller
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
-            if ($request->has('tags')) {
-                $this->attachTagsToResource($database, $request->tags, $teamId);
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($database, $tagNames, $teamId);
             }
             $database->refresh();
             $payload = [
@@ -1901,8 +1908,8 @@ class DatabasesController extends Controller
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
-            if ($request->has('tags')) {
-                $this->attachTagsToResource($database, $request->tags, $teamId);
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($database, $tagNames, $teamId);
             }
 
             $database->refresh();
@@ -1973,8 +1980,8 @@ class DatabasesController extends Controller
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
-            if ($request->has('tags')) {
-                $this->attachTagsToResource($database, $request->tags, $teamId);
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($database, $tagNames, $teamId);
             }
 
             $database->refresh();
@@ -2042,8 +2049,8 @@ class DatabasesController extends Controller
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
-            if ($request->has('tags')) {
-                $this->attachTagsToResource($database, $request->tags, $teamId);
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($database, $tagNames, $teamId);
             }
 
             $database->refresh();
@@ -2092,8 +2099,8 @@ class DatabasesController extends Controller
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
-            if ($request->has('tags')) {
-                $this->attachTagsToResource($database, $request->tags, $teamId);
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($database, $tagNames, $teamId);
             }
 
             return response()->json(serializeApiResponse([
@@ -2144,8 +2151,8 @@ class DatabasesController extends Controller
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
-            if ($request->has('tags')) {
-                $this->attachTagsToResource($database, $request->tags, $teamId);
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($database, $tagNames, $teamId);
             }
 
             $database->refresh();
@@ -2193,8 +2200,8 @@ class DatabasesController extends Controller
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
-            if ($request->has('tags')) {
-                $this->attachTagsToResource($database, $request->tags, $teamId);
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($database, $tagNames, $teamId);
             }
 
             $database->refresh();
@@ -2264,8 +2271,8 @@ class DatabasesController extends Controller
             if ($instantDeploy) {
                 StartDatabase::dispatch($database);
             }
-            if ($request->has('tags')) {
-                $this->attachTagsToResource($database, $request->tags, $teamId);
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($database, $tagNames, $teamId);
             }
 
             $database->refresh();
