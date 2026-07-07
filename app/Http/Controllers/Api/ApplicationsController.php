@@ -33,6 +33,18 @@ use Symfony\Component\Yaml\Yaml;
 
 class ApplicationsController extends Controller
 {
+    use Concerns\HandlesTagsApi;
+
+    protected function findTaggableResource(string $uuid, int|string $teamId): mixed
+    {
+        return Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $uuid)->first();
+    }
+
+    protected function tagResourceNotFoundMessage(): string
+    {
+        return 'Application not found.';
+    }
+
     private function exposeFileStorageContentIfAllowed(LocalFileVolume|LocalPersistentVolume $storage): LocalFileVolume|LocalPersistentVolume
     {
         if (request()->attributes->get('can_read_sensitive', false) === true) {
@@ -280,6 +292,7 @@ class ApplicationsController extends Controller
                             'force_domain_override' => ['type' => 'boolean', 'description' => 'Force domain usage even if conflicts are detected. Default is false.'],
                             'autogenerate_domain' => ['type' => 'boolean', 'default' => true, 'description' => 'If true and domains is empty, auto-generate a domain using the server\'s wildcard domain or sslip.io fallback. Default: true.'],
                             'is_container_label_escape_enabled' => ['type' => 'boolean', 'default' => true, 'description' => 'Escape special characters in labels. By default, $ (and other chars) is escaped. So if you write $ in the labels, it will be saved as $$. If you want to use env variables inside the labels, turn this off.'],
+                            'tags' => ['type' => 'array', 'items' => new OA\Items(type: 'string'), 'description' => 'Tags to assign to the application.'],
                             'is_preserve_repository_enabled' => ['type' => 'boolean', 'default' => false, 'description' => 'Preserve repository during deployment.'],
                         ],
                     )
@@ -447,6 +460,7 @@ class ApplicationsController extends Controller
                             'force_domain_override' => ['type' => 'boolean', 'description' => 'Force domain usage even if conflicts are detected. Default is false.'],
                             'autogenerate_domain' => ['type' => 'boolean', 'default' => true, 'description' => 'If true and domains is empty, auto-generate a domain using the server\'s wildcard domain or sslip.io fallback. Default: true.'],
                             'is_container_label_escape_enabled' => ['type' => 'boolean', 'default' => true, 'description' => 'Escape special characters in labels. By default, $ (and other chars) is escaped. So if you write $ in the labels, it will be saved as $$. If you want to use env variables inside the labels, turn this off.'],
+                            'tags' => ['type' => 'array', 'items' => new OA\Items(type: 'string'), 'description' => 'Tags to assign to the application.'],
                             'is_preserve_repository_enabled' => ['type' => 'boolean', 'default' => false, 'description' => 'Preserve repository during deployment.'],
                         ],
                     )
@@ -614,6 +628,7 @@ class ApplicationsController extends Controller
                             'force_domain_override' => ['type' => 'boolean', 'description' => 'Force domain usage even if conflicts are detected. Default is false.'],
                             'autogenerate_domain' => ['type' => 'boolean', 'default' => true, 'description' => 'If true and domains is empty, auto-generate a domain using the server\'s wildcard domain or sslip.io fallback. Default: true.'],
                             'is_container_label_escape_enabled' => ['type' => 'boolean', 'default' => true, 'description' => 'Escape special characters in labels. By default, $ (and other chars) is escaped. So if you write $ in the labels, it will be saved as $$. If you want to use env variables inside the labels, turn this off.'],
+                            'tags' => ['type' => 'array', 'items' => new OA\Items(type: 'string'), 'description' => 'Tags to assign to the application.'],
                             'is_preserve_repository_enabled' => ['type' => 'boolean', 'default' => false, 'description' => 'Preserve repository during deployment.'],
                         ],
                     )
@@ -753,6 +768,7 @@ class ApplicationsController extends Controller
                             'force_domain_override' => ['type' => 'boolean', 'description' => 'Force domain usage even if conflicts are detected. Default is false.'],
                             'autogenerate_domain' => ['type' => 'boolean', 'default' => true, 'description' => 'If true and domains is empty, auto-generate a domain using the server\'s wildcard domain or sslip.io fallback. Default: true.'],
                             'is_container_label_escape_enabled' => ['type' => 'boolean', 'default' => true, 'description' => 'Escape special characters in labels. By default, $ (and other chars) is escaped. So if you write $ in the labels, it will be saved as $$. If you want to use env variables inside the labels, turn this off.'],
+                            'tags' => ['type' => 'array', 'items' => new OA\Items(type: 'string'), 'description' => 'Tags to assign to the application.'],
                         ],
                     )
                 ),
@@ -888,6 +904,7 @@ class ApplicationsController extends Controller
                             'force_domain_override' => ['type' => 'boolean', 'description' => 'Force domain usage even if conflicts are detected. Default is false.'],
                             'autogenerate_domain' => ['type' => 'boolean', 'default' => true, 'description' => 'If true and domains is empty, auto-generate a domain using the server\'s wildcard domain or sslip.io fallback. Default: true.'],
                             'is_container_label_escape_enabled' => ['type' => 'boolean', 'default' => true, 'description' => 'Escape special characters in labels. By default, $ (and other chars) is escaped. So if you write $ in the labels, it will be saved as $$. If you want to use env variables inside the labels, turn this off.'],
+                            'tags' => ['type' => 'array', 'items' => new OA\Items(type: 'string'), 'description' => 'Tags to assign to the application.'],
                         ],
                     )
                 ),
@@ -964,7 +981,7 @@ class ApplicationsController extends Controller
         if ($return instanceof JsonResponse) {
             return $return;
         }
-        $allowedFields = ['project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'type', 'name', 'description', 'is_static', 'is_spa', 'is_auto_deploy_enabled', 'is_force_https_enabled', 'is_preview_deployments_enabled', 'domains', 'git_repository', 'git_branch', 'git_commit_sha', 'private_key_uuid', 'docker_registry_image_name', 'docker_registry_image_tag', 'build_pack', 'install_command', 'build_command', 'start_command', 'ports_exposes', 'ports_mappings', 'custom_network_aliases', 'base_directory', 'publish_directory', 'health_check_enabled', 'health_check_type', 'health_check_command', 'health_check_path', 'health_check_port', 'health_check_host', 'health_check_method', 'health_check_return_code', 'health_check_scheme', 'health_check_response_text', 'health_check_interval', 'health_check_timeout', 'health_check_retries', 'health_check_start_period', 'limits_memory', 'limits_memory_swap', 'limits_memory_swappiness', 'limits_memory_reservation', 'limits_cpus', 'limits_cpuset', 'limits_cpu_shares', 'custom_labels', 'custom_docker_run_options', 'post_deployment_command', 'post_deployment_command_container', 'pre_deployment_command', 'pre_deployment_command_container',  'manual_webhook_secret_github', 'manual_webhook_secret_gitlab', 'manual_webhook_secret_bitbucket', 'manual_webhook_secret_gitea', 'redirect', 'github_app_uuid', 'instant_deploy', 'dockerfile', 'dockerfile_location', 'docker_compose_location', 'docker_compose_raw', 'docker_compose_custom_start_command', 'docker_compose_custom_build_command', 'docker_compose_domains', 'watch_paths', 'use_build_server', 'static_image', 'custom_nginx_configuration', 'is_http_basic_auth_enabled', 'http_basic_auth_username', 'http_basic_auth_password', 'connect_to_docker_network', 'force_domain_override', 'autogenerate_domain', 'is_container_label_escape_enabled', 'is_preserve_repository_enabled'];
+        $allowedFields = ['project_uuid', 'environment_name', 'environment_uuid', 'server_uuid', 'destination_uuid', 'type', 'name', 'description', 'is_static', 'is_spa', 'is_auto_deploy_enabled', 'is_force_https_enabled', 'is_preview_deployments_enabled', 'domains', 'git_repository', 'git_branch', 'git_commit_sha', 'private_key_uuid', 'docker_registry_image_name', 'docker_registry_image_tag', 'build_pack', 'install_command', 'build_command', 'start_command', 'ports_exposes', 'ports_mappings', 'custom_network_aliases', 'base_directory', 'publish_directory', 'health_check_enabled', 'health_check_type', 'health_check_command', 'health_check_path', 'health_check_port', 'health_check_host', 'health_check_method', 'health_check_return_code', 'health_check_scheme', 'health_check_response_text', 'health_check_interval', 'health_check_timeout', 'health_check_retries', 'health_check_start_period', 'limits_memory', 'limits_memory_swap', 'limits_memory_swappiness', 'limits_memory_reservation', 'limits_cpus', 'limits_cpuset', 'limits_cpu_shares', 'custom_labels', 'custom_docker_run_options', 'post_deployment_command', 'post_deployment_command_container', 'pre_deployment_command', 'pre_deployment_command_container',  'manual_webhook_secret_github', 'manual_webhook_secret_gitlab', 'manual_webhook_secret_bitbucket', 'manual_webhook_secret_gitea', 'redirect', 'github_app_uuid', 'instant_deploy', 'dockerfile', 'dockerfile_location', 'docker_compose_location', 'docker_compose_raw', 'docker_compose_custom_start_command', 'docker_compose_custom_build_command', 'docker_compose_domains', 'watch_paths', 'use_build_server', 'static_image', 'custom_nginx_configuration', 'is_http_basic_auth_enabled', 'http_basic_auth_username', 'http_basic_auth_password', 'connect_to_docker_network', 'force_domain_override', 'autogenerate_domain', 'is_container_label_escape_enabled', 'tags', 'is_preserve_repository_enabled'];
 
         $validator = customApiValidator($request->all(), [
             'name' => 'string|max:255',
@@ -978,6 +995,8 @@ class ApplicationsController extends Controller
             'http_basic_auth_username' => 'string|nullable',
             'http_basic_auth_password' => 'string|nullable',
             'autogenerate_domain' => 'boolean',
+            'tags' => 'array|nullable',
+            'tags.*' => 'string|min:2',
         ]);
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
@@ -994,6 +1013,13 @@ class ApplicationsController extends Controller
                 'errors' => $errors,
             ], 422);
         }
+
+        $return = $this->validateTagsParameter($request);
+        if ($return instanceof JsonResponse) {
+            return $return;
+        }
+
+        $tagNames = $request->input('tags') ?? [];
 
         $environmentUuid = $request->environment_uuid;
         $environmentName = $request->environment_name;
@@ -1252,6 +1278,9 @@ class ApplicationsController extends Controller
                 $application->custom_labels = str(implode('|coolify|', generateLabelsApplication($application)))->replace('|coolify|', "\n");
                 $application->save();
             }
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($application, $tagNames, $teamId);
+            }
             $application->isConfigurationChanged(true);
 
             if ($instantDeploy) {
@@ -1495,6 +1524,9 @@ class ApplicationsController extends Controller
                 $application->custom_labels = str(implode('|coolify|', generateLabelsApplication($application)))->replace('|coolify|', "\n");
                 $application->save();
             }
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($application, $tagNames, $teamId);
+            }
             $application->isConfigurationChanged(true);
 
             if ($instantDeploy) {
@@ -1708,6 +1740,9 @@ class ApplicationsController extends Controller
                 $application->custom_labels = str(implode('|coolify|', generateLabelsApplication($application)))->replace('|coolify|', "\n");
                 $application->save();
             }
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($application, $tagNames, $teamId);
+            }
             $application->isConfigurationChanged(true);
 
             if ($instantDeploy) {
@@ -1832,6 +1867,9 @@ class ApplicationsController extends Controller
                 $application->custom_labels = str(implode('|coolify|', generateLabelsApplication($application)))->replace('|coolify|', "\n");
                 $application->save();
             }
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($application, $tagNames, $teamId);
+            }
             $application->isConfigurationChanged(true);
 
             if ($instantDeploy) {
@@ -1955,6 +1993,9 @@ class ApplicationsController extends Controller
                 $application->custom_labels = str(implode('|coolify|', generateLabelsApplication($application)))->replace('|coolify|', "\n");
                 $application->save();
             }
+            if ($tagNames !== []) {
+                $this->attachTagsToResource($application, $tagNames, $teamId);
+            }
             $application->isConfigurationChanged(true);
 
             if ($instantDeploy) {
@@ -1986,6 +2027,7 @@ class ApplicationsController extends Controller
                 'uuid' => data_get($application, 'uuid'),
                 'domains' => data_get($application, 'fqdn'),
             ]))->setStatusCode(201);
+
         }
 
         return response()->json(['message' => 'Invalid type.'], 400);
@@ -3908,6 +3950,99 @@ class ApplicationsController extends Controller
         );
     }
 
+    #[OA\Post(
+        summary: 'Move',
+        description: 'Move application to another project/environment. This is a purely organizational change — running containers are not affected. Note: after moving, the application will pick up shared environment variables from the new environment on the next deployment.',
+        path: '/applications/{uuid}/move',
+        operationId: 'move-application-by-uuid',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Applications'],
+        parameters: [
+            new OA\Parameter(
+                name: 'uuid',
+                in: 'path',
+                description: 'UUID of the application.',
+                required: true,
+                schema: new OA\Schema(
+                    type: 'string',
+                )
+            ),
+        ],
+        requestBody: new OA\RequestBody(
+            description: 'Target environment to move the application to.',
+            required: true,
+            content: [
+                new OA\MediaType(
+                    mediaType: 'application/json',
+                    schema: new OA\Schema(
+                        type: 'object',
+                        properties: [
+                            'environment_uuid' => ['type' => 'string', 'description' => 'UUID of the target environment.'],
+                        ],
+                        required: ['environment_uuid'],
+                    )
+                ),
+            ]
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Application moved successfully.',
+                content: [
+                    new OA\MediaType(
+                        mediaType: 'application/json',
+                        schema: new OA\Schema(
+                            type: 'object',
+                            properties: [
+                                'message' => ['type' => 'string', 'example' => 'Application moved successfully.'],
+                                'uuid' => ['type' => 'string'],
+                                'project_uuid' => ['type' => 'string'],
+                                'environment_uuid' => ['type' => 'string'],
+                            ]
+                        )
+                    ),
+                ]
+            ),
+            new OA\Response(
+                response: 401,
+                ref: '#/components/responses/401',
+            ),
+            new OA\Response(
+                response: 400,
+                ref: '#/components/responses/400',
+            ),
+            new OA\Response(
+                response: 404,
+                ref: '#/components/responses/404',
+            ),
+            new OA\Response(
+                response: 422,
+                ref: '#/components/responses/422',
+            ),
+        ]
+    )]
+    public function move_by_uuid(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+        $uuid = $request->route('uuid');
+        if (! $uuid) {
+            return response()->json(['message' => 'UUID is required.'], 400);
+        }
+        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->uuid)->first();
+        if (! $application) {
+            return response()->json(['message' => 'Application not found.'], 404);
+        }
+
+        $this->authorize('update', $application);
+
+        return moveResourceToEnvironment($request, $application, 'Application', $teamId);
+    }
+
     private function validateDataApplications(Request $request, Server $server)
     {
         $teamId = getTeamIdFromToken();
@@ -4653,5 +4788,149 @@ class ApplicationsController extends Controller
         ]);
 
         return response()->json(['message' => 'Preview deletion request queued.']);
+    }
+
+    #[OA\Get(
+        summary: 'List Tags',
+        description: 'List tags for an application by UUID.',
+        path: '/applications/{uuid}/tags',
+        operationId: 'list-tags-by-application-uuid',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Applications'],
+        parameters: [
+            new OA\Parameter(
+                name: 'uuid',
+                in: 'path',
+                description: 'UUID of the application.',
+                required: true,
+                schema: new OA\Schema(type: 'string')
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'List of tags.',
+                content: [
+                    new OA\MediaType(
+                        mediaType: 'application/json',
+                        schema: new OA\Schema(
+                            type: 'array',
+                            items: new OA\Items(ref: '#/components/schemas/Tag')
+                        )
+                    ),
+                ]
+            ),
+            new OA\Response(response: 401, ref: '#/components/responses/401'),
+            new OA\Response(response: 400, ref: '#/components/responses/400'),
+            new OA\Response(response: 404, ref: '#/components/responses/404'),
+        ]
+    )]
+    public function tags(Request $request): JsonResponse
+    {
+        return $this->listTags($request);
+    }
+
+    #[OA\Post(
+        summary: 'Create Tag',
+        description: 'Add tag(s) to an application by UUID.',
+        path: '/applications/{uuid}/tags',
+        operationId: 'create-tag-by-application-uuid',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Applications'],
+        parameters: [
+            new OA\Parameter(
+                name: 'uuid',
+                in: 'path',
+                description: 'UUID of the application.',
+                required: true,
+                schema: new OA\Schema(type: 'string')
+            ),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: [
+                new OA\MediaType(
+                    mediaType: 'application/json',
+                    schema: new OA\Schema(
+                        type: 'object',
+                        properties: [
+                            'tag_name' => ['type' => 'string', 'description' => 'The tag name (min 2 characters). Required if tag_names is not provided.'],
+                            'tag_names' => [
+                                'type' => 'array',
+                                'items' => new OA\Items(type: 'string'),
+                                'description' => 'Array of tag names (each min 2 characters). Required if tag_name is not provided.',
+                            ],
+                        ],
+                    )
+                ),
+            ]
+        ),
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: 'Tags added successfully.',
+                content: [
+                    new OA\MediaType(
+                        mediaType: 'application/json',
+                        schema: new OA\Schema(
+                            type: 'array',
+                            items: new OA\Items(ref: '#/components/schemas/Tag')
+                        )
+                    ),
+                ]
+            ),
+            new OA\Response(response: 401, ref: '#/components/responses/401'),
+            new OA\Response(response: 400, ref: '#/components/responses/400'),
+            new OA\Response(response: 404, ref: '#/components/responses/404'),
+            new OA\Response(response: 422, ref: '#/components/responses/422'),
+        ]
+    )]
+    public function create_tag(Request $request): JsonResponse
+    {
+        return $this->createTag($request);
+    }
+
+    #[OA\Delete(
+        summary: 'Delete Tag',
+        description: 'Remove a tag from an application by UUID.',
+        path: '/applications/{uuid}/tags/{tag_uuid}',
+        operationId: 'delete-tag-by-application-uuid',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Applications'],
+        parameters: [
+            new OA\Parameter(
+                name: 'uuid',
+                in: 'path',
+                description: 'UUID of the application.',
+                required: true,
+                schema: new OA\Schema(type: 'string')
+            ),
+            new OA\Parameter(
+                name: 'tag_uuid',
+                in: 'path',
+                description: 'UUID of the tag.',
+                required: true,
+                schema: new OA\Schema(type: 'string')
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Tag removed.',
+            ),
+            new OA\Response(response: 401, ref: '#/components/responses/401'),
+            new OA\Response(response: 400, ref: '#/components/responses/400'),
+            new OA\Response(response: 404, ref: '#/components/responses/404'),
+        ]
+    )]
+    public function delete_tag(Request $request): JsonResponse
+    {
+        return $this->deleteTag($request);
     }
 }
