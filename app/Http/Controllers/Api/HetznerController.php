@@ -116,6 +116,7 @@ class HetznerController extends Controller
         if (! $token) {
             return response()->json(['message' => 'Hetzner cloud provider token not found.'], 404);
         }
+        $this->authorize('view', $token);
 
         try {
             $hetznerService = new HetznerService($token->token);
@@ -123,7 +124,7 @@ class HetznerController extends Controller
 
             return response()->json($locations);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to fetch locations: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to fetch Hetzner locations.'], 500);
         }
     }
 
@@ -237,6 +238,7 @@ class HetznerController extends Controller
         if (! $token) {
             return response()->json(['message' => 'Hetzner cloud provider token not found.'], 404);
         }
+        $this->authorize('view', $token);
 
         try {
             $hetznerService = new HetznerService($token->token);
@@ -244,7 +246,7 @@ class HetznerController extends Controller
 
             return response()->json($serverTypes);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to fetch server types: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to fetch Hetzner server types.'], 500);
         }
     }
 
@@ -336,6 +338,7 @@ class HetznerController extends Controller
         if (! $token) {
             return response()->json(['message' => 'Hetzner cloud provider token not found.'], 404);
         }
+        $this->authorize('view', $token);
 
         try {
             $hetznerService = new HetznerService($token->token);
@@ -356,7 +359,7 @@ class HetznerController extends Controller
 
             return response()->json(array_values($filtered));
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to fetch images: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to fetch Hetzner images.'], 500);
         }
     }
 
@@ -445,6 +448,7 @@ class HetznerController extends Controller
         if (! $token) {
             return response()->json(['message' => 'Hetzner cloud provider token not found.'], 404);
         }
+        $this->authorize('view', $token);
 
         try {
             $hetznerService = new HetznerService($token->token);
@@ -452,7 +456,7 @@ class HetznerController extends Controller
 
             return response()->json($sshKeys);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to fetch SSH keys: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to fetch Hetzner SSH keys.'], 500);
         }
     }
 
@@ -743,6 +747,7 @@ class HetznerController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
+        $this->authorize('create', [Server::class]);
 
         $return = validateIncomingRequest($request);
         if ($return instanceof JsonResponse) {
@@ -827,6 +832,7 @@ class HetznerController extends Controller
         if (! $token) {
             return response()->json(['message' => 'Hetzner cloud provider token not found.'], 404);
         }
+        $this->authorize('view', $token);
 
         // Validate private key
         $privateKey = PrivateKey::whereTeamId($teamId)->whereUuid($request->private_key_uuid)->first();
@@ -945,6 +951,14 @@ class HetznerController extends Controller
                 ValidateServer::dispatch($server);
             }
 
+            auditLog('api.hetzner_server.created', [
+                'team_id' => $teamId,
+                'server_uuid' => $server->uuid,
+                'server_name' => $server->name,
+                'hetzner_server_id' => $hetznerServer['id'],
+                'ip' => $ipAddress,
+            ]);
+
             return response()->json([
                 'uuid' => $server->uuid,
                 'hetzner_server_id' => $hetznerServer['id'],
@@ -958,7 +972,7 @@ class HetznerController extends Controller
 
             return $response;
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to create server: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to create Hetzner server.'], 500);
         }
     }
 }

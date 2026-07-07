@@ -1,10 +1,10 @@
 <div>
     <livewire:project.service.heading :service="$service" :parameters="$parameters" :query="$query" />
-    <div class="flex flex-col h-full gap-8 sm:flex-row">
+    <div class="flex flex-col h-full gap-4 md:gap-8 md:flex-row">
         @if ($resourceType === 'database')
             <x-service-database.sidebar :parameters="$parameters" :serviceDatabase="$serviceDatabase" :isImportSupported="$isImportSupported" />
         @else
-            <div class="sub-menu-wrapper">
+            <div class="sub-menu-wrapper hidden md:flex">
                 <a class="sub-menu-item"
                     class="{{ request()->routeIs('project.service.configuration') ? 'menu-item-active' : '' }}"
                     {{ wireNavigate() }}
@@ -123,7 +123,7 @@
                     @if ($showPortWarningModal)
                         <div x-data="{ modalOpen: true }" x-init="$nextTick(() => { modalOpen = true })"
                             @keydown.escape.window="modalOpen = false; $wire.call('cancelRemovePort')"
-                            :class="{ 'z-40': modalOpen }" class="relative w-auto h-auto">
+                            :class="{ 'z-40': modalOpen }" class="relative">
                             <template x-teleport="body">
                                 <div x-show="modalOpen"
                                     class="fixed top-0 lg:pt-10 left-0 z-99 flex items-start justify-center w-screen h-screen" x-cloak>

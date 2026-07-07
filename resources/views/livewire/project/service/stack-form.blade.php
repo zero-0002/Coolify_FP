@@ -12,6 +12,9 @@
                     <livewire:project.service.edit-compose serviceId="{{ $service->id }}" />
                 </x-modal-input>
             @endcan
+            <x-modal-input title="Resource Details" buttonTitle="Details">
+                <livewire:project.shared.resource-details :resource="$service" />
+            </x-modal-input>
         </div>
         <div>Configuration</div>
     </div>
@@ -42,10 +45,14 @@
                         <x-helper helper="Variable name: {{ $serviceName }}" />
                     @endif
                 </div>
-                <x-forms.input canGate="update" :canResource="$service"
-                    type="{{ data_get($field, 'isPassword') ? 'password' : 'text' }}"
-                    required="{{ str(data_get($field, 'rules'))?->contains('required') }}"
-                    id="fields.{{ $serviceName }}.value"></x-forms.input>
+                @if ($isPasswordHiddenForMember && data_get($field, 'isPassword'))
+                    <x-forms.input disabled value="Hidden (only admins can view)" />
+                @else
+                    <x-forms.input canGate="update" :canResource="$service"
+                        type="{{ data_get($field, 'isPassword') ? 'password' : 'text' }}"
+                        required="{{ str(data_get($field, 'rules'))?->contains('required') }}"
+                        id="fields.{{ $serviceName }}.value"></x-forms.input>
+                @endif
             @endforeach
         </div>
     @endif

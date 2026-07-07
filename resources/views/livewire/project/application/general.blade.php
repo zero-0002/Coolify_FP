@@ -12,6 +12,9 @@
                 <div>{{ $application->compose_parsing_version }}</div>
             @endif
             <x-forms.button canGate="update" :canResource="$application" type="submit">Save</x-forms.button>
+            <x-modal-input title="Resource Details" buttonTitle="Details">
+                <livewire:project.shared.resource-details :resource="$application" />
+            </x-modal-input>
             @if ($buildPack === 'dockercompose')
                 <x-forms.button canGate="update" :canResource="$application" wire:target='initLoadingCompose'
                     x-on:click="$wire.dispatch('loadCompose', false)">
@@ -32,6 +35,7 @@
                         <x-forms.select x-bind:disabled="shouldDisable()" wire:model.live="buildPack" label="Build Pack"
                             required>
                             <option value="nixpacks">Nixpacks</option>
+                            <option value="railpack">Railpack (Beta)</option>
                             <option value="static">Static</option>
                             <option value="dockerfile">Dockerfile</option>
                             <option value="dockercompose">Docker Compose</option>
@@ -226,20 +230,24 @@
                         id="customDockerRunOptions" label="Custom Docker Options" x-bind:disabled="!canUpdate" />
                 @else
                     @if ($application->could_set_build_commands())
-                        @if ($buildPack === 'nixpacks')
+                        @if ($buildPack === 'nixpacks' || $buildPack === 'railpack')
                             <div class="flex flex-col gap-2 xl:flex-row">
-                                <x-forms.input helper="If you modify this, you probably need to have a nixpacks.toml"
+                                <x-forms.input helper="If you modify this, you probably need to have a {{ $buildPack === 'railpack' ? 'railpack.json' : 'nixpacks.toml' }}"
                                     id="installCommand" label="Install Command" x-bind:disabled="!canUpdate" />
-                                <x-forms.input helper="If you modify this, you probably need to have a nixpacks.toml"
+                                <x-forms.input helper="If you modify this, you probably need to have a {{ $buildPack === 'railpack' ? 'railpack.json' : 'nixpacks.toml' }}"
                                     id="buildCommand" label="Build Command" x-bind:disabled="!canUpdate" />
-                                <x-forms.input helper="If you modify this, you probably need to have a nixpacks.toml"
+                                <x-forms.input helper="If you modify this, you probably need to have a {{ $buildPack === 'railpack' ? 'railpack.json' : 'nixpacks.toml' }}"
                                     id="startCommand" label="Start Command" x-bind:disabled="!canUpdate" />
                             </div>
-                            <div class="pt-1 text-xs">Nixpacks will detect the required configuration
-                                automatically.
+                                @if ($buildPack === 'nixpacks')
+                            <div class="pt-1 text-xs">
+
+                                    <span class="font-medium">Nixpacks</span>
+                                will detect the required configuration automatically.
                                 <a class="underline" href="https://coolify.io/docs/applications/">Framework
                                     Specific Docs</a>
                             </div>
+                                @endif
                         @endif
 
                     @endif
@@ -492,6 +500,13 @@
                         </div>
                     @endif
                 @endif
+                @if ((empty($portsExposes) || $portsExposes === '0') && !empty($fqdn))
+                    <x-callout type="info" title="No ports exposed" class="mb-4">
+                        This application does not expose any ports and will not be reachable through the proxy or your domains.
+                        This behavior is normal for background workers, bots, or scheduled tasks.
+                        If your application needs to handle HTTP traffic, please specify the port(s) it listens on.
+                    </x-callout>
+                @endif
                 <div class="flex flex-col gap-2 xl:flex-row">
                     @if ($isStatic || $buildPack === 'static')
                         <x-forms.input id="portsExposes" label="Ports Exposes" readonly
@@ -502,7 +517,7 @@
                                 helper="Readonly labels are disabled. You can set the ports manually in the labels section."
                                 x-bind:disabled="!canUpdate" />
                         @else
-                            <x-forms.input placeholder="3000,3001" id="portsExposes" label="Ports Exposes" required
+                            <x-forms.input placeholder="3000,3001" id="portsExposes" label="Ports Exposes"
                                 helper="A comma separated list of ports your application uses. The first port will be used as default healthcheck port if nothing defined in the Healthcheck menu. Be sure to set this correctly."
                                 x-bind:disabled="!canUpdate" />
                         @endif
