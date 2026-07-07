@@ -4868,7 +4868,6 @@ paths:
             schema:
               required:
                 - name
-                - api_url
                 - html_url
                 - app_id
                 - installation_id
