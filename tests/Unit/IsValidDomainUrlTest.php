@@ -18,5 +18,12 @@ it('accepts ordinary domains and URLs', function () {
 it('rejects strings that are not valid URLs', function () {
     expect(isValidDomainUrl('not a url'))->toBeFalse();
     expect(isValidDomainUrl('example.com'))->toBeFalse();
+    expect(isValidDomainUrl('ht_tp://example.com'))->toBeFalse();
     expect(isValidDomainUrl(''))->toBeFalse();
+});
+
+it('rejects URLs that do not use HTTP or HTTPS schemes', function () {
+    expect(isValidDomainUrl('ftp://example.com'))->toBeFalse();
+    expect(isValidDomainUrl('javascript://example.com'))->toBeFalse();
+    expect(isValidDomainUrl('data://example.com'))->toBeFalse();
 });

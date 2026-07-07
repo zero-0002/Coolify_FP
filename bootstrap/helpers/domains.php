@@ -6,12 +6,50 @@ use Illuminate\Support\Collection;
 
 function isValidDomainUrl(string $url): bool
 {
-    // PHP's FILTER_VALIDATE_URL rejects underscores in the host, but they are
-    // accepted by browsers, Let's Encrypt, and common Docker service naming
-    // (e.g. https://myapp_service.example.com). Validate against a copy with
-    // underscores replaced by hyphens (a valid host character) so such domains
-    // are not wrongly rejected; URLs without underscores are unaffected.
-    return filter_var(str_replace('_', '-', $url), FILTER_VALIDATE_URL) !== false;
+    $components = parse_url($url);
+
+    if ($components === false) {
+        return false;
+    }
+
+    $scheme = $components['scheme'] ?? '';
+    $host = $components['host'] ?? '';
+
+    if (! in_array(strtolower($scheme), ['http', 'https'], true) || $host === '') {
+        return false;
+    }
+
+    $urlToValidate = $scheme.'://';
+
+    if (isset($components['user'])) {
+        $urlToValidate .= $components['user'];
+
+        if (isset($components['pass'])) {
+            $urlToValidate .= ':'.$components['pass'];
+        }
+
+        $urlToValidate .= '@';
+    }
+
+    $urlToValidate .= str_replace('_', '-', $host);
+
+    if (isset($components['port'])) {
+        $urlToValidate .= ':'.$components['port'];
+    }
+
+    if (isset($components['path'])) {
+        $urlToValidate .= $components['path'];
+    }
+
+    if (isset($components['query'])) {
+        $urlToValidate .= '?'.$components['query'];
+    }
+
+    if (isset($components['fragment'])) {
+        $urlToValidate .= '#'.$components['fragment'];
+    }
+
+    return filter_var($urlToValidate, FILTER_VALIDATE_URL) !== false;
 }
 
 function checkDomainUsage(ServiceApplication|Application|null $resource = null, ?string $domain = null)
