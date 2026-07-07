@@ -6,6 +6,7 @@ use App\Models\PrivateKey;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
@@ -13,10 +14,7 @@ beforeEach(function () {
     config()->set('app.maintenance.driver', 'file');
     config()->set('cache.default', 'array');
 
-    InstanceSettings::query()->delete();
-    $settings = new InstanceSettings;
-    $settings->id = 0;
-    $settings->save();
+    InstanceSettings::forceCreate(['id' => 0, 'is_api_enabled' => true]);
 
     // Create a team with owner
     $this->team = Team::factory()->create();
@@ -29,7 +27,9 @@ beforeEach(function () {
     $this->bearerToken = $this->token->plainTextToken;
 
     // Create a private key for the team
-    $this->privateKey = PrivateKey::factory()->create([
+    $this->privateKey = PrivateKey::create([
+        'name' => 'Test Key',
+        'private_key' => validGithubAppsApiPrivateKey(),
         'team_id' => $this->team->id,
     ]);
 });
@@ -39,6 +39,26 @@ function createGithubAppsApiToken($context, array $abilities): string
     session(['currentTeam' => $context->team]);
 
     return $context->user->createToken('github-apps-test-token', $abilities)->plainTextToken;
+}
+
+/**
+ * Generate a temporary 2048-bit RSA private key for GitHub Apps API tests.
+ *
+ * Generated in-process so tests do not depend on external files or secrets;
+ * the key is used only as a signing fixture and is never persisted.
+ *
+ * @return string PEM-encoded RSA private key
+ */
+function validGithubAppsApiPrivateKey(): string
+{
+    $key = openssl_pkey_new([
+        'private_key_bits' => 2048,
+        'private_key_type' => OPENSSL_KEYTYPE_RSA,
+    ]);
+
+    openssl_pkey_export($key, $privateKey);
+
+    return $privateKey;
 }
 
 describe('GET /api/v1/github-apps', function () {
@@ -195,6 +215,11 @@ describe('GET /api/v1/github-apps', function () {
 
         // Create another team with a GitHub app
         $otherTeam = Team::factory()->create();
+        $otherPrivateKey = PrivateKey::create([
+            'name' => 'Other Key',
+            'private_key' => validGithubAppsApiPrivateKey(),
+            'team_id' => $otherTeam->id,
+        ]);
         GithubApp::create([
             'name' => 'Team 2 App',
             'api_url' => 'https://api.github.com',
@@ -204,7 +229,7 @@ describe('GET /api/v1/github-apps', function () {
             'client_id' => 'team2-client-id',
             'client_secret' => 'team2-secret',
             'webhook_secret' => 'team2-webhook',
-            'private_key_id' => $this->privateKey->id,
+            'private_key_id' => $otherPrivateKey->id,
             'team_id' => $otherTeam->id,
             'is_system_wide' => false,
         ]);
@@ -258,5 +283,181 @@ describe('GET /api/v1/github-apps', function () {
                 'type',
             ],
         ]);
+    });
+});
+
+describe('GitHub app API url normalization', function () {
+    test('normalizes ghe dot com api url when creating github apps', function () {
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+        ])->postJson('/api/v1/github-apps', [
+            'name' => 'GHE App',
+            'organization' => '/octocorp/',
+            'html_url' => 'https://github.ghe.com',
+            'app_id' => 12345,
+            'installation_id' => 67890,
+            'client_id' => 'test-client-id',
+            'client_secret' => 'test-client-secret',
+            'webhook_secret' => 'test-webhook-secret',
+            'private_key_uuid' => $this->privateKey->uuid,
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonFragment([
+                'organization' => 'octocorp',
+                'api_url' => 'https://api.github.ghe.com',
+                'html_url' => 'https://github.ghe.com',
+            ]);
+    });
+
+    test('preserves provided api url when creating github apps', function () {
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+        ])->postJson('/api/v1/github-apps', [
+            'name' => 'GHE App',
+            'organization' => '/octocorp/',
+            'api_url' => 'https://github.com/api/v3',
+            'html_url' => 'https://github.com',
+            'app_id' => 12345,
+            'installation_id' => 67890,
+            'client_id' => 'test-client-id',
+            'client_secret' => 'test-client-secret',
+            'webhook_secret' => 'test-webhook-secret',
+            'private_key_uuid' => $this->privateKey->uuid,
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonFragment([
+                'organization' => 'octocorp',
+                'api_url' => 'https://github.com/api/v3',
+                'html_url' => 'https://github.com',
+            ]);
+    });
+
+    test('preserves provided api url when updating github apps', function () {
+        $githubApp = GithubApp::create([
+            'name' => 'GHE App',
+            'api_url' => 'https://github.company.internal/api/v3',
+            'html_url' => 'https://github.company.internal',
+            'app_id' => 12345,
+            'installation_id' => 67890,
+            'client_id' => 'test-client-id',
+            'client_secret' => 'test-client-secret',
+            'webhook_secret' => 'test-webhook-secret',
+            'private_key_id' => $this->privateKey->id,
+            'team_id' => $this->team->id,
+            'is_system_wide' => false,
+            'is_public' => false,
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+        ])->patchJson("/api/v1/github-apps/{$githubApp->id}", [
+            'html_url' => 'https://github.com',
+            'api_url' => 'https://github.com/api/v3',
+        ]);
+
+        $response->assertSuccessful()
+            ->assertJsonPath('data.api_url', 'https://github.com/api/v3');
+    });
+
+    test('preserves provided api url when updating api url only', function () {
+        $githubApp = GithubApp::create([
+            'name' => 'GHE App',
+            'api_url' => 'https://api.github.com',
+            'html_url' => 'https://github.com',
+            'app_id' => 12345,
+            'installation_id' => 67890,
+            'client_id' => 'test-client-id',
+            'client_secret' => 'test-client-secret',
+            'webhook_secret' => 'test-webhook-secret',
+            'private_key_id' => $this->privateKey->id,
+            'team_id' => $this->team->id,
+            'is_system_wide' => false,
+            'is_public' => false,
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+        ])->patchJson("/api/v1/github-apps/{$githubApp->id}", [
+            'api_url' => 'https://github.com/api/v3',
+        ]);
+
+        $response->assertSuccessful()
+            ->assertJsonPath('data.api_url', 'https://github.com/api/v3');
+    });
+
+    test('rejects invalid organization when creating github apps', function () {
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+        ])->postJson('/api/v1/github-apps', [
+            'name' => 'GHE App',
+            'organization' => 'octo/corp',
+            'api_url' => 'https://api.octocorp.ghe.com',
+            'html_url' => 'https://octocorp.ghe.com',
+            'app_id' => 12345,
+            'installation_id' => 67890,
+            'client_id' => 'test-client-id',
+            'client_secret' => 'test-client-secret',
+            'webhook_secret' => 'test-webhook-secret',
+            'private_key_uuid' => $this->privateKey->uuid,
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['organization']);
+    });
+
+    test('loads repositories and branches through normalized ghe dot com api url', function () {
+        $this->privateKey->update([
+            'private_key' => validGithubAppsApiPrivateKey(),
+        ]);
+
+        $githubApp = GithubApp::create([
+            'name' => 'GHE App',
+            'api_url' => 'https://api.octocorp.ghe.com',
+            'html_url' => 'https://octocorp.ghe.com',
+            'app_id' => 12345,
+            'installation_id' => 67890,
+            'client_id' => 'test-client-id',
+            'client_secret' => 'test-client-secret',
+            'webhook_secret' => 'test-webhook-secret',
+            'private_key_id' => $this->privateKey->id,
+            'team_id' => $this->team->id,
+            'is_system_wide' => false,
+            'is_public' => false,
+        ]);
+
+        Http::preventStrayRequests();
+        Http::fake([
+            'https://api.octocorp.ghe.com/zen' => Http::response('Keep it logically awesome.', 200, [
+                'Date' => now()->toRfc7231String(),
+            ]),
+            'https://api.octocorp.ghe.com/app/installations/67890/access_tokens' => Http::response([
+                'token' => 'installation-token',
+            ]),
+            'https://api.octocorp.ghe.com/installation/repositories*' => Http::response([
+                'repositories' => [
+                    ['name' => 'repo', 'full_name' => 'octocorp/repo'],
+                ],
+            ]),
+            'https://api.octocorp.ghe.com/repos/octocorp/repo/branches' => Http::response([
+                ['name' => 'main'],
+            ]),
+        ]);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+        ])->getJson("/api/v1/github-apps/{$githubApp->id}/repositories")
+            ->assertSuccessful()
+            ->assertJsonPath('repositories.0.name', 'repo');
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+        ])->getJson("/api/v1/github-apps/{$githubApp->id}/repositories/octocorp/repo/branches")
+            ->assertSuccessful()
+            ->assertJsonPath('branches.0.name', 'main');
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.octocorp.ghe.com/installation/repositories?per_page=100&page=1');
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.octocorp.ghe.com/repos/octocorp/repo/branches');
     });
 });
