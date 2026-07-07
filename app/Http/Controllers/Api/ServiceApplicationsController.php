@@ -455,9 +455,8 @@ class ServiceApplicationsController extends Controller
         }
 
         $containerName = $serviceApplication->name.'-'.$serviceApplication->service->uuid;
-        $safeContainerName = escapeshellarg($containerName);
 
-        $status = getContainerStatus($server, $safeContainerName);
+        $status = getContainerStatus($server, $containerName);
         if ($status !== 'running') {
             return response()->json([
                 'message' => 'Service application container is not running.',

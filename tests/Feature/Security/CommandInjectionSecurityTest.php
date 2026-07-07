@@ -1016,12 +1016,20 @@ describe('service application lifecycle command escaping', function () {
         'stop action' => 'Actions/Service/StopServiceApplication.php',
     ]);
 
-    test('service application logs endpoint escapes container name before docker helpers', function () {
+    test('docker status helper escapes container names', function () {
+        $source = file_get_contents(base_path('bootstrap/helpers/docker.php'));
+
+        expect($source)->toContain('function buildContainerStatusCommand')
+            ->and($source)->toContain('escapeshellarg("name={$container_id}")')
+            ->and($source)->toContain('escapeshellarg($container_id)');
+    });
+
+    test('service application logs endpoint passes raw container name to docker helpers', function () {
         $source = file_get_contents(app_path('Http/Controllers/Api/ServiceApplicationsController.php'));
 
-        expect($source)->toContain('$safeContainerName = escapeshellarg($containerName)')
-            ->and($source)->toContain('getContainerStatus($server, $safeContainerName)')
-            ->and($source)->toContain('getContainerLogs($server, $containerName, $lines)');
+        expect($source)->toContain('getContainerStatus($server, $containerName)')
+            ->and($source)->toContain('getContainerLogs($server, $containerName, $lines)')
+            ->and($source)->not->toContain('$safeContainerName = escapeshellarg($containerName)');
     });
 });
 
