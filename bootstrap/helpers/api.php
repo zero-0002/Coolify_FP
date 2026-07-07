@@ -3,11 +3,15 @@
 use App\Enums\BuildPackTypes;
 use App\Enums\RedirectTypes;
 use App\Enums\StaticImageTypes;
+use App\Models\Environment;
 use App\Rules\ValidGitBranch;
 use App\Support\ValidationPatterns;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 function getTeamIdFromToken()
@@ -170,6 +174,64 @@ function sharedDataApplications()
         'is_container_label_escape_enabled' => 'boolean',
         'is_preserve_repository_enabled' => 'boolean',
     ];
+}
+
+function moveResourceToEnvironment(Request $request, $resource, string $resourceType, int $teamId): JsonResponse
+{
+
+    $validator = Validator::make($request->all(), [
+        'environment_uuid' => 'required|string',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'message' => 'Validation failed.',
+            'errors' => $validator->errors(),
+        ], 422);
+    }
+
+    $extraFields = array_diff(array_keys($request->all()), ['environment_uuid']);
+    if (! empty($extraFields)) {
+        return response()->json([
+            'message' => 'Validation failed.',
+            'errors' => collect($extraFields)->mapWithKeys(fn ($field) => [$field => 'This field is not allowed.'])->toArray(),
+        ], 422);
+    }
+
+    $newEnvironment = Environment::ownedByCurrentTeamAPI($teamId)
+        ->whereUuid($request->environment_uuid)
+        ->first();
+
+    if (! $newEnvironment) {
+        return response()->json(['message' => 'Target environment not found or not owned by your team.'], 404);
+    }
+
+    Gate::authorize('update', $newEnvironment);
+
+    if ($resource->environment_id === $newEnvironment->id) {
+        return response()->json(['message' => "$resourceType is already in this environment."], 400);
+    }
+
+    $oldEnvironment = $resource->environment()->with('project')->first();
+
+    $resource->update(['environment_id' => $newEnvironment->id]);
+
+    auditLog('api.'.str($resourceType)->lower()->value().'.moved', [
+        'team_id' => $teamId,
+        'resource_uuid' => $resource->uuid,
+        'resource_type' => str($resourceType)->lower()->value(),
+        'from_project_uuid' => $oldEnvironment?->project?->uuid,
+        'from_environment_uuid' => $oldEnvironment?->uuid,
+        'to_project_uuid' => $newEnvironment->project->uuid,
+        'to_environment_uuid' => $newEnvironment->uuid,
+    ]);
+
+    return response()->json([
+        'message' => "$resourceType moved successfully.",
+        'uuid' => $resource->uuid,
+        'project_uuid' => $newEnvironment->project->uuid,
+        'environment_uuid' => $newEnvironment->uuid,
+    ]);
 }
 
 function validateIncomingRequest(Request $request)
