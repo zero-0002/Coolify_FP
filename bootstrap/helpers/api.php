@@ -97,6 +97,7 @@ function sharedDataApplications()
         'is_spa' => 'boolean',
         'is_auto_deploy_enabled' => 'boolean',
         'is_force_https_enabled' => 'boolean',
+        'is_preview_deployments_enabled' => 'boolean',
         'static_image' => Rule::enum(StaticImageTypes::class),
         'domains' => 'string|nullable',
         'redirect' => Rule::enum(RedirectTypes::class),
@@ -198,6 +199,7 @@ function removeUnnecessaryFieldsFromRequest(Request $request)
     $request->offsetUnset('is_spa');
     $request->offsetUnset('is_auto_deploy_enabled');
     $request->offsetUnset('is_force_https_enabled');
+    $request->offsetUnset('is_preview_deployments_enabled');
     $request->offsetUnset('connect_to_docker_network');
     $request->offsetUnset('force_domain_override');
     $request->offsetUnset('autogenerate_domain');
