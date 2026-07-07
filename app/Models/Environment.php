@@ -25,7 +25,12 @@ class Environment extends BaseModel
     use HasFactory;
     use HasSafeStringAttribute;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'name',
+        'description',
+        'project_id',
+        'uuid',
+    ];
 
     protected static function booted()
     {
@@ -63,7 +68,7 @@ class Environment extends BaseModel
 
     public function environment_variables()
     {
-        return $this->hasMany(SharedEnvironmentVariable::class);
+        return $this->hasMany(SharedEnvironmentVariable::class)->where('type', 'environment');
     }
 
     public function applications()
