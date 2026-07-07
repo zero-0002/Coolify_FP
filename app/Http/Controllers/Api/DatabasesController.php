@@ -37,7 +37,7 @@ class DatabasesController extends Controller
         return $storage;
     }
 
-    private function removeSensitiveData($database)
+    private function removeSensitiveData($database, bool $loadNestedServerSecrets = false)
     {
         $database->makeHidden([
             'id',
@@ -60,9 +60,49 @@ class DatabasesController extends Controller
                 'mariadb_root_password',
             ]);
             $this->exposeNestedServerSecrets($database);
+        } else {
+            $this->hideNestedServerSecrets($database, $loadNestedServerSecrets);
         }
 
         return serializeApiResponse($database);
+    }
+
+    private function hideNestedServerSecrets(Model $model, bool $loadRelations = false): void
+    {
+        if ($loadRelations) {
+            $server = data_get($model, 'destination.server');
+        } else {
+            if (! $model->relationLoaded('destination')) {
+                return;
+            }
+
+            $destination = $model->getRelation('destination');
+            if (! $destination || ! $destination->relationLoaded('server')) {
+                return;
+            }
+
+            $server = $destination->getRelation('server');
+        }
+
+        if (! $server) {
+            return;
+        }
+
+        $server->makeHidden([
+            'logdrain_axiom_api_key',
+            'logdrain_newrelic_license_key',
+        ]);
+
+        if ($loadRelations || $server->relationLoaded('settings')) {
+            $server->settings->makeHidden([
+                'sentinel_token',
+                'sentinel_custom_url',
+                'logdrain_newrelic_license_key',
+                'logdrain_axiom_api_key',
+                'logdrain_custom_config',
+                'logdrain_custom_config_parser',
+            ]);
+        }
     }
 
     /**
@@ -276,7 +316,7 @@ class DatabasesController extends Controller
 
         $this->authorize('view', $database);
 
-        return response()->json($this->removeSensitiveData($database));
+        return response()->json($this->removeSensitiveData($database, loadNestedServerSecrets: true));
     }
 
     #[OA\Patch(
