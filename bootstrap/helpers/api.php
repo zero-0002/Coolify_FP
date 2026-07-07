@@ -6,6 +6,7 @@ use App\Enums\StaticImageTypes;
 use App\Rules\ValidGitBranch;
 use App\Support\ValidationPatterns;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -85,6 +86,20 @@ function serializeApiResponse($data)
 
         return $d;
     }
+}
+
+/**
+ * Re-expose a model's `$hidden` sensitive fields when the current API request
+ * carries the `read:sensitive` or `root` token ability (set by the
+ * ApiSensitiveData middleware).
+ */
+function exposeSensitiveFields(Model $model): Model
+{
+    if (request()->attributes->get('can_read_sensitive', false) === true && filled($model->getHidden())) {
+        $model->makeVisible($model->getHidden());
+    }
+
+    return $model;
 }
 
 function sharedDataApplications()

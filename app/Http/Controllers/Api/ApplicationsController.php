@@ -45,6 +45,15 @@ class ApplicationsController extends Controller
         return 'Application not found.';
     }
 
+    private function exposeFileStorageContentIfAllowed(LocalFileVolume|LocalPersistentVolume $storage): LocalFileVolume|LocalPersistentVolume
+    {
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $storage->makeVisible(['content']);
+        }
+
+        return $storage;
+    }
+
     private function removeSensitiveData($application)
     {
         $application->makeHidden([
@@ -53,8 +62,8 @@ class ApplicationsController extends Controller
             'resourceable_id',
             'resourceable_type',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
-            $application->makeHidden([
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $application->makeVisible([
                 'custom_labels',
                 'dockerfile',
                 'docker_compose',
@@ -63,10 +72,14 @@ class ApplicationsController extends Controller
                 'manual_webhook_secret_gitea',
                 'manual_webhook_secret_github',
                 'manual_webhook_secret_gitlab',
-                'private_key_id',
+                'http_basic_auth_password',
                 'value',
                 'real_value',
-                'http_basic_auth_password',
+            ]);
+            $this->exposeNestedServerSecrets($application);
+        } else {
+            $application->makeHidden([
+                'private_key_id',
             ]);
         }
 
@@ -75,6 +88,34 @@ class ApplicationsController extends Controller
         }
 
         return serializeApiResponse($application);
+    }
+
+    /**
+     * Expose sensitive fields on eager-loaded nested Server + ServerSetting
+     * relations for callers with the `read:sensitive` or `root` token ability.
+     * Models hide these by default via $hidden; this re-exposes them per-request.
+     */
+    private function exposeNestedServerSecrets($model): void
+    {
+        $server = $model->destination?->server ?? null;
+        if (! $server) {
+            return;
+        }
+        $server->makeVisible([
+            'logdrain_axiom_api_key',
+            'logdrain_newrelic_license_key',
+        ]);
+        $settings = $server->settings ?? null;
+        if ($settings) {
+            $settings->makeVisible([
+                'sentinel_token',
+                'sentinel_custom_url',
+                'logdrain_newrelic_license_key',
+                'logdrain_axiom_api_key',
+                'logdrain_custom_config',
+                'logdrain_custom_config_parser',
+            ]);
+        }
     }
 
     #[OA\Get(
@@ -129,8 +170,12 @@ class ApplicationsController extends Controller
         }
 
         $tagName = $request->query('tag');
+        $applicationRelations = $request->attributes->get('can_read_sensitive', false) === true
+            ? ['destination.server.settings']
+            : [];
 
         $applications = Application::ownedByCurrentTeamAPI($teamId)
+            ->with($applicationRelations)
             ->when($tagName, function ($query, $tagName) {
                 $query->whereHas('tags', function ($query) use ($tagName) {
                     $query->where('name', $tagName);
@@ -2045,7 +2090,7 @@ class ApplicationsController extends Controller
         if (! $uuid) {
             return response()->json(['message' => 'UUID is required.'], 400);
         }
-        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->uuid)->first();
+        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->route('uuid'))->first();
         if (! $application) {
             return response()->json(['message' => 'Application not found.'], 404);
         }
@@ -2133,7 +2178,7 @@ class ApplicationsController extends Controller
         if (! $uuid) {
             return response()->json(['message' => 'UUID is required.'], 400);
         }
-        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->uuid)->first();
+        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->route('uuid'))->first();
         if (! $application) {
             return response()->json(['message' => 'Application not found.'], 404);
         }
@@ -2227,7 +2272,7 @@ class ApplicationsController extends Controller
         if (! $request->uuid) {
             return response()->json(['message' => 'UUID is required.'], 404);
         }
-        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->uuid)->first();
+        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->route('uuid'))->first();
 
         if (! $application) {
             return response()->json([
@@ -2440,7 +2485,7 @@ class ApplicationsController extends Controller
             return $return;
         }
 
-        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->uuid)->first();
+        $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $request->route('uuid'))->first();
         if (! $application) {
             return response()->json([
                 'message' => 'Application not found',
@@ -4040,6 +4085,7 @@ class ApplicationsController extends Controller
 
         $persistentStorages = $application->persistentStorages->sortBy('id')->values();
         $fileStorages = $application->fileStorages->sortBy('id')->values();
+        $fileStorages->each(fn (LocalFileVolume $storage) => $this->exposeFileStorageContentIfAllowed($storage));
 
         return response()->json([
             'persistent_storages' => $persistentStorages,
@@ -4254,7 +4300,7 @@ class ApplicationsController extends Controller
             'mount_path' => $storage->mount_path ?? null,
         ]);
 
-        return response()->json($storage);
+        return response()->json($this->exposeFileStorageContentIfAllowed($storage));
     }
 
     #[OA\Post(
@@ -4488,7 +4534,7 @@ class ApplicationsController extends Controller
             'mount_path' => $storage->mount_path,
         ]);
 
-        return response()->json($storage, 201);
+        return response()->json($this->exposeFileStorageContentIfAllowed($storage), 201);
     }
 
     #[OA\Delete(

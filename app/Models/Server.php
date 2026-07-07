@@ -254,6 +254,16 @@ class Server extends BaseModel
         'force_disabled' => 'boolean',
     ];
 
+    /**
+     * Sensitive fields hidden by default in serialized output (toArray/toJson).
+     * API controllers should call makeVisible([...]) for callers with the
+     * `read:sensitive` or `root` token ability.
+     */
+    protected $hidden = [
+        'logdrain_axiom_api_key',
+        'logdrain_newrelic_license_key',
+    ];
+
     protected $schemalessAttributes = [
         'proxy',
     ];

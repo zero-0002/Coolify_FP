@@ -17,10 +17,17 @@ class GithubController extends Controller
 {
     private function removeSensitiveData($githubApp)
     {
-        $githubApp->makeHidden([
-            'client_secret',
-            'webhook_secret',
-        ]);
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $githubApp->makeVisible([
+                'client_secret',
+                'webhook_secret',
+            ]);
+        } else {
+            $githubApp->makeHidden([
+                'client_secret',
+                'webhook_secret',
+            ]);
+        }
 
         return serializeApiResponse($githubApp);
     }
