@@ -620,6 +620,13 @@ class ByHetzner extends Component
     {
         $this->validate();
 
+        if (! $this->enable_ipv4 && ! $this->enable_ipv6) {
+            $this->addError('enable_ipv4', 'Enable at least one public IP protocol.');
+            $this->addError('enable_ipv6', 'Enable at least one public IP protocol.');
+
+            return null;
+        }
+
         try {
             $this->authorize('create', Server::class);
 

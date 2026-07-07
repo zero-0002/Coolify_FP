@@ -824,6 +824,16 @@ class HetznerController extends Controller
             $request->offsetSet('instant_validate', false);
         }
 
+        if (! $request->boolean('enable_ipv4') && ! $request->boolean('enable_ipv6')) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => [
+                    'enable_ipv4' => ['Enable at least one public IP protocol.'],
+                    'enable_ipv6' => ['Enable at least one public IP protocol.'],
+                ],
+            ], 422);
+        }
+
         // Validate cloud provider token
         $tokenUuid = $this->getCloudProviderTokenUuid($request);
         $token = CloudProviderToken::whereTeamId($teamId)

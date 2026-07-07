@@ -240,7 +240,7 @@ describe('Hetzner data loading', function () {
             'token' => 'test-hetzner-api-token',
         ]);
 
-        PrivateKey::factory()->create([
+        $this->privateKey = PrivateKey::factory()->create([
             'team_id' => $this->team->id,
         ]);
     });
@@ -297,5 +297,24 @@ describe('Hetzner data loading', function () {
 
         expect($component->get('hetznerFirewalls'))->toHaveCount(1)
             ->and($component->get('hetznerNetworks'))->toHaveCount(1);
+    });
+
+    test('rejects submitting without a public IP protocol before calling Hetzner', function () {
+        Http::fake();
+
+        Livewire::test(ByHetzner::class)
+            ->set('current_step', 2)
+            ->set('selected_token_id', $this->hetznerToken->id)
+            ->set('server_name', 'test-server')
+            ->set('selected_location', 'nbg1')
+            ->set('selected_server_type', 'cx11')
+            ->set('selected_image', 15512617)
+            ->set('private_key_id', $this->privateKey->id)
+            ->set('enable_ipv4', false)
+            ->set('enable_ipv6', false)
+            ->call('submit')
+            ->assertHasErrors(['enable_ipv4', 'enable_ipv6']);
+
+        Http::assertNothingSent();
     });
 });
