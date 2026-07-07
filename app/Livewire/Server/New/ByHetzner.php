@@ -74,8 +74,6 @@ class ByHetzner extends Component
 
     public bool $enable_backups = false;
 
-    public bool $show_advanced_hetzner_options = false;
-
     public bool $show_cloud_init_script = false;
 
     public ?string $cloud_init_script = null;
@@ -131,7 +129,6 @@ class ByHetzner extends Component
         $this->save_cloud_init_script = false;
         $this->cloud_init_script_name = null;
         $this->selected_cloud_init_script_id = null;
-        $this->show_advanced_hetzner_options = false;
         $this->show_cloud_init_script = false;
         $this->selectedHetznerSshKeyIds = [];
         $this->selectedHetznerFirewallIds = [];
@@ -191,7 +188,6 @@ class ByHetzner extends Component
                 'enable_ipv4' => 'required|boolean',
                 'enable_ipv6' => 'required|boolean',
                 'enable_backups' => 'required|boolean',
-                'show_advanced_hetzner_options' => 'boolean',
                 'show_cloud_init_script' => 'boolean',
                 'cloud_init_script' => ['nullable', 'string', new ValidCloudInitYaml],
                 'save_cloud_init_script' => 'boolean',
@@ -452,22 +448,6 @@ class ByHetzner extends Component
         return '€'.number_format($price * 0.2, 2);
     }
 
-    public function getShouldShowAdvancedHetznerOptionsProperty(): bool
-    {
-        return $this->show_advanced_hetzner_options
-            || $this->selectedHetznerSshKeyIds !== []
-            || $this->selectedHetznerFirewallIds !== []
-            || $this->selectedHetznerNetworkIds !== []
-            || $this->enable_backups
-            || ! $this->enable_ipv4
-            || ! $this->enable_ipv6
-            || $this->show_cloud_init_script
-            || filled($this->cloud_init_script)
-            || $this->save_cloud_init_script
-            || filled($this->cloud_init_script_name)
-            || filled($this->selected_cloud_init_script_id);
-    }
-
     public function getAdvancedHetznerOptionsSummaryProperty(): array
     {
         $summary = [];
@@ -502,15 +482,9 @@ class ByHetzner extends Component
         return $summary;
     }
 
-    public function toggleAdvancedHetznerOptions(): void
-    {
-        $this->show_advanced_hetzner_options = ! $this->show_advanced_hetzner_options;
-    }
-
     public function showCloudInitScript(): void
     {
         $this->show_cloud_init_script = true;
-        $this->show_advanced_hetzner_options = true;
     }
 
     public function updatedSelectedLocation($value)
@@ -545,7 +519,6 @@ class ByHetzner extends Component
             $this->cloud_init_script = $script->script;
             $this->cloud_init_script_name = $script->name;
             $this->show_cloud_init_script = true;
-            $this->show_advanced_hetzner_options = true;
         }
     }
 

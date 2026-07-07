@@ -189,22 +189,20 @@ describe('Boarding Flow Integration', function () {
         expect((bool) $this->team->fresh()->show_boarding)->toBeTrue();
     });
 
-    test('keeps advanced Hetzner options collapsed by default in the create dialog', function () {
+    test('uses the shared dropdown UI for advanced Hetzner options', function () {
         Livewire::test(ByHetzner::class)
             ->set('current_step', 2)
-            ->assertSet('show_advanced_hetzner_options', false)
             ->assertSee('Advanced Hetzner options')
-            ->assertDontSee('Extra SSH Keys')
-            ->assertDontSee('Firewalls')
-            ->assertDontSee('Private Networks')
-            ->assertDontSee('Enable Hetzner Backups')
-            ->assertDontSee('Cloud-Init Script');
+            ->assertSeeHtml('dropdownOpen')
+            ->assertSeeHtml('x-ref="panel"')
+            ->assertSeeHtml('dark:bg-coolgray-100')
+            ->assertSeeHtml('dark:bg-transparent')
+            ->assertSeeHtml('@click.outside="if (! true) close()"');
     });
 
-    test('shows advanced Hetzner options when expanded', function () {
+    test('renders advanced Hetzner option controls inside the dropdown menu', function () {
         Livewire::test(ByHetzner::class)
             ->set('current_step', 2)
-            ->set('show_advanced_hetzner_options', true)
             ->assertSee('Extra SSH Keys')
             ->assertSee('Firewalls')
             ->assertSee('Private Networks')
@@ -216,7 +214,6 @@ describe('Boarding Flow Integration', function () {
     test('shows the cloud init script name only when saving the script', function () {
         Livewire::test(ByHetzner::class)
             ->set('current_step', 2)
-            ->set('show_advanced_hetzner_options', true)
             ->set('show_cloud_init_script', true)
             ->assertSee('Cloud-Init Script')
             ->assertSee('Save this script for later use')
