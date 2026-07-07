@@ -9,12 +9,12 @@ use Illuminate\Http\Request;
 
 class UpdateServiceApplicationFromApi
 {
-    public function execute(ServiceApplication $serviceApplication, Request $request, string $teamId): ?JsonResponse
+    public function execute(ServiceApplication $serviceApplication, Request $request, string $teamId, array $payload): ?JsonResponse
     {
         $forceDomainOverride = $request->boolean('force_domain_override');
 
-        if ($request->has('url')) {
-            $urlRaw = $request->input('url');
+        if (array_key_exists('url', $payload)) {
+            $urlRaw = $payload['url'];
             if ($urlRaw !== null && ! is_string($urlRaw)) {
                 return response()->json([
                     'message' => 'Validation failed.',
@@ -59,38 +59,38 @@ class UpdateServiceApplicationFromApi
             $serviceApplication->fqdn = $parsed['normalized'];
         }
 
-        if ($request->has('human_name')) {
-            $serviceApplication->human_name = $request->input('human_name');
+        if (array_key_exists('human_name', $payload)) {
+            $serviceApplication->human_name = $payload['human_name'];
         }
 
-        if ($request->has('description')) {
-            $serviceApplication->description = $request->input('description');
+        if (array_key_exists('description', $payload)) {
+            $serviceApplication->description = $payload['description'];
         }
 
-        if ($request->has('image')) {
-            $serviceApplication->image = $request->input('image');
+        if (array_key_exists('image', $payload)) {
+            $serviceApplication->image = $payload['image'];
         }
 
-        if ($request->has('exclude_from_status')) {
-            $serviceApplication->exclude_from_status = $request->boolean('exclude_from_status');
+        if (array_key_exists('exclude_from_status', $payload)) {
+            $serviceApplication->exclude_from_status = filter_var($payload['exclude_from_status'], FILTER_VALIDATE_BOOLEAN);
         }
 
-        if ($request->has('is_gzip_enabled')) {
-            $serviceApplication->is_gzip_enabled = $request->boolean('is_gzip_enabled');
+        if (array_key_exists('is_gzip_enabled', $payload)) {
+            $serviceApplication->is_gzip_enabled = filter_var($payload['is_gzip_enabled'], FILTER_VALIDATE_BOOLEAN);
         }
 
-        if ($request->has('is_stripprefix_enabled')) {
-            $serviceApplication->is_stripprefix_enabled = $request->boolean('is_stripprefix_enabled');
+        if (array_key_exists('is_stripprefix_enabled', $payload)) {
+            $serviceApplication->is_stripprefix_enabled = filter_var($payload['is_stripprefix_enabled'], FILTER_VALIDATE_BOOLEAN);
         }
 
-        if ($request->has('is_log_drain_enabled')) {
-            $enabled = $request->boolean('is_log_drain_enabled');
+        if (array_key_exists('is_log_drain_enabled', $payload)) {
+            $enabled = filter_var($payload['is_log_drain_enabled'], FILTER_VALIDATE_BOOLEAN);
             $server = $serviceApplication->service->destination->server;
             if ($enabled && ! $server->isLogDrainEnabled()) {
                 return response()->json([
                     'message' => 'Validation failed.',
                     'errors' => [
-                        'is_log_drain_enabled' => 'Log drain is not enabled on the server for this service.',
+                        'is_log_drain_enabled' => ['Log drain is not enabled on the server for this service.'],
                     ],
                 ], 422);
             }

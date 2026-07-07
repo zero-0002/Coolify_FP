@@ -20,20 +20,13 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Queue::fake();
-    InstanceSettings::updateOrCreate(['id' => 0]);
+    InstanceSettings::forceCreate(['id' => 0, 'is_api_enabled' => true]);
 
     $this->team = Team::factory()->create();
     $this->user = User::factory()->create();
     $this->team->members()->attach($this->user->id, ['role' => 'owner']);
 
-    $plainTextToken = Str::random(40);
-    $token = $this->user->tokens()->create([
-        'name' => 'test-token',
-        'token' => hash('sha256', $plainTextToken),
-        'abilities' => ['*'],
-        'team_id' => $this->team->id,
-    ]);
-    $this->bearerToken = $token->getKey().'|'.$plainTextToken;
+    $this->bearerToken = createBearerTokenForServiceApplicationsApiTest($this->user, $this->team);
 
     $this->server = Server::factory()->create(['team_id' => $this->team->id]);
     $this->server->settings->update([
@@ -45,6 +38,19 @@ beforeEach(function () {
     $this->project = Project::factory()->create(['team_id' => $this->team->id]);
     $this->environment = Environment::factory()->create(['project_id' => $this->project->id]);
 });
+
+function createBearerTokenForServiceApplicationsApiTest(User $user, Team $team, array $abilities = ['*']): string
+{
+    $plainTextToken = Str::random(40);
+    $token = $user->tokens()->create([
+        'name' => 'test-token',
+        'token' => hash('sha256', $plainTextToken),
+        'abilities' => $abilities,
+        'team_id' => $team->id,
+    ]);
+
+    return $token->getKey().'|'.$plainTextToken;
+}
 
 function createServiceWithApplicationForApiTest(object $ctx): object
 {
@@ -108,6 +114,32 @@ describe('GET /api/v1/services/{uuid}/applications', function () {
         $response->assertStatus(404);
         $response->assertJsonFragment(['message' => 'Service not found.']);
     });
+
+    test('does not list applications from another team', function () {
+        $otherTeam = Team::factory()->create();
+        $otherServer = Server::factory()->create(['team_id' => $otherTeam->id]);
+        $otherServer->settings->update([
+            'is_reachable' => true,
+            'is_usable' => true,
+            'force_disabled' => false,
+        ]);
+
+        $otherCtx = (object) [
+            'server' => $otherServer,
+            'destination' => StandaloneDocker::where('server_id', $otherServer->id)->first(),
+            'environment' => Environment::factory()->create([
+                'project_id' => Project::factory()->create(['team_id' => $otherTeam->id])->id,
+            ]),
+        ];
+        $ctx = createServiceWithApplicationForApiTest($otherCtx);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+        ])->getJson("/api/v1/services/{$ctx->service->uuid}/applications");
+
+        $response->assertStatus(404);
+        $response->assertJsonFragment(['message' => 'Service not found.']);
+    });
 });
 
 describe('GET /api/v1/services/{uuid}/applications/{app_uuid}', function () {
@@ -149,7 +181,7 @@ describe('PATCH /api/v1/services/{uuid}/applications/{app_uuid}', function () {
             'human_name' => 'x',
         ], ['Accept' => 'application/json', 'Content-Type' => 'application/json']);
 
-        $response->assertStatus(400);
+        $response->assertStatus(401);
     });
 
     test('updates human_name', function () {
@@ -191,13 +223,51 @@ describe('PATCH /api/v1/services/{uuid}/applications/{app_uuid}', function () {
         $response->assertStatus(422);
         expect((string) $response->json('errors.is_log_drain_enabled.0'))->toContain('Log drain');
     });
+
+    test('read-only token cannot update a service application', function () {
+        $ctx = createServiceWithApplicationForApiTest($this);
+        $readOnlyToken = createBearerTokenForServiceApplicationsApiTest($this->user, $this->team, ['read']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$readOnlyToken,
+        ])->patchJson("/api/v1/services/{$ctx->service->uuid}/applications/{$ctx->serviceApplication->uuid}", [
+            'human_name' => 'Blocked',
+        ]);
+
+        $response->assertStatus(403);
+    });
+
+    test('returns 409 for domain conflicts unless forced', function () {
+        $ctx = createServiceWithApplicationForApiTest($this);
+        $ctx->serviceApplication->update(['fqdn' => 'http://used.example.com']);
+        $otherApplication = ServiceApplication::create([
+            'name' => 'admin',
+            'service_id' => $ctx->service->id,
+            'image' => 'nginx:alpine',
+        ]);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+        ])->patchJson("/api/v1/services/{$ctx->service->uuid}/applications/{$otherApplication->uuid}", [
+            'url' => 'http://used.example.com',
+        ])->assertStatus(409);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+        ])->patchJson("/api/v1/services/{$ctx->service->uuid}/applications/{$otherApplication->uuid}?force_domain_override=true", [
+            'url' => 'http://used.example.com',
+        ])->assertStatus(200);
+
+        $otherApplication->refresh();
+        expect($otherApplication->fqdn)->toBe('http://used.example.com');
+    });
 });
 
 describe('POST /api/v1/services/{uuid}/applications/{app_uuid}/restart', function () {
     test('returns 400 without valid token', function () {
         $response = $this->postJson('/api/v1/services/some-uuid/applications/some-app/restart');
 
-        $response->assertStatus(400);
+        $response->assertStatus(401);
     });
 
     test('queues restart for a service application', function () {
@@ -214,6 +284,17 @@ describe('POST /api/v1/services/{uuid}/applications/{app_uuid}/restart', functio
 });
 
 describe('POST /api/v1/services/{uuid}/applications/{app_uuid}/start', function () {
+    test('write token cannot start a service application', function () {
+        $ctx = createServiceWithApplicationForApiTest($this);
+        $writeToken = createBearerTokenForServiceApplicationsApiTest($this->user, $this->team, ['write']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$writeToken,
+        ])->postJson("/api/v1/services/{$ctx->service->uuid}/applications/{$ctx->serviceApplication->uuid}/start");
+
+        $response->assertStatus(403);
+    });
+
     test('queues deploy for a service application', function () {
         $ctx = createServiceWithApplicationForApiTest($this);
 

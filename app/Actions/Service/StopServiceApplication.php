@@ -15,7 +15,7 @@ class StopServiceApplication
     {
         $service = $serviceApplication->service;
         $server = $service->destination->server;
-        $containerName = $serviceApplication->name.'-'.$service->uuid;
+        $containerName = escapeshellarg($serviceApplication->name.'-'.$service->uuid);
 
         instant_remote_process([
             "docker stop {$containerName}",

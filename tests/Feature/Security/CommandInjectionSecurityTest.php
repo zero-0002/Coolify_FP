@@ -996,6 +996,35 @@ describe('API route middleware for deploy actions', function () {
     });
 });
 
+describe('service application lifecycle command escaping', function () {
+    test('service application deploy action escapes docker command arguments', function () {
+        $source = file_get_contents(app_path('Actions/Service/DeployServiceApplication.php'));
+
+        expect($source)->toContain('escapeshellarg($workdir)')
+            ->and($source)->toContain('escapeshellarg($composeFile)')
+            ->and($source)->toContain('escapeshellarg($service->uuid)')
+            ->and($source)->toContain('escapeshellarg($composeServiceName)')
+            ->and($source)->toContain('escapeshellarg($service->destination->network)');
+    });
+
+    test('service application restart and stop actions escape container names', function (string $path) {
+        $source = file_get_contents(app_path($path));
+
+        expect($source)->toContain('escapeshellarg($serviceApplication->name');
+    })->with([
+        'restart action' => 'Actions/Service/RestartServiceApplication.php',
+        'stop action' => 'Actions/Service/StopServiceApplication.php',
+    ]);
+
+    test('service application logs endpoint escapes container name before docker helpers', function () {
+        $source = file_get_contents(app_path('Http/Controllers/Api/ServiceApplicationsController.php'));
+
+        expect($source)->toContain('$safeContainerName = escapeshellarg($containerName)')
+            ->and($source)->toContain('getContainerStatus($server, $safeContainerName)')
+            ->and($source)->toContain('getContainerLogs($server, $containerName, $lines)');
+    });
+});
+
 describe('install/build/start command validation', function () {
     test('rejects semicolon injection in install_command', function () {
         $rules = sharedDataApplications();

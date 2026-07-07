@@ -306,6 +306,11 @@ class ServiceApplicationsController extends Controller
 
         $this->authorize('update', $serviceApplication);
 
+        $payload = $request->json()->all();
+        if (empty($payload)) {
+            $payload = $request->request->all();
+        }
+
         $allowedFields = [
             'url',
             'human_name',
@@ -328,9 +333,9 @@ class ServiceApplicationsController extends Controller
             'is_stripprefix_enabled' => 'sometimes|boolean',
         ];
 
-        $validator = Validator::make($request->all(), $validationRules);
+        $validator = Validator::make($payload, $validationRules);
 
-        $extraFields = array_diff(array_keys($request->all()), $allowedFields);
+        $extraFields = array_diff(array_keys($payload), $allowedFields);
         if ($validator->fails() || ! empty($extraFields)) {
             $errors = $validator->errors();
             foreach ($extraFields as $field) {
@@ -343,7 +348,7 @@ class ServiceApplicationsController extends Controller
             ], 422);
         }
 
-        $response = $updateServiceApplicationFromApi->execute($serviceApplication, $request, $teamId);
+        $response = $updateServiceApplicationFromApi->execute($serviceApplication, $request, $teamId, $payload);
         if ($response instanceof JsonResponse) {
             return $response;
         }
@@ -450,8 +455,9 @@ class ServiceApplicationsController extends Controller
         }
 
         $containerName = $serviceApplication->name.'-'.$serviceApplication->service->uuid;
+        $safeContainerName = escapeshellarg($containerName);
 
-        $status = getContainerStatus($server, $containerName);
+        $status = getContainerStatus($server, $safeContainerName);
         if ($status !== 'running') {
             return response()->json([
                 'message' => 'Service application container is not running.',
