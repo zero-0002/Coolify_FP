@@ -2280,6 +2280,7 @@ class ApplicationsController extends Controller
                             'force_domain_override' => ['type' => 'boolean', 'description' => 'Force domain usage even if conflicts are detected. Default is false.'],
                             'is_container_label_escape_enabled' => ['type' => 'boolean', 'default' => true, 'description' => 'Escape special characters in labels. By default, $ (and other chars) is escaped. So if you write $ in the labels, it will be saved as $$. If you want to use env variables inside the labels, turn this off.'],
                             'is_preserve_repository_enabled' => ['type' => 'boolean', 'description' => 'Preserve git repository during application update. If false, the existing repository will be removed and replaced with the new one. If true, the existing repository will be kept and the new one will be ignored. Default is false.'],
+                            'include_source_commit_in_build' => ['type' => 'boolean', 'description' => 'Include source commit information in the build. Default is false.'],
                         ],
                     )
                 ),
