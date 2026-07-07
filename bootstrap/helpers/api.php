@@ -8,6 +8,7 @@ use App\Support\ValidationPatterns;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 function getTeamIdFromToken()
@@ -201,6 +202,8 @@ function moveResourceToEnvironment(Request $request, $resource, string $resource
     if (! $newEnvironment) {
         return response()->json(['message' => 'Target environment not found or not owned by your team.'], 404);
     }
+
+    Gate::authorize('update', $newEnvironment);
 
     if ($resource->environment_id === $newEnvironment->id) {
         return response()->json(['message' => "$resourceType is already in this environment."], 400);

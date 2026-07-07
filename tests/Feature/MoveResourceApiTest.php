@@ -11,6 +11,7 @@ use App\Models\StandalonePostgresql;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 
 uses(RefreshDatabase::class);
 
@@ -121,6 +122,36 @@ describe('POST /api/v1/applications/{uuid}/move', function () {
         ]);
 
         $response->assertStatus(404);
+    });
+
+    test('returns 403 when target environment update is denied', function () {
+        $application = Application::factory()->create([
+            'environment_id' => $this->environment->id,
+            'destination_id' => $this->destination->id,
+            'destination_type' => $this->destination->getMorphClass(),
+        ]);
+
+        Gate::before(function (User $user, string $ability, array $arguments) {
+            $target = $arguments[0] ?? null;
+
+            if ($ability === 'update' && $target instanceof Environment && $target->is($this->targetEnvironment)) {
+                return false;
+            }
+
+            return null;
+        });
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->bearerToken,
+            'Content-Type' => 'application/json',
+        ])->postJson("/api/v1/applications/{$application->uuid}/move", [
+            'environment_uuid' => $this->targetEnvironment->uuid,
+        ]);
+
+        $response->assertForbidden();
+
+        $application->refresh();
+        expect($application->environment_id)->toBe($this->environment->id);
     });
 
     test('returns 400 when application is already in the target environment', function () {
