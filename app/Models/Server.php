@@ -17,6 +17,7 @@ use App\Livewire\Server\Proxy;
 use App\Notifications\Server\Reachable;
 use App\Notifications\Server\Unreachable;
 use App\Services\ConfigurationRepository;
+use App\Support\ValidationPatterns;
 use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasMetrics;
 use App\Traits\HasSafeStringAttribute;
@@ -34,8 +35,8 @@ use OpenApi\Attributes as OA;
 use Spatie\SchemalessAttributes\Casts\SchemalessAttributes;
 use Spatie\SchemalessAttributes\SchemalessAttributesTrait;
 use Spatie\Url\Url;
+use Stevebauman\Purify\Facades\Purify;
 use Symfony\Component\Yaml\Yaml;
-use Visus\Cuid2\Cuid2;
 
 /**
  * @property array{
@@ -134,7 +135,7 @@ class Server extends BaseModel
                     $payload['ip_previous'] = $server->getOriginal('ip');
                 }
             }
-            $server->forceFill($payload);
+            $server->fill($payload);
         });
         static::saved(function ($server) {
             if ($server->wasChanged('private_key_id') || $server->privateKey?->isDirty()) {
@@ -147,19 +148,14 @@ class Server extends BaseModel
             ]);
             if ($server->id === 0) {
                 if ($server->isSwarm()) {
-                    SwarmDocker::create([
+                    (new SwarmDocker)->forceFill([
                         'id' => 0,
                         'name' => 'coolify',
                         'network' => 'coolify-overlay',
                         'server_id' => $server->id,
-                    ]);
+                    ])->save();
                 } else {
-                    StandaloneDocker::create([
-                        'id' => 0,
-                        'name' => 'coolify',
-                        'network' => 'coolify',
-                        'server_id' => $server->id,
-                    ]);
+                    (new StandaloneDocker)->forceFill($server->defaultStandaloneDockerAttributes(id: 0))->saveQuietly();
                 }
             } else {
                 if ($server->isSwarm()) {
@@ -169,18 +165,32 @@ class Server extends BaseModel
                         'server_id' => $server->id,
                     ]);
                 } else {
-                    $standaloneDocker = new StandaloneDocker([
-                        'name' => 'coolify',
-                        'uuid' => (string) new Cuid2,
-                        'network' => 'coolify',
-                        'server_id' => $server->id,
-                    ]);
+                    $standaloneDocker = new StandaloneDocker;
+                    $standaloneDocker->forceFill($server->defaultStandaloneDockerAttributes());
                     $standaloneDocker->saveQuietly();
                 }
             }
             if (! isset($server->proxy->redirect_enabled)) {
                 $server->proxy->redirect_enabled = true;
             }
+
+            // Create predefined server shared variables
+            SharedEnvironmentVariable::create([
+                'key' => 'COOLIFY_SERVER_UUID',
+                'value' => $server->uuid,
+                'type' => 'server',
+                'server_id' => $server->id,
+                'team_id' => $server->team_id,
+                'is_literal' => true,
+            ]);
+            SharedEnvironmentVariable::create([
+                'key' => 'COOLIFY_SERVER_NAME',
+                'value' => $server->name,
+                'type' => 'server',
+                'server_id' => $server->id,
+                'team_id' => $server->team_id,
+                'is_literal' => true,
+            ]);
         });
         static::retrieved(function ($server) {
             if (! isset($server->proxy->redirect_enabled)) {
@@ -263,6 +273,7 @@ class Server extends BaseModel
         'detected_traefik_version',
         'traefik_outdated_info',
         'server_metadata',
+        'ip_previous',
     ];
 
     use HasSafeStringAttribute;
@@ -270,7 +281,7 @@ class Server extends BaseModel
     public function setValidationLogsAttribute($value): void
     {
         $this->attributes['validation_logs'] = $value !== null
-            ? \Stevebauman\Purify\Facades\Purify::config('validation_logs')->clean($value)
+            ? Purify::config('validation_logs')->clean($value)
             : null;
     }
 
@@ -934,10 +945,10 @@ $schema://$host {
     {
         return Attribute::make(
             get: function ($value) {
-                return preg_replace('/[^A-Za-z0-9\-_]/', '', $value);
+                return preg_replace(ValidationPatterns::INVALID_SERVER_USERNAME_CHARACTERS_PATTERN, '', $value);
             },
             set: function ($value) {
-                return preg_replace('/[^A-Za-z0-9\-_]/', '', $value);
+                return preg_replace(ValidationPatterns::INVALID_SERVER_USERNAME_CHARACTERS_PATTERN, '', $value);
             }
         );
     }
@@ -1020,6 +1031,30 @@ $schema://$host {
     public function team()
     {
         return $this->belongsTo(Team::class);
+    }
+
+    /**
+     * @return array{id?: int, name: string, uuid: string, network: string, server_id: int}
+     */
+    public function defaultStandaloneDockerAttributes(?int $id = null): array
+    {
+        $attributes = [
+            'name' => 'coolify',
+            'uuid' => new_public_id(),
+            'network' => 'coolify',
+            'server_id' => $this->id,
+        ];
+
+        if (! is_null($id)) {
+            $attributes['id'] = $id;
+        }
+
+        return $attributes;
+    }
+
+    public function environment_variables()
+    {
+        return $this->hasMany(SharedEnvironmentVariable::class)->where('type', 'server');
     }
 
     public function isProxyShouldRun()
@@ -1201,10 +1236,8 @@ $schema://$host {
         $this->refresh();
         $unreachableNotificationSent = (bool) $this->unreachable_notification_sent;
         $isReachable = (bool) $this->settings->is_reachable;
-        if ($isReachable === true) {
-            $this->unreachable_count = 0;
-            $this->save();
 
+        if ($isReachable === true) {
             if ($unreachableNotificationSent === true) {
                 $this->sendReachableNotification();
             }
@@ -1212,28 +1245,8 @@ $schema://$host {
             return;
         }
 
-        $this->increment('unreachable_count');
-
-        if ($this->unreachable_count === 1) {
-            $this->settings->is_reachable = true;
-            $this->settings->save();
-
-            return;
-        }
-
         if ($this->unreachable_count >= 2 && ! $unreachableNotificationSent) {
-            $failedChecks = 0;
-            for ($i = 0; $i < 3; $i++) {
-                $status = $this->serverStatus();
-                sleep(5);
-                if (! $status) {
-                    $failedChecks++;
-                }
-            }
-
-            if ($failedChecks === 3 && ! $unreachableNotificationSent) {
-                $this->sendUnreachableNotification();
-            }
+            $this->sendUnreachableNotification();
         }
     }
 
@@ -1510,7 +1523,6 @@ $schema://$host {
     public function generateCaCertificate()
     {
         try {
-            ray('Generating CA certificate for server', $this->id);
             SslHelper::generateSslCertificate(
                 commonName: 'Coolify CA Certificate',
                 serverId: $this->id,
@@ -1518,7 +1530,6 @@ $schema://$host {
                 validityDays: 10 * 365
             );
             $caCertificate = $this->sslCertificates()->where('is_ca_certificate', true)->first();
-            ray('CA certificate generated', $caCertificate);
             if ($caCertificate) {
                 $certificateContent = $caCertificate->ssl_certificate;
                 $caCertPath = config('constants.coolify.base_config_path').'/ssl/';

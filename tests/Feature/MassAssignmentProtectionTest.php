@@ -168,6 +168,58 @@ describe('mass assignment protection', function () {
         expect($model->isFillable('mongo_initdb_root_username'))->toBeTrue();
     });
 
+    test('standalone database models allow mass assignment of public_port_timeout', function () {
+        $models = [
+            StandalonePostgresql::class,
+            StandaloneRedis::class,
+            StandaloneMysql::class,
+            StandaloneMariadb::class,
+            StandaloneMongodb::class,
+            StandaloneKeydb::class,
+            StandaloneDragonfly::class,
+            StandaloneClickhouse::class,
+        ];
+
+        foreach ($models as $modelClass) {
+            $model = new $modelClass;
+            expect($model->isFillable('public_port_timeout'))
+                ->toBeTrue("{$modelClass} should allow mass assignment of 'public_port_timeout'");
+        }
+    });
+
+    test('standalone database models allow mass assignment of SSL fields where applicable', function () {
+        $sslModels = [
+            StandalonePostgresql::class,
+            StandaloneMysql::class,
+            StandaloneMariadb::class,
+            StandaloneMongodb::class,
+            StandaloneRedis::class,
+            StandaloneKeydb::class,
+            StandaloneDragonfly::class,
+        ];
+
+        foreach ($sslModels as $modelClass) {
+            $model = new $modelClass;
+            expect($model->isFillable('enable_ssl'))
+                ->toBeTrue("{$modelClass} should allow mass assignment of 'enable_ssl'");
+        }
+
+        // Clickhouse has no SSL columns
+        expect((new StandaloneClickhouse)->isFillable('enable_ssl'))->toBeFalse();
+
+        $sslModeModels = [
+            StandalonePostgresql::class,
+            StandaloneMysql::class,
+            StandaloneMongodb::class,
+        ];
+
+        foreach ($sslModeModels as $modelClass) {
+            $model = new $modelClass;
+            expect($model->isFillable('ssl_mode'))
+                ->toBeTrue("{$modelClass} should allow mass assignment of 'ssl_mode'");
+        }
+    });
+
     test('Application fill ignores non-fillable fields', function () {
         $application = new Application;
         $application->fill([

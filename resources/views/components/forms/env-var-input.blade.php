@@ -17,8 +17,15 @@
             selectedIndex: 0,
             cursorPosition: 0,
             currentScope: null,
-            availableScopes: ['team', 'project', 'environment'],
             availableVars: @js($availableVars),
+            get availableScopes() {
+                // Only include scopes that have at least one variable
+                const allScopes = ['team', 'project', 'environment', 'server'];
+                return allScopes.filter(scope => {
+                    const vars = this.availableVars[scope];
+                    return vars && vars.length > 0;
+                });
+            },
             scopeUrls: @js($scopeUrls),
 
             handleInput() {
@@ -54,6 +61,11 @@
 
                 if (content === '') {
                     this.currentScope = null;
+                    // Only show dropdown if there are available scopes with variables
+                    if (this.availableScopes.length === 0) {
+                        this.showDropdown = false;
+                        return;
+                    }
                     this.suggestions = this.availableScopes.map(scope => ({
                         type: 'scope',
                         value: scope,
@@ -184,6 +196,31 @@
         }"
         @click.outside="showDropdown = false">
 
+        <input
+            x-ref="input"
+            @input="handleInput()"
+            @keydown="handleKeydown($event)"
+            @click="handleInput()"
+            autocomplete="{{ $autocomplete }}"
+            x-bind:type="type"
+            x-bind:class="{ 'truncate': type === 'text' && ! $el.disabled }"
+            {{ $attributes->merge(['class' => $defaultClass]) }}
+            @required($required)
+            @readonly($readonly)
+            @if ($modelBinding !== 'null')
+                wire:model="{{ $modelBinding }}"
+                wire:dirty.class="[box-shadow:inset_4px_0_0_#6b16ed,inset_0_0_0_2px_#e5e5e5] dark:[box-shadow:inset_4px_0_0_#fcd452,inset_0_0_0_2px_#242424]"
+            @endif
+            wire:loading.attr="disabled"
+            @disabled($disabled)
+            @if ($type !== 'password')
+                type="{{ $type }}"
+            @endif
+            @if ($htmlId !== 'null') id="{{ $htmlId }}" @endif
+            name="{{ $name }}"
+            placeholder="{{ $attributes->get('placeholder') }}"
+            @if ($autofocus) autofocus @endif>
+
         @if ($type === 'password' && $allowToPeak)
             <button type="button" x-on:click="type = type === 'password' ? 'text' : 'password'"
                 class="flex absolute inset-y-0 right-0 z-10 items-center pr-2 cursor-pointer dark:hover:text-white"
@@ -203,31 +240,6 @@
                 </svg>
             </button>
         @endif
-
-        <input
-            x-ref="input"
-            @input="handleInput()"
-            @keydown="handleKeydown($event)"
-            @click="handleInput()"
-            autocomplete="{{ $autocomplete }}"
-            x-bind:type="type"
-            x-bind:class="{ 'truncate': type === 'text' && ! $el.disabled }"
-            {{ $attributes->merge(['class' => $defaultClass]) }}
-            @required($required)
-            @readonly($readonly)
-            @if ($modelBinding !== 'null')
-                wire:model="{{ $modelBinding }}"
-                wire:dirty.class="dark:border-l-warning border-l-coollabs border-l-4"
-            @endif
-            wire:loading.attr="disabled"
-            @disabled($disabled)
-            @if ($type !== 'password')
-                type="{{ $type }}"
-            @endif
-            @if ($htmlId !== 'null') id="{{ $htmlId }}" @endif
-            name="{{ $name }}"
-            placeholder="{{ $attributes->get('placeholder') }}"
-            @if ($autofocus) autofocus @endif>
 
         {{-- Dropdown for suggestions --}}
         <div x-show="showDropdown"

@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Spatie\Url\Url;
 use Symfony\Component\Yaml\Yaml;
-use Visus\Cuid2\Cuid2;
 
 /**
  * Validates a Docker Compose YAML string for command injection vulnerabilities.
@@ -22,25 +21,25 @@ use Visus\Cuid2\Cuid2;
  *
  * @param  string  $composeYaml  The raw Docker Compose YAML content
  *
- * @throws \Exception If the compose file contains command injection attempts
+ * @throws Exception If the compose file contains command injection attempts
  */
 function validateDockerComposeForInjection(string $composeYaml): void
 {
     try {
         $parsed = Yaml::parse($composeYaml);
-    } catch (\Exception $e) {
-        throw new \Exception('Invalid YAML format: '.$e->getMessage(), 0, $e);
+    } catch (Exception $e) {
+        throw new Exception('Invalid YAML format: '.$e->getMessage(), 0, $e);
     }
 
     if (! is_array($parsed) || ! isset($parsed['services']) || ! is_array($parsed['services'])) {
-        throw new \Exception('Docker Compose file must contain a "services" section');
+        throw new Exception('Docker Compose file must contain a "services" section');
     }
     // Validate service names
     foreach ($parsed['services'] as $serviceName => $serviceConfig) {
         try {
             validateShellSafePath($serviceName, 'service name');
-        } catch (\Exception $e) {
-            throw new \Exception(
+        } catch (Exception $e) {
+            throw new Exception(
                 'Invalid Docker Compose service name: '.$e->getMessage().
                 ' Service names must not contain shell metacharacters.',
                 0,
@@ -68,8 +67,8 @@ function validateDockerComposeForInjection(string $composeYaml): void
                             if (! $isSimpleEnvVar && ! $isEnvVarWithDefault && ! $isEnvVarWithPath) {
                                 try {
                                     validateShellSafePath($source, 'volume source');
-                                } catch (\Exception $e) {
-                                    throw new \Exception(
+                                } catch (Exception $e) {
+                                    throw new Exception(
                                         'Invalid Docker volume definition (array syntax): '.$e->getMessage().
                                         ' Please use safe path names without shell metacharacters.',
                                         0,
@@ -84,8 +83,8 @@ function validateDockerComposeForInjection(string $composeYaml): void
                         if (is_string($target)) {
                             try {
                                 validateShellSafePath($target, 'volume target');
-                            } catch (\Exception $e) {
-                                throw new \Exception(
+                            } catch (Exception $e) {
+                                throw new Exception(
                                     'Invalid Docker volume definition (array syntax): '.$e->getMessage().
                                     ' Please use safe path names without shell metacharacters.',
                                     0,
@@ -105,7 +104,7 @@ function validateDockerComposeForInjection(string $composeYaml): void
  *
  * @param  string  $volumeString  The volume string to validate
  *
- * @throws \Exception If the volume string contains command injection attempts
+ * @throws Exception If the volume string contains command injection attempts
  */
 function validateVolumeStringForInjection(string $volumeString): void
 {
@@ -325,9 +324,9 @@ function parseDockerVolumeString(string $volumeString): array
         if (! $isSimpleEnvVar && ! $isEnvVarWithPath) {
             try {
                 validateShellSafePath($sourceStr, 'volume source');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Re-throw with more context about the volume string
-                throw new \Exception(
+                throw new Exception(
                     'Invalid Docker volume definition: '.$e->getMessage().
                     ' Please use safe path names without shell metacharacters.'
                 );
@@ -343,8 +342,8 @@ function parseDockerVolumeString(string $volumeString): array
         // Still, defense in depth is important
         try {
             validateShellSafePath($targetStr, 'volume target');
-        } catch (\Exception $e) {
-            throw new \Exception(
+        } catch (Exception $e) {
+            throw new Exception(
                 'Invalid Docker volume definition: '.$e->getMessage().
                 ' Please use safe path names without shell metacharacters.'
             );
@@ -371,11 +370,9 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
     $pullRequestId = $pull_request_id;
     $isPullRequest = $pullRequestId == 0 ? false : true;
     $server = data_get($resource, 'destination.server');
-    $fileStorages = $resource->fileStorages();
-
     try {
         $yaml = Yaml::parse($compose);
-    } catch (\Exception) {
+    } catch (Exception) {
         return collect([]);
     }
     $services = data_get($yaml, 'services', collect([]));
@@ -409,8 +406,8 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
         // Validate service name for command injection
         try {
             validateShellSafePath($serviceName, 'service name');
-        } catch (\Exception $e) {
-            throw new \Exception(
+        } catch (Exception $e) {
+            throw new Exception(
                 'Invalid Docker Compose service name: '.$e->getMessage().
                 ' Service names must not contain shell metacharacters.'
             );
@@ -465,7 +462,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     $fqdn = generateFqdn(server: $server, random: "$uuid", parserVersion: $resource->compose_parsing_version);
                 }
 
-                if ($value && get_class($value) === \Illuminate\Support\Stringable::class && $value->startsWith('/')) {
+                if ($value && get_class($value) === Illuminate\Support\Stringable::class && $value->startsWith('/')) {
                     $path = $value->value();
                     if ($path !== '/') {
                         $fqdn = "$fqdn$path";
@@ -503,6 +500,40 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         'value' => $fqdn,
                         'is_preview' => false,
                     ]);
+                }
+
+            }
+
+            // Also populate docker_compose_domains for dockercompose apps from direct SERVICE_* declarations.
+            if ($resource->build_pack === 'dockercompose' && ($key->startsWith('SERVICE_FQDN_') || $key->startsWith('SERVICE_URL_'))) {
+                $parsed = parseServiceEnvironmentVariable($key->value());
+                $normalizedServiceName = str($parsed['service_name'])->replace('-', '_')->replace('.', '_')->value();
+                $serviceExists = false;
+                foreach (array_keys($services) as $serviceNameKey) {
+                    if (str($serviceNameKey)->replace('-', '_')->replace('.', '_')->value() === $normalizedServiceName) {
+                        $serviceExists = true;
+                        break;
+                    }
+                }
+                if ($serviceExists) {
+                    $domains = collect(json_decode(data_get($resource, 'docker_compose_domains') ?: '[]'));
+                    $domainExists = data_get($domains->get($normalizedServiceName), 'domain');
+                    if (is_null($domainExists)) {
+                        $serviceNameForDomain = str($parsed['service_name'])->replace('_', '-')->value();
+                        $domainValue = generateUrl(server: $server, random: "$serviceNameForDomain-$uuid");
+                        if ($value && get_class($value) === Illuminate\Support\Stringable::class && $value->startsWith('/')) {
+                            $path = $value->value();
+                            if ($path !== '/') {
+                                $domainValue = "$domainValue$path";
+                            }
+                        }
+                        if ($parsed['port'] && is_numeric($parsed['port'])) {
+                            $domainValue = "$domainValue:{$parsed['port']}";
+                        }
+                        $domains->put($normalizedServiceName, ['domain' => $domainValue]);
+                        $resource->docker_compose_domains = $domains->toJson();
+                        $resource->save();
+                    }
                 }
             }
         }
@@ -611,7 +642,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
 
                         // Only add domain if the service exists
                         if ($serviceExists) {
-                            $domains = collect(json_decode(data_get($resource, 'docker_compose_domains'))) ?? collect([]);
+                            $domains = collect(json_decode(data_get($resource, 'docker_compose_domains') ?: '[]'));
                             $domainExists = data_get($domains->get($serviceName), 'domain');
 
                             // Update domain using URL with port if applicable
@@ -704,14 +735,11 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     $source = $parsed['source'];
                     $target = $parsed['target'];
                     // Mode is available in $parsed['mode'] if needed
-                    $foundConfig = $fileStorages->whereMountPath($target)->first();
+                    $foundConfig = $originalResource->fileStorages()->whereMountPath($target)->first();
                     if (sourceIsLocal($source)) {
                         $type = str('bind');
                         if ($foundConfig) {
-                            $contentNotNull_temp = data_get($foundConfig, 'content');
-                            if ($contentNotNull_temp) {
-                                $content = $contentNotNull_temp;
-                            }
+                            $content = data_get($foundConfig, 'content');
                             $isDirectory = data_get($foundConfig, 'is_directory');
                         } else {
                             // By default, we cannot determine if the bind is a directory or not, so we set it to directory
@@ -738,8 +766,8 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         if (! $isSimpleEnvVar && ! $isEnvVarWithDefault && ! $isEnvVarWithPath) {
                             try {
                                 validateShellSafePath($sourceValue, 'volume source');
-                            } catch (\Exception $e) {
-                                throw new \Exception(
+                            } catch (Exception $e) {
+                                throw new Exception(
                                     'Invalid Docker volume definition (array syntax): '.$e->getMessage().
                                     ' Please use safe path names without shell metacharacters.'
                                 );
@@ -749,20 +777,17 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                     if ($target !== null && ! empty($target->value())) {
                         try {
                             validateShellSafePath($target->value(), 'volume target');
-                        } catch (\Exception $e) {
-                            throw new \Exception(
+                        } catch (Exception $e) {
+                            throw new Exception(
                                 'Invalid Docker volume definition (array syntax): '.$e->getMessage().
                                 ' Please use safe path names without shell metacharacters.'
                             );
                         }
                     }
 
-                    $foundConfig = $fileStorages->whereMountPath($target)->first();
+                    $foundConfig = $originalResource->fileStorages()->whereMountPath($target)->first();
                     if ($foundConfig) {
-                        $contentNotNull_temp = data_get($foundConfig, 'content');
-                        if ($contentNotNull_temp) {
-                            $content = $contentNotNull_temp;
-                        }
+                        $content = data_get($foundConfig, 'content');
                         $isDirectory = data_get($foundConfig, 'is_directory');
                     } else {
                         // if isDirectory is not set (or false) & content is also not set, we assume it is a directory
@@ -1240,7 +1265,7 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
                         $schema = $url->getScheme();
                         $portInt = $url->getPort();
                         $port = $portInt !== null ? ':'.$portInt : '';
-                        $random = new Cuid2;
+                        $random = new_public_id();
                         $preview_fqdn = str_replace('{{random}}', $random, $template);
                         $preview_fqdn = str_replace('{{domain}}', $host, $preview_fqdn);
                         $preview_fqdn = str_replace('{{pr_id}}', $pullRequestId, $preview_fqdn);
@@ -1489,9 +1514,8 @@ function applicationParser(Application $resource, int $pull_request_id = 0, ?int
             }
         }
         $resource->docker_compose_raw = Yaml::dump($originalYaml, 10, 2);
-    } catch (\Exception $e) {
+    } catch (Exception) {
         // If parsing fails, keep the original docker_compose_raw unchanged
-        ray('Failed to update docker_compose_raw in applicationParser: '.$e->getMessage());
     }
 
     data_forget($resource, 'environment_variables');
@@ -1519,7 +1543,7 @@ function serviceParser(Service $resource): Collection
 
     try {
         $yaml = Yaml::parse($compose);
-    } catch (\Exception) {
+    } catch (Exception) {
         return collect([]);
     }
     $services = data_get($yaml, 'services', collect([]));
@@ -1566,8 +1590,8 @@ function serviceParser(Service $resource): Collection
         // Validate service name for command injection
         try {
             validateShellSafePath($serviceName, 'service name');
-        } catch (\Exception $e) {
-            throw new \Exception(
+        } catch (Exception $e) {
+            throw new Exception(
                 'Invalid Docker Compose service name: '.$e->getMessage().
                 ' Service names must not contain shell metacharacters.'
             );
@@ -1593,20 +1617,25 @@ function serviceParser(Service $resource): Collection
             // Use image detection for non-migrated services
             $isDatabase = isDatabaseImage($image, $service);
             if ($isDatabase) {
-                $applicationFound = ServiceApplication::where('name', $serviceName)->where('service_id', $resource->id)->first();
-                if ($applicationFound) {
-                    $savedService = $applicationFound;
+                $databaseFound = ServiceDatabase::where('name', $serviceName)->where('service_id', $resource->id)->first();
+                if ($databaseFound) {
+                    $savedService = $databaseFound;
                 } else {
-                    $savedService = ServiceDatabase::firstOrCreate([
+                    $savedService = ServiceDatabase::create([
                         'name' => $serviceName,
                         'service_id' => $resource->id,
                     ]);
                 }
             } else {
-                $savedService = ServiceApplication::firstOrCreate([
-                    'name' => $serviceName,
-                    'service_id' => $resource->id,
-                ]);
+                $applicationFound = ServiceApplication::where('name', $serviceName)->where('service_id', $resource->id)->first();
+                if ($applicationFound) {
+                    $savedService = $applicationFound;
+                } else {
+                    $savedService = ServiceApplication::create([
+                        'name' => $serviceName,
+                        'service_id' => $resource->id,
+                    ]);
+                }
             }
         }
         // Update image if it changed
@@ -1772,7 +1801,7 @@ function serviceParser(Service $resource): Collection
                 // Strip scheme for environment variable values
                 $fqdnValueForEnv = str($fqdn)->after('://')->value();
 
-                if ($value && get_class($value) === \Illuminate\Support\Stringable::class && $value->startsWith('/')) {
+                if ($value && get_class($value) === Illuminate\Support\Stringable::class && $value->startsWith('/')) {
                     $path = $value->value();
                     if ($path !== '/') {
                         // Only add path if it's not already present (prevents duplication on subsequent parse() calls)
@@ -2066,7 +2095,6 @@ function serviceParser(Service $resource): Collection
                 'service_id' => $resource->id,
             ]);
         }
-        $fileStorages = $savedService->fileStorages();
         if ($savedService->image !== $image) {
             $savedService->image = $image;
             $savedService->save();
@@ -2086,14 +2114,11 @@ function serviceParser(Service $resource): Collection
                     $source = $parsed['source'];
                     $target = $parsed['target'];
                     // Mode is available in $parsed['mode'] if needed
-                    $foundConfig = $fileStorages->whereMountPath($target)->first();
+                    $foundConfig = $originalResource->fileStorages()->whereMountPath($target)->first();
                     if (sourceIsLocal($source)) {
                         $type = str('bind');
                         if ($foundConfig) {
-                            $contentNotNull_temp = data_get($foundConfig, 'content');
-                            if ($contentNotNull_temp) {
-                                $content = $contentNotNull_temp;
-                            }
+                            $content = data_get($foundConfig, 'content');
                             $isDirectory = data_get($foundConfig, 'is_directory');
                         } else {
                             // By default, we cannot determine if the bind is a directory or not, so we set it to directory
@@ -2120,8 +2145,8 @@ function serviceParser(Service $resource): Collection
                         if (! $isSimpleEnvVar && ! $isEnvVarWithDefault && ! $isEnvVarWithPath) {
                             try {
                                 validateShellSafePath($sourceValue, 'volume source');
-                            } catch (\Exception $e) {
-                                throw new \Exception(
+                            } catch (Exception $e) {
+                                throw new Exception(
                                     'Invalid Docker volume definition (array syntax): '.$e->getMessage().
                                     ' Please use safe path names without shell metacharacters.'
                                 );
@@ -2131,20 +2156,17 @@ function serviceParser(Service $resource): Collection
                     if ($target !== null && ! empty($target->value())) {
                         try {
                             validateShellSafePath($target->value(), 'volume target');
-                        } catch (\Exception $e) {
-                            throw new \Exception(
+                        } catch (Exception $e) {
+                            throw new Exception(
                                 'Invalid Docker volume definition (array syntax): '.$e->getMessage().
                                 ' Please use safe path names without shell metacharacters.'
                             );
                         }
                     }
 
-                    $foundConfig = $fileStorages->whereMountPath($target)->first();
+                    $foundConfig = $originalResource->fileStorages()->whereMountPath($target)->first();
                     if ($foundConfig) {
-                        $contentNotNull_temp = data_get($foundConfig, 'content');
-                        if ($contentNotNull_temp) {
-                            $content = $contentNotNull_temp;
-                        }
+                        $content = data_get($foundConfig, 'content');
                         $isDirectory = data_get($foundConfig, 'is_directory');
                     } else {
                         // if isDirectory is not set (or false) & content is also not set, we assume it is a directory
@@ -2741,9 +2763,8 @@ function serviceParser(Service $resource): Collection
             }
         }
         $resource->docker_compose_raw = Yaml::dump($originalYaml, 10, 2);
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         // If parsing fails, keep the original docker_compose_raw unchanged
-        ray('Failed to update docker_compose_raw in serviceParser: '.$e->getMessage());
     }
 
     data_forget($resource, 'environment_variables');
