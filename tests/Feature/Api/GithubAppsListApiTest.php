@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Http;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    config()->set('app.maintenance.driver', 'file');
+    config()->set('cache.default', 'array');
+
     InstanceSettings::forceCreate(['id' => 0, 'is_api_enabled' => true]);
 
     // Create a team with owner
@@ -20,7 +23,7 @@ beforeEach(function () {
     session(['currentTeam' => $this->team]);
 
     // Create an API token for the user
-    $this->token = $this->user->createToken('test-token');
+    $this->token = $this->user->createToken('test-token', ['*']);
     $this->bearerToken = $this->token->plainTextToken;
 
     // Create a private key for the team
@@ -30,6 +33,13 @@ beforeEach(function () {
         'team_id' => $this->team->id,
     ]);
 });
+
+function createGithubAppsApiToken($context, array $abilities): string
+{
+    session(['currentTeam' => $context->team]);
+
+    return $context->user->createToken('github-apps-test-token', $abilities)->plainTextToken;
+}
 
 /**
  * Generate a temporary 2048-bit RSA private key for GitHub Apps API tests.
@@ -96,7 +106,7 @@ describe('GET /api/v1/github-apps', function () {
         ]);
     });
 
-    test('does not return sensitive data', function () {
+    test('does not return sensitive data for read tokens', function () {
         // Create a GitHub app
         GithubApp::create([
             'name' => 'Test GitHub App',
@@ -111,8 +121,10 @@ describe('GET /api/v1/github-apps', function () {
             'team_id' => $this->team->id,
         ]);
 
+        $readToken = createGithubAppsApiToken($this, ['read']);
+
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer '.$this->bearerToken,
+            'Authorization' => 'Bearer '.$readToken,
         ])->getJson('/api/v1/github-apps');
 
         $response->assertStatus(200);
@@ -121,6 +133,33 @@ describe('GET /api/v1/github-apps', function () {
         // Ensure sensitive data is not present
         expect($json[0])->not->toHaveKey('client_secret');
         expect($json[0])->not->toHaveKey('webhook_secret');
+    });
+
+    test('returns sensitive data for read sensitive tokens', function () {
+        GithubApp::create([
+            'name' => 'Sensitive GitHub App',
+            'api_url' => 'https://api.github.com',
+            'html_url' => 'https://github.com',
+            'app_id' => 12345,
+            'installation_id' => 67890,
+            'client_id' => 'test-client-id',
+            'client_secret' => 'secret-should-be-visible',
+            'webhook_secret' => 'webhook-secret-should-be-visible',
+            'private_key_id' => $this->privateKey->id,
+            'team_id' => $this->team->id,
+        ]);
+
+        $sensitiveToken = createGithubAppsApiToken($this, ['read', 'read:sensitive']);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$sensitiveToken,
+        ])->getJson('/api/v1/github-apps');
+
+        $response->assertSuccessful();
+        $response->assertJsonFragment([
+            'client_secret' => 'secret-should-be-visible',
+            'webhook_secret' => 'webhook-secret-should-be-visible',
+        ]);
     });
 
     test('returns system-wide github apps', function () {
@@ -144,7 +183,7 @@ describe('GET /api/v1/github-apps', function () {
         $otherUser = User::factory()->create();
         $otherTeam->members()->attach($otherUser->id, ['role' => 'owner']);
         session(['currentTeam' => $otherTeam]);
-        $otherToken = $otherUser->createToken('other-token');
+        $otherToken = $otherUser->createToken('other-token', ['*']);
 
         // System-wide apps should be visible to other teams
         $response = $this->withHeaders([

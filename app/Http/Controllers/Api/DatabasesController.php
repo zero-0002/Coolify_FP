@@ -20,6 +20,7 @@ use App\Models\ScheduledDatabaseBackup;
 use App\Models\Server;
 use App\Models\StandalonePostgresql;
 use App\Support\ValidationPatterns;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,26 +28,109 @@ use OpenApi\Attributes as OA;
 
 class DatabasesController extends Controller
 {
-    private function removeSensitiveData($database)
+    private function exposeFileStorageContentIfAllowed(LocalFileVolume|LocalPersistentVolume $storage): LocalFileVolume|LocalPersistentVolume
+    {
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $storage->makeVisible(['content']);
+        }
+
+        return $storage;
+    }
+
+    private function removeSensitiveData($database, bool $loadNestedServerSecrets = false)
     {
         $database->makeHidden([
             'id',
             'laravel_through_key',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
-            $database->makeHidden([
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $database->makeVisible([
                 'internal_db_url',
                 'external_db_url',
+                'init_scripts',
                 'postgres_password',
                 'dragonfly_password',
                 'redis_password',
                 'mongo_initdb_root_password',
                 'keydb_password',
                 'clickhouse_admin_password',
+                'mysql_password',
+                'mysql_root_password',
+                'mariadb_password',
+                'mariadb_root_password',
             ]);
+            $this->exposeNestedServerSecrets($database);
+        } else {
+            $this->hideNestedServerSecrets($database, $loadNestedServerSecrets);
         }
 
         return serializeApiResponse($database);
+    }
+
+    private function hideNestedServerSecrets(Model $model, bool $loadRelations = false): void
+    {
+        if ($loadRelations) {
+            $server = data_get($model, 'destination.server');
+        } else {
+            if (! $model->relationLoaded('destination')) {
+                return;
+            }
+
+            $destination = $model->getRelation('destination');
+            if (! $destination || ! $destination->relationLoaded('server')) {
+                return;
+            }
+
+            $server = $destination->getRelation('server');
+        }
+
+        if (! $server) {
+            return;
+        }
+
+        $server->makeHidden([
+            'logdrain_axiom_api_key',
+            'logdrain_newrelic_license_key',
+        ]);
+
+        if ($loadRelations || $server->relationLoaded('settings')) {
+            $server->settings->makeHidden([
+                'sentinel_token',
+                'sentinel_custom_url',
+                'logdrain_newrelic_license_key',
+                'logdrain_axiom_api_key',
+                'logdrain_custom_config',
+                'logdrain_custom_config_parser',
+            ]);
+        }
+    }
+
+    /**
+     * Expose sensitive fields on eager-loaded nested Server + ServerSetting
+     * relations for callers with the `read:sensitive` or `root` token ability.
+     */
+    private function exposeNestedServerSecrets(Model $model): void
+    {
+        $server = $model->destination?->server;
+        if ($server === null) {
+            return;
+        }
+
+        $server->makeVisible([
+            'logdrain_axiom_api_key',
+            'logdrain_newrelic_license_key',
+        ]);
+
+        if ($server->settings !== null) {
+            $server->settings->makeVisible([
+                'sentinel_token',
+                'sentinel_custom_url',
+                'logdrain_newrelic_license_key',
+                'logdrain_axiom_api_key',
+                'logdrain_custom_config',
+                'logdrain_custom_config_parser',
+            ]);
+        }
     }
 
     #[OA\Get(
@@ -85,8 +169,12 @@ class DatabasesController extends Controller
         }
         $projects = Project::where('team_id', $teamId)->get();
         $databases = collect();
+        $databaseRelations = $request->attributes->get('can_read_sensitive', false) === true
+            ? ['destination.server.settings']
+            : [];
+
         foreach ($projects as $project) {
-            $databases = $databases->merge($project->databases());
+            $databases = $databases->merge($project->databases($databaseRelations));
         }
 
         $databaseIds = $databases->pluck('id')->toArray();
@@ -228,7 +316,7 @@ class DatabasesController extends Controller
 
         $this->authorize('view', $database);
 
-        return response()->json($this->removeSensitiveData($database));
+        return response()->json($this->removeSensitiveData($database, loadNestedServerSecrets: true));
     }
 
     #[OA\Patch(
@@ -3080,8 +3168,8 @@ class DatabasesController extends Controller
             'resourceable_id',
             'resourceable_type',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
-            $env->makeHidden([
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $env->makeVisible([
                 'value',
                 'real_value',
             ]);
@@ -3721,6 +3809,7 @@ class DatabasesController extends Controller
 
         $persistentStorages = $database->persistentStorages->sortBy('id')->values();
         $fileStorages = $database->fileStorages->sortBy('id')->values();
+        $fileStorages->each(fn (LocalFileVolume $storage) => $this->exposeFileStorageContentIfAllowed($storage));
 
         return response()->json([
             'persistent_storages' => $persistentStorages,
@@ -3959,7 +4048,7 @@ class DatabasesController extends Controller
             'mount_path' => $storage->mount_path,
         ]);
 
-        return response()->json($storage, 201);
+        return response()->json($this->exposeFileStorageContentIfAllowed($storage), 201);
     }
 
     #[OA\Patch(
@@ -4166,7 +4255,7 @@ class DatabasesController extends Controller
             'mount_path' => $storage->mount_path ?? null,
         ]);
 
-        return response()->json($storage);
+        return response()->json($this->exposeFileStorageContentIfAllowed($storage));
     }
 
     #[OA\Delete(

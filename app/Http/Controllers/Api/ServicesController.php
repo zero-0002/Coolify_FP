@@ -14,29 +14,45 @@ use App\Models\Project;
 use App\Models\Server;
 use App\Models\Service;
 use App\Support\ValidationPatterns;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Yaml\Yaml;
 
 class ServicesController extends Controller
 {
+    private function exposeFileStorageContentIfAllowed(LocalFileVolume|LocalPersistentVolume $storage): LocalFileVolume|LocalPersistentVolume
+    {
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $storage->makeVisible(['content']);
+        }
+
+        return $storage;
+    }
+
     private function removeSensitiveData($service)
     {
+        if ($service instanceof Collection) {
+            return $service->map(fn (Service $item) => $this->removeSensitiveData($item));
+        }
+
         $service->makeHidden([
             'id',
             'resourceable',
             'resourceable_id',
             'resourceable_type',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
-            $service->makeHidden([
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $service->makeVisible([
                 'docker_compose_raw',
                 'docker_compose',
                 'value',
                 'real_value',
             ]);
+            $this->exposeNestedServerSecrets($service);
         }
 
         if ($service->is_shown_once ?? false) {
@@ -44,6 +60,42 @@ class ServicesController extends Controller
         }
 
         return serializeApiResponse($service);
+    }
+
+    /**
+     * Expose sensitive fields on eager-loaded nested Server + ServerSetting
+     * relations for callers with the `read:sensitive` or `root` token ability.
+     * Handles both single models and Eloquent Collections (the listing endpoint
+     * passes a Collection of Services per project to removeSensitiveData()).
+     */
+    private function exposeNestedServerSecrets(Model|Collection $model): void
+    {
+        if ($model instanceof Collection) {
+            foreach ($model as $item) {
+                $this->exposeNestedServerSecrets($item);
+            }
+
+            return;
+        }
+        $server = $model->destination?->server ?? $model->server ?? null;
+        if (! $server) {
+            return;
+        }
+        $server->makeVisible([
+            'logdrain_axiom_api_key',
+            'logdrain_newrelic_license_key',
+        ]);
+        $settings = $server->settings ?? null;
+        if ($settings) {
+            $settings->makeVisible([
+                'sentinel_token',
+                'sentinel_custom_url',
+                'logdrain_newrelic_license_key',
+                'logdrain_axiom_api_key',
+                'logdrain_custom_config',
+                'logdrain_custom_config_parser',
+            ]);
+        }
     }
 
     private function applyServiceUrls(Service $service, array $urlsArray, string $teamId, bool $forceDomainOverride = false): ?array
@@ -170,8 +222,12 @@ class ServicesController extends Controller
         }
         $projects = Project::where('team_id', $teamId)->get();
         $services = collect();
+        $serviceRelations = $request->attributes->get('can_read_sensitive', false) === true
+            ? ['destination.server.settings']
+            : [];
+
         foreach ($projects as $project) {
-            $services->push($project->services()->get());
+            $services->push($project->services()->with($serviceRelations)->get());
         }
         foreach ($services as $service) {
             $service = $this->removeSensitiveData($service);
@@ -726,7 +782,12 @@ class ServicesController extends Controller
 
         $this->authorize('view', $service);
 
-        $service = $service->load(['applications', 'databases']);
+        $serviceRelations = ['applications', 'databases'];
+        if ($request->attributes->get('can_read_sensitive', false) === true) {
+            $serviceRelations[] = 'destination.server.settings';
+        }
+
+        $service = $service->load($serviceRelations);
 
         return response()->json($this->removeSensitiveData($service));
     }
@@ -2137,6 +2198,8 @@ class ServicesController extends Controller
             );
         }
 
+        $fileStorages->each(fn (LocalFileVolume $storage) => $this->exposeFileStorageContentIfAllowed($storage));
+
         return response()->json([
             'persistent_storages' => $persistentStorages->sortBy('id')->values(),
             'file_storages' => $fileStorages->sortBy('id')->values(),
@@ -2384,7 +2447,7 @@ class ServicesController extends Controller
             'mount_path' => $storage->mount_path,
         ]);
 
-        return response()->json($storage, 201);
+        return response()->json($this->exposeFileStorageContentIfAllowed($storage), 201);
     }
 
     #[OA\Patch(
@@ -2621,7 +2684,7 @@ class ServicesController extends Controller
             'mount_path' => $storage->mount_path ?? null,
         ]);
 
-        return response()->json($storage);
+        return response()->json($this->exposeFileStorageContentIfAllowed($storage));
     }
 
     #[OA\Delete(
