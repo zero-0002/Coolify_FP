@@ -118,6 +118,9 @@ paths:
                 is_force_https_enabled:
                   type: boolean
                   description: 'The flag to indicate if HTTPS is forced. Defaults to true.'
+                is_preview_deployments_enabled:
+                  type: boolean
+                  description: 'Enable preview deployments for pull requests.'
                 static_image:
                   type: string
                   enum: ['nginx:alpine']
@@ -405,6 +408,9 @@ paths:
                 is_force_https_enabled:
                   type: boolean
                   description: 'The flag to indicate if HTTPS is forced. Defaults to true.'
+                is_preview_deployments_enabled:
+                  type: boolean
+                  description: 'Enable preview deployments for pull requests.'
                 static_image:
                   type: string
                   enum: ['nginx:alpine']
@@ -692,6 +698,9 @@ paths:
                 is_force_https_enabled:
                   type: boolean
                   description: 'The flag to indicate if HTTPS is forced. Defaults to true.'
+                is_preview_deployments_enabled:
+                  type: boolean
+                  description: 'Enable preview deployments for pull requests.'
                 static_image:
                   type: string
                   enum: ['nginx:alpine']
@@ -1063,6 +1072,9 @@ paths:
                 is_force_https_enabled:
                   type: boolean
                   description: 'The flag to indicate if HTTPS is forced. Defaults to true.'
+                is_preview_deployments_enabled:
+                  type: boolean
+                  description: 'Enable preview deployments for pull requests.'
                 use_build_server:
                   type: boolean
                   nullable: true
@@ -1277,6 +1289,9 @@ paths:
                 is_force_https_enabled:
                   type: boolean
                   description: 'The flag to indicate if HTTPS is forced. Defaults to true.'
+                is_preview_deployments_enabled:
+                  type: boolean
+                  description: 'Enable preview deployments for pull requests.'
                 use_build_server:
                   type: boolean
                   nullable: true
@@ -1507,6 +1522,9 @@ paths:
                 is_force_https_enabled:
                   type: boolean
                   description: 'The flag to indicate if HTTPS is forced. Defaults to true.'
+                is_preview_deployments_enabled:
+                  type: boolean
+                  description: 'Enable preview deployments for pull requests.'
                 install_command:
                   type: string
                   description: 'The install command.'
