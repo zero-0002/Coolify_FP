@@ -75,6 +75,16 @@ class Show extends Component
 
             $this->server->cloudProviderToken()->associate($ownedToken);
             $this->server->save();
+
+            auditLog('ui.server.cloud_token_assigned', [
+                'team_id' => currentTeam()->id,
+                'server_uuid' => $this->server->uuid,
+                'server_name' => $this->server->name,
+                'cloud_token_uuid' => $ownedToken->uuid,
+                'cloud_token_name' => $ownedToken->name,
+                'provider' => $ownedToken->provider,
+            ]);
+
             $this->dispatch('success', "{$this->providerName} token updated successfully.");
             $this->dispatch('refreshServerShow');
         } catch (\Exception $e) {
@@ -159,6 +169,16 @@ class Show extends Component
             } else {
                 $this->dispatch('error', "{$this->providerName} token is invalid or has insufficient permissions.");
             }
+
+            auditLog('ui.server.cloud_token_validated', [
+                'team_id' => currentTeam()->id,
+                'server_uuid' => $this->server->uuid,
+                'server_name' => $this->server->name,
+                'cloud_token_uuid' => $token->uuid,
+                'cloud_token_name' => $token->name,
+                'provider' => $token->provider,
+                'valid' => $response->successful(),
+            ]);
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }

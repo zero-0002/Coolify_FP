@@ -15,8 +15,12 @@ class CloudProviderTokens extends Component
 
     public function mount()
     {
-        $this->authorize('viewAny', CloudProviderToken::class);
-        $this->loadTokens();
+        try {
+            $this->authorize('viewAny', CloudProviderToken::class);
+            $this->loadTokens();
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
     }
 
     public function getListeners()
@@ -61,6 +65,14 @@ class CloudProviderTokens extends Component
             } else {
                 $this->dispatch('error', 'Unknown provider.');
             }
+
+            auditLog('ui.cloud_token.validated', [
+                'team_id' => currentTeam()->id,
+                'cloud_token_uuid' => $token->uuid,
+                'cloud_token_name' => $token->name,
+                'provider' => $token->provider,
+                'valid' => $isValid ?? false,
+            ]);
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
@@ -119,8 +131,18 @@ class CloudProviderTokens extends Component
                 return;
             }
 
+            $tokenUuid = $token->uuid;
+            $tokenName = $token->name;
+            $tokenProvider = $token->provider;
             $token->delete();
             $this->loadTokens();
+
+            auditLog('ui.cloud_token.deleted', [
+                'team_id' => currentTeam()->id,
+                'cloud_token_uuid' => $tokenUuid,
+                'cloud_token_name' => $tokenName,
+                'provider' => $tokenProvider,
+            ]);
 
             $this->dispatch('success', 'Cloud provider token deleted successfully.');
         } catch (\Throwable $e) {

@@ -38,7 +38,6 @@ use Spatie\SchemalessAttributes\SchemalessAttributesTrait;
 use Spatie\Url\Url;
 use Stevebauman\Purify\Facades\Purify;
 use Symfony\Component\Yaml\Yaml;
-use Visus\Cuid2\Cuid2;
 
 /**
  * @property array{
@@ -254,6 +253,16 @@ class Server extends BaseModel
         'unreachable_notification_sent' => 'boolean',
         'is_build_server' => 'boolean',
         'force_disabled' => 'boolean',
+    ];
+
+    /**
+     * Sensitive fields hidden by default in serialized output (toArray/toJson).
+     * API controllers should call makeVisible([...]) for callers with the
+     * `read:sensitive` or `root` token ability.
+     */
+    protected $hidden = [
+        'logdrain_axiom_api_key',
+        'logdrain_newrelic_license_key',
     ];
 
     protected $schemalessAttributes = [
@@ -1090,7 +1099,7 @@ $schema://$host {
     {
         $attributes = [
             'name' => 'coolify',
-            'uuid' => (string) new Cuid2,
+            'uuid' => new_public_id(),
             'network' => 'coolify',
             'server_id' => $this->id,
         ];
@@ -1573,7 +1582,6 @@ $schema://$host {
     public function generateCaCertificate()
     {
         try {
-            ray('Generating CA certificate for server', $this->id);
             SslHelper::generateSslCertificate(
                 commonName: 'Coolify CA Certificate',
                 serverId: $this->id,
@@ -1581,7 +1589,6 @@ $schema://$host {
                 validityDays: 10 * 365
             );
             $caCertificate = $this->sslCertificates()->where('is_ca_certificate', true)->first();
-            ray('CA certificate generated', $caCertificate);
             if ($caCertificate) {
                 $certificateContent = $caCertificate->ssl_certificate;
                 $caCertPath = config('constants.coolify.base_config_path').'/ssl/';

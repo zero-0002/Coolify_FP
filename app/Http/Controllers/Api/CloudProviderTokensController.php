@@ -16,8 +16,13 @@ class CloudProviderTokensController extends Controller
     {
         $token->makeHidden([
             'id',
-            'token',
         ]);
+
+        if (request()->attributes->get('can_read_sensitive', false) === true) {
+            $token->makeVisible([
+                'token',
+            ]);
+        }
 
         return serializeApiResponse($token);
     }
@@ -180,6 +185,7 @@ class CloudProviderTokensController extends Controller
         if (is_null($token)) {
             return response()->json(['message' => 'Cloud provider token not found.'], 404);
         }
+        $this->authorize('view', $token);
 
         return response()->json($this->removeSensitiveData($token));
     }
@@ -246,6 +252,7 @@ class CloudProviderTokensController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
+        $this->authorize('create', [CloudProviderToken::class]);
 
         $return = validateIncomingRequest($request);
         if ($return instanceof JsonResponse) {
@@ -397,6 +404,7 @@ class CloudProviderTokensController extends Controller
         if (! $token) {
             return response()->json(['message' => 'Cloud provider token not found.'], 404);
         }
+        $this->authorize('update', $token);
 
         $token->update(array_intersect_key($body, array_flip($allowedFields)));
 
@@ -478,6 +486,7 @@ class CloudProviderTokensController extends Controller
         if (! $token) {
             return response()->json(['message' => 'Cloud provider token not found.'], 404);
         }
+        $this->authorize('delete', $token);
 
         if ($token->hasServers()) {
             return response()->json(['message' => 'Cannot delete token that is used by servers.'], 400);
@@ -548,8 +557,17 @@ class CloudProviderTokensController extends Controller
         if (! $cloudToken) {
             return response()->json(['message' => 'Cloud provider token not found.'], 404);
         }
+        $this->authorize('view', $cloudToken);
 
         $validation = $this->validateProviderToken($cloudToken->provider, $cloudToken->token);
+
+        auditLog('api.cloud_token.validated', [
+            'team_id' => $teamId,
+            'cloud_token_uuid' => $cloudToken->uuid,
+            'cloud_token_name' => $cloudToken->name,
+            'provider' => $cloudToken->provider,
+            'valid' => $validation['valid'],
+        ]);
 
         return response()->json([
             'valid' => $validation['valid'],

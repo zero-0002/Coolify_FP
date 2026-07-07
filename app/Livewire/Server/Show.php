@@ -334,18 +334,22 @@ class Show extends Component
 
     public function checkLocalhostConnection()
     {
-        $this->syncData(true);
-        ['uptime' => $uptime, 'error' => $error] = $this->server->validateConnection();
-        if ($uptime) {
-            $this->dispatch('success', 'Server is reachable.');
-            $this->server->settings->is_reachable = $this->isReachable = true;
-            $this->server->settings->is_usable = $this->isUsable = true;
-            $this->server->settings->save();
-            ServerReachabilityChanged::dispatch($this->server);
-        } else {
-            $this->dispatch('error', 'Server is not reachable.', 'Please validate your configuration and connection.<br><br>Check this <a target="_blank" class="underline" href="https://coolify.io/docs/knowledge-base/server/openssh">documentation</a> for further help. <br><br>Error: '.$error);
+        try {
+            $this->syncData(true);
+            ['uptime' => $uptime, 'error' => $error] = $this->server->validateConnection();
+            if ($uptime) {
+                $this->dispatch('success', 'Server is reachable.');
+                $this->server->settings->is_reachable = $this->isReachable = true;
+                $this->server->settings->is_usable = $this->isUsable = true;
+                $this->server->settings->save();
+                ServerReachabilityChanged::dispatch($this->server);
+            } else {
+                $this->dispatch('error', 'Server is not reachable.', 'Please validate your configuration and connection.<br><br>Check this <a target="_blank" class="underline" href="https://coolify.io/docs/knowledge-base/server/openssh">documentation</a> for further help. <br><br>Error: '.$error);
 
-            return;
+                return;
+            }
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
         }
     }
 
@@ -448,6 +452,7 @@ class Show extends Component
     public function checkHetznerServerStatus(bool $manual = false)
     {
         try {
+            $this->authorize('view', $this->server);
             if (! $this->server->hetzner_server_id || ! $this->server->cloudProviderToken) {
                 $this->dispatch('error', 'This server is not associated with a Hetzner Cloud server or token.');
 
@@ -537,6 +542,7 @@ class Show extends Component
     public function startHetznerServer()
     {
         try {
+            $this->authorize('update', $this->server);
             if (! $this->server->hetzner_server_id || ! $this->server->cloudProviderToken) {
                 $this->dispatch('error', 'This server is not associated with a Hetzner Cloud server or token.');
 
@@ -614,6 +620,20 @@ class Show extends Component
         $this->availableVultrTokens = CloudProviderToken::ownedByCurrentTeam()
             ->where('provider', 'vultr')
             ->get();
+    }
+
+    #[Computed]
+    public function limaStartCommand(): ?string
+    {
+        if (! isDev()) {
+            return null;
+        }
+
+        return match ($this->server->uuid) {
+            'lima-ubuntu-2404' => 'limactl start --yes --name=coolify-lima-ubuntu-2404 docker/lima/ubuntu-2404.yaml',
+            'lima-ubuntu-2604' => 'limactl start --yes --name=coolify-lima-ubuntu-2604 docker/lima/ubuntu-2604.yaml',
+            default => null,
+        };
     }
 
     public function searchHetznerServer(): void

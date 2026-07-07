@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class CloudProviderTokenFactory extends Factory
 {
+    protected $model = CloudProviderToken::class;
+
     /**
      * Define the model's default state.
      *
