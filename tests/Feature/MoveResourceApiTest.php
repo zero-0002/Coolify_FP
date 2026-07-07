@@ -2,6 +2,7 @@
 
 use App\Models\Application;
 use App\Models\Environment;
+use App\Models\EnvironmentVariable;
 use App\Models\InstanceSettings;
 use App\Models\Project;
 use App\Models\Server;
@@ -10,7 +11,9 @@ use App\Models\StandaloneDocker;
 use App\Models\StandalonePostgresql;
 use App\Models\Team;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 uses(RefreshDatabase::class);
@@ -124,7 +127,9 @@ describe('POST /api/v1/applications/{uuid}/move', function () {
         $response->assertStatus(404);
     });
 
-    test('returns 403 when target environment update is denied', function () {
+    test('authorizes the target environment before moving', function () {
+        $this->actingAs($this->user);
+
         $application = Application::factory()->create([
             'environment_id' => $this->environment->id,
             'destination_id' => $this->destination->id,
@@ -141,14 +146,12 @@ describe('POST /api/v1/applications/{uuid}/move', function () {
             return null;
         });
 
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer '.$this->bearerToken,
-            'Content-Type' => 'application/json',
-        ])->postJson("/api/v1/applications/{$application->uuid}/move", [
+        $request = Request::create('/', 'POST', [
             'environment_uuid' => $this->targetEnvironment->uuid,
         ]);
 
-        $response->assertForbidden();
+        expect(fn () => moveResourceToEnvironment($request, $application, 'Application', $this->team->id))
+            ->toThrow(AuthorizationException::class);
 
         $application->refresh();
         expect($application->environment_id)->toBe($this->environment->id);
@@ -178,7 +181,7 @@ describe('POST /api/v1/applications/{uuid}/move', function () {
             'destination_type' => $this->destination->getMorphClass(),
         ]);
 
-        \App\Models\EnvironmentVariable::create([
+        EnvironmentVariable::create([
             'key' => 'TEST_VAR',
             'value' => 'test-value',
             'resourceable_type' => Application::class,

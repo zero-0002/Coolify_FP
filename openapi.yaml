@@ -2141,6 +2141,57 @@ paths:
       security:
         -
           bearerAuth: []
+  '/applications/{uuid}/move':
+    post:
+      tags:
+        - Applications
+      summary: Move
+      description: 'Move application to another project/environment. This is a purely organizational change — running containers are not affected. Note: after moving, the application will pick up shared environment variables from the new environment on the next deployment.'
+      operationId: move-application-by-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the application.'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: 'Target environment to move the application to.'
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - environment_uuid
+              properties:
+                environment_uuid:
+                  type: string
+                  description: 'UUID of the target environment.'
+              type: object
+      responses:
+        '200':
+          description: 'Application moved successfully.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'Application moved successfully.' }
+                  uuid: { type: string }
+                  project_uuid: { type: string }
+                  environment_uuid: { type: string }
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+        '422':
+          $ref: '#/components/responses/422'
+      security:
+        -
+          bearerAuth: []
   '/applications/{uuid}/storages':
     get:
       tags:
@@ -4245,6 +4296,57 @@ paths:
                 type: object
         '404':
           description: 'Backup configuration not found.'
+      security:
+        -
+          bearerAuth: []
+  '/databases/{uuid}/move':
+    post:
+      tags:
+        - Databases
+      summary: Move
+      description: 'Move database to another project/environment. This is a purely organizational change — running containers are not affected. Note: after moving, the database will pick up shared environment variables from the new environment on the next deployment.'
+      operationId: move-database-by-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the database.'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: 'Target environment to move the database to.'
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - environment_uuid
+              properties:
+                environment_uuid:
+                  type: string
+                  description: 'UUID of the target environment.'
+              type: object
+      responses:
+        '200':
+          description: 'Database moved successfully.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'Database moved successfully.' }
+                  uuid: { type: string }
+                  project_uuid: { type: string }
+                  environment_uuid: { type: string }
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+        '422':
+          $ref: '#/components/responses/422'
       security:
         -
           bearerAuth: []
@@ -8229,6 +8331,57 @@ paths:
           $ref: '#/components/responses/400'
         '404':
           $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+  '/services/{uuid}/move':
+    post:
+      tags:
+        - Services
+      summary: Move
+      description: 'Move service to another project/environment. This is a purely organizational change — running containers are not affected. Note: after moving, the service will pick up shared environment variables from the new environment on the next deployment.'
+      operationId: move-service-by-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the service.'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: 'Target environment to move the service to.'
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - environment_uuid
+              properties:
+                environment_uuid:
+                  type: string
+                  description: 'UUID of the target environment.'
+              type: object
+      responses:
+        '200':
+          description: 'Service moved successfully.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'Service moved successfully.' }
+                  uuid: { type: string }
+                  project_uuid: { type: string }
+                  environment_uuid: { type: string }
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+        '422':
+          $ref: '#/components/responses/422'
       security:
         -
           bearerAuth: []
