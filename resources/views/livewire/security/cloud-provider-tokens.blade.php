@@ -1,6 +1,6 @@
 <div>
     <h2>Cloud Provider Tokens</h2>
-    <div class="pb-4">Manage API tokens for cloud providers (Hetzner, DigitalOcean, etc.).</div>
+    <div class="pb-4">Manage API tokens for cloud providers (Hetzner, Vultr, etc.).</div>
 
     <h3>New Token</h3>
     @can('create', App\Models\CloudProviderToken::class)
