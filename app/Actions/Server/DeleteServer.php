@@ -134,12 +134,6 @@ class DeleteServer
                 'vultr_instance_id' => $vultrInstanceId,
                 'team_id' => $teamId,
             ]);
-
-            logger()->error('Failed to delete server from Vultr', [
-                'error' => $e->getMessage(),
-                'vultr_instance_id' => $vultrInstanceId,
-                'team_id' => $teamId,
-            ]);
         }
     }
 }
