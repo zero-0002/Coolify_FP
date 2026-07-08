@@ -109,6 +109,57 @@ it('skips a synchronized GitHub pull request preview when the head commit messag
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.github.com/repos/example/repo/commits/after-sha');
 });
 
+it('deploys a synchronized GitHub pull request preview when the head commit message does not contain skip ci', function () {
+    Queue::fake();
+
+    $this->application->settings->update([
+        'is_preview_deployments_enabled' => true,
+    ]);
+
+    $githubApp = GithubApp::create([
+        'name' => 'Public GitHub',
+        'api_url' => 'https://api.github.com',
+        'html_url' => 'https://github.com',
+        'is_public' => true,
+        'team_id' => $this->team->id,
+    ]);
+
+    Http::fake([
+        'https://api.github.com/repos/example/repo/commits/after-sha' => Http::response([
+            'commit' => [
+                'message' => 'docs: fix typo',
+            ],
+        ]),
+        'https://api.github.com/repos/example/repo/compare/before-sha...after-sha' => Http::response([
+            'files' => [
+                ['filename' => 'README.md'],
+            ],
+        ]),
+    ]);
+
+    $job = new ProcessGithubPullRequestWebhook(
+        applicationId: $this->application->id,
+        githubAppId: $githubApp->id,
+        action: 'synchronize',
+        pullRequestId: 42,
+        pullRequestHtmlUrl: 'https://github.com/example/repo/pull/42',
+        pullRequestTitle: 'Add feature',
+        beforeSha: 'before-sha',
+        afterSha: 'after-sha',
+        commitSha: 'after-sha',
+        authorAssociation: 'OWNER',
+        fullName: 'example/repo',
+    );
+
+    $job->handle();
+
+    expect(ApplicationPreview::where('application_id', $this->application->id)->where('pull_request_id', 42)->exists())->toBeTrue()
+        ->and(ApplicationDeploymentQueue::where('application_id', $this->application->id)->where('pull_request_id', 42)->where('commit', 'after-sha')->exists())->toBeTrue();
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.github.com/repos/example/repo/commits/after-sha');
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.github.com/repos/example/repo/compare/before-sha...after-sha');
+});
+
 it('skips a GitHub pull request preview when the opened or reopened head commit message contains skip ci', function (string $action) {
     Queue::fake();
 
