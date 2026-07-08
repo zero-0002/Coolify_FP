@@ -101,7 +101,7 @@ class ProcessGithubPullRequestWebhook implements ShouldBeEncrypted, ShouldQueue
         $repo = $repository_parts[1] ?? '';
         $headCommitMessage = null;
 
-        if ($this->action === 'synchronize') {
+        if ($this->action === 'opened' || $this->action === 'synchronize' || $this->action === 'reopened') {
             $headCommitMessage = getGithubCommitMessage($githubApp, $owner, $repo, $this->commitSha);
         }
 

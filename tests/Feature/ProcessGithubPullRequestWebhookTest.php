@@ -108,3 +108,50 @@ it('skips a synchronized GitHub pull request preview when the head commit messag
 
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.github.com/repos/example/repo/commits/after-sha');
 });
+
+it('skips a GitHub pull request preview when the opened or reopened head commit message contains skip ci', function (string $action) {
+    Queue::fake();
+
+    $this->application->settings->update([
+        'is_preview_deployments_enabled' => true,
+    ]);
+
+    $githubApp = GithubApp::create([
+        'name' => 'Public GitHub',
+        'api_url' => 'https://api.github.com',
+        'html_url' => 'https://github.com',
+        'is_public' => true,
+        'team_id' => $this->team->id,
+    ]);
+
+    Http::fake([
+        'https://api.github.com/repos/example/repo/commits/head-sha' => Http::response([
+            'commit' => [
+                'message' => 'docs: fix typo [skip ci]',
+            ],
+        ]),
+        'https://api.github.com/repos/example/repo/pulls/42/files' => Http::response([]),
+    ]);
+
+    $job = new ProcessGithubPullRequestWebhook(
+        applicationId: $this->application->id,
+        githubAppId: $githubApp->id,
+        action: $action,
+        pullRequestId: 42,
+        pullRequestHtmlUrl: 'https://github.com/example/repo/pull/42',
+        pullRequestTitle: 'Add feature',
+        beforeSha: null,
+        afterSha: null,
+        commitSha: 'head-sha',
+        authorAssociation: 'OWNER',
+        fullName: 'example/repo',
+    );
+
+    $job->handle();
+
+    expect(ApplicationPreview::where('application_id', $this->application->id)->where('pull_request_id', 42)->exists())->toBeFalse()
+        ->and(ApplicationDeploymentQueue::where('application_id', $this->application->id)->where('pull_request_id', 42)->exists())->toBeFalse();
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.github.com/repos/example/repo/commits/head-sha');
+    Http::assertNotSent(fn (Request $request): bool => $request->url() === 'https://api.github.com/repos/example/repo/pulls/42/files');
+})->with(['opened', 'reopened']);
