@@ -1,4 +1,10 @@
-<svg {{ $attributes->merge(['class' => 'w-6 h-6 flex-shrink-0']) }} fill="#0080FF" role="img" viewBox="0 0 24 24"
+@php
+    $iconAttributes = $attributes->has('class')
+        ? $attributes->class('shrink-0')
+        : $attributes->merge(['class' => 'size-6 shrink-0']);
+@endphp
+
+<svg {{ $iconAttributes }} fill="#0080FF" role="img" viewBox="0 0 24 24"
     xmlns="http://www.w3.org/2000/svg">
     <title>DigitalOcean</title>
     <path

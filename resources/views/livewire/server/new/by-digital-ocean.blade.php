@@ -4,43 +4,61 @@
     @else
         @if ($current_step === 1)
             <div class="flex flex-col w-full gap-4">
+                <div class="text-sm text-neutral-500 dark:text-neutral-400">
+                    Don't have a DigitalOcean account? <a href="https://coolify.io/digitalocean" target="_blank"
+                        class="underline dark:text-white">Sign up here</a>.
+                    <span class="text-xs">Coolify's referral link - it supports both of us.</span>
+                </div>
                 @if ($available_tokens->count() > 0)
-                    <div class="flex gap-2">
-                        <div class="flex-1">
-                            <x-forms.select label="Select DigitalOcean Token" id="selected_token_id"
-                                wire:change="selectToken($event.target.value)" required>
-                                <option value="">Select a saved token...</option>
-                                @foreach ($available_tokens as $token)
-                                    <option value="{{ $token->id }}">
+                    <div class="grid gap-3 md:grid-cols-2">
+                        @foreach ($available_tokens as $token)
+                            <a class="coolbox group text-left" wire:key="digital-ocean-token-{{ $token->id }}"
+                                href="{{ route('server.create.token', ['type' => 'digital-ocean', 'token_uuid' => $token->uuid]) }}" {{ wireNavigate() }}>
+                                <div class="flex flex-col justify-center mx-6">
+                                    <div class="box-title">
                                         {{ $token->name ?? 'DigitalOcean Token' }}
-                                    </option>
-                                @endforeach
-                            </x-forms.select>
-                        </div>
-                        <div class="flex items-end">
-                            <x-forms.button canGate="create" :canResource="App\Models\Server::class" wire:click="nextStep"
-                                :disabled="!$selected_token_id">
-                                Continue
-                            </x-forms.button>
-                        </div>
+                                    </div>
+                                    <div class="box-description">
+                                        Use this token to create a DigitalOcean Droplet.
+                                    </div>
+                                </div>
+                            </a>
+                        @endforeach
                     </div>
-
-                    <div class="text-center text-sm dark:text-neutral-500">OR</div>
+                @else
+                    <div class="w-full max-w-2xl">
+                            <x-modal-input title="Add DigitalOcean Token">
+                                <x-slot:content>
+                                    <div class="coolbox group cursor-pointer">
+                                        <div class="flex items-center gap-4 mx-6">
+                                            <div
+                                                class="flex size-10 shrink-0 items-center justify-center rounded-full bg-coollabs/10 text-coollabs dark:bg-warning/20 dark:text-warning">
+                                                <svg class="size-6" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                                    viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M12 4.5v15m7.5-7.5h-15" />
+                                                </svg>
+                                            </div>
+                                            <div class="flex flex-col justify-center">
+                                                <div class="box-title">Add a new token</div>
+                                                <div class="box-description">
+                                                    Add a DigitalOcean API token to create Droplets from your account.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </x-slot:content>
+                                <livewire:security.cloud-provider-token-form :modal_mode="true" provider="digitalocean"
+                                    wire:key="new-server-empty-token-digitalocean" />
+                            </x-modal-input>
+                    </div>
                 @endif
-
-                <x-modal-input isFullWidth
-                    buttonTitle="{{ $available_tokens->count() > 0 ? '+ Add New Token' : 'Add DigitalOcean Token' }}"
-                    title="Add DigitalOcean Token">
-                    <livewire:security.cloud-provider-token-form :modal_mode="true" provider="digitalocean" />
-                </x-modal-input>
             </div>
         @elseif ($current_step === 2)
+            <div wire:init="loadDigitalOceanData">
             @if ($loading_data)
                 <div class="flex items-center justify-center py-8">
-                    <div class="text-center">
-                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-                        <p class="mt-4 text-sm dark:text-neutral-400">Loading DigitalOcean data...</p>
-                    </div>
+                    <x-loading text="Loading DigitalOcean data..." />
                 </div>
             @else
                 <form class="flex flex-col w-full gap-2" wire:submit='submit'>
@@ -211,17 +229,13 @@
                         </div>
                     </x-dropdown>
 
-                    <div class="flex gap-2 justify-between">
-                        <x-forms.button type="button" wire:click="previousStep">
-                            Back
-                        </x-forms.button>
-                        <x-forms.button isHighlighted canGate="create" :canResource="App\Models\Server::class" type="submit"
-                            :disabled="!$private_key_id">
-                            Buy & Create Server{{ $this->selectedDropletPrice ? ' (' . $this->selectedDropletPrice . '/mo)' : '' }}
-                        </x-forms.button>
-                    </div>
+                    <x-forms.button class="w-full" isHighlighted canGate="create" :canResource="App\Models\Server::class"
+                        type="submit" :disabled="!$private_key_id">
+                        Buy & Create Server{{ $this->selectedDropletPrice ? ' (' . $this->selectedDropletPrice . '/mo)' : '' }}
+                    </x-forms.button>
                 </form>
             @endif
+            </div>
         @endif
     @endif
 </div>

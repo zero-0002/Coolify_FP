@@ -24,23 +24,12 @@
                     target='_blank' class='underline dark:text-white'>{{ $provider === 'digitalocean' ? 'DigitalOcean' : ucfirst($provider) }} Console</a>.
                 @if ($provider === 'hetzner')
                     Choose Project → Security → API Tokens.
-                    <br><br>
-                    Don't have a Hetzner account? <a href='https://coolify.io/hetzner' target='_blank'
-                        class='underline dark:text-white'>Sign up here</a>
-                    <br>
-                    <span class="text-xs">(Coolify's affiliate link, only new accounts - supports us (€10)
-                        and gives you €20)</span>
                 @endif
                 @if ($provider === 'digitalocean')
                     Generate New Token.
                 @endif
                 @if ($provider === 'vultr')
                     Open Account → API Access.
-                    <br><br>
-                    Don't have a Vultr account? <a href='https://www.vultr.com/?ref=9911335' target='_blank'
-                        class='underline dark:text-white'>Sign up here</a>
-                    <br>
-                    <span class="text-xs">Coolify's affiliate link, only new accounts - supports us</span>
                 @endif
             </div>
 
@@ -68,23 +57,12 @@
                         target='_blank' class='underline dark:text-white'>{{ $provider === 'digitalocean' ? 'DigitalOcean' : ucfirst($provider) }} Console</a>.
                     @if ($provider === 'hetzner')
                         Choose Project → Security → API Tokens.
-                        <br><br>
-                        Don't have a Hetzner account? <a href='https://coolify.io/hetzner' target='_blank'
-                            class='underline dark:text-white'>Sign up here</a>
-                        <br>
-                        <span class="text-xs">(Coolify's affiliate link, only new accounts - supports us (€10)
-                            and gives you €20)</span>
                     @endif
                     @if ($provider === 'digitalocean')
                         Generate New Token.
                     @endif
                     @if ($provider === 'vultr')
                         Open Account → API Access.
-                        <br><br>
-                        Don't have a Vultr account? <a href='https://www.vultr.com/?ref=9911335' target='_blank'
-                            class='underline dark:text-white'>Sign up here</a>
-                        <br>
-                        <span class="text-xs">Coolify's affiliate link, only new accounts - supports us</span>
                     @endif
                 </div>
             </div>

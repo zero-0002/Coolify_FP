@@ -46,6 +46,7 @@ use App\Livewire\Server\CaCertificate\Show as CaCertificateShow;
 use App\Livewire\Server\Charts as ServerCharts;
 use App\Livewire\Server\CloudflareTunnel;
 use App\Livewire\Server\CloudProviderToken\Show as CloudProviderTokenShow;
+use App\Livewire\Server\CreatePage as ServerCreatePage;
 use App\Livewire\Server\Delete as DeleteServer;
 use App\Livewire\Server\Destinations as ServerDestinations;
 use App\Livewire\Server\DockerCleanup;
@@ -88,6 +89,7 @@ use App\Livewire\Team\Index as TeamIndex;
 use App\Livewire\Team\Member\Index as TeamMemberIndex;
 use App\Livewire\Terminal\Index as TerminalIndex;
 use App\Models\ScheduledDatabaseBackupExecution;
+use App\Models\Server;
 use App\Models\ServiceDatabase;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Route;
@@ -277,7 +279,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::get('/servers', ServerIndex::class)->name('server.index');
-    // Route::get('/server/new', ServerCreate::class)->name('server.create');
+    Route::get('/servers/new', ServerCreatePage::class)->name('server.create')->middleware('can:create,'.Server::class);
+    Route::get('/servers/new/{type}/{token_uuid}', ServerCreatePage::class)->name('server.create.token')->middleware('can:create,'.Server::class)->whereIn('type', ['hetzner', 'vultr', 'digital-ocean']);
+    Route::get('/servers/new/{type}', ServerCreatePage::class)->name('server.create.type')->middleware('can:create,'.Server::class)->whereIn('type', ['hetzner', 'vultr', 'digital-ocean', 'manual']);
 
     Route::prefix('server/{server_uuid}')->group(function () {
         Route::get('/', ServerShow::class)->name('server.show');

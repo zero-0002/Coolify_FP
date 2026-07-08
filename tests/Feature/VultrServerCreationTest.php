@@ -102,9 +102,7 @@ it('creates a Vultr server through the Livewire flow', function () {
         ], 202),
     ]);
 
-    Livewire::test(ByVultr::class)
-        ->set('selected_token_id', $this->vultrToken->id)
-        ->call('nextStep')
+    Livewire::test(ByVultr::class, ['selectedTokenUuid' => $this->vultrToken->uuid])
         ->assertSet('current_step', 2)
         ->set('server_name', 'test-vultr-server')
         ->set('selected_region', 'ewr')
@@ -147,4 +145,23 @@ it('requires IPv6 when public IPv4 is disabled', function () {
         ->set('disable_public_ipv4', true)
         ->call('submit')
         ->assertHasErrors(['enable_ipv6']);
+});
+
+it('uses the shared dropdown UI for advanced Vultr options', function () {
+    Livewire::test(ByVultr::class)
+        ->set('current_step', 2)
+        ->assertSee('Advanced Vultr options')
+        ->assertSeeHtml('dropdownOpen')
+        ->assertSeeHtml('x-ref="panel"')
+        ->assertSee('Additional SSH Keys (from Vultr)')
+        ->assertSee('Network Configuration')
+        ->assertSee('Cloud-Init Script');
+});
+
+it('renders only the full width buy button at the bottom of the Vultr form', function () {
+    Livewire::test(ByVultr::class)
+        ->set('current_step', 2)
+        ->assertDontSee('wire:click="previousStep"', false)
+        ->assertSeeHtml('class="button w-full"')
+        ->assertSee('Buy & Create Server', false);
 });
