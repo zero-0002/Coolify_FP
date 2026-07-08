@@ -2,6 +2,9 @@
 
 namespace App\Livewire\Security;
 
+use App\Livewire\Server\CloudProviderToken\Show as ServerCloudProviderTokenShow;
+use App\Livewire\Server\New\ByDigitalOcean;
+use App\Livewire\Server\New\ByHetzner;
 use App\Models\CloudProviderToken;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Http;
@@ -59,9 +62,10 @@ class CloudProviderTokenForm extends Component
             }
 
             if ($provider === 'digitalocean') {
-                $response = Http::withHeaders([
-                    'Authorization' => 'Bearer '.$token,
-                ])->timeout(10)->get('https://api.digitalocean.com/v2/account');
+                $response = Http::withToken($token)
+                    ->acceptJson()
+                    ->timeout(10)
+                    ->get('https://api.digitalocean.com/v2/account');
 
                 return $response->successful();
             }
@@ -108,6 +112,20 @@ class CloudProviderTokenForm extends Component
 
             // Dispatch event with token ID so parent components can react
             $this->dispatch('tokenAdded', tokenId: $savedToken->id);
+            $this->dispatch('tokenAdded', tokenId: $savedToken->id)->to(CloudProviderTokens::class);
+
+            if ($savedToken->provider === 'digitalocean') {
+                $this->dispatch('tokenAdded.digitalocean', tokenId: $savedToken->id)->to(ByDigitalOcean::class);
+            }
+
+            if ($savedToken->provider === 'hetzner') {
+                $this->dispatch('tokenAdded.hetzner', tokenId: $savedToken->id)->to(ByHetzner::class);
+                $this->dispatch('tokenAdded.hetzner', tokenId: $savedToken->id)->to(ServerCloudProviderTokenShow::class);
+            }
+
+            if ($this->modal_mode) {
+                $this->dispatch('close-modal');
+            }
 
             $this->dispatch('success', 'Cloud provider token added successfully.');
         } catch (\Throwable $e) {

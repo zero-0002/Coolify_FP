@@ -8,6 +8,7 @@ use App\Events\ServerReachabilityChanged;
 use App\Models\CloudProviderToken;
 use App\Models\Server;
 use App\Rules\ValidServerIp;
+use App\Services\DigitalOceanService;
 use App\Services\HetznerService;
 use App\Services\VultrService;
 use App\Support\ValidationPatterns;
@@ -78,9 +79,13 @@ class Show extends Component
 
     public ?string $vultrInstanceStatus = null;
 
+    public ?string $digitalOceanDropletStatus = null;
+
     public bool $hetznerServerManuallyStarted = false;
 
     public bool $vultrInstanceManuallyStarted = false;
+
+    public bool $digitalOceanDropletManuallyStarted = false;
 
     public bool $isValidating = false;
 
@@ -108,6 +113,18 @@ class Show extends Component
     public ?string $vultrSearchError = null;
 
     public bool $vultrNoMatchFound = false;
+
+    public Collection $availableDigitalOceanTokens;
+
+    public ?int $selectedDigitalOceanTokenId = null;
+
+    public ?string $manualDigitalOceanDropletId = null;
+
+    public ?array $matchedDigitalOceanDroplet = null;
+
+    public ?string $digitalOceanSearchError = null;
+
+    public bool $digitalOceanNoMatchFound = false;
 
     public function getListeners()
     {
@@ -191,11 +208,13 @@ class Show extends Component
             // Load saved Hetzner status and validation state
             $this->hetznerServerStatus = $this->server->hetzner_server_status;
             $this->vultrInstanceStatus = $this->server->vultr_instance_status;
+            $this->digitalOceanDropletStatus = $this->server->digitalocean_droplet_status;
             $this->isValidating = $this->server->is_validating ?? false;
 
             // Load cloud provider tokens for linking
             $this->loadHetznerTokens();
             $this->loadVultrTokens();
+            $this->loadDigitalOceanTokens();
 
         } catch (\Throwable $e) {
             return handleError($e, $this);
@@ -514,6 +533,28 @@ class Show extends Component
         }
     }
 
+    public function checkDigitalOceanDropletStatus(bool $manual = false)
+    {
+        try {
+            $this->authorize('view', $this->server);
+            if (! $this->server->digitalocean_droplet_id || ! $this->server->cloudProviderToken) {
+                $this->dispatch('error', 'This server is not associated with a DigitalOcean droplet or token.');
+
+                return;
+            }
+
+            $this->digitalOceanDropletStatus = $this->server->refreshDigitalOceanState();
+            $this->server->refresh();
+            $this->ip = $this->server->ip;
+
+            if ($manual) {
+                $this->dispatch('success', 'Droplet status refreshed: '.ucfirst($this->digitalOceanDropletStatus ?? 'unknown'));
+            }
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
+    }
+
     public function handleServerValidated($event = null)
     {
         // Check if event is for this server
@@ -534,6 +575,7 @@ class Show extends Component
         // Reload Hetzner tokens in case the linking section should now be shown
         $this->loadHetznerTokens();
         $this->loadVultrTokens();
+        $this->loadDigitalOceanTokens();
 
         $this->dispatch('refreshServerShow');
         $this->dispatch('refreshServer');
@@ -582,6 +624,28 @@ class Show extends Component
         }
     }
 
+    public function startDigitalOceanDroplet()
+    {
+        try {
+            $this->authorize('update', $this->server);
+            if (! $this->server->digitalocean_droplet_id || ! $this->server->cloudProviderToken) {
+                $this->dispatch('error', 'This server is not associated with a DigitalOcean droplet or token.');
+
+                return;
+            }
+
+            $digitalOceanService = new DigitalOceanService($this->server->cloudProviderToken->token);
+            $digitalOceanService->powerOnDroplet((int) $this->server->digitalocean_droplet_id);
+
+            $this->digitalOceanDropletStatus = 'new';
+            $this->server->update(['digitalocean_droplet_status' => 'new']);
+            $this->digitalOceanDropletManuallyStarted = true;
+            $this->dispatch('success', 'DigitalOcean droplet is starting...');
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
+    }
+
     public function refreshServerMetadata(): void
     {
         try {
@@ -619,6 +683,13 @@ class Show extends Component
     {
         $this->availableVultrTokens = CloudProviderToken::ownedByCurrentTeam()
             ->where('provider', 'vultr')
+            ->get();
+    }
+
+    public function loadDigitalOceanTokens(): void
+    {
+        $this->availableDigitalOceanTokens = CloudProviderToken::ownedByCurrentTeam()
+            ->where('provider', 'digitalocean')
             ->get();
     }
 
@@ -757,6 +828,136 @@ class Show extends Component
             $this->hetznerSearchError = null;
 
             $this->dispatch('success', 'Server successfully linked to Hetzner Cloud!');
+            $this->dispatch('refreshServerShow');
+        } catch (\Throwable $e) {
+            return handleError($e, $this);
+        }
+    }
+
+    public function searchDigitalOceanDroplet(): void
+    {
+        $this->digitalOceanSearchError = null;
+        $this->digitalOceanNoMatchFound = false;
+        $this->matchedDigitalOceanDroplet = null;
+
+        if (! $this->selectedDigitalOceanTokenId) {
+            $this->digitalOceanSearchError = 'Please select a DigitalOcean token.';
+
+            return;
+        }
+
+        try {
+            $this->authorize('update', $this->server);
+
+            $token = $this->availableDigitalOceanTokens->firstWhere('id', $this->selectedDigitalOceanTokenId);
+            if (! $token) {
+                $this->digitalOceanSearchError = 'Invalid token selected.';
+
+                return;
+            }
+
+            $digitalOceanService = new DigitalOceanService($token->token);
+            $matched = $digitalOceanService->findDropletByIp($this->server->ip);
+
+            if ($matched) {
+                $this->matchedDigitalOceanDroplet = $matched;
+            } else {
+                $this->digitalOceanNoMatchFound = true;
+            }
+        } catch (\Throwable $e) {
+            $this->digitalOceanSearchError = 'Failed to search DigitalOcean droplets: '.$e->getMessage();
+        }
+    }
+
+    public function searchDigitalOceanDropletById(): void
+    {
+        $this->digitalOceanSearchError = null;
+        $this->digitalOceanNoMatchFound = false;
+        $this->matchedDigitalOceanDroplet = null;
+
+        if (! $this->selectedDigitalOceanTokenId) {
+            $this->digitalOceanSearchError = 'Please select a DigitalOcean token first.';
+
+            return;
+        }
+
+        if (! $this->manualDigitalOceanDropletId) {
+            $this->digitalOceanSearchError = 'Please enter a DigitalOcean Droplet ID.';
+
+            return;
+        }
+
+        try {
+            $this->authorize('update', $this->server);
+
+            $token = $this->availableDigitalOceanTokens->firstWhere('id', $this->selectedDigitalOceanTokenId);
+            if (! $token) {
+                $this->digitalOceanSearchError = 'Invalid token selected.';
+
+                return;
+            }
+
+            $digitalOceanService = new DigitalOceanService($token->token);
+            $dropletData = $digitalOceanService->getDroplet((int) $this->manualDigitalOceanDropletId);
+
+            if (! empty($dropletData)) {
+                $this->matchedDigitalOceanDroplet = $dropletData;
+            } else {
+                $this->digitalOceanNoMatchFound = true;
+            }
+        } catch (\Throwable $e) {
+            $this->digitalOceanSearchError = 'Failed to fetch DigitalOcean droplet: '.$e->getMessage();
+        }
+    }
+
+    public function linkToDigitalOcean()
+    {
+        if (! $this->matchedDigitalOceanDroplet) {
+            $this->dispatch('error', 'No DigitalOcean droplet selected.');
+
+            return;
+        }
+
+        try {
+            $this->authorize('update', $this->server);
+
+            $token = $this->availableDigitalOceanTokens->firstWhere('id', $this->selectedDigitalOceanTokenId);
+            if (! $token) {
+                $this->dispatch('error', 'Invalid token selected.');
+
+                return;
+            }
+
+            $digitalOceanService = new DigitalOceanService($token->token);
+            $dropletData = $digitalOceanService->getDroplet((int) $this->matchedDigitalOceanDroplet['id']);
+
+            if (empty($dropletData)) {
+                $this->dispatch('error', 'Could not find DigitalOcean droplet with ID: '.$this->matchedDigitalOceanDroplet['id']);
+
+                return;
+            }
+
+            $ip = $digitalOceanService->getPublicIpAddress($dropletData);
+            $updates = [
+                'cloud_provider_token_id' => $this->selectedDigitalOceanTokenId,
+                'digitalocean_droplet_id' => $this->matchedDigitalOceanDroplet['id'],
+                'digitalocean_droplet_status' => $dropletData['status'] ?? null,
+            ];
+
+            if ($ip) {
+                $updates['ip'] = $ip;
+            }
+
+            $this->server->update($updates);
+            $this->digitalOceanDropletStatus = $dropletData['status'] ?? null;
+
+            $this->matchedDigitalOceanDroplet = null;
+            $this->selectedDigitalOceanTokenId = null;
+            $this->manualDigitalOceanDropletId = null;
+            $this->digitalOceanNoMatchFound = false;
+            $this->digitalOceanSearchError = null;
+
+            $this->dispatch('success', 'Server successfully linked to DigitalOcean!');
             $this->dispatch('refreshServerShow');
         } catch (\Throwable $e) {
             return handleError($e, $this);

@@ -41,6 +41,19 @@ class ValidateServer
             }
         }
 
+        if ($server->digitalocean_droplet_id) {
+            $status = $server->refreshDigitalOceanState();
+            if (in_array($status, ['off', 'archive', 'deleted'], true)) {
+                $this->error = $status === 'deleted'
+                    ? 'DigitalOcean droplet is deleted or no longer accessible. Relink this server before validating.'
+                    : 'DigitalOcean droplet is '.($status ?? 'not running').'. Power it on before validating.';
+                $server->update([
+                    'validation_logs' => $this->error,
+                ]);
+                throw new \Exception($this->error);
+            }
+        }
+
         ['uptime' => $this->uptime, 'error' => $error] = $server->validateConnection();
         if (! $this->uptime) {
             $sanitizedError = htmlspecialchars($error ?? '', ENT_QUOTES, 'UTF-8');
