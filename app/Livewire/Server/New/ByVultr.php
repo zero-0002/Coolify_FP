@@ -12,6 +12,7 @@ use App\Rules\ValidCloudInitYaml;
 use App\Rules\ValidHostname;
 use App\Services\VultrService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -32,6 +33,8 @@ class ByVultr extends Component
     public $limit_reached;
 
     public ?int $selected_token_id = null;
+
+    public ?string $selectedTokenUuid = null;
 
     public array $regions = [];
 
@@ -55,6 +58,8 @@ class ByVultr extends Component
 
     public bool $loading_data = false;
 
+    public ?string $provider_data_error = null;
+
     public bool $enable_ipv6 = true;
 
     public bool $disable_public_ipv4 = false;
@@ -72,16 +77,22 @@ class ByVultr extends Component
 
     public bool $from_onboarding = false;
 
-    public function mount(): void
+    public function mount(?string $selectedTokenUuid = null): void
     {
         $this->authorize('viewAny', CloudProviderToken::class);
         $this->loadTokens();
+        $this->selectTokenFromUrl($selectedTokenUuid);
         $this->loadSavedCloudInitScripts();
         $this->server_name = generate_random_name();
         $this->private_keys = PrivateKey::ownedAndOnlySShKeys()->where('id', '!=', 0)->get();
 
         if ($this->private_keys->count() > 0) {
             $this->private_key_id = $this->private_keys->first()->id;
+        }
+
+        if ($this->selectedTokenUuid) {
+            $this->current_step = 2;
+            $this->loading_data = true;
         }
     }
 
@@ -165,9 +176,27 @@ class ByVultr extends Component
         ];
     }
 
-    public function selectToken(int $tokenId): void
+    public function selectToken(int $tokenId): mixed
     {
         $this->selected_token_id = $tokenId;
+
+        return $this->nextStep();
+    }
+
+    private function selectTokenFromUrl(?string $selectedTokenUuid): void
+    {
+        if (! $selectedTokenUuid) {
+            return;
+        }
+
+        $token = $this->available_tokens->firstWhere('uuid', $selectedTokenUuid);
+
+        if (! $token) {
+            return;
+        }
+
+        $this->selectedTokenUuid = $selectedTokenUuid;
+        $this->selected_token_id = $token->id;
     }
 
     public function nextStep(): mixed
@@ -177,14 +206,19 @@ class ByVultr extends Component
         ]);
 
         try {
-            $vultrToken = $this->getVultrToken();
+            if (! $this->selectedTokenUuid) {
+                $token = $this->available_tokens->firstWhere('id', $this->selected_token_id);
 
-            if (! $vultrToken) {
-                return $this->dispatch('error', 'Please select a valid Vultr token.');
+                if ($token) {
+                    return $this->redirectRoute('server.create.token', [
+                        'type' => 'vultr',
+                        'token_uuid' => $token->uuid,
+                    ], navigate: true);
+                }
             }
 
-            $this->loadVultrData($vultrToken);
             $this->current_step = 2;
+            $this->loading_data = true;
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
@@ -192,9 +226,15 @@ class ByVultr extends Component
         return null;
     }
 
-    public function previousStep(): void
+    public function previousStep(): mixed
     {
+        if ($this->selectedTokenUuid) {
+            return $this->redirectRoute('server.create.type', ['type' => 'vultr'], navigate: true);
+        }
+
         $this->current_step = 1;
+
+        return null;
     }
 
     public function updatedSelectedRegion(): void
@@ -251,6 +291,29 @@ class ByVultr extends Component
         return '$'.number_format((float) $monthlyCost, 2);
     }
 
+    public function getAdvancedVultrOptionsSummaryProperty(): array
+    {
+        $summary = [];
+
+        if (count($this->selectedVultrSshKeyIds) > 0) {
+            $summary[] = count($this->selectedVultrSshKeyIds).' extra SSH '.str('key')->plural(count($this->selectedVultrSshKeyIds));
+        }
+
+        if (! $this->enable_ipv6) {
+            $summary[] = 'IPv6 disabled';
+        }
+
+        if ($this->disable_public_ipv4) {
+            $summary[] = 'Public IPv4 disabled';
+        }
+
+        if (! empty($this->cloud_init_script)) {
+            $summary[] = 'cloud-init';
+        }
+
+        return $summary;
+    }
+
     private function getVultrToken(): string
     {
         if ($this->selected_token_id) {
@@ -262,9 +325,19 @@ class ByVultr extends Component
         return '';
     }
 
-    private function loadVultrData(string $token): void
+    public function loadVultrData(): void
     {
+        $token = $this->getVultrToken();
+
+        if (! $token) {
+            $this->loading_data = false;
+            $this->dispatch('error', 'Please select a valid Vultr token.');
+
+            return;
+        }
+
         $this->loading_data = true;
+        $this->provider_data_error = null;
 
         try {
             $vultrService = new VultrService($token);
@@ -288,8 +361,20 @@ class ByVultr extends Component
             $this->loading_data = false;
         } catch (\Throwable $e) {
             $this->loading_data = false;
-            throw $e;
+            $this->provider_data_error = $this->providerDataErrorMessage('Vultr', $e, 'error');
+            $this->dispatch('error', $this->provider_data_error);
         }
+    }
+
+    private function providerDataErrorMessage(string $providerName, \Throwable $e, string $jsonMessageKey): string
+    {
+        $details = $e->getMessage();
+
+        if ($e instanceof RequestException && $e->response) {
+            $details = data_get($e->response->json(), $jsonMessageKey) ?: $e->response->body() ?: $details;
+        }
+
+        return "{$providerName} API error: {$details}";
     }
 
     private function createVultrServer(string $token): array

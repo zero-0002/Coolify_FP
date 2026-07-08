@@ -828,6 +828,7 @@ class Show extends Component
             $this->hetznerSearchError = null;
 
             $this->dispatch('success', 'Server successfully linked to Hetzner Cloud!');
+            $this->dispatch('close-modal');
             $this->dispatch('refreshServerShow');
         } catch (\Throwable $e) {
             return handleError($e, $this);
@@ -958,6 +959,7 @@ class Show extends Component
             $this->digitalOceanSearchError = null;
 
             $this->dispatch('success', 'Server successfully linked to DigitalOcean!');
+            $this->dispatch('close-modal');
             $this->dispatch('refreshServerShow');
         } catch (\Throwable $e) {
             return handleError($e, $this);
@@ -1082,6 +1084,7 @@ class Show extends Component
             $this->vultrSearchError = null;
 
             $this->dispatch('success', 'Server successfully linked to Vultr!');
+            $this->dispatch('close-modal');
             $this->dispatch('refreshServerShow');
         } catch (\Throwable $e) {
             return handleError($e, $this);

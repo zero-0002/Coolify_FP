@@ -12,6 +12,7 @@ use App\Rules\ValidCloudInitYaml;
 use App\Rules\ValidHostname;
 use App\Services\DigitalOceanService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -32,6 +33,8 @@ class ByDigitalOcean extends Component
     public $limit_reached;
 
     public ?int $selected_token_id = null;
+
+    public ?string $selectedTokenUuid = null;
 
     public array $regions = [];
 
@@ -55,6 +58,8 @@ class ByDigitalOcean extends Component
 
     public bool $loading_data = false;
 
+    public ?string $provider_data_error = null;
+
     public bool $enable_ipv6 = true;
 
     public bool $monitoring = true;
@@ -74,17 +79,23 @@ class ByDigitalOcean extends Component
 
     public bool $from_onboarding = false;
 
-    public function mount()
+    public function mount(?string $selectedTokenUuid = null)
     {
         try {
             $this->authorize('viewAny', CloudProviderToken::class);
             $this->loadTokens();
+            $this->selectTokenFromUrl($selectedTokenUuid);
             $this->loadSavedCloudInitScripts();
             $this->server_name = generate_random_name();
             $this->private_keys = PrivateKey::ownedAndOnlySShKeys()->where('id', '!=', 0)->get();
 
             if ($this->private_keys->count() > 0) {
                 $this->private_key_id = $this->private_keys->first()->id;
+            }
+
+            if ($this->selectedTokenUuid) {
+                $this->current_step = 2;
+                $this->loading_data = true;
             }
         } catch (\Throwable $e) {
             return handleError($e, $this);
@@ -174,9 +185,27 @@ class ByDigitalOcean extends Component
         ];
     }
 
-    public function selectToken(int $tokenId): void
+    public function selectToken(int $tokenId): mixed
     {
         $this->selected_token_id = $tokenId;
+
+        return $this->nextStep();
+    }
+
+    private function selectTokenFromUrl(?string $selectedTokenUuid): void
+    {
+        if (! $selectedTokenUuid) {
+            return;
+        }
+
+        $token = $this->available_tokens->firstWhere('uuid', $selectedTokenUuid);
+
+        if (! $token) {
+            return;
+        }
+
+        $this->selectedTokenUuid = $selectedTokenUuid;
+        $this->selected_token_id = $token->id;
     }
 
     private function getDigitalOceanToken(): string
@@ -197,27 +226,48 @@ class ByDigitalOcean extends Component
         ]);
 
         try {
-            $digitalOceanToken = $this->getDigitalOceanToken();
+            if (! $this->selectedTokenUuid) {
+                $token = $this->available_tokens->firstWhere('id', $this->selected_token_id);
 
-            if (! $digitalOceanToken) {
-                return $this->dispatch('error', 'Please select a valid DigitalOcean token.');
+                if ($token) {
+                    return $this->redirectRoute('server.create.token', [
+                        'type' => 'digital-ocean',
+                        'token_uuid' => $token->uuid,
+                    ], navigate: true);
+                }
             }
 
-            $this->loadDigitalOceanData($digitalOceanToken);
             $this->current_step = 2;
+            $this->loading_data = true;
         } catch (\Throwable $e) {
             return handleError($e, $this);
         }
     }
 
-    public function previousStep(): void
+    public function previousStep(): mixed
     {
+        if ($this->selectedTokenUuid) {
+            return $this->redirectRoute('server.create.type', ['type' => 'digital-ocean'], navigate: true);
+        }
+
         $this->current_step = 1;
+
+        return null;
     }
 
-    private function loadDigitalOceanData(string $token): void
+    public function loadDigitalOceanData(): void
     {
+        $token = $this->getDigitalOceanToken();
+
+        if (! $token) {
+            $this->loading_data = false;
+            $this->dispatch('error', 'Please select a valid DigitalOcean token.');
+
+            return;
+        }
+
         $this->loading_data = true;
+        $this->provider_data_error = null;
 
         try {
             $digitalOceanService = new DigitalOceanService($token);
@@ -232,8 +282,20 @@ class ByDigitalOcean extends Component
             $this->loading_data = false;
         } catch (\Throwable $e) {
             $this->loading_data = false;
-            throw $e;
+            $this->provider_data_error = $this->providerDataErrorMessage('DigitalOcean', $e, 'message');
+            $this->dispatch('error', $this->provider_data_error);
         }
+    }
+
+    private function providerDataErrorMessage(string $providerName, \Throwable $e, string $jsonMessageKey): string
+    {
+        $details = $e->getMessage();
+
+        if ($e instanceof RequestException && $e->response) {
+            $details = data_get($e->response->json(), $jsonMessageKey) ?: $e->response->body() ?: $details;
+        }
+
+        return "{$providerName} API error: {$details}";
     }
 
     public function getAvailableSizesProperty(): array

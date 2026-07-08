@@ -15,6 +15,9 @@
             <x-forms.input required id="name" label="Token Name"
                 placeholder="e.g., Production {{ $provider === 'digitalocean' ? 'DigitalOcean' : ucfirst($provider) }} token. tip: add project name to identify easier" />
 
+            <x-forms.textarea id="description" label="Description" rows="3"
+                placeholder="Optional notes about where this token is used" />
+
             <x-forms.input required type="password" id="token" label="API Token"
                 placeholder="Enter your API token" />
 
@@ -24,27 +27,19 @@
                     target='_blank' class='underline dark:text-white'>{{ $provider === 'digitalocean' ? 'DigitalOcean' : ucfirst($provider) }} Console</a>.
                 @if ($provider === 'hetzner')
                     Choose Project → Security → API Tokens.
-                    <br><br>
-                    Don't have a Hetzner account? <a href='https://coolify.io/hetzner' target='_blank'
-                        class='underline dark:text-white'>Sign up here</a>
-                    <br>
-                    <span class="text-xs">(Coolify's affiliate link, only new accounts - supports us (€10)
-                        and gives you €20)</span>
                 @endif
                 @if ($provider === 'digitalocean')
                     Generate New Token.
                 @endif
                 @if ($provider === 'vultr')
                     Open Account → API Access.
-                    <br><br>
-                    Don't have a Vultr account? <a href='https://www.vultr.com/?ref=9911335' target='_blank'
-                        class='underline dark:text-white'>Sign up here</a>
-                    <br>
-                    <span class="text-xs">Coolify's affiliate link, only new accounts - supports us</span>
                 @endif
             </div>
 
-            <x-forms.button type="submit">Validate & Add Token</x-forms.button>
+            <x-forms.button type="submit" :showLoadingIndicator="false" wire:loading.attr="disabled" wire:target="addToken">
+                Validate & Add Token
+                <x-loading-on-button wire:loading wire:target="addToken" />
+            </x-forms.button>
         @else
             {{-- Full page layout: horizontal, spacious --}}
             <div class="flex gap-2 items-end flex-wrap">
@@ -58,6 +53,10 @@
                 <div class="flex-1 min-w-64">
                     <x-forms.input required id="name" label="Token Name" placeholder="e.g., Production cloud token" />
                 </div>
+                <div class="flex-1 min-w-64">
+                    <x-forms.textarea id="description" label="Description" rows="3"
+                        placeholder="Optional notes about where this token is used" />
+                </div>
             </div>
             <div class="flex-1 min-w-64">
                 <x-forms.input required type="password" id="token" label="API Token"
@@ -68,27 +67,19 @@
                         target='_blank' class='underline dark:text-white'>{{ $provider === 'digitalocean' ? 'DigitalOcean' : ucfirst($provider) }} Console</a>.
                     @if ($provider === 'hetzner')
                         Choose Project → Security → API Tokens.
-                        <br><br>
-                        Don't have a Hetzner account? <a href='https://coolify.io/hetzner' target='_blank'
-                            class='underline dark:text-white'>Sign up here</a>
-                        <br>
-                        <span class="text-xs">(Coolify's affiliate link, only new accounts - supports us (€10)
-                            and gives you €20)</span>
                     @endif
                     @if ($provider === 'digitalocean')
                         Generate New Token.
                     @endif
                     @if ($provider === 'vultr')
                         Open Account → API Access.
-                        <br><br>
-                        Don't have a Vultr account? <a href='https://www.vultr.com/?ref=9911335' target='_blank'
-                            class='underline dark:text-white'>Sign up here</a>
-                        <br>
-                        <span class="text-xs">Coolify's affiliate link, only new accounts - supports us</span>
                     @endif
                 </div>
             </div>
-            <x-forms.button type="submit">Validate & Add Token</x-forms.button>
+            <x-forms.button type="submit" :showLoadingIndicator="false" wire:loading.attr="disabled" wire:target="addToken">
+                Validate & Add Token
+                <x-loading-on-button wire:loading wire:target="addToken" />
+            </x-forms.button>
         @endif
     </form>
 </div>
