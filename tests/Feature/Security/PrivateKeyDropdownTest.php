@@ -2,8 +2,10 @@
 
 use App\Livewire\Security\PrivateKey\Create;
 use App\Livewire\Security\PrivateKey\Index;
+use App\Livewire\Security\PrivateKey\Show;
 use App\Models\InstanceSettings;
 use App\Models\PrivateKey;
+use App\Models\Server;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -94,4 +96,39 @@ test('github app badge appears before the save button in the title row', functio
         ->and($view)->toContain('Used by GitHub App')
         ->and($view)->toContain('<x-forms.button canGate="update" :canResource="$private_key" type="submit">')
         ->and($badgePosition)->toBeLessThan($saveButtonPosition);
+});
+
+test('used private key details disable delete with an explanation', function () {
+    $privateKey = PrivateKey::factory()->create([
+        'team_id' => $this->team->id,
+    ]);
+
+    Server::factory()->create([
+        'team_id' => $this->team->id,
+        'private_key_id' => $privateKey->id,
+    ]);
+
+    $this->get(route('security.private-key.show', [
+        'private_key_uuid' => $privateKey->uuid,
+    ]))
+        ->assertSuccessful()
+        ->assertSee('This private key is currently used by a server, application, or Git app and cannot be deleted.', false)
+        ->assertSee('disabled', false);
+});
+
+test('used private key delete action keeps the key and shows an error', function () {
+    $privateKey = PrivateKey::factory()->create([
+        'team_id' => $this->team->id,
+    ]);
+
+    Server::factory()->create([
+        'team_id' => $this->team->id,
+        'private_key_id' => $privateKey->id,
+    ]);
+
+    Livewire::test(Show::class, ['private_key_uuid' => $privateKey->uuid])
+        ->call('delete')
+        ->assertDispatched('error');
+
+    expect($privateKey->fresh())->not->toBeNull();
 });

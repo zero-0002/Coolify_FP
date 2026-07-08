@@ -19,7 +19,7 @@
                 @if (data_get($private_key, 'id') > 0)
                     @can('delete', $private_key)
                         <x-modal-confirmation title="Confirm Private Key Deletion?" isErrorButton buttonTitle="Delete"
-                            submitAction="delete({{ $private_key->id }})" :actions="[
+                            submitAction="delete({{ $private_key->id }})" :disabled="$isInUse" :disabledTooltip="$deleteDisabledReason" :actions="[
                                 'This private key will be permanently deleted.',
                                 'All servers connected to this private key will stop working.',
                                 'Any git app using this private key will stop working.',
