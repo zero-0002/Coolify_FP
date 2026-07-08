@@ -6,6 +6,7 @@ use App\Models\CloudProviderToken;
 use App\Models\Server;
 use App\Models\Team;
 use App\Notifications\Server\HetznerDeletionFailed;
+use App\Services\DigitalOceanService;
 use App\Services\HetznerService;
 use App\Services\VultrService;
 use Lorisleiva\Actions\Concerns\AsAction;
@@ -14,7 +15,7 @@ class DeleteServer
 {
     use AsAction;
 
-    public function handle(int $serverId, bool $deleteFromHetzner = false, ?int $hetznerServerId = null, ?int $cloudProviderTokenId = null, ?int $teamId = null, bool $deleteFromVultr = false, ?string $vultrInstanceId = null)
+    public function handle(int $serverId, bool $deleteFromHetzner = false, ?int $hetznerServerId = null, ?int $cloudProviderTokenId = null, ?int $teamId = null, bool $deleteFromVultr = false, ?string $vultrInstanceId = null, bool $deleteFromDigitalOcean = false, ?int $digitalOceanDropletId = null)
     {
         $server = Server::withTrashed()->find($serverId);
 
@@ -30,6 +31,14 @@ class DeleteServer
         if ($deleteFromVultr && ($vultrInstanceId || ($server && $server->vultr_instance_id))) {
             $this->deleteFromVultrById(
                 $vultrInstanceId ?? $server->vultr_instance_id,
+                $cloudProviderTokenId ?? $server->cloud_provider_token_id,
+                $teamId ?? $server->team_id
+            );
+        }
+
+        if ($deleteFromDigitalOcean && ($digitalOceanDropletId || ($server && $server->digitalocean_droplet_id))) {
+            $this->deleteFromDigitalOceanById(
+                $digitalOceanDropletId ?? $server->digitalocean_droplet_id,
                 $cloudProviderTokenId ?? $server->cloud_provider_token_id,
                 $teamId ?? $server->team_id
             );
@@ -132,6 +141,49 @@ class DeleteServer
             logger()->error('Failed to delete server from Vultr', [
                 'error' => $e->getMessage(),
                 'vultr_instance_id' => $vultrInstanceId,
+                'team_id' => $teamId,
+            ]);
+        }
+    }
+
+    private function deleteFromDigitalOceanById(int $digitalOceanDropletId, ?int $cloudProviderTokenId, int $teamId): void
+    {
+        try {
+            $token = null;
+
+            if ($cloudProviderTokenId) {
+                $token = CloudProviderToken::where('id', $cloudProviderTokenId)
+                    ->where('team_id', $teamId)
+                    ->where('provider', 'digitalocean')
+                    ->first();
+            }
+
+            if (! $token) {
+                $token = CloudProviderToken::where('team_id', $teamId)
+                    ->where('provider', 'digitalocean')
+                    ->first();
+            }
+
+            if (! $token) {
+                logger()->debug('No DigitalOcean token found for team, skipping droplet deletion', [
+                    'team_id' => $teamId,
+                    'digitalocean_droplet_id' => $digitalOceanDropletId,
+                ]);
+
+                return;
+            }
+
+            $digitalOceanService = new DigitalOceanService($token->token);
+            $digitalOceanService->deleteDroplet($digitalOceanDropletId);
+
+            logger()->debug('Deleted droplet from DigitalOcean', [
+                'digitalocean_droplet_id' => $digitalOceanDropletId,
+                'team_id' => $teamId,
+            ]);
+        } catch (\Throwable $e) {
+            logger()->error('Failed to delete droplet from DigitalOcean', [
+                'error' => $e->getMessage(),
+                'digitalocean_droplet_id' => $digitalOceanDropletId,
                 'team_id' => $teamId,
             ]);
         }

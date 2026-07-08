@@ -864,7 +864,9 @@ class ServersController extends Controller
             $server->cloud_provider_token_id,
             $server->team_id,
             false, // Don't delete from Vultr via API
-            $server->vultr_instance_id
+            $server->vultr_instance_id,
+            false, // Don't delete from DigitalOcean via API
+            $server->digitalocean_droplet_id
         );
 
         auditLog('api.server.deleted', [

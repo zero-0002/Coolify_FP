@@ -5,22 +5,23 @@
             @if (!isset($provider) || empty($provider) || $provider === '')
                 <x-forms.select required id="provider" label="Provider" wire:model.live="provider">
                     <option value="hetzner">Hetzner</option>
-                    <option disabled value="digitalocean">DigitalOcean</option>
+                    <option value="digitalocean">DigitalOcean</option>
                     <option value="vultr">Vultr</option>
                 </x-forms.select>
             @else
                 <input type="hidden" wire:model="provider" />
             @endif
 
-            <x-forms.input required id="name" label="Token Name" placeholder="e.g., Production cloud token" />
+            <x-forms.input required id="name" label="Token Name"
+                placeholder="e.g., Production {{ $provider === 'digitalocean' ? 'DigitalOcean' : ucfirst($provider) }} token. tip: add project name to identify easier" />
 
             <x-forms.input required type="password" id="token" label="API Token"
                 placeholder="Enter your API token" />
 
             <div class="text-sm text-neutral-500 dark:text-neutral-400">
                 Create an API token in the <a
-                    href='{{ $provider === 'hetzner' ? 'https://console.hetzner.com/projects' : ($provider === 'vultr' ? 'https://console.vultr.com/user/apiaccess/' : '#') }}'
-                    target='_blank' class='underline dark:text-white'>{{ ucfirst($provider) }} Console</a>.
+                    href='{{ $provider === 'hetzner' ? 'https://console.hetzner.com/projects' : ($provider === 'vultr' ? 'https://console.vultr.com/user/apiaccess/' : 'https://cloud.digitalocean.com/account/api/tokens') }}'
+                    target='_blank' class='underline dark:text-white'>{{ $provider === 'digitalocean' ? 'DigitalOcean' : ucfirst($provider) }} Console</a>.
                 @if ($provider === 'hetzner')
                     Choose Project → Security → API Tokens.
                     <br><br>
@@ -29,6 +30,9 @@
                     <br>
                     <span class="text-xs">(Coolify's affiliate link, only new accounts - supports us (€10)
                         and gives you €20)</span>
+                @endif
+                @if ($provider === 'digitalocean')
+                    Generate New Token.
                 @endif
                 @if ($provider === 'vultr')
                     Open Account → API Access.
@@ -47,7 +51,7 @@
                 <div class="w-64">
                     <x-forms.select required id="provider" label="Provider" wire:model.live="provider">
                         <option value="hetzner">Hetzner</option>
-                        <option disabled value="digitalocean">DigitalOcean</option>
+                        <option value="digitalocean">DigitalOcean</option>
                         <option value="vultr">Vultr</option>
                     </x-forms.select>
                 </div>
@@ -60,8 +64,8 @@
                     placeholder="Enter your API token" />
                 <div class="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
                     Create an API token in the <a
-                        href='{{ $provider === 'hetzner' ? 'https://console.hetzner.com/projects' : ($provider === 'vultr' ? 'https://console.vultr.com/user/apiaccess/' : '#') }}'
-                        target='_blank' class='underline dark:text-white'>{{ ucfirst($provider) }} Console</a>.
+                        href='{{ $provider === 'hetzner' ? 'https://console.hetzner.com/projects' : ($provider === 'vultr' ? 'https://console.vultr.com/user/apiaccess/' : 'https://cloud.digitalocean.com/account/api/tokens') }}'
+                        target='_blank' class='underline dark:text-white'>{{ $provider === 'digitalocean' ? 'DigitalOcean' : ucfirst($provider) }} Console</a>.
                     @if ($provider === 'hetzner')
                         Choose Project → Security → API Tokens.
                         <br><br>
@@ -70,6 +74,9 @@
                         <br>
                         <span class="text-xs">(Coolify's affiliate link, only new accounts - supports us (€10)
                             and gives you €20)</span>
+                    @endif
+                    @if ($provider === 'digitalocean')
+                        Generate New Token.
                     @endif
                     @if ($provider === 'vultr')
                         Open Account → API Access.

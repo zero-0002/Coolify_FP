@@ -47,6 +47,27 @@
             </div>
 
             <div class="border-t dark:border-coolgray-300 my-4"></div>
+
+            <div>
+                <x-modal-input title="Connect a DigitalOcean Droplet">
+                    <x-slot:content>
+                        <div class="relative gap-2 cursor-pointer coolbox group">
+                            <div class="flex items-center gap-4 mx-6">
+                                <x-digital-ocean-icon class="w-10 h-10 flex-shrink-0" />
+                                <div class="flex flex-col justify-center flex-1">
+                                    <div class="box-title">Connect a DigitalOcean Droplet</div>
+                                    <div class="box-description">
+                                        Deploy servers directly from your DigitalOcean account
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </x-slot:content>
+                    <livewire:server.new.by-digital-ocean :private_keys="$private_keys" :limit_reached="$limit_reached" />
+                </x-modal-input>
+            </div>
+
+            <div class="border-t dark:border-coolgray-300 my-4"></div>
         @endcan
 
         <div>

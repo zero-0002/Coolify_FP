@@ -1,5 +1,5 @@
 <div x-data
-    x-init="@if ($server->hetzner_server_id && $server->cloudProviderToken && !$hetznerServerStatus) $wire.checkHetznerServerStatus(); @endif @if ($server->vultr_instance_id && $server->cloudProviderToken) $wire.checkVultrInstanceStatus(); @endif">
+    x-init="@if ($server->hetzner_server_id && $server->cloudProviderToken && !$hetznerServerStatus) $wire.checkHetznerServerStatus(); @endif @if ($server->vultr_instance_id && $server->cloudProviderToken) $wire.checkVultrInstanceStatus(); @endif @if ($server->digitalocean_droplet_id && $server->cloudProviderToken && !$digitalOceanDropletStatus) $wire.checkDigitalOceanDropletStatus(); @endif">
     <x-slot:title>
         {{ data_get_str($server, 'name')->limit(10) }} > General | Coolify
     </x-slot>
@@ -147,6 +147,57 @@
                             </x-forms.button>
                         @endif
                     @endif
+                    @if ($server->digitalocean_droplet_id)
+                        <div class="flex items-center">
+                            <div @class([
+                                'flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded transition-all',
+                                'bg-white dark:bg-coolgray-100 dark:text-white',
+                            ])
+                                @if ($digitalOceanDropletStatus === 'new') wire:poll.5s="checkDigitalOceanDropletStatus" @endif>
+                                <x-digital-ocean-icon class="w-4 h-4" />
+                                <span class="pl-1.5">
+                                    @if ($digitalOceanDropletStatus === 'new')
+                                        <svg class="inline animate-spin h-3 w-3 mr-1 text-coollabs dark:text-warning-500"
+                                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10"
+                                                stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                            </path>
+                                        </svg>
+                                    @endif
+                                    <span @class([
+                                        'text-green-500' => $digitalOceanDropletStatus === 'active',
+                                        'text-red-500' => in_array($digitalOceanDropletStatus, ['off', 'archive', 'deleted']),
+                                    ])>
+                                        {{ ucfirst($digitalOceanDropletStatus ?? 'checking') }}
+                                    </span>
+                                </span>
+                            </div>
+                            <button wire:loading.remove wire:target="checkDigitalOceanDropletStatus"
+                                title="Refresh Status" wire:click.prevent='checkDigitalOceanDropletStatus(true)'
+                                class="mx-1 dark:hover:fill-white fill-black dark:fill-warning">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M12 2a10.016 10.016 0 0 0-7 2.877V3a1 1 0 1 0-2 0v4.5a1 1 0 0 0 1 1h4.5a1 1 0 0 0 0-2H6.218A7.98 7.98 0 0 1 20 12a1 1 0 0 0 2 0A10.012 10.012 0 0 0 12 2zm7.989 13.5h-4.5a1 1 0 0 0 0 2h2.293A7.98 7.98 0 0 1 4 12a1 1 0 0 0-2 0a9.986 9.986 0 0 0 16.989 7.133V21a1 1 0 0 0 2 0v-4.5a1 1 0 0 0-1-1z" />
+                                </svg>
+                            </button>
+                            <button wire:loading wire:target="checkDigitalOceanDropletStatus" title="Refreshing Status"
+                                class="mx-1 dark:hover:fill-white fill-black dark:fill-warning">
+                                <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M12 2a10.016 10.016 0 0 0-7 2.877V3a1 1 0 1 0-2 0v4.5a1 1 0 0 0 1 1h4.5a1 1 0 0 0 0-2H6.218A7.98 7.98 0 0 1 20 12a1 1 0 0 0 2 0A10.012 10.012 0 0 0 12 2zm7.989 13.5h-4.5a1 1 0 0 0 0 2h2.293A7.98 7.98 0 0 1 4 12a1 1 0 0 0-2 0a9.986 9.986 0 0 0 16.989 7.133V21a1 1 0 0 0 2 0v-4.5a1 1 0 0 0-1-1z" />
+                                </svg>
+                            </button>
+                        </div>
+                        @if ($server->cloudProviderToken && $digitalOceanDropletStatus === 'off')
+                            <x-forms.button wire:click.prevent='startDigitalOceanDroplet' isHighlighted
+                                canGate="update" :canResource="$server">
+                                Power On
+                            </x-forms.button>
+                        @endif
+                    @endif
                     @if ($isValidating)
                         <div
                             class="flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-400">
@@ -217,7 +268,8 @@
                         $server->id !== 0 &&
                         !$isValidating &&
                         !in_array($hetznerServerStatus, ['initializing', 'starting', 'stopping', 'off']) &&
-                        !in_array($vultrInstanceStatus, ['pending', 'starting', 'stopped', 'suspended', 'deleted']))
+                        !in_array($vultrInstanceStatus, ['pending', 'starting', 'stopped', 'suspended', 'deleted']) &&
+                        !in_array($digitalOceanDropletStatus, ['new', 'off', 'archive', 'deleted']))
                     <x-slide-over closeWithX fullScreen>
                         <x-slot:title>Validate & configure</x-slot:title>
                         <x-slot:content>
@@ -576,6 +628,76 @@
                                 <div><span class="font-medium">Plan:</span> {{ $matchedVultrInstance['plan'] ?? 'Unknown' }}</div>
                             </div>
                             <x-forms.button wire:click="linkToVultr" isHighlighted canGate="update" :canResource="$server">
+                                Link This Server
+                            </x-forms.button>
+                        </div>
+                    @endif
+                </div>
+            @endif
+            @if (!$server->digitalocean_droplet_id && $availableDigitalOceanTokens->isNotEmpty())
+                <div class="pt-6">
+                    <h3>Link to DigitalOcean</h3>
+                    <p class="pb-4 text-sm dark:text-neutral-400">
+                        Link this server to a DigitalOcean droplet to enable power controls and status monitoring.
+                    </p>
+
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <div class="w-72">
+                            <x-forms.select wire:model="selectedDigitalOceanTokenId" label="DigitalOcean Token"
+                                canGate="update" :canResource="$server">
+                                <option value="">Select a token...</option>
+                                @foreach ($availableDigitalOceanTokens as $token)
+                                    <option value="{{ $token->id }}">{{ $token->name }}</option>
+                                @endforeach
+                            </x-forms.select>
+                        </div>
+                        <div class="w-72">
+                            <x-forms.input wire:model="manualDigitalOceanDropletId" label="Droplet ID"
+                                placeholder="e.g., 123456789"
+                                helper="Enter the Droplet ID from your DigitalOcean dashboard"
+                                canGate="update" :canResource="$server" />
+                        </div>
+                        <x-forms.button wire:click="searchDigitalOceanDropletById" wire:loading.attr="disabled"
+                            canGate="update" :canResource="$server">
+                            <span wire:loading.remove wire:target="searchDigitalOceanDropletById">Search by ID</span>
+                            <span wire:loading wire:target="searchDigitalOceanDropletById">Searching...</span>
+                        </x-forms.button>
+                        <div class="self-end pb-2 text-sm dark:text-neutral-500">OR</div>
+                        <x-forms.button wire:click="searchDigitalOceanDroplet" wire:loading.attr="disabled"
+                            canGate="update" :canResource="$server">
+                            <span wire:loading.remove wire:target="searchDigitalOceanDroplet">Search by IP</span>
+                            <span wire:loading wire:target="searchDigitalOceanDroplet">Searching...</span>
+                        </x-forms.button>
+                    </div>
+
+                    @if ($digitalOceanSearchError)
+                        <div class="mt-4 p-4 border border-red-500 rounded-md bg-red-50 dark:bg-red-900/20">
+                            <p class="text-red-600 dark:text-red-400">{{ $digitalOceanSearchError }}</p>
+                        </div>
+                    @endif
+
+                    @if ($digitalOceanNoMatchFound)
+                        <div class="mt-4 p-4 border border-yellow-500 rounded-md bg-yellow-50 dark:bg-yellow-900/20">
+                            <p class="text-yellow-600 dark:text-yellow-400">
+                                @if ($manualDigitalOceanDropletId)
+                                    No DigitalOcean droplet found with ID: {{ $manualDigitalOceanDropletId }}
+                                @else
+                                    No DigitalOcean droplet found matching IP: {{ $server->ip }}
+                                @endif
+                            </p>
+                        </div>
+                    @endif
+
+                    @if ($matchedDigitalOceanDroplet)
+                        <div class="mt-4 p-4 border border-green-500 rounded-md bg-green-50 dark:bg-green-900/20">
+                            <h4 class="font-semibold text-green-700 dark:text-green-400 mb-2">Match Found!</h4>
+                            <div class="grid grid-cols-2 gap-2 text-sm mb-4">
+                                <div><span class="font-medium">Name:</span> {{ $matchedDigitalOceanDroplet['name'] ?? 'Unknown' }}</div>
+                                <div><span class="font-medium">ID:</span> {{ $matchedDigitalOceanDroplet['id'] }}</div>
+                                <div><span class="font-medium">Status:</span> {{ ucfirst($matchedDigitalOceanDroplet['status'] ?? 'unknown') }}</div>
+                                <div><span class="font-medium">Size:</span> {{ data_get($matchedDigitalOceanDroplet, 'size.slug', 'Unknown') }}</div>
+                            </div>
+                            <x-forms.button wire:click="linkToDigitalOcean" isHighlighted canGate="update" :canResource="$server">
                                 Link This Server
                             </x-forms.button>
                         </div>

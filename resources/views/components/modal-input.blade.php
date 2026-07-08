@@ -17,7 +17,7 @@
 <div x-data="{ modalOpen: false }"
     x-init="$watch('modalOpen', value => { if (!value) { $wire.dispatch('modalClosed') } })"
     :class="{ 'z-40': modalOpen }" @keydown.window.escape="modalOpen=false"
-    class="relative w-auto h-auto" wire:ignore>
+    class="relative w-auto h-auto" @close-modal.window="modalOpen=false" wire:ignore>
     @if ($content)
         <div @click="modalOpen=true">
             {{ $content }}

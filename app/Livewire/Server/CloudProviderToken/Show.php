@@ -35,7 +35,7 @@ class Show extends Component
     public function getListeners()
     {
         return [
-            'tokenAdded' => 'handleTokenAdded',
+            'tokenAdded.hetzner' => 'handleTokenAdded',
         ];
     }
 
