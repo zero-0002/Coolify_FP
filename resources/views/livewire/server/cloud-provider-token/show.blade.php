@@ -15,8 +15,10 @@
                         </x-modal-input>
                     @endcan
                     <x-forms.button canGate="update" :canResource="$server" isHighlighted
-                        wire:click.prevent='validateToken'>
+                        wire:click.prevent='validateToken' :showLoadingIndicator="false" wire:loading.attr="disabled"
+                        wire:target="validateToken">
                         Validate token
+                        <x-loading-on-button wire:loading wire:target="validateToken" />
                     </x-forms.button>
                 </div>
                 <div class="pb-4">Change your server's {{ $providerName }} token.</div>
@@ -26,6 +28,9 @@
                             class="box-without-bg justify-between dark:bg-coolgray-100 bg-white items-center flex flex-col gap-2">
                             <div class="flex flex-col w-full">
                                 <div class="box-title">{{ $token->name }}</div>
+                                @if ($token->description)
+                                    <div class="box-description">{{ $token->description }}</div>
+                                @endif
                                 <div class="box-description">
                                     Created {{ $token->created_at->diffForHumans() }}
                                 </div>

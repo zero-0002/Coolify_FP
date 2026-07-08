@@ -1,6 +1,8 @@
 <?php
 
 use App\Livewire\Security\CloudProviderTokenForm;
+use App\Livewire\Security\CloudProviderTokens;
+use App\Models\CloudProviderToken;
 use App\Models\InstanceSettings;
 use App\Models\Team;
 use App\Models\User;
@@ -51,4 +53,37 @@ test('adding a digitalocean token from a modal closes the modal and refreshes di
         && data_get($dispatch, 'to') === 'server.new.by-digital-ocean'))->toBeTrue()
         ->and($dispatches->contains(fn (array $dispatch) => $dispatch['name'] === 'tokenAdded'
             && data_get($dispatch, 'to') === 'security.cloud-provider-tokens'))->toBeTrue();
+});
+
+test('adding a cloud provider token stores an optional description', function () {
+    Http::fake([
+        'https://api.hetzner.cloud/v1/servers' => Http::response([], 200),
+    ]);
+
+    Livewire::test(CloudProviderTokenForm::class)
+        ->set('provider', 'hetzner')
+        ->set('name', 'Production Hetzner')
+        ->set('description', 'Used for production servers in the EU region.')
+        ->set('token', 'hetzner-token')
+        ->call('addToken')
+        ->assertHasNoErrors();
+
+    $this->assertDatabaseHas('cloud_provider_tokens', [
+        'team_id' => $this->team->id,
+        'provider' => 'hetzner',
+        'name' => 'Production Hetzner',
+        'description' => 'Used for production servers in the EU region.',
+    ]);
+});
+
+test('saved cloud provider tokens show descriptions when present', function () {
+    CloudProviderToken::factory()->create([
+        'team_id' => $this->team->id,
+        'name' => 'Production Hetzner',
+        'description' => 'Used for production servers in the EU region.',
+    ]);
+
+    Livewire::test(CloudProviderTokens::class)
+        ->assertSee('Production Hetzner')
+        ->assertSee('Used for production servers in the EU region.');
 });

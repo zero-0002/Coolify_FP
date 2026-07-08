@@ -15,6 +15,9 @@
             <x-forms.input required id="name" label="Token Name"
                 placeholder="e.g., Production {{ $provider === 'digitalocean' ? 'DigitalOcean' : ucfirst($provider) }} token. tip: add project name to identify easier" />
 
+            <x-forms.textarea id="description" label="Description" rows="3"
+                placeholder="Optional notes about where this token is used" />
+
             <x-forms.input required type="password" id="token" label="API Token"
                 placeholder="Enter your API token" />
 
@@ -33,7 +36,10 @@
                 @endif
             </div>
 
-            <x-forms.button type="submit">Validate & Add Token</x-forms.button>
+            <x-forms.button type="submit" :showLoadingIndicator="false" wire:loading.attr="disabled" wire:target="addToken">
+                Validate & Add Token
+                <x-loading-on-button wire:loading wire:target="addToken" />
+            </x-forms.button>
         @else
             {{-- Full page layout: horizontal, spacious --}}
             <div class="flex gap-2 items-end flex-wrap">
@@ -46,6 +52,10 @@
                 </div>
                 <div class="flex-1 min-w-64">
                     <x-forms.input required id="name" label="Token Name" placeholder="e.g., Production cloud token" />
+                </div>
+                <div class="flex-1 min-w-64">
+                    <x-forms.textarea id="description" label="Description" rows="3"
+                        placeholder="Optional notes about where this token is used" />
                 </div>
             </div>
             <div class="flex-1 min-w-64">
@@ -66,7 +76,10 @@
                     @endif
                 </div>
             </div>
-            <x-forms.button type="submit">Validate & Add Token</x-forms.button>
+            <x-forms.button type="submit" :showLoadingIndicator="false" wire:loading.attr="disabled" wire:target="addToken">
+                Validate & Add Token
+                <x-loading-on-button wire:loading wire:target="addToken" />
+            </x-forms.button>
         @endif
     </form>
 </div>

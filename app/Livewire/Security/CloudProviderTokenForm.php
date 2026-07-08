@@ -22,6 +22,8 @@ class CloudProviderTokenForm extends Component
 
     public string $name = '';
 
+    public ?string $description = null;
+
     public function mount()
     {
         try {
@@ -37,6 +39,7 @@ class CloudProviderTokenForm extends Component
             'provider' => 'required|string|in:hetzner,digitalocean,vultr',
             'token' => 'required|string',
             'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
         ];
     }
 
@@ -94,11 +97,14 @@ class CloudProviderTokenForm extends Component
                 return $this->dispatch('error', 'Invalid API token. Please check your token and try again.');
             }
 
+            $description = trim($this->description ?? '');
+
             $savedToken = CloudProviderToken::create([
                 'team_id' => currentTeam()->id,
                 'provider' => $this->provider,
                 'token' => $this->token,
                 'name' => $this->name,
+                'description' => $description === '' ? null : $description,
             ]);
 
             auditLog('ui.cloud_token.created', [
@@ -108,7 +114,7 @@ class CloudProviderTokenForm extends Component
                 'provider' => $savedToken->provider,
             ]);
 
-            $this->reset(['token', 'name']);
+            $this->reset(['token', 'name', 'description']);
 
             // Dispatch event with token ID so parent components can react
             $this->dispatch('tokenAdded', tokenId: $savedToken->id);

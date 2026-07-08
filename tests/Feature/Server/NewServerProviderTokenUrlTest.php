@@ -129,6 +129,33 @@ test('provider token pages defer provider api data loading until wire init', fun
     'digital-ocean' => [ByDigitalOcean::class, 'digitalocean', 'digital-ocean', 'Loading DigitalOcean data...', 'wire:init="loadDigitalOceanData"'],
 ]);
 
+test('provider token pages render api error details when a selected token is invalid', function (string $component, string $provider, string $type, string $loadMethod, string $providerName, string $apiMessage) {
+    $token = CloudProviderToken::factory()->create([
+        'team_id' => $this->team->id,
+        'provider' => $provider,
+        'name' => $providerName.' Token',
+    ]);
+
+    Http::fake([
+        '*' => Http::response($apiMessage, 401),
+    ]);
+
+    Livewire::test($component, ['selectedTokenUuid' => $token->uuid])
+        ->call($loadMethod)
+        ->assertSet('loading_data', false)
+        ->assertSet('provider_data_error', "{$providerName} API error: {$apiMessage}")
+        ->assertDispatched('error')
+        ->assertSee("Unable to load {$providerName} details")
+        ->assertSee($apiMessage)
+        ->assertSee('href="'.route('server.create.type', ['type' => $type]).'"', false)
+        ->assertSee('wire:navigate', false)
+        ->assertDontSee('wire:click="previousStep"', false);
+})->with([
+    'hetzner' => [ByHetzner::class, 'hetzner', 'hetzner', 'loadHetznerData', 'Hetzner', 'the token you have provided is invalid'],
+    'vultr' => [ByVultr::class, 'vultr', 'vultr', 'loadVultrData', 'Vultr', 'Invalid API key'],
+    'digital-ocean' => [ByDigitalOcean::class, 'digitalocean', 'digital-ocean', 'loadDigitalOceanData', 'DigitalOcean', 'Unable to authenticate you'],
+]);
+
 test('back button on token specific provider creation pages returns to provider token selection', function (string $provider, string $type) {
     $token = CloudProviderToken::factory()->create([
         'team_id' => $this->team->id,

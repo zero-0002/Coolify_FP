@@ -12,6 +12,7 @@ use App\Rules\ValidCloudInitYaml;
 use App\Rules\ValidHostname;
 use App\Services\DigitalOceanService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -56,6 +57,8 @@ class ByDigitalOcean extends Component
     public ?int $private_key_id = null;
 
     public bool $loading_data = false;
+
+    public ?string $provider_data_error = null;
 
     public bool $enable_ipv6 = true;
 
@@ -264,6 +267,7 @@ class ByDigitalOcean extends Component
         }
 
         $this->loading_data = true;
+        $this->provider_data_error = null;
 
         try {
             $digitalOceanService = new DigitalOceanService($token);
@@ -278,8 +282,20 @@ class ByDigitalOcean extends Component
             $this->loading_data = false;
         } catch (\Throwable $e) {
             $this->loading_data = false;
-            throw $e;
+            $this->provider_data_error = $this->providerDataErrorMessage('DigitalOcean', $e, 'message');
+            $this->dispatch('error', $this->provider_data_error);
         }
+    }
+
+    private function providerDataErrorMessage(string $providerName, \Throwable $e, string $jsonMessageKey): string
+    {
+        $details = $e->getMessage();
+
+        if ($e instanceof RequestException && $e->response) {
+            $details = data_get($e->response->json(), $jsonMessageKey) ?: $e->response->body() ?: $details;
+        }
+
+        return "{$providerName} API error: {$details}";
     }
 
     public function getAvailableSizesProperty(): array

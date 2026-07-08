@@ -60,6 +60,22 @@
                 <div class="flex items-center justify-center py-8">
                     <x-loading text="Loading Hetzner data..." />
                 </div>
+            @elseif ($provider_data_error)
+                <div class="flex flex-col gap-4 rounded-lg border border-error bg-error/10 p-4">
+                    <div>
+                        <h3>Unable to load Hetzner details</h3>
+                        <p class="text-sm text-neutral-700 dark:text-neutral-300">
+                            Coolify could not fetch Hetzner data with the selected token. The token may have been
+                            deleted, revoked, or no longer has access.
+                        </p>
+                    </div>
+                    <pre class="whitespace-pre-wrap break-words text-sm text-error">{{ $provider_data_error }}</pre>
+                    <div>
+                        <a class="button" href="{{ route('server.create.type', ['type' => 'hetzner']) }}" {{ wireNavigate() }}>
+                            Select another token
+                        </a>
+                    </div>
+                </div>
             @else
                 <form class="flex flex-col w-full gap-2" wire:submit='submit'>
                     <div>

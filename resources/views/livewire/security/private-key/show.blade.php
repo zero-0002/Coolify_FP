@@ -5,8 +5,14 @@
     <x-security.navbar />
     <div x-data="{ showPrivateKey: false }">
         <form class="flex flex-col" wire:submit='changePrivateKey'>
-            <div class="flex items-start gap-2">
-                <h2 class="pb-4">Private Key</h2>
+            <div class="flex items-center gap-2 pb-4">
+                <h2>Private Key</h2>
+                @if ($isGitRelated)
+                    <span
+                        class="w-fit rounded-sm border border-coollabs bg-coollabs-50 px-2 py-1 text-xs font-bold text-coollabs-200 dark:border-coollabs-100 dark:bg-coollabs/20 dark:text-white">
+                        Used by GitHub App
+                    </span>
+                @endif
                 <x-forms.button canGate="update" :canResource="$private_key" type="submit">
                     Save
                 </x-forms.button>
@@ -35,6 +41,7 @@
                         <div class="pl-1">Public Key</div>
                     </div>
                     <x-forms.input canGate="update" :canResource="$private_key" readonly id="public_key" />
+                    <span class="block pt-2 pb-4 font-bold dark:text-warning">ACTION REQUIRED: Copy the 'Public Key' to your server's ~/.ssh/authorized_keys file</span>
                     <div class="flex items-end gap-2 py-2 ">
                         <div class="pl-1">Private Key <span class='text-helper'>*</span></div>
                         <div class="text-xs underline cursor-pointer dark:text-white" x-cloak x-show="!showPrivateKey"
@@ -46,11 +53,6 @@
                             Hide
                         </div>
                     </div>
-                    @if ($isGitRelated)
-                        <div class="w-48">
-                            <x-forms.checkbox id="isGitRelated" disabled label="Is used by a Git App?" />
-                        </div>
-                    @endif
                     <div x-cloak x-show="!showPrivateKey">
                         <x-forms.input canGate="update" :canResource="$private_key" allowToPeak="false" type="password" rows="10" id="privateKeyValue"
                             required disabled />

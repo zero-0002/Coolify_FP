@@ -12,6 +12,7 @@ use App\Rules\ValidCloudInitYaml;
 use App\Rules\ValidHostname;
 use App\Services\HetznerService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\Locked;
@@ -69,6 +70,8 @@ class ByHetzner extends Component
     public ?int $private_key_id = null;
 
     public bool $loading_data = false;
+
+    public ?string $provider_data_error = null;
 
     public bool $enable_ipv4 = true;
 
@@ -310,6 +313,7 @@ class ByHetzner extends Component
         }
 
         $this->loading_data = true;
+        $this->provider_data_error = null;
         $this->selectedHetznerSshKeyIds = [];
         $this->selectedHetznerFirewallIds = [];
         $this->selectedHetznerNetworkIds = [];
@@ -353,8 +357,20 @@ class ByHetzner extends Component
             $this->loading_data = false;
         } catch (\Throwable $e) {
             $this->loading_data = false;
-            throw $e;
+            $this->provider_data_error = $this->providerDataErrorMessage('Hetzner', $e, 'error.message');
+            $this->dispatch('error', $this->provider_data_error);
         }
+    }
+
+    private function providerDataErrorMessage(string $providerName, \Throwable $e, string $jsonMessageKey): string
+    {
+        $details = $e->getMessage();
+
+        if ($e instanceof RequestException && $e->response) {
+            $details = data_get($e->response->json(), $jsonMessageKey) ?: $e->response->body() ?: $details;
+        }
+
+        return "{$providerName} API error: {$details}";
     }
 
     private function getCpuVendorInfo(array $serverType): ?string
