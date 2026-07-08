@@ -3,14 +3,19 @@
 use App\Actions\Application\CleanupPreviewDeployment;
 use App\Jobs\ProcessGithubPullRequestWebhook;
 use App\Models\Application;
+use App\Models\ApplicationDeploymentQueue;
 use App\Models\ApplicationPreview;
 use App\Models\Environment;
+use App\Models\GithubApp;
 use App\Models\InstanceSettings;
 use App\Models\Project;
 use App\Models\Server;
 use App\Models\StandaloneDocker;
 use App\Models\Team;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -57,4 +62,49 @@ it('cleans up a closed pull request preview when pull request comment cleanup fa
     };
 
     $job->handle();
+});
+
+it('skips a synchronized GitHub pull request preview when the head commit message contains skip ci', function () {
+    Queue::fake();
+
+    $this->application->settings->update([
+        'is_preview_deployments_enabled' => true,
+    ]);
+
+    $githubApp = GithubApp::create([
+        'name' => 'Public GitHub',
+        'api_url' => 'https://api.github.com',
+        'html_url' => 'https://github.com',
+        'is_public' => true,
+        'team_id' => $this->team->id,
+    ]);
+
+    Http::fake([
+        'https://api.github.com/repos/example/repo/commits/after-sha' => Http::response([
+            'commit' => [
+                'message' => 'docs: fix typo [skip ci]',
+            ],
+        ]),
+    ]);
+
+    $job = new ProcessGithubPullRequestWebhook(
+        applicationId: $this->application->id,
+        githubAppId: $githubApp->id,
+        action: 'synchronize',
+        pullRequestId: 42,
+        pullRequestHtmlUrl: 'https://github.com/example/repo/pull/42',
+        pullRequestTitle: 'Add feature',
+        beforeSha: 'before-sha',
+        afterSha: 'after-sha',
+        commitSha: 'after-sha',
+        authorAssociation: 'OWNER',
+        fullName: 'example/repo',
+    );
+
+    $job->handle();
+
+    expect(ApplicationPreview::where('application_id', $this->application->id)->where('pull_request_id', 42)->exists())->toBeFalse()
+        ->and(ApplicationDeploymentQueue::where('application_id', $this->application->id)->where('pull_request_id', 42)->exists())->toBeFalse();
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.github.com/repos/example/repo/commits/after-sha');
 });
