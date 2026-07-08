@@ -4,7 +4,7 @@
         {{ data_get_str($server, 'name')->limit(10) }} > General | Coolify
     </x-slot>
     <livewire:server.navbar :server="$server" />
-    <div class="flex flex-col h-full gap-2 md:gap-8 md:flex-row">
+    <div class="flex flex-col h-full gap-4 md:gap-8 md:flex-row">
         <x-server.sidebar :server="$server" activeMenu="general" />
         <div class="w-full">
             <form wire:submit.prevent='submit' class="flex flex-col">
