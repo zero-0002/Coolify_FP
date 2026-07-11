@@ -18,6 +18,7 @@ use App\Notifications\Server\Reachable;
 use App\Notifications\Server\Unreachable;
 use App\Services\ConfigurationRepository;
 use App\Services\DigitalOceanService;
+use App\Services\HetznerService;
 use App\Services\VultrService;
 use App\Support\ValidationPatterns;
 use App\Traits\ClearsGlobalSearchCache;
@@ -118,6 +119,8 @@ class Server extends BaseModel
      * Scheduled jobs skip these servers via skipServer().
      */
     public const PLACEHOLDER_IP = '1.2.3.4';
+
+    public const PLACEHOLDER_IPS = [self::PLACEHOLDER_IP, '0.0.0.0', '::'];
 
     public static $batch_counter = 0;
 
@@ -317,9 +320,12 @@ class Server extends BaseModel
     public function hasPlaceholderIp(): bool
     {
         // Cast: the saving hook stores the ip as a Stringable in memory.
-        $ip = (string) $this->ip;
+        return self::isPlaceholderIp((string) $this->ip);
+    }
 
-        return blank($ip) || in_array($ip, [self::PLACEHOLDER_IP, '0.0.0.0', '::'], true);
+    public static function isPlaceholderIp(?string $ip): bool
+    {
+        return blank($ip) || in_array($ip, self::PLACEHOLDER_IPS, true);
     }
 
     /**
@@ -328,13 +334,66 @@ class Server extends BaseModel
      */
     public function backfillPlaceholderIp(?string $ip): bool
     {
-        if ($ip && $this->hasPlaceholderIp()) {
-            $this->update(['ip' => $ip]);
-
-            return true;
+        if (self::isPlaceholderIp($ip)) {
+            return false;
         }
 
-        return false;
+        $updated = static::query()
+            ->whereKey($this->getKey())
+            ->where(function (Builder $query): void {
+                $query->whereNull('ip')
+                    ->orWhere('ip', '')
+                    ->orWhereIn('ip', self::PLACEHOLDER_IPS);
+            })
+            ->update(['ip' => $ip]);
+
+        if ($updated === 0) {
+            return false;
+        }
+
+        $this->forceFill(['ip' => $ip]);
+        $this->syncOriginalAttribute('ip');
+        static::flushIdentityMap();
+
+        return true;
+    }
+
+    /**
+     * Persist provider status without saving a stale in-memory IP value.
+     *
+     * @param  array<string, mixed>  $updates
+     */
+    private function persistProviderState(array $updates): void
+    {
+        if (empty($updates)) {
+            return;
+        }
+
+        static::query()->whereKey($this->getKey())->update($updates);
+        $this->forceFill($updates);
+        $this->syncOriginalAttributes(array_keys($updates));
+        static::flushIdentityMap();
+    }
+
+    public function refreshHetznerState(): ?string
+    {
+        if (! $this->hetzner_server_id || ! $this->cloudProviderToken || $this->cloudProviderToken->provider !== 'hetzner') {
+            return $this->hetzner_server_status;
+        }
+
+        $hetznerService = new HetznerService($this->cloudProviderToken->token);
+        $server = $hetznerService->getServer($this->hetzner_server_id);
+        $status = $server['status'] ?? null;
+        $assignedIp = data_get($server, 'public_net.ipv4.ip') ?? data_get($server, 'public_net.ipv6.ip');
+
+        $updates = [];
+        if ($this->hetzner_server_status !== $status) {
+            $updates['hetzner_server_status'] = $status;
+        }
+        $this->persistProviderState($updates);
+        $this->backfillPlaceholderIp($assignedIp);
+
+        return $status;
     }
 
     public function refreshVultrState(): ?string
@@ -352,8 +411,7 @@ class Server extends BaseModel
             }
 
             if ($this->vultr_instance_status !== 'deleted') {
-                $this->update(['vultr_instance_status' => 'deleted']);
-                $this->forceFill(['vultr_instance_status' => 'deleted']);
+                $this->persistProviderState(['vultr_instance_status' => 'deleted']);
             }
 
             return 'deleted';
@@ -368,15 +426,8 @@ class Server extends BaseModel
         if ($this->vultr_instance_status !== $status) {
             $updates['vultr_instance_status'] = $status;
         }
-
-        if ($this->hasPlaceholderIp() && $publicIp) {
-            $updates['ip'] = $publicIp;
-        }
-
-        if (! empty($updates)) {
-            $this->update($updates);
-            $this->forceFill($updates);
-        }
+        $this->persistProviderState($updates);
+        $this->backfillPlaceholderIp($publicIp);
 
         return $status;
     }
@@ -393,7 +444,7 @@ class Server extends BaseModel
             $droplet = $digitalOceanService->getDroplet((int) $this->digitalocean_droplet_id);
         } catch (RequestException $e) {
             if ($e->response?->status() === 404) {
-                $this->update(['digitalocean_droplet_status' => 'deleted']);
+                $this->persistProviderState(['digitalocean_droplet_status' => 'deleted']);
 
                 return 'deleted';
             }
@@ -401,7 +452,7 @@ class Server extends BaseModel
             throw $e;
         } catch (\Throwable $e) {
             if ((int) $e->getCode() === 404) {
-                $this->update(['digitalocean_droplet_status' => 'deleted']);
+                $this->persistProviderState(['digitalocean_droplet_status' => 'deleted']);
 
                 return 'deleted';
             }
@@ -416,12 +467,8 @@ class Server extends BaseModel
         $status = $droplet['status'] ?? null;
         $ip = $digitalOceanService->getPublicIpAddress($droplet);
 
-        $updates = ['digitalocean_droplet_status' => $status];
-        if ($ip && $this->hasPlaceholderIp()) {
-            $updates['ip'] = $ip;
-        }
-
-        $this->update($updates);
+        $this->persistProviderState(['digitalocean_droplet_status' => $status]);
+        $this->backfillPlaceholderIp($ip);
 
         return $status;
     }

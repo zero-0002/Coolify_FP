@@ -66,8 +66,8 @@ it('backfills a placeholder IP from the DigitalOcean droplet state', function ()
     expect($server->fresh()->ip)->toBe('203.0.113.10');
 });
 
-it('does not overwrite a real IP from the DigitalOcean droplet state', function () {
-    $server = createDigitalOceanServerForStateTest('active', ['ip' => '198.51.100.20']);
+it('does not overwrite an administrator configured address from the DigitalOcean droplet state', function (string $configuredAddress) {
+    $server = createDigitalOceanServerForStateTest('active', ['ip' => $configuredAddress]);
 
     Http::fake([
         'https://api.digitalocean.com/v2/droplets/987' => Http::response([
@@ -84,7 +84,38 @@ it('does not overwrite a real IP from the DigitalOcean droplet state', function 
     ]);
 
     $server->refreshDigitalOceanState();
-    expect($server->fresh()->ip)->toBe('198.51.100.20');
+    expect($server->fresh()->ip)->toBe($configuredAddress);
+})->with([
+    'public IPv4' => '198.51.100.20',
+    'private IPv4' => '10.10.0.12',
+    'IPv6' => '2001:db8::10',
+    'tunnel hostname' => 'server.internal.example.com',
+]);
+
+it('does not overwrite an address configured while DigitalOcean state is loading', function () {
+    $server = createDigitalOceanServerForStateTest('new', ['ip' => Server::PLACEHOLDER_IP]);
+
+    Http::fake(function () use ($server) {
+        Server::query()->findOrFail($server->id)->update([
+            'ip' => 'server.internal.example.com',
+        ]);
+
+        return Http::response([
+            'droplet' => [
+                'id' => 987,
+                'status' => 'active',
+                'networks' => [
+                    'v4' => [
+                        ['type' => 'public', 'ip_address' => '203.0.113.10'],
+                    ],
+                ],
+            ],
+        ], 200);
+    });
+
+    expect($server->refreshDigitalOceanState())->toBe('active')
+        ->and($server->fresh()->ip)->toBe('server.internal.example.com')
+        ->and($server->digitalocean_droplet_status)->toBe('active');
 });
 
 it('does not mark a DigitalOcean droplet as deleted on transient provider errors', function () {

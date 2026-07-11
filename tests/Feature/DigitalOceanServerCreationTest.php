@@ -113,6 +113,54 @@ it('updates the placeholder IP once the droplet reports one', function () {
     ]);
 });
 
+it('deletes the droplet when local server persistence fails', function () {
+    Http::fake([
+        'https://api.digitalocean.com/v2/account/keys' => Http::response([
+            'ssh_key' => ['id' => 123],
+        ], 201),
+        'https://api.digitalocean.com/v2/account/keys*' => Http::response([
+            'ssh_keys' => [],
+        ], 200),
+        'https://api.digitalocean.com/v2/droplets' => Http::response([
+            'droplet' => [
+                'id' => 555,
+                'status' => 'active',
+                'networks' => [
+                    'v4' => [
+                        ['type' => 'public', 'ip_address' => '203.0.113.40'],
+                    ],
+                ],
+            ],
+        ], 202),
+        'https://api.digitalocean.com/v2/droplets/555' => Http::response(null, 204),
+    ]);
+
+    $eventDispatcher = Server::getEventDispatcher();
+    Server::setEventDispatcher(clone $eventDispatcher);
+    Server::created(function (): void {
+        throw new RuntimeException('local persistence failed');
+    });
+
+    try {
+        Livewire::test(ByDigitalOcean::class, ['selectedTokenUuid' => $this->digitalOceanToken->uuid])
+            ->set('server_name', 'persistence-fails')
+            ->set('selected_region', 'nyc1')
+            ->set('selected_size', 's-1vcpu-1gb')
+            ->set('selected_image', 'ubuntu-24-04-x64')
+            ->set('private_key_id', $this->privateKey->id)
+            ->call('submit')
+            ->assertDispatched('error', 'local persistence failed');
+    } finally {
+        Server::setEventDispatcher($eventDispatcher);
+    }
+
+    $this->assertDatabaseMissing('servers', [
+        'digitalocean_droplet_id' => 555,
+    ]);
+    Http::assertSent(fn ($request) => $request->method() === 'DELETE'
+        && $request->url() === 'https://api.digitalocean.com/v2/droplets/555');
+});
+
 it('renders only the full width buy button at the bottom of the DigitalOcean form', function () {
     Livewire::test(ByDigitalOcean::class)
         ->set('current_step', 2)

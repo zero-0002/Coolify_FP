@@ -14,6 +14,7 @@ use App\Services\DigitalOceanService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -449,6 +450,10 @@ class ByDigitalOcean extends Component
     {
         $this->validate();
 
+        $digitalOceanService = null;
+        $dropletId = null;
+        $server = null;
+
         try {
             $this->authorize('create', Server::class);
 
@@ -468,24 +473,29 @@ class ByDigitalOcean extends Component
 
             $digitalOceanService = new DigitalOceanService($this->getDigitalOceanToken());
             $droplet = $this->createDigitalOceanDroplet($digitalOceanService);
+            $dropletId = (int) $droplet['id'];
 
             // Persist the server immediately so the droplet is always tracked
             // in Coolify, even if waiting for the public IP fails below.
-            $server = Server::create([
-                'name' => strtolower(trim($this->server_name)),
-                'ip' => Server::PLACEHOLDER_IP,
-                'user' => 'root',
-                'port' => 22,
-                'team_id' => currentTeam()->id,
-                'private_key_id' => $this->private_key_id,
-                'cloud_provider_token_id' => $this->selected_token_id,
-                'digitalocean_droplet_id' => $droplet['id'],
-                'digitalocean_droplet_status' => $droplet['status'] ?? null,
-            ]);
+            $server = DB::transaction(function () use ($dropletId, $droplet): Server {
+                $server = Server::create([
+                    'name' => strtolower(trim($this->server_name)),
+                    'ip' => Server::PLACEHOLDER_IP,
+                    'user' => 'root',
+                    'port' => 22,
+                    'team_id' => currentTeam()->id,
+                    'private_key_id' => $this->private_key_id,
+                    'cloud_provider_token_id' => $this->selected_token_id,
+                    'digitalocean_droplet_id' => $dropletId,
+                    'digitalocean_droplet_status' => $droplet['status'] ?? null,
+                ]);
 
-            $server->proxy->set('status', 'exited');
-            $server->proxy->set('type', ProxyTypes::TRAEFIK->value);
-            $server->save();
+                $server->proxy->set('status', 'exited');
+                $server->proxy->set('type', ProxyTypes::TRAEFIK->value);
+                $server->save();
+
+                return $server;
+            });
 
             try {
                 $droplet = $digitalOceanService->waitForPublicIp($droplet, true, $this->enable_ipv6);
@@ -510,7 +520,22 @@ class ByDigitalOcean extends Component
 
             return redirectRoute($this, 'server.show', [$server->uuid]);
         } catch (\Throwable $e) {
+            $this->deleteUntrackedDroplet($digitalOceanService, $dropletId, $server);
+
             return handleError($e, $this);
+        }
+    }
+
+    private function deleteUntrackedDroplet(?DigitalOceanService $digitalOceanService, ?int $dropletId, ?Server $server): void
+    {
+        if (! $digitalOceanService || ! $dropletId || $server) {
+            return;
+        }
+
+        try {
+            $digitalOceanService->deleteDroplet($dropletId);
+        } catch (\Throwable $e) {
+            report($e);
         }
     }
 

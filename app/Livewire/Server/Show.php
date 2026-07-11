@@ -611,6 +611,7 @@ class Show extends Component
     public function startVultrInstance()
     {
         try {
+            $this->authorize('update', $this->server);
             if (! $this->server->vultr_instance_id || ! $this->server->cloudProviderToken) {
                 $this->dispatch('error', 'This server is not associated with a Vultr instance or token.');
 
