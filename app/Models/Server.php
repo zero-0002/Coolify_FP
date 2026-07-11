@@ -112,6 +112,13 @@ class Server extends BaseModel
 {
     use ClearsGlobalSearchCache, HasFactory, HasMetrics, SchemalessAttributesTrait, SoftDeletes;
 
+    /**
+     * Sentinel IP for servers that do not have a real address yet
+     * (cloud provisioning in progress or parked as unreachable).
+     * Scheduled jobs skip these servers via skipServer().
+     */
+    public const PLACEHOLDER_IP = '1.2.3.4';
+
     public static $batch_counter = 0;
 
     /**
@@ -307,6 +314,29 @@ class Server extends BaseModel
         return 'server';
     }
 
+    public function hasPlaceholderIp(): bool
+    {
+        // Cast: the saving hook stores the ip as a Stringable in memory.
+        $ip = (string) $this->ip;
+
+        return blank($ip) || in_array($ip, [self::PLACEHOLDER_IP, '0.0.0.0', '::'], true);
+    }
+
+    /**
+     * Replace a placeholder IP with the real address once the cloud
+     * provider reports one. Returns true when the IP was updated.
+     */
+    public function backfillPlaceholderIp(?string $ip): bool
+    {
+        if ($ip && $this->hasPlaceholderIp()) {
+            $this->update(['ip' => $ip]);
+
+            return true;
+        }
+
+        return false;
+    }
+
     public function refreshVultrState(): ?string
     {
         if (! $this->vultr_instance_id || ! $this->cloudProviderToken) {
@@ -339,8 +369,7 @@ class Server extends BaseModel
             $updates['vultr_instance_status'] = $status;
         }
 
-        $hasPlaceholderIp = blank($this->ip) || in_array($this->ip, ['0.0.0.0', '::'], true);
-        if ($hasPlaceholderIp && $publicIp) {
+        if ($this->hasPlaceholderIp() && $publicIp) {
             $updates['ip'] = $publicIp;
         }
 
@@ -388,7 +417,7 @@ class Server extends BaseModel
         $ip = $digitalOceanService->getPublicIpAddress($droplet);
 
         $updates = ['digitalocean_droplet_status' => $status];
-        if ($ip && $ip !== $this->ip) {
+        if ($ip && $this->hasPlaceholderIp()) {
             $updates['ip'] = $ip;
         }
 
@@ -1176,7 +1205,7 @@ $schema://$host {
 
     public function skipServer()
     {
-        if ($this->ip === '1.2.3.4') {
+        if ($this->hasPlaceholderIp()) {
             return true;
         }
         if ($this->settings->force_disabled === true) {
@@ -1188,7 +1217,7 @@ $schema://$host {
 
     public function isFunctional()
     {
-        $isFunctional = data_get($this->settings, 'is_reachable') && data_get($this->settings, 'is_usable') && data_get($this->settings, 'force_disabled') === false && $this->ip !== '1.2.3.4';
+        $isFunctional = data_get($this->settings, 'is_reachable') && data_get($this->settings, 'is_usable') && data_get($this->settings, 'force_disabled') === false && ! $this->hasPlaceholderIp();
 
         if ($isFunctional === false) {
             Storage::disk('ssh-mux')->delete($this->muxFilename());

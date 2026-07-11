@@ -86,6 +86,7 @@ it('detects environment variable value changes without exposing secret values', 
         'is_buildtime' => false,
         'is_runtime' => true,
         'is_preview' => false,
+        'is_shown_once' => true,
         'resourceable_type' => Application::class,
         'resourceable_id' => $application->id,
     ]);
@@ -112,6 +113,7 @@ it('describes added environment variables as set without exposing secret values'
         'is_buildtime' => false,
         'is_runtime' => true,
         'is_preview' => false,
+        'is_shown_once' => true,
         'resourceable_type' => Application::class,
         'resourceable_id' => $application->id,
     ]);

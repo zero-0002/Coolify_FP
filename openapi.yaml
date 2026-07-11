@@ -5232,6 +5232,170 @@ paths:
       security:
         -
           bearerAuth: []
+  /destinations:
+    get:
+      tags:
+        - Destinations
+      summary: 'List destinations'
+      description: 'List all Docker network destinations for the authenticated team.'
+      operationId: list-destinations
+      responses:
+        '200':
+          description: 'Destinations for the authenticated team.'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Destination'
+        '401':
+          $ref: '#/components/responses/401'
+      security:
+        -
+          bearerAuth: []
+  '/servers/{server_uuid}/destinations':
+    get:
+      tags:
+        - Destinations
+      summary: 'List destinations by server'
+      description: 'List Docker network destinations attached to a server owned by the authenticated team.'
+      operationId: list-server-destinations
+      parameters:
+        -
+          name: server_uuid
+          in: path
+          description: 'Server UUID'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Destinations attached to the server.'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Destination'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Destinations
+      summary: 'Create destination'
+      description: 'Create a Docker network destination on a server owned by the authenticated team.'
+      operationId: create-server-destination
+      parameters:
+        -
+          name: server_uuid
+          in: path
+          description: 'Server UUID'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - network
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                network:
+                  type: string
+                  maxLength: 255
+                  pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$'
+                type:
+                  type: string
+                  enum: [standalone, swarm]
+              type: object
+      responses:
+        '201':
+          description: 'Destination created.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Destination'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '409':
+          description: 'A destination with this network already exists.'
+        '422':
+          $ref: '#/components/responses/422'
+      security:
+        -
+          bearerAuth: []
+  '/destinations/{uuid}':
+    get:
+      tags:
+        - Destinations
+      summary: 'Get destination'
+      description: 'Get a Docker network destination by UUID.'
+      operationId: get-destination-by-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'Destination UUID'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Destination details.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Destination'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - Destinations
+      summary: 'Delete destination'
+      description: 'Delete an unused Docker network destination.'
+      operationId: delete-destination-by-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'Destination UUID'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Destination deleted.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: Deleted. }
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+        '409':
+          description: 'Destination has attached resources.'
+      security:
+        -
+          bearerAuth: []
   /digitalocean/regions:
     get:
       tags:
@@ -9958,6 +10122,29 @@ components:
           type: string
           description: 'The date and time when the service was deleted.'
       type: object
+    Destination:
+      description: 'A Docker network destination attached to a server.'
+      properties:
+        uuid:
+          type: string
+        name:
+          type: string
+        network:
+          type: string
+        type:
+          type: string
+          enum:
+            - standalone
+            - swarm
+        server_uuid:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      type: object
     Tag:
       description: 'Tag model'
       properties:
@@ -10117,6 +10304,9 @@ tags:
   -
     name: Deployments
     description: Deployments
+  -
+    name: Destinations
+    description: Destinations
   -
     name: DigitalOcean
     description: DigitalOcean

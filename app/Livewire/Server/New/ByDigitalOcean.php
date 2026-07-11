@@ -402,11 +402,11 @@ class ByDigitalOcean extends Component
     }
 
     /**
-     * @return array{droplet: array, ip: string|null}
+     * Create the droplet on DigitalOcean and return the raw droplet payload.
+     * The public IP may not be assigned yet at this point.
      */
-    private function createDigitalOceanDroplet(string $token): array
+    private function createDigitalOceanDroplet(DigitalOceanService $digitalOceanService): array
     {
-        $digitalOceanService = new DigitalOceanService($token);
         $privateKey = PrivateKey::ownedByCurrentTeam()->findOrFail($this->private_key_id);
         $md5Fingerprint = PrivateKey::generateMd5Fingerprint($privateKey->private_key);
 
@@ -442,14 +442,7 @@ class ByDigitalOcean extends Component
             $params['user_data'] = $this->cloud_init_script;
         }
 
-        $droplet = $digitalOceanService->createDroplet($params);
-        $droplet = $digitalOceanService->waitForPublicIp($droplet, true, $this->enable_ipv6);
-        $ipAddress = $digitalOceanService->getPublicIpAddress($droplet, true, $this->enable_ipv6);
-
-        return [
-            'droplet' => $droplet,
-            'ip' => $ipAddress,
-        ];
+        return $digitalOceanService->createDroplet($params);
     }
 
     public function submit()
@@ -473,17 +466,14 @@ class ByDigitalOcean extends Component
                 ]);
             }
 
-            $result = $this->createDigitalOceanDroplet($this->getDigitalOceanToken());
-            $droplet = $result['droplet'];
-            $ipAddress = $result['ip'];
+            $digitalOceanService = new DigitalOceanService($this->getDigitalOceanToken());
+            $droplet = $this->createDigitalOceanDroplet($digitalOceanService);
 
-            if (! $ipAddress) {
-                throw new \Exception('No public IP address available for the new droplet.');
-            }
-
+            // Persist the server immediately so the droplet is always tracked
+            // in Coolify, even if waiting for the public IP fails below.
             $server = Server::create([
                 'name' => strtolower(trim($this->server_name)),
-                'ip' => $ipAddress,
+                'ip' => Server::PLACEHOLDER_IP,
                 'user' => 'root',
                 'port' => 22,
                 'team_id' => currentTeam()->id,
@@ -496,6 +486,20 @@ class ByDigitalOcean extends Component
             $server->proxy->set('status', 'exited');
             $server->proxy->set('type', ProxyTypes::TRAEFIK->value);
             $server->save();
+
+            try {
+                $droplet = $digitalOceanService->waitForPublicIp($droplet, true, $this->enable_ipv6);
+                $ipAddress = $digitalOceanService->getPublicIpAddress($droplet, true, $this->enable_ipv6);
+                if ($ipAddress) {
+                    $server->update([
+                        'ip' => $ipAddress,
+                        'digitalocean_droplet_status' => $droplet['status'] ?? $server->digitalocean_droplet_status,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                // Non-fatal: the server page polling backfills the IP later.
+                report($e);
+            }
 
             if ($this->from_onboarding) {
                 currentTeam()->update([
