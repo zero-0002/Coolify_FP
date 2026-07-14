@@ -217,8 +217,9 @@
                 </div>
             @endcan
             @can('update', $this->env)
-                <div class="flex flex-col w-full gap-3">
-                    <div class="flex flex-wrap w-full items-center gap-4">
+                <div class="flex w-full flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div class="flex min-w-0 flex-1 flex-col gap-3">
+                        <div class="flex flex-wrap w-full items-center gap-4">
                         @if (!$is_redis_credential)
                             @if ($type === 'service')
                                 @if (!$isMagicVariable)
@@ -266,10 +267,11 @@
                                 @endif
                             @endif
                         @endif
+                        </div>
+                        <x-environment-variable-warning :problematic-variables="$problematicVariables" />
                     </div>
-                    <x-environment-variable-warning :problematic-variables="$problematicVariables" />
                     @if (!$isMagicVariable)
-                        <div class="flex w-full justify-end gap-2">
+                        <div class="flex w-full justify-end gap-2 lg:w-auto lg:shrink-0">
                             @if ($isDisabled)
                             <x-forms.button disabled type="submit">Update</x-forms.button>
                             <x-forms.button wire:click='lock'>Lock</x-forms.button>
@@ -291,7 +293,7 @@
                             @endif
                         </div>
                     @elseif ($type === 'service')
-                        <div class="flex w-full justify-end gap-2">
+                        <div class="flex w-full justify-end gap-2 lg:w-auto lg:shrink-0">
                             <x-forms.button wire:click='lock'>Lock</x-forms.button>
                         </div>
                     @endif

@@ -27,6 +27,14 @@ it('keeps the environment variable delete button compact', function () {
     expect($view)->not->toContain('buttonFullWidth="true"');
 });
 
+it('aligns environment variable settings and actions in a responsive row', function () {
+    $view = file_get_contents(resource_path('views/livewire/project/shared/environment-variable/show.blade.php'));
+
+    expect($view)
+        ->toContain('class="flex w-full flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"')
+        ->toContain('class="flex w-full justify-end gap-2 lg:w-auto lg:shrink-0"');
+});
+
 it('uses sans font for the developer bulk environment variable editor', function () {
     $view = file_get_contents(resource_path('views/livewire/project/shared/environment-variable/all.blade.php'));
 
