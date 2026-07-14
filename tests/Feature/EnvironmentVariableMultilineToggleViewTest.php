@@ -21,6 +21,12 @@ it('uses distinct keyed branches for the edit value field modes', function () {
         ->toContain('wire:key="env-show-value-input-{{ $env->id }}"');
 });
 
+it('keeps the environment variable delete button compact', function () {
+    $view = file_get_contents(resource_path('views/livewire/project/shared/environment-variable/show.blade.php'));
+
+    expect($view)->not->toContain('buttonFullWidth="true"');
+});
+
 it('uses sans font for the developer bulk environment variable editor', function () {
     $view = file_get_contents(resource_path('views/livewire/project/shared/environment-variable/all.blade.php'));
 

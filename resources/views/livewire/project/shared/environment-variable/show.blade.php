@@ -275,7 +275,7 @@
                             <x-forms.button wire:click='lock'>Lock</x-forms.button>
                             <x-modal-confirmation title="Confirm Environment Variable Deletion?" isErrorButton buttonTitle="Delete"
                                 submitAction="delete" :actions="['The selected environment variable will be permanently deleted.']"
-                                confirmationText="{{ $key }}" buttonFullWidth="true"
+                                confirmationText="{{ $key }}"
                                 confirmationLabel="Please confirm the execution of the actions by entering the Environment Variable Name below"
                                 shortConfirmationLabel="Environment Variable Name" :confirmWithPassword="false"
                                 step2ButtonText="Permanently Delete" />
@@ -284,7 +284,7 @@
                             <x-forms.button wire:click='lock'>Lock</x-forms.button>
                             <x-modal-confirmation title="Confirm Environment Variable Deletion?" isErrorButton buttonTitle="Delete"
                                 submitAction="delete" :actions="['The selected environment variable will be permanently deleted.']"
-                                confirmationText="{{ $key }}" buttonFullWidth="true"
+                                confirmationText="{{ $key }}"
                                 confirmationLabel="Please confirm the execution of the actions by entering the Environment Variable Name below"
                                 shortConfirmationLabel="Environment Variable Name" :confirmWithPassword="false"
                                 step2ButtonText="Permanently Delete" />
