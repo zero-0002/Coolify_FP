@@ -53,3 +53,6 @@ ref
 
 # Multi-instance local Coolify env files (scripts/dev-instances)
 .dev-instances/
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
