@@ -7189,6 +7189,7 @@ All notable changes to this project will be documented in this file.
 - *(security)* Require scoped authorization checks and regression tests
 - Update changelog
 - Update changelog
+- Update changelog
 
 ### ⚡ Performance
 
