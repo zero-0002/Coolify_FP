@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node api.js && vite --host",
-    "build": "node api.js && vite build",
+    "dev": "node init && vite --host",
+    "build": "node init && vite build",
     "clean": "docker compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans"
   },
   "devDependencies": {

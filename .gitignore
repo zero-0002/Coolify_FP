@@ -5,7 +5,6 @@
 /public/storage
 /storage/*.key
 /vendor
-.env
 .env.backup
 .env.secrets
 .phpunit.result.cache
@@ -16,7 +15,6 @@ npm-debug.log
 yarn-error.log
 /.fleet
 /.idea
-/.vscode
 /.npm
 /.bash_history
 /_data
@@ -56,3 +54,4 @@ ref
 branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
+config.bat
